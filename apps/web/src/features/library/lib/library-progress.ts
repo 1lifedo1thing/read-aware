@@ -10,12 +10,26 @@ function fraction(progress: NonNullable<BookProgress>): number {
  * visible ranges and must not turn a viewport resize into forward reading. */
 function cfiStart(value: string): number[][][] | null {
   if (!value.startsWith("epubcfi(") || !value.endsWith(")")) return null;
-  let stripped = "", assertion = false, escaped = false;
+  let stripped = "",
+    assertion = false,
+    escaped = false;
   for (const char of value.slice(8, -1)) {
-    if (escaped) { escaped = false; continue; }
-    if (char === "^") { escaped = true; continue; }
-    if (char === "[") { assertion = true; continue; }
-    if (char === "]") { assertion = false; continue; }
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "^") {
+      escaped = true;
+      continue;
+    }
+    if (char === "[") {
+      assertion = true;
+      continue;
+    }
+    if (char === "]") {
+      assertion = false;
+      continue;
+    }
     if (!assertion) stripped += char;
   }
   if (assertion || escaped) return null;
@@ -38,7 +52,8 @@ function cfiStart(value: string): number[][][] | null {
 
 function comparePath(left: number[][][], right: number[][][]): number {
   for (let i = 0; i < Math.min(left.length, right.length); i++) {
-    const a = left[i]!, b = right[i]!;
+    const a = left[i]!,
+      b = right[i]!;
     for (let j = 0; j < Math.min(a.length, b.length); j++) {
       const difference = a[j]![0]! - b[j]![0]! || a[j]![1]! - b[j]![1]!;
       if (difference) return difference;
@@ -55,11 +70,13 @@ function comparePath(left: number[][][], right: number[][][]): number {
 export function compareReadingProgress(left: NonNullable<BookProgress>, right: NonNullable<BookProgress>): number {
   const distance = fraction(left) - fraction(right);
   if (distance) return distance;
-  const leftLocator = left.cfi ?? left.href ?? "", rightLocator = right.cfi ?? right.href ?? "";
-  const a = cfiStart(leftLocator), b = cfiStart(rightLocator);
+  const leftLocator = left.cfi ?? left.href ?? "",
+    rightLocator = right.cfi ?? right.href ?? "";
+  const a = cfiStart(leftLocator),
+    b = cfiStart(rightLocator);
   const precise = a && b ? comparePath(a, b) : Number(!!a) - Number(!!b);
   if (precise) return precise;
-  const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+  const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
   return compare(leftLocator, rightLocator) || compare(left.href ?? "", right.href ?? "");
 }
 

@@ -30,11 +30,7 @@ const HEX_COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const FUNC_COLOR = /^(?:rgb|rgba|hsl|hsla)\(\s*[\d.,%\s/-]+\)$/;
 
 export function isPluginThemeColor(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= 64 &&
-    (HEX_COLOR.test(value) || FUNC_COLOR.test(value))
-  );
+  return typeof value === "string" && value.length <= 64 && (HEX_COLOR.test(value) || FUNC_COLOR.test(value));
 }
 
 /** Contribution-local ids (theme ids, font ids) share the plugin-id shape. */
@@ -55,7 +51,8 @@ function isFontFilePath(value: unknown): value is string {
 }
 
 /** `unicode-range` values: U+ hex points, ranges, and `?` wildcards only. */
-const UNICODE_RANGE = /^[uU]\+[0-9a-fA-F?]{1,6}(?:-[0-9a-fA-F]{1,6})?(?:\s*,\s*[uU]\+[0-9a-fA-F?]{1,6}(?:-[0-9a-fA-F]{1,6})?)*$/;
+const UNICODE_RANGE =
+  /^[uU]\+[0-9a-fA-F?]{1,6}(?:-[0-9a-fA-F]{1,6})?(?:\s*,\s*[uU]\+[0-9a-fA-F?]{1,6}(?:-[0-9a-fA-F]{1,6})?)*$/;
 
 /** Strip characters that could break out of a `font-family` declaration. */
 function sanitizeFamilyName(family: string): string {
@@ -83,9 +80,7 @@ export function isPluginRef(value: unknown): value is `plugin:${string}` {
 }
 
 /** Split a `plugin:<pluginId>:<partId>` ref; null when the shape is wrong. */
-export function parsePluginRef(
-  value: string,
-): { pluginId: string; partId: string } | null {
+export function parsePluginRef(value: string): { pluginId: string; partId: string } | null {
   if (!PLUGIN_REF.test(value)) return null;
   const [, pluginId, partId] = value.split(":");
   return { pluginId, partId };
@@ -98,11 +93,7 @@ export function findRegisteredByRef<T extends { pluginId: string; id: string }>(
 ): T | null {
   const parsed = parsePluginRef(ref);
   if (!parsed) return null;
-  return (
-    items.find(
-      (item) => item.pluginId === parsed.pluginId && item.id === parsed.partId,
-    ) ?? null
-  );
+  return items.find((item) => item.pluginId === parsed.pluginId && item.id === parsed.partId) ?? null;
 }
 
 // ─── App token vocabulary ────────────────────────────────────────────────────
@@ -136,9 +127,7 @@ const MAX_THEMES = 12;
 const MAX_FONTS = 8;
 const MAX_FONT_FILES = 512;
 
-const FONT_SIZES = new Set([
-  "xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large",
-]);
+const FONT_SIZES = new Set(["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large"]);
 const FONT_WEIGHTS = new Set(["light", "regular", "medium", "semibold", "bold", "extra-bold", "black"]);
 const LINE_SPACINGS = new Set(["compact", "comfortable", "relaxed"]);
 const PARAGRAPH_SPACINGS = new Set(["tight", "normal", "loose"]);
@@ -177,8 +166,7 @@ export function validateFontContributions(raw: unknown): PluginFontContribution[
     }
     if (seen.has(id)) throw new Error(`duplicate font id "${id}"`);
     seen.add(id);
-    const family =
-      typeof record.family === "string" ? sanitizeFamilyName(record.family) : "";
+    const family = typeof record.family === "string" ? sanitizeFamilyName(record.family) : "";
     if (!family) throw new Error(`font "${id}" needs a non-empty family name`);
     const kind = record.kind ?? "serif";
     if (kind !== "sans" && kind !== "serif" && kind !== "cjk") {
@@ -196,9 +184,7 @@ export function validateFontContributions(raw: unknown): PluginFontContribution[
       }
       const f = file as Record<string, unknown>;
       if (!isFontFilePath(f.path)) {
-        throw new Error(
-          `font "${id}" file paths must be plain relative paths ending in ${FONT_EXTENSIONS.join("/")}`,
-        );
+        throw new Error(`font "${id}" file paths must be plain relative paths ending in ${FONT_EXTENSIONS.join("/")}`);
       }
       if (
         f.weight != null &&
@@ -209,7 +195,8 @@ export function validateFontContributions(raw: unknown): PluginFontContribution[
       if (f.style != null && f.style !== "normal" && f.style !== "italic") {
         throw new Error(`font "${id}" file styles must be "normal" or "italic"`);
       }
-      if (f.unicodeRange != null &&
+      if (
+        f.unicodeRange != null &&
         (typeof f.unicodeRange !== "string" || !UNICODE_RANGE.test(f.unicodeRange.trim()))
       ) {
         throw new Error(`font "${id}" has an invalid unicode-range`);
@@ -230,10 +217,7 @@ export function validateFontContributions(raw: unknown): PluginFontContribution[
  * ids, so a typography default may reference its own fonts as
  * `plugin:<fontId>`.
  */
-export function validateThemeContributions(
-  raw: unknown,
-  fontIds: ReadonlySet<string>,
-): PluginThemeContribution[] {
+export function validateThemeContributions(raw: unknown, fontIds: ReadonlySet<string>): PluginThemeContribution[] {
   if (!Array.isArray(raw)) throw new Error("manifest.themes must be an array");
   if (raw.length > MAX_THEMES) {
     throw new Error(`manifest.themes allows at most ${MAX_THEMES} themes`);
@@ -342,8 +326,7 @@ export function validateThemeContributions(
           if (typeof t.paragraphSpacing !== "string" || !PARAGRAPH_SPACINGS.has(t.paragraphSpacing)) {
             throw new Error(`theme "${id}" typography paragraphSpacing is invalid`);
           }
-          typography.paragraphSpacing =
-            t.paragraphSpacing as NonNullable<typeof typography>["paragraphSpacing"];
+          typography.paragraphSpacing = t.paragraphSpacing as NonNullable<typeof typography>["paragraphSpacing"];
         }
       }
       reader = {

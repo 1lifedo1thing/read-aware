@@ -17,12 +17,16 @@ export interface HostWindowPort {
 }
 
 export function normalizeHostWindowRequest(input: HostWindowRequest): HostWindowRequest {
-  const fail = (): never => { throw new AppError("ui/invalid-target", "Invalid main-window intent"); };
+  const fail = (): never => {
+    throw new AppError("ui/invalid-target", "Invalid main-window intent");
+  };
   if (!input || typeof input !== "object" || Array.isArray(input)) return fail();
   if (input.action === "fullscreen") {
-    if (typeof input.enabled !== "boolean" || Object.keys(input).some(key => key !== "action" && key !== "enabled")) return fail();
+    if (typeof input.enabled !== "boolean" || Object.keys(input).some((key) => key !== "action" && key !== "enabled"))
+      return fail();
     return { action: "fullscreen", enabled: input.enabled };
   }
-  if (!["minimize", "maximize", "restore"].includes(input.action) || Object.keys(input).some(key => key !== "action")) return fail();
+  if (!["minimize", "maximize", "restore"].includes(input.action) || Object.keys(input).some((key) => key !== "action"))
+    return fail();
   return { action: input.action };
 }

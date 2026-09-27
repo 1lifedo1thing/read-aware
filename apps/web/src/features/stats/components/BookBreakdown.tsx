@@ -31,14 +31,7 @@ function Metric({ label, value }: { label: string; value: string }) {
  * the reader. Time and active days are scoped to the period; progress stays
  * cumulative (it's a property of the book, not the window).
  */
-export function BookBreakdown({
-  books,
-  store,
-  period,
-  now,
-  annotations,
-  onOpenBook,
-}: BookBreakdownProps) {
+export function BookBreakdown({ books, store, period, now, annotations, onOpenBook }: BookBreakdownProps) {
   const { t } = useTranslation("stats");
   const bookMap = useMemo(() => new Map(books.map((b) => [b.id, b])), [books]);
 
@@ -82,9 +75,7 @@ export function BookBreakdown({
             )}
             <div className="min-w-0 flex-1">
               <Body className="truncate text-sm font-medium text-fg">{book.title}</Body>
-              {book.author && (
-                <Caption className="block truncate text-fg-subtle">{book.author}</Caption>
-              )}
+              {book.author && <Caption className="block truncate text-fg-subtle">{book.author}</Caption>}
             </div>
             <div className="hidden shrink-0 items-center gap-6 sm:flex">
               <Metric label={t("breakdown.time")} value={formatReadingDuration(window.ms)} />

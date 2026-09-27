@@ -1,7 +1,4 @@
-import type {
-  UserInteractionAnswer,
-  UserInteractionPort,
-} from "@read-aware/agent";
+import type { UserInteractionAnswer, UserInteractionPort } from "@read-aware/agent";
 import { validateInteractionForm, validateInteractionFormValues, type InteractionForm } from "@read-aware/core";
 
 type PendingInteraction = {
@@ -21,10 +18,7 @@ function detach(entry: PendingInteraction): void {
 }
 
 /** Called by ChatInteractionPrompt; false means the turn no longer owns it. */
-export function respondToUserInteraction(
-  id: string,
-  answer: UserInteractionAnswer,
-): boolean {
+export function respondToUserInteraction(id: string, answer: UserInteractionAnswer): boolean {
   const entry = pending.get(id);
   if (!entry) return false;
   let accepted = answer;
@@ -36,7 +30,9 @@ export function respondToUserInteraction(
         const result = validateInteractionFormValues(entry.form, answer.values);
         if (Object.keys(result.errors).length) return false;
         accepted = { values: result.values };
-      } catch { return false; } // Invalid UI payload is not a submitted answer.
+      } catch {
+        return false;
+      } // Invalid UI payload is not a submitted answer.
     }
   }
   pending.delete(id);
@@ -54,7 +50,8 @@ export function createUserInteractionPort(): UserInteractionPort {
       if (pending.has(request.id)) {
         return Promise.reject(new Error(`interaction already pending: ${request.id}`));
       }
-      const form = request.kind === "form" ? validateInteractionForm({ title: request.title, fields: request.fields }) : undefined;
+      const form =
+        request.kind === "form" ? validateInteractionForm({ title: request.title, fields: request.fields }) : undefined;
       return new Promise<UserInteractionAnswer>((resolve, reject) => {
         const entry: PendingInteraction = { resolve, reject, signal, form };
         entry.onAbort = () => {

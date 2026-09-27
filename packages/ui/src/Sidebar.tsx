@@ -11,15 +11,7 @@ type SidebarProps = {
   className?: string;
 };
 
-export function Sidebar({
-  side = "left",
-  open,
-  onClose,
-  children,
-  width = "w-72",
-  label,
-  className,
-}: SidebarProps) {
+export function Sidebar({ side = "left", open, onClose, children, width = "w-72", label, className }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
 
   const handleKeyDown = useCallback(
@@ -100,11 +92,7 @@ export function Sidebar({
         className={cn(
           "fixed top-0 z-50 h-full border-border bg-paper outline-none transition-transform duration-200",
           side === "left" ? "left-0 border-r" : "right-0 border-l",
-          open
-            ? "translate-x-0"
-            : side === "left"
-              ? "-translate-x-full"
-              : "translate-x-full",
+          open ? "translate-x-0" : side === "left" ? "-translate-x-full" : "translate-x-full",
           width,
           className,
         )}

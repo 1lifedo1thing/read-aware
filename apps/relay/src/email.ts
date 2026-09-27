@@ -9,11 +9,7 @@
 import { EMAIL } from "./i18n";
 import type { MagicLinkSender } from "./ports";
 
-export function resendMagicLinkSender(
-  apiKey: string,
-  from: string,
-  appOrigin: string,
-): MagicLinkSender {
+export function resendMagicLinkSender(apiKey: string, from: string, appOrigin: string): MagicLinkSender {
   return {
     async send(email, token, lang) {
       // The https link is the ONE link: mail clients reliably linkify it, and

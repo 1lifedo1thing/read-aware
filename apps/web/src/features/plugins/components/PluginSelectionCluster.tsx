@@ -8,11 +8,7 @@ import { PuzzlePiece } from "@phosphor-icons/react";
 import { useAtomValue } from "jotai";
 import { DropdownMenu, IconButton, Tooltip } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
-import {
-  menuConfigAtom,
-  pluginMenuId,
-  resolveSurfaceLayout,
-} from "../../menus/state/menu-config";
+import { menuConfigAtom, pluginMenuId, resolveSurfaceLayout } from "../../menus/state/menu-config";
 import { renderPluginIcon } from "../lib/plugin-icons";
 import { runPluginContribution } from "../lib/run-result";
 import type { RegisteredSelectionAction, SelectionActionInput } from "../lib/plugin-types";
@@ -21,8 +17,7 @@ import { contributionText } from "../lib/plugin-i18n";
 import { actionEnabled, actionVisible } from "../lib/plugin-action-state";
 
 /** Matches the quiet ghost-button styling of the hosting menus. */
-const actionButtonClass =
-  "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg";
+const actionButtonClass = "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg";
 
 type PluginSelectionClusterProps = {
   /** The current selection context, or null when the menu has no target. */
@@ -33,11 +28,7 @@ type PluginSelectionClusterProps = {
   overflowSide?: "top" | "bottom";
 };
 
-export function PluginSelectionCluster({
-  input,
-  divider,
-  overflowSide = "bottom",
-}: PluginSelectionClusterProps) {
+export function PluginSelectionCluster({ input, divider, overflowSide = "bottom" }: PluginSelectionClusterProps) {
   const { t } = useTranslation("plugins");
   const actions = useAtomValue(selectionActionsAtom).filter(actionVisible);
   const menuConfig = useAtomValue(menuConfigAtom);
@@ -45,15 +36,9 @@ export function PluginSelectionCluster({
   if (actions.length === 0 || !input) return null;
 
   const actionById = new Map(actions.map((action) => [pluginMenuId(action.key), action]));
-  const layout = resolveSurfaceLayout(
-    menuConfig.selection,
-    [...actionById.keys()],
-    {
-      defaultVisibleIds: actions
-        .filter((action) => action.role === "lookup")
-        .map((action) => pluginMenuId(action.key)),
-    },
-  );
+  const layout = resolveSurfaceLayout(menuConfig.selection, [...actionById.keys()], {
+    defaultVisibleIds: actions.filter((action) => action.role === "lookup").map((action) => pluginMenuId(action.key)),
+  });
   const inline = layout.visible
     .map((id) => actionById.get(id))
     .filter((action): action is RegisteredSelectionAction => action !== undefined);
@@ -62,12 +47,10 @@ export function PluginSelectionCluster({
     .filter((action): action is RegisteredSelectionAction => action !== undefined);
 
   const run = (action: RegisteredSelectionAction) => {
-    void runPluginContribution(
-      action.pluginId,
-      action.pluginName,
-      () => action.run(input),
-      { presentation: action.presentation, owner: action.run },
-    );
+    void runPluginContribution(action.pluginId, action.pluginName, () => action.run(input), {
+      presentation: action.presentation,
+      owner: action.run,
+    });
   };
 
   return (
@@ -92,9 +75,7 @@ export function PluginSelectionCluster({
           side={overflowSide}
           triggerLabel={t("menu.actions")}
           trigger={
-            <span
-              className={`flex h-7 w-7 items-center justify-center ${actionButtonClass}`}
-            >
+            <span className={`flex h-7 w-7 items-center justify-center ${actionButtonClass}`}>
               <PuzzlePiece size={14} weight="regular" aria-hidden="true" />
             </span>
           }

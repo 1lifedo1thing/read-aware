@@ -25,10 +25,14 @@ export class ReadingTrace {
     private readonly enqueue: (work: () => Promise<void>) => Promise<void>,
   ) {}
 
-  get accepting(): boolean { return this.live; }
+  get accepting(): boolean {
+    return this.live;
+  }
 
   /** Capture the partial timer interval without retiring its React sampler. */
-  sampleNow(): void { if (this.live) this.sample?.(); }
+  sampleNow(): void {
+    if (this.live) this.sample?.();
+  }
 
   bindSampler(sample: () => void): () => void {
     if (!this.live) return () => {};
@@ -76,25 +80,32 @@ export class ReadingTrace {
   }
 
   private async write(work: () => Promise<unknown>): Promise<void> {
-    try { await work(); }
-    catch (error) { this.writeFailure ??= { error }; throw error; }
+    try {
+      await work();
+    } catch (error) {
+      this.writeFailure ??= { error };
+      throw error;
+    }
   }
 
   private async rollover(at: number): Promise<void> {
     // A failed old-bucket flush must not discard the new reading observation.
     // Both buckets remain scoped to this session for the final retirement.
-    try { await this.flushExcept(bucketKeyAt(this.bookId, at)); }
-    catch (error) { this.store.report(error); }
+    try {
+      await this.flushExcept(bucketKeyAt(this.bookId, at));
+    } catch (error) {
+      this.store.report(error);
+    }
   }
 
   private async flushExcept(keep?: BucketKey): Promise<void> {
     const pending = await this.store.pending();
-    const closing = pending.filter(bucket => bucket.bookId === this.bookId && !(keep && sameBucket(bucket, keep)));
+    const closing = pending.filter((bucket) => bucket.bookId === this.bookId && !(keep && sameBucket(bucket, keep)));
     if (closing.length) await this.store.flush(closing);
   }
 
   private background(work: () => Promise<void>): void {
-    void this.enqueue(work).catch(error => this.store.report(error));
+    void this.enqueue(work).catch((error) => this.store.report(error));
   }
 }
 
@@ -133,7 +144,9 @@ export class ReadingTraceCoordinator {
     try {
       active?.sampleNow();
       const accepted = [...this.pending];
-      const reservation = new Promise<void>(resolve => { release = resolve; });
+      const reservation = new Promise<void>((resolve) => {
+        release = resolve;
+      });
       this.tail = this.tail.then(() => reservation);
       // A queue failure cannot let the backup overtake another accepted write.
       const results = await Promise.allSettled(accepted);
@@ -147,11 +160,13 @@ export class ReadingTraceCoordinator {
   }
 
   begin(id: string, bookId: string): ReadingTrace {
-    if (this.active) void this.active.retire().catch(error => this.store.report(error));
-    const trace = new ReadingTrace(id, bookId, this.store, work => {
+    if (this.active) void this.active.retire().catch((error) => this.store.report(error));
+    const trace = new ReadingTrace(id, bookId, this.store, (work) => {
       const task = this.tail.then(work);
       this.pending.add(task);
-      const done = () => { this.pending.delete(task); };
+      const done = () => {
+        this.pending.delete(task);
+      };
       task.then(done, done);
       // Failure does not strand subsequent sessions; the caller still sees it.
       this.tail = task.catch(() => {});

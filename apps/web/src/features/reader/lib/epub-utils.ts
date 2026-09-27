@@ -54,10 +54,7 @@ export function adjacentTocEntry(entries: TocEntry[], href: string | null, direc
   return entries[index];
 }
 
-export function flattenToc(
-  items: TocNavItem[],
-  depth = 0,
-): TocEntry[] {
+export function flattenToc(items: TocNavItem[], depth = 0): TocEntry[] {
   const flattened: Omit<TocEntry, "spineIndex">[] = [];
 
   for (const item of items) {

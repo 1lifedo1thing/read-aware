@@ -78,7 +78,15 @@ export function ReaderTopBar({
       </div>
       <div style={{ position: "absolute", insetInline: 0, top: 8, textAlign: "center" }}>
         <div style={{ fontSize: 15, fontWeight: 600, lineHeight: "18px", color: color.fg }}>{title}</div>
-        <div style={{ marginTop: 3, fontSize: 11, lineHeight: "12px", color: color.fgSubtle, fontVariantNumeric: "tabular-nums" }}>
+        <div
+          style={{
+            marginTop: 3,
+            fontSize: 11,
+            lineHeight: "12px",
+            color: color.fgSubtle,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
           {detail}
         </div>
       </div>
@@ -86,13 +94,17 @@ export function ReaderTopBar({
         {iconButton(ParagraphIcon, 16, false, 0)}
         {iconButton(TextAaIcon, 16, false, 1)}
         <div style={{ position: "relative" }}>
-          <div style={{ position: "absolute", inset: 0, opacity: 1 - chatActive }}>{iconButton(ChatCircleIcon, 16)}</div>
+          <div style={{ position: "absolute", inset: 0, opacity: 1 - chatActive }}>
+            {iconButton(ChatCircleIcon, 16)}
+          </div>
           <div style={{ opacity: chatActive }}>{iconButton(ChatCircleIcon, 16, true)}</div>
         </div>
         {iconButton(MagnifyingGlassIcon, 16, false, 3)}
         {iconButton(DotsThreeVerticalIcon, 16, false, 4)}
       </div>
-      <div style={{ position: "absolute", insetInline: 0, bottom: 0, height: 1, background: color.pageRule, opacity: 0.6 }} />
+      <div
+        style={{ position: "absolute", insetInline: 0, bottom: 0, height: 1, background: color.pageRule, opacity: 0.6 }}
+      />
       <div
         style={{
           position: "absolute",
@@ -151,7 +163,17 @@ export function NavigatorBar({ style }: { style?: CSSProperties }) {
 }
 
 /** TextUnitReadoutChip: sentence position and session time. */
-export function ReadoutChip({ position, total, time, style }: { position: number; total: number; time: string; style?: CSSProperties }) {
+export function ReadoutChip({
+  position,
+  total,
+  time,
+  style,
+}: {
+  position: number;
+  total: number;
+  time: string;
+  style?: CSSProperties;
+}) {
   return (
     <div
       style={{
@@ -181,7 +203,14 @@ export function ReadoutChip({ position, total, time, style }: { position: number
 
 /** ReaderSelectionMenu: icon actions over a selection; `hot` lights the Ask AI button. */
 export function SelectionMenu({ hot = 0 }: { hot?: number }) {
-  const items: Icon[] = [CopyIcon, HighlighterIcon, TextUnderlineIcon, NotePencilIcon, ChatCircleDotsIcon, DotsThreeVerticalIcon];
+  const items: Icon[] = [
+    CopyIcon,
+    HighlighterIcon,
+    TextUnderlineIcon,
+    NotePencilIcon,
+    ChatCircleDotsIcon,
+    DotsThreeVerticalIcon,
+  ];
   return (
     <div
       style={{

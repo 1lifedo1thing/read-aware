@@ -1,10 +1,7 @@
 import type { FetchFunction } from "@earendil-works/pi-ai";
 
 /** Host-provided HTTP transport. The agent stays independent of Tauri/browser APIs. */
-export type AgentFetch = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>;
+export type AgentFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /** The URL a fetch input addresses; `String(request)` would read "[object Request]". */
 export function fetchInputUrl(input: RequestInfo | URL): string {
@@ -19,10 +16,8 @@ export function fetchInputUrl(input: RequestInfo | URL): string {
 export function asProviderFetch(fetch?: AgentFetch): FetchFunction | undefined {
   if (!fetch) return undefined;
 
-  const providerFetch = async (
-    input: Parameters<FetchFunction>[0],
-    init?: Parameters<FetchFunction>[1],
-  ) => fetch(input as RequestInfo | URL, init as RequestInit | undefined);
+  const providerFetch = async (input: Parameters<FetchFunction>[0], init?: Parameters<FetchFunction>[1]) =>
+    fetch(input as RequestInfo | URL, init as RequestInit | undefined);
 
   return Object.assign(providerFetch, { preconnect: () => undefined });
 }

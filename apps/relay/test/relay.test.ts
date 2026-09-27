@@ -75,9 +75,7 @@ describe("key material", () => {
     const { handle } = makeRelay();
     const { session } = await login(handle, "reader@example.com");
     await handle(post("/v1/account/keys", KEYS, session));
-    const conflict = await handle(
-      post("/v1/account/keys", { ...KEYS, keyCheck: "v1:b3RoZXI=" }, session),
-    );
+    const conflict = await handle(post("/v1/account/keys", { ...KEYS, keyCheck: "v1:b3RoZXI=" }, session));
     expect(conflict.status).toBe(409);
     const body = (await conflict.json()) as { keys: { keyCheck: string } };
     expect(body.keys.keyCheck).toBe(KEYS.keyCheck);
@@ -103,9 +101,7 @@ describe("the numbered mailbox", () => {
     expect(Object.values(seqs).sort((a, b) => a - b)).toEqual([1, 2, 3]);
 
     // A crashed client re-pushes the same batch plus one new event.
-    const second = await handle(
-      post("/v1/events", { events: [...batch, sealed("e4")] }, session),
-    );
+    const second = await handle(post("/v1/events", { events: [...batch, sealed("e4")] }, session));
     const again = ((await second.json()) as { seqs: Record<string, number> }).seqs;
     expect(again.e1).toBe(seqs.e1);
     expect(again.e3).toBe(seqs.e3);
@@ -115,9 +111,7 @@ describe("the numbered mailbox", () => {
   test("pull pages in seq order and reports a stable cursor", async () => {
     const { handle } = makeRelay();
     const { session } = await login(handle, "reader@example.com");
-    await handle(
-      post("/v1/events", { events: [sealed("e1"), sealed("e2"), sealed("e3")] }, session),
-    );
+    await handle(post("/v1/events", { events: [sealed("e1"), sealed("e2"), sealed("e3")] }, session));
 
     const page1 = await handle(get("/v1/events?after=0&limit=2", session));
     const body1 = (await page1.json()) as { events: { id: string }[]; next: number };
@@ -157,17 +151,13 @@ describe("the numbered mailbox", () => {
   test("shape and size limits hold the door", async () => {
     const { handle } = makeRelay({ maxEventBytes: 200, maxBatch: 2 });
     const { session } = await login(handle, "reader@example.com");
-    const malformed = await handle(
-      post("/v1/events", { events: [{ id: "x", v: 2 }] }, session),
-    );
+    const malformed = await handle(post("/v1/events", { events: [{ id: "x", v: 2 }] }, session));
     expect(malformed.status).toBe(400);
     const oversized = await handle(
       post("/v1/events", { events: [{ ...sealed("big"), ciphertext: "x".repeat(400) }] }, session),
     );
     expect(oversized.status).toBe(413);
-    const flood = await handle(
-      post("/v1/events", { events: [sealed(), sealed(), sealed()] }, session),
-    );
+    const flood = await handle(post("/v1/events", { events: [sealed(), sealed(), sealed()] }, session));
     expect(flood.status).toBe(413);
   });
 });
@@ -204,9 +194,7 @@ describe("blobs", () => {
   test("the account quota refuses what would overflow it", async () => {
     const { handle } = makeRelay({ maxAccountBlobBytes: 20 });
     const { session } = await login(handle, "reader@example.com");
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15), session))).status,
-    ).toBe(200);
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15), session))).status).toBe(200);
     const refused = await handle(putBytes("/v1/blobs/bookfile%3Ab2", new Uint8Array(15), session));
     expect(refused.status).toBe(413);
     // The refused upload must not have charged the account.
@@ -219,12 +207,8 @@ describe("blobs", () => {
     const { session } = await login(handle, "reader@example.com");
     const part0 = new Uint8Array(40).fill(1);
     const part1 = new Uint8Array(17).fill(2);
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Abig?part=0&parts=2", part0, session))).status,
-    ).toBe(200);
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Abig?part=1&parts=2", part1, session))).status,
-    ).toBe(200);
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Abig?part=0&parts=2", part0, session))).status).toBe(200);
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Abig?part=1&parts=2", part1, session))).status).toBe(200);
     const commit = await handle(putBytes("/v1/blobs/bookfile%3Abig?commit=1&parts=2", new Uint8Array(0), session));
     expect(commit.status).toBe(200);
 
@@ -237,9 +221,7 @@ describe("blobs", () => {
     expect([...new Uint8Array(await got1.arrayBuffer())]).toEqual([...part1]);
 
     const account = await handle(get("/v1/account", session));
-    expect(((await account.json()) as { blobBytesUsed: number }).blobBytesUsed).toBe(
-      part0.length + part1.length + 5,
-    );
+    expect(((await account.json()) as { blobBytesUsed: number }).blobBytesUsed).toBe(part0.length + part1.length + 5);
   });
 
   test("commit refuses a run with a missing part", async () => {
@@ -247,9 +229,7 @@ describe("blobs", () => {
     const { session } = await login(handle, "reader@example.com");
     await handle(putBytes("/v1/blobs/bookfile%3Abig?part=0&parts=3", new Uint8Array(8), session));
     await handle(putBytes("/v1/blobs/bookfile%3Abig?part=2&parts=3", new Uint8Array(8), session));
-    const commit = await handle(
-      putBytes("/v1/blobs/bookfile%3Abig?commit=1&parts=3", new Uint8Array(0), session),
-    );
+    const commit = await handle(putBytes("/v1/blobs/bookfile%3Abig?commit=1&parts=3", new Uint8Array(0), session));
     expect(commit.status).toBe(400);
     expect((await handle(get("/v1/blobs/bookfile%3Abig", session))).status).toBe(404);
   });
@@ -258,16 +238,14 @@ describe("blobs", () => {
     const { handle } = makeRelay({ maxBlobBytes: 10 });
     const { session } = await login(handle, "reader@example.com");
     // 15 bytes in one request: over the per-file cap.
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15), session))).status,
-    ).toBe(413);
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15), session))).status).toBe(413);
     // The same 15 bytes as two staged parts: fine — only the account total governs.
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(8), session))).status,
-    ).toBe(200);
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(7), session))).status,
-    ).toBe(200);
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(8), session))).status).toBe(
+      200,
+    );
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(7), session))).status).toBe(
+      200,
+    );
     expect(
       (await handle(putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=2", new Uint8Array(0), session))).status,
     ).toBe(200);
@@ -303,12 +281,10 @@ describe("blobs", () => {
   test("staged parts respect the account quota and refusals charge nothing", async () => {
     const { handle } = makeRelay({ maxAccountBlobBytes: 20 });
     const { session } = await login(handle, "reader@example.com");
-    expect(
-      (await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(15), session))).status,
-    ).toBe(200);
-    const refused = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(15), session),
+    expect((await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(15), session))).status).toBe(
+      200,
     );
+    const refused = await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(15), session));
     expect(refused.status).toBe(413);
     const account = await handle(get("/v1/account", session));
     expect(((await account.json()) as { blobBytesUsed: number }).blobBytesUsed).toBe(15);
@@ -326,8 +302,7 @@ describe("blobs", () => {
 describe("blob replacement never costs the stored copy", () => {
   type Handle = (req: Request) => Promise<Response>;
   const usedBytes = async (handle: Handle, session: string) =>
-    ((await (await handle(get("/v1/account", session))).json()) as { blobBytesUsed: number })
-      .blobBytesUsed;
+    ((await (await handle(get("/v1/account", session))).json()) as { blobBytesUsed: number }).blobBytesUsed;
   const stored = async (handle: Handle, path: string, session: string) => {
     const res = await handle(get(path, session));
     return res.status === 200 ? [...new Uint8Array(await res.arrayBuffer())] : res.status;
@@ -341,9 +316,7 @@ describe("blob replacement never costs the stored copy", () => {
     await handle(putBytes("/v1/blobs/bookfile%3Ab2", new Uint8Array(5), session));
 
     // 16 replacing 10 nets +6 → 21 > 20.
-    const refused = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(16).fill(2), session),
-    );
+    const refused = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(16).fill(2), session));
     expect(refused.status).toBe(413);
     expect(await refused.json()).toEqual({
       error: "account blob quota exceeded",
@@ -360,21 +333,15 @@ describe("blob replacement never costs the stored copy", () => {
     await handle(putBytes("/v1/blobs/bookfile%3Ab2", new Uint8Array(5), session));
 
     // 15 replacing 10: gross 30 would overflow, net 20 fits exactly.
-    const grown = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15).fill(3), session),
-    );
+    const grown = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15).fill(3), session));
     expect(grown.status).toBe(200);
     expect(((await grown.json()) as { bytesUsed: number }).bytesUsed).toBe(20);
-    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual(
-      new Array(15).fill(3),
-    );
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual(new Array(15).fill(3));
 
     const shrunk = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(4), session));
     expect(((await shrunk.json()) as { bytesUsed: number }).bytesUsed).toBe(9);
     // A same-size overwrite moves nothing and reports the standing total.
-    const same = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(4).fill(9), session),
-    );
+    const same = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(4).fill(9), session));
     expect(((await same.json()) as { bytesUsed: number }).bytesUsed).toBe(9);
     expect(await usedBytes(handle, session)).toBe(9);
   });
@@ -385,20 +352,14 @@ describe("blob replacement never costs the stored copy", () => {
     const { session } = await login(handle, "reader@example.com");
     const day = 24 * 60 * 60 * 1000;
     await handle(
-      post(
-        "/v1/admin/tier",
-        { email: "reader@example.com", tier: "pro", expiresAtMs: 1_755_000_000_000 + day },
-        ADMIN,
-      ),
+      post("/v1/admin/tier", { email: "reader@example.com", tier: "pro", expiresAtMs: 1_755_000_000_000 + day }, ADMIN),
     );
     await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(30).fill(1), session));
     advance(2 * day); // back to free: 30 stored against a 20-byte quota
 
     const grown = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(31), session));
     expect(grown.status).toBe(413);
-    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual(
-      new Array(30).fill(1),
-    );
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual(new Array(30).fill(1));
     expect(await usedBytes(handle, session)).toBe(30);
 
     const shrunk = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(25), session));
@@ -415,9 +376,7 @@ describe("blob replacement never costs the stored copy", () => {
     expect(await usedBytes(handle, session)).toBe(21);
 
     // 20 bytes replace descriptor (5) + parts (16): net −1, admitted.
-    const replaced = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(20).fill(4), session),
-    );
+    const replaced = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(20).fill(4), session));
     expect(replaced.status).toBe(200);
     expect(((await replaced.json()) as { bytesUsed: number }).bytesUsed).toBe(20);
     expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toBe(404);
@@ -447,9 +406,7 @@ describe("blob replacement never costs the stored copy", () => {
     const refused = await handle(putBytes(path, new Uint8Array(21).fill(3), session));
     expect(refused.status).toBe(413);
     expect(((await refused.json()) as { code: string }).code).toBe("relay/blob-quota-exceeded");
-    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toEqual(
-      new Array(15).fill(2),
-    );
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toEqual(new Array(15).fill(2));
     expect(await usedBytes(handle, session)).toBe(15);
   });
 
@@ -458,9 +415,7 @@ describe("blob replacement never costs the stored copy", () => {
     const { session } = await login(handle, "reader@example.com");
     await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(30), session));
     await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(10), session));
-    const committed = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=1", new Uint8Array(0), session),
-    );
+    const committed = await handle(putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=1", new Uint8Array(0), session));
     expect(((await committed.json()) as { bytesUsed: number }).bytesUsed).toBe(10 + 5);
 
     // A longer upload's tail, then a shorter commit over the same key.
@@ -483,9 +438,7 @@ describe("blob replacement never costs the stored copy", () => {
     const { session } = await login(handle, "reader@example.com");
     await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(10), session));
     await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(10), session));
-    const committed = await handle(
-      putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=2", new Uint8Array(0), session),
-    );
+    const committed = await handle(putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=2", new Uint8Array(0), session));
     expect(committed.status).toBe(200);
     expect(await usedBytes(handle, session)).toBe(25);
   });
@@ -508,9 +461,7 @@ describe("blob replacement never costs the stored copy", () => {
     failBlobPuts(null);
 
     expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual([...original]);
-    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toEqual(
-      new Array(6).fill(0),
-    );
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toEqual(new Array(6).fill(0));
     expect(await usedBytes(handle, session)).toBe(16);
   });
 });
@@ -538,22 +489,14 @@ describe("error bodies", () => {
       expect(res.status).toBe(413);
       return ((await res.json()) as { code: string }).code;
     };
-    expect(await codeOf(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(11), session))).toBe(
-      "relay/blob-too-large",
-    );
+    expect(await codeOf(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(11), session))).toBe("relay/blob-too-large");
     expect(
-      await codeOf(
-        putBytes(
-          "/v1/blobs/bookfile%3Ab1?part=0&parts=1",
-          new Uint8Array(12 * 1024 * 1024 + 1),
-          session,
-        ),
-      ),
+      await codeOf(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(12 * 1024 * 1024 + 1), session)),
     ).toBe("relay/blob-part-too-large");
     await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(25), session));
-    expect(
-      await codeOf(putBytes("/v1/blobs/bookfile%3Ab2?part=0&parts=1", new Uint8Array(6), session)),
-    ).toBe("relay/blob-quota-exceeded");
+    expect(await codeOf(putBytes("/v1/blobs/bookfile%3Ab2?part=0&parts=1", new Uint8Array(6), session))).toBe(
+      "relay/blob-quota-exceeded",
+    );
   });
 
   test("malformed percent-encoding in a blob key is a 400, not a crash", async () => {
@@ -588,9 +531,7 @@ describe("account deletion", () => {
 describe("cors", () => {
   test("preflight succeeds and every response carries the allow-origin header", async () => {
     const { handle } = makeRelay();
-    const preflight = await handle(
-      new Request("https://relay.test/v1/events", { method: "OPTIONS" }),
-    );
+    const preflight = await handle(new Request("https://relay.test/v1/events", { method: "OPTIONS" }));
     expect(preflight.status).toBe(204);
     expect(preflight.headers.get("access-control-allow-origin")).toBe("*");
     expect(preflight.headers.get("access-control-allow-headers")).toContain("authorization");
@@ -614,9 +555,7 @@ describe("the event quota (the operator's bill guard)", () => {
     const refused = await handle(post("/v1/events", { events: [sealed("e3")] }, session));
     expect(refused.status).toBe(413);
     // ...atomically — a mixed batch appends nothing, not half.
-    const mixed = await handle(
-      post("/v1/events", { events: [sealed("e4"), sealed("e5")] }, session),
-    );
+    const mixed = await handle(post("/v1/events", { events: [sealed("e4"), sealed("e5")] }, session));
     expect(mixed.status).toBe(413);
     const page = await handle(get("/v1/events?after=0", session));
     const { events } = (await page.json()) as { events: { id: string }[] };
@@ -682,13 +621,9 @@ describe("unauthenticated throttles (docs/architecture/sync-engine.md)", () => {
     handle(post("/v1/auth/request", { email }));
 
   test("the mail guard: over the per-email cap the request 429s, other inboxes are unaffected", async () => {
-    const { handle } = makeRelay(
-      { echoMagicToken: false, authMailPerEmailPer15Min: 2 },
-      {},
-      {},
-      null,
-      { send: async () => {} },
-    );
+    const { handle } = makeRelay({ echoMagicToken: false, authMailPerEmailPer15Min: 2 }, {}, {}, null, {
+      send: async () => {},
+    });
     expect((await ask(handle, "reader@example.com")).status).toBe(200);
     expect((await ask(handle, "reader@example.com")).status).toBe(200);
     expect((await ask(handle, "reader@example.com")).status).toBe(429);
@@ -696,13 +631,9 @@ describe("unauthenticated throttles (docs/architecture/sync-engine.md)", () => {
   });
 
   test("the mail guard resets with the window", async () => {
-    const { handle, advance } = makeRelay(
-      { echoMagicToken: false, authMailPerEmailPer15Min: 1 },
-      {},
-      {},
-      null,
-      { send: async () => {} },
-    );
+    const { handle, advance } = makeRelay({ echoMagicToken: false, authMailPerEmailPer15Min: 1 }, {}, {}, null, {
+      send: async () => {},
+    });
     expect((await ask(handle, "reader@example.com")).status).toBe(200);
     expect((await ask(handle, "reader@example.com")).status).toBe(429);
     advance(16 * 60 * 1000);
@@ -752,7 +683,6 @@ describe("unauthenticated throttles (docs/architecture/sync-engine.md)", () => {
     expect(foldClientIp("2001:db8:85a3:9999::1")).not.toBe(rotated[0]);
   });
 });
-
 
 describe("verification without re-upload (the `unverified` bookkeeping)", () => {
   test("a pull page carries every event's seq, parallel to the events", async () => {
@@ -820,7 +750,9 @@ describe("snapshots (published projection checkpoints)", () => {
   test("publish requires the blob on the shelf and a frontier the mailbox reached", async () => {
     const { handle } = makeRelay();
     const { session } = await login(handle, "reader@example.com");
-    expect(((await (await handle(get("/v1/snapshots?schema=26", session))).json()) as { snapshot: unknown }).snapshot).toBeNull();
+    expect(
+      ((await (await handle(get("/v1/snapshots?schema=26", session))).json()) as { snapshot: unknown }).snapshot,
+    ).toBeNull();
     await handle(post("/v1/events", { events: [sealed("e1"), sealed("e2")] }, session));
     // Blob not uploaded yet.
     expect((await handle(put("/v1/snapshots", meta("snapshot:v26:device-a:1", 2), session))).status).toBe(409);
@@ -836,7 +768,9 @@ describe("snapshots (published projection checkpoints)", () => {
     expect(snapshot).toMatchObject({ blobKey: "snapshot:v26:device-a:1", frontierSeq: 2, schemaVersion: 26 });
     expect(typeof snapshot.createdAt).toBe("string");
     // Another schema version is a separate slot.
-    expect(((await (await handle(get("/v1/snapshots?schema=27", session))).json()) as { snapshot: unknown }).snapshot).toBeNull();
+    expect(
+      ((await (await handle(get("/v1/snapshots?schema=27", session))).json()) as { snapshot: unknown }).snapshot,
+    ).toBeNull();
   });
 
   test("a fresher publish replaces the row and reclaims the old blob's quota; a staler one is refused", async () => {
@@ -851,14 +785,21 @@ describe("snapshots (published projection checkpoints)", () => {
     await handle(putBytes("/v1/blobs/snapshot%3Av26%3Adevice-b%3A3", new Uint8Array(150), session));
     // Staler than what is published (frontier 1 ≥ ... no: 3 > 1, so accepted); first try a stale one.
     await handle(putBytes("/v1/blobs/snapshot%3Av26%3Adevice-c%3A0", new Uint8Array(10), session));
-    expect((await handle(put("/v1/snapshots", { ...meta("snapshot:v26:device-c:0", 1), deviceId: "device-c" }, session))).status).toBe(409);
-    const fresher = await handle(put("/v1/snapshots", { ...meta("snapshot:v26:device-b:3", 3), deviceId: "device-b" }, session));
+    expect(
+      (await handle(put("/v1/snapshots", { ...meta("snapshot:v26:device-c:0", 1), deviceId: "device-c" }, session)))
+        .status,
+    ).toBe(409);
+    const fresher = await handle(
+      put("/v1/snapshots", { ...meta("snapshot:v26:device-b:3", 3), deviceId: "device-b" }, session),
+    );
     expect(fresher.status).toBe(200);
     // The superseded blob is gone and its bytes refunded.
     expect((await handle(head("/v1/blobs/snapshot%3Av26%3Adevice-a%3A1", session))).status).toBe(404);
     const after = (await (await handle(get("/v1/account", session))).json()) as { blobBytesUsed: number };
     expect(after.blobBytesUsed).toBe(150 + 10);
-    const { snapshot } = (await (await handle(get("/v1/snapshots?schema=26", session))).json()) as { snapshot: { blobKey: string } };
+    const { snapshot } = (await (await handle(get("/v1/snapshots?schema=26", session))).json()) as {
+      snapshot: { blobKey: string };
+    };
     expect(snapshot.blobKey).toBe("snapshot:v26:device-b:3");
   });
 
@@ -870,7 +811,9 @@ describe("snapshots (published projection checkpoints)", () => {
     await handle(put("/v1/snapshots", meta("snapshot:v26:device-a:1", 1), first.session));
     expect((await handle(del("/v1/account", first.session))).status).toBe(204);
     const rejoined = await login(handle, "reader@example.com");
-    const { snapshot } = (await (await handle(get("/v1/snapshots?schema=26", rejoined.session))).json()) as { snapshot: unknown };
+    const { snapshot } = (await (await handle(get("/v1/snapshots?schema=26", rejoined.session))).json()) as {
+      snapshot: unknown;
+    };
     expect(snapshot).toBeNull();
   });
 });

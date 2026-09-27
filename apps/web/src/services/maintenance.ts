@@ -16,7 +16,7 @@ export const hostConnectionTestFlows = new HostActionFlow<{ action: "test" }, "r
     if (!isTauri()) throw new AppError("ui/unavailable", "Connection testing requires the desktop app");
     await workspace.navigate({ surface: "settings", section: "ai" }, undefined, signal, false, undefined, origin);
   },
-  normalize: input => {
+  normalize: (input) => {
     if (input?.action !== "test") throw new AppError("ui/invalid-target", "Invalid connection test request");
     return { action: "test" };
   },
@@ -30,8 +30,9 @@ export const hostBackupFlows = new HostActionFlow<{ action: BackupAction }, "imp
     if (!isTauri()) throw new AppError("ui/unavailable", "Backup requires the desktop app");
     await workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal, false, undefined, origin);
   },
-  normalize: input => {
-    if (!input || (input.action !== "import" && input.action !== "export")) throw new AppError("ui/invalid-target", "Invalid backup action");
+  normalize: (input) => {
+    if (!input || (input.action !== "import" && input.action !== "export"))
+      throw new AppError("ui/invalid-target", "Invalid backup action");
     return { action: input.action };
   },
   completion: (action, result) => {
@@ -39,22 +40,37 @@ export const hostBackupFlows = new HostActionFlow<{ action: BackupAction }, "imp
     if (action === "import" && result === null) return "cancelled";
     if (action === "import" && result && typeof result === "object") {
       const full = result as Record<string, unknown>;
-      if (full.format === 2 && typeof full.restoreId === "string" && /^[a-f0-9-]{36}$/.test(full.restoreId)
-        && typeof full.cleanupPending === "boolean" && ["domainRows", "files", "plugins", "credentials"].every(key => Number.isSafeInteger(full[key]) && (full[key] as number) >= 0)) return "imported";
+      if (
+        full.format === 2 &&
+        typeof full.restoreId === "string" &&
+        /^[a-f0-9-]{36}$/.test(full.restoreId) &&
+        typeof full.cleanupPending === "boolean" &&
+        ["domainRows", "files", "plugins", "credentials"].every(
+          (key) => Number.isSafeInteger(full[key]) && (full[key] as number) >= 0,
+        )
+      )
+        return "imported";
     }
     throw new AppError("internal", "Invalid native backup completion");
   },
 });
-export const hostMaintenance = new HostMaintenanceService({
-  requestConnectionTest: (signal, origin) => hostConnectionTestFlows.request({ action: "test" }, signal, origin),
-  requestBackup: (action, signal, origin) => hostBackupFlows.request({ action }, signal, origin),
-  snapshot: () => softwareUpdater.snapshot(),
-  check: (signal, origin) => softwareUpdater.checkForUpdates(signal, origin),
-  subscribe: handler => {
-    const store = getDefaultStore();
-    const state = store.sub(softwareUpdateAtom, () => handler(store.get(softwareUpdateAtom))),
-      channel = subscribeUpdateChannel(origin => handler(stampEventCause({}, origin)));
-    return () => { state(); channel(); };
+export const hostMaintenance = new HostMaintenanceService(
+  {
+    requestConnectionTest: (signal, origin) => hostConnectionTestFlows.request({ action: "test" }, signal, origin),
+    requestBackup: (action, signal, origin) => hostBackupFlows.request({ action }, signal, origin),
+    snapshot: () => softwareUpdater.snapshot(),
+    check: (signal, origin) => softwareUpdater.checkForUpdates(signal, origin),
+    subscribe: (handler) => {
+      const store = getDefaultStore();
+      const state = store.sub(softwareUpdateAtom, () => handler(store.get(softwareUpdateAtom))),
+        channel = subscribeUpdateChannel((origin) => handler(stampEventCause({}, origin)));
+      return () => {
+        state();
+        channel();
+      };
+    },
+    navigate: (section, signal, origin) =>
+      workspace.navigate({ surface: "settings", section }, undefined, signal, false, undefined, origin),
   },
-  navigate: (section, signal, origin) => workspace.navigate({ surface: "settings", section }, undefined, signal, false, undefined, origin),
-}, error => log.warn("Maintenance observer failed", error));
+  (error) => log.warn("Maintenance observer failed", error),
+);

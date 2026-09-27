@@ -39,12 +39,14 @@ export function useReaderPanelSizes() {
     const panel = changed.current;
     changed.current = null;
     if (!panel) return;
-    const sizes = store.get(readerPanelSizesAtom), origin = actorFromEvent(sizes, "user");
-    void updateReaderPanelWidth(panel, sizes[panel], undefined, origin).catch(error => {
+    const sizes = store.get(readerPanelSizesAtom),
+      origin = actorFromEvent(sizes, "user");
+    void updateReaderPanelWidth(panel, sizes[panel], undefined, origin).catch((error) => {
       if (store.get(readerPanelSizesAtom) === sizes) store.set(readerPanelSizesAtom, readReaderPanelSizes(origin));
       log.warn("Panel width save failed", error);
       // Native KV failures already have a global localized write-failure toast.
-      if (!(error instanceof IpcError && error.command === "set_kv")) toast({ variant: "destructive", description: describeError(error).body });
+      if (!(error instanceof IpcError && error.command === "set_kv"))
+        toast({ variant: "destructive", description: describeError(error).body });
     });
   }, [store, toast]);
 

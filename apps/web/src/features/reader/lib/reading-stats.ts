@@ -16,11 +16,7 @@
  */
 
 import { isTauri } from "../../../platform/environment";
-import {
-  getReadingTimeSnapshot,
-  loadReadingTime,
-  type ReadingTimeWire,
-} from "../../../platform/interim-projections";
+import { getReadingTimeSnapshot, loadReadingTime, type ReadingTimeWire } from "../../../platform/interim-projections";
 import { localDayKey, localHour } from "../../../platform/reading-session";
 export { localDayKey, localHour };
 
@@ -65,8 +61,7 @@ export function emptyBookStats(bookId: string): BookReadingStats {
 /** Assemble the typed store from the three-table wire shape. */
 export function storeFromWire(wire: ReadingTimeWire): ReadingStatsStore {
   const result: ReadingStatsStore = {};
-  const of = (bookId: string): BookReadingStats =>
-    (result[bookId] ??= emptyBookStats(bookId));
+  const of = (bookId: string): BookReadingStats => (result[bookId] ??= emptyBookStats(bookId));
   for (const row of wire.totals) {
     const stats = of(row.bookId);
     stats.totalMs = row.totalMs;
@@ -91,10 +86,7 @@ export async function loadReadingStatsStore(): Promise<ReadingStatsStore> {
   return storeFromWire(await loadReadingTime());
 }
 
-export function getBookReadingStats(
-  store: ReadingStatsStore,
-  bookId: string,
-): BookReadingStats {
+export function getBookReadingStats(store: ReadingStatsStore, bookId: string): BookReadingStats {
   return store[bookId] ?? emptyBookStats(bookId);
 }
 
@@ -103,12 +95,7 @@ export function getBookReadingStats(
  * the book's total and today's bucket incremented and timestamps advanced. A
  * non-positive `ms` is ignored.
  */
-export function addReadingTime(
-  store: ReadingStatsStore,
-  bookId: string,
-  ms: number,
-  now: number,
-): ReadingStatsStore {
+export function addReadingTime(store: ReadingStatsStore, bookId: string, ms: number, now: number): ReadingStatsStore {
   if (!(ms > 0)) return store;
   const prev = store[bookId] ?? emptyBookStats(bookId);
   const dayKey = localDayKey(now);
@@ -127,7 +114,6 @@ export function addReadingTime(
     },
   };
 }
-
 
 /**
  * Compact human duration: `<1m`, `42m`, `3h`, `3h 20m`.

@@ -35,9 +35,15 @@ export interface AskAiRequest {
  * react to the same dispatch without a clear-vs-read race.
  */
 const askAiRequestBaseAtom = atom<AskAiRequest | null>(null);
-export const askAiRequestAtom = atom(get => get(askAiRequestBaseAtom), (_get, set, request: AskAiRequest | null) => {
-  set(askAiRequestBaseAtom, request && !eventCause(request) ? stampEventCause({ ...request }, causalActor("user")) : request);
-});
+export const askAiRequestAtom = atom(
+  (get) => get(askAiRequestBaseAtom),
+  (_get, set, request: AskAiRequest | null) => {
+    set(
+      askAiRequestBaseAtom,
+      request && !eventCause(request) ? stampEventCause({ ...request }, causalActor("user")) : request,
+    );
+  },
+);
 
 /**
  * A pending "open this book" dispatch from a chat book card. The reader session

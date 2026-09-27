@@ -58,9 +58,7 @@ const BARE_NUMBER_HEADING = /^([0-9]{1,4})[.、]?$/;
  * two thousand and seventeen, and one such line poisons the numbering check
  * for the whole book.
  */
-const NUMBERED_HEADING = new RegExp(
-  String.raw`^([0-9]{1,4})\s*${SEPARATORS}\s*(.{1,${MAX_NUMBERED_TITLE_CHARS}})$`,
-);
+const NUMBERED_HEADING = new RegExp(String.raw`^([0-9]{1,4})\s*${SEPARATORS}\s*(.{1,${MAX_NUMBERED_TITLE_CHARS}})$`);
 /**
  * `一` alone on its line — how Chinese literary fiction usually numbers its
  * chapters (《围城》 does exactly this).
@@ -85,7 +83,17 @@ function normalizeLine(raw: string): string {
 }
 
 const CJK_DIGIT_VALUES: Record<string, number> = {
-  零: 0, "〇": 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9,
+  零: 0,
+  〇: 0,
+  一: 1,
+  二: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
 };
 
 /** Enough of a numeral reader to validate a numbering run: 0 through 99. */
@@ -172,9 +180,7 @@ function dropContentsListing(candidates: Candidate[], lines: string[]): Candidat
       for (let j = runStart; j < i; j++) {
         // The echo may be the very next entry: a listing often runs straight
         // into the heading it points at, with no prose in between.
-        const echoed = candidates
-          .slice(j + 1)
-          .some((candidate) => candidate.title === candidates[j]!.title);
+        const echoed = candidates.slice(j + 1).some((candidate) => candidate.title === candidates[j]!.title);
         if (echoed) keep[j] = false;
       }
     }
@@ -256,7 +262,5 @@ export function labelFromOpeningWords(lines: string[]): string | undefined {
   const first = lines.map((line) => line.trim()).find(Boolean);
   if (!first) return undefined;
   const opening = normalizeLine(first);
-  return opening.length > LABEL_MAX_CHARS
-    ? `${opening.slice(0, LABEL_MAX_CHARS).trimEnd()}…`
-    : opening;
+  return opening.length > LABEL_MAX_CHARS ? `${opening.slice(0, LABEL_MAX_CHARS).trimEnd()}…` : opening;
 }

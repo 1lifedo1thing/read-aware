@@ -11,16 +11,10 @@ import { get, login, makeRelay, post, putBytes, sealed } from "./harness";
 const ADMIN = "admin-secret-token";
 
 /** POST /v1/admin/tier with the operator bearer (reuses post()'s session slot). */
-const setTier = (
-  handle: (req: Request) => Promise<Response>,
-  body: unknown,
-  token: string = ADMIN,
-) => handle(post("/v1/admin/tier", body, token));
+const setTier = (handle: (req: Request) => Promise<Response>, body: unknown, token: string = ADMIN) =>
+  handle(post("/v1/admin/tier", body, token));
 
-const accountOf = async (
-  handle: (req: Request) => Promise<Response>,
-  session: string,
-): Promise<AccountResponse> =>
+const accountOf = async (handle: (req: Request) => Promise<Response>, session: string): Promise<AccountResponse> =>
   (await (await handle(get("/v1/account", session))).json()) as AccountResponse;
 
 describe("the admin tier seam", () => {
@@ -49,10 +43,7 @@ describe("the admin tier seam", () => {
     await login(handle, "reader@example.com");
     expect((await setTier(handle, { email: "reader@example.com", tier: "gold" })).status).toBe(400);
     expect((await setTier(handle, { email: "not-an-email", tier: "pro" })).status).toBe(400);
-    expect(
-      (await setTier(handle, { email: "reader@example.com", tier: "pro", expiresAtMs: "soon" }))
-        .status,
-    ).toBe(400);
+    expect((await setTier(handle, { email: "reader@example.com", tier: "pro", expiresAtMs: "soon" })).status).toBe(400);
     expect((await setTier(handle, { email: "ghost@example.com", tier: "pro" })).status).toBe(404);
   });
 
@@ -130,18 +121,13 @@ describe("per-tier enforcement", () => {
     const { handle } = makeRelay({ adminToken: ADMIN, maxAccountEvents: 2 });
     const { session } = await login(handle, "reader@example.com");
     await handle(post("/v1/events", { events: [sealed(), sealed()] }, session));
-    expect(
-      (await handle(post("/v1/events", { events: [sealed()] }, session))).status,
-    ).toBe(413);
+    expect((await handle(post("/v1/events", { events: [sealed()] }, session))).status).toBe(413);
 
     await setTier(handle, { email: "reader@example.com", tier: "pro" });
     expect((await handle(post("/v1/events", { events: [sealed()] }, session))).status).toBe(200);
 
     await setTier(handle, { email: "reader@example.com", tier: "staff" });
-    expect(
-      (await handle(post("/v1/events", { events: [sealed(), sealed(), sealed()] }, session)))
-        .status,
-    ).toBe(200);
+    expect((await handle(post("/v1/events", { events: [sealed(), sealed(), sealed()] }, session))).status).toBe(200);
   });
 
   test("an expired paid tier reads and enforces as free, but pulls still work", async () => {

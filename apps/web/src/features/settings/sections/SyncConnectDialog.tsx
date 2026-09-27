@@ -18,10 +18,7 @@ import { Button, Caption, Dialog, Spinner, TextField, useToast } from "@read-awa
 import { i18n, useTranslation } from "../../../i18n";
 import { openExternalUrl } from "../../../platform/external-link";
 import { createLogger } from "../../../platform/logger";
-import {
-  InvalidSignInResponseError,
-  type SignInVerification,
-} from "../../../platform/sync/connect";
+import { InvalidSignInResponseError, type SignInVerification } from "../../../platform/sync/connect";
 import { RelayError } from "../../../platform/sync/relay-client";
 import { relayBaseUrl } from "../../../platform/sync/sync-scheduler";
 import { syncLoginTokenAtom } from "../../../state/ui";
@@ -108,11 +105,8 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
       // Only the relay's definitive token rejections mean "request another".
       // Network failures and 5xx responses keep the raw token in the field so
       // the user can retry instead of losing a still-valid deep link.
-      const tokenRejected =
-        error instanceof RelayError && (error.status === 400 || error.status === 401);
-      setTokenError(
-        t(tokenRejected ? "dataSync.connect.tokenInvalid" : "dataSync.connect.tokenRetry"),
-      );
+      const tokenRejected = error instanceof RelayError && (error.status === 400 || error.status === 401);
+      setTokenError(t(tokenRejected ? "dataSync.connect.tokenInvalid" : "dataSync.connect.tokenRetry"));
     }
   };
 
@@ -140,7 +134,9 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
   // opens must be on screen before any passphrase is asked for. Consumed
   // once, on open.
   const [linkToken, setLinkToken] = useAtom(syncLoginTokenAtom);
-  const verifyLinkToken = useEffectEvent((token: string) => { void verifyToken(token, "link"); });
+  const verifyLinkToken = useEffectEvent((token: string) => {
+    void verifyToken(token, "link");
+  });
   useEffect(() => {
     if (!open || !linkToken || sync.busy) return;
     // Fires exactly once per delivered link token: it is consumed here.
@@ -154,9 +150,7 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
     // the readaware:// deep link back into the app (with a copyable token as
     // fallback — the same token field the magic link uses). `lang` makes that
     // page render in the app's locale; it travels with the OAuth state.
-    void openExternalUrl(
-      `${relayBaseUrl()}/v1/auth/oauth/${provider}/start?lang=${encodeURIComponent(i18n.language)}`,
-    );
+    void openExternalUrl(`${relayBaseUrl()}/v1/auth/oauth/${provider}/start?lang=${encodeURIComponent(i18n.language)}`);
     setSignInVia("oauth");
     setToken("");
     setTokenError(null);
@@ -228,19 +222,11 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
         <div className="mt-4 space-y-4">
           <Caption className="text-fg-muted">{t("dataSync.account.description")}</Caption>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Button
-              variant="outline"
-              disabled={sync.busy}
-              onClick={() => handleOauth("google")}
-            >
+            <Button variant="outline" disabled={sync.busy} onClick={() => handleOauth("google")}>
               <GoogleLogo size={16} aria-hidden="true" />
               {t("dataSync.connect.google")}
             </Button>
-            <Button
-              variant="outline"
-              disabled={sync.busy}
-              onClick={() => handleOauth("github")}
-            >
+            <Button variant="outline" disabled={sync.busy} onClick={() => handleOauth("github")}>
               <GithubLogo size={16} aria-hidden="true" />
               {t("dataSync.connect.github")}
             </Button>
@@ -258,20 +244,14 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
           />
-          <Button
-            className="w-full"
-            disabled={sync.busy || !email.includes("@")}
-            onClick={() => void handleSend()}
-          >
+          <Button className="w-full" disabled={sync.busy || !email.includes("@")} onClick={() => void handleSend()}>
             {sync.busy ? t("dataSync.connect.sending") : t("dataSync.connect.send")}
           </Button>
         </div>
       ) : step === "token" ? (
         <div className="mt-4 space-y-4">
           <Caption className="text-fg-muted">
-            {signInVia === "oauth"
-              ? t("dataSync.connect.oauthStarted")
-              : t("dataSync.connect.sent")}
+            {signInVia === "oauth" ? t("dataSync.connect.oauthStarted") : t("dataSync.connect.sent")}
           </Caption>
           <TextField
             label={t("dataSync.connect.tokenLabel")}
@@ -310,19 +290,13 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
             <p className="mt-0.5 font-medium break-all">{verification?.email}</p>
           </div>
           {verification?.keys == null && (
-            <p className="text-caption leading-relaxed text-fg-muted">
-              {t("dataSync.connect.freshAccount")}
-            </p>
+            <p className="text-caption leading-relaxed text-fg-muted">{t("dataSync.connect.freshAccount")}</p>
           )}
           <div className="flex items-center justify-between gap-2">
             <Button variant="ghost" size="sm" onClick={restartSignIn}>
               {t("dataSync.connect.back")}
             </Button>
-            <Button
-              size="sm"
-              disabled={sync.busy || !verification}
-              onClick={() => setStep("passphrase")}
-            >
+            <Button size="sm" disabled={sync.busy || !verification} onClick={() => setStep("passphrase")}>
               {t("dataSync.connect.tokenContinue")}
             </Button>
           </div>
@@ -354,11 +328,7 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
             >
               {t("dataSync.connect.back")}
             </Button>
-            <Button
-              size="sm"
-              disabled={sync.busy || !verification}
-              onClick={() => void handleConnect()}
-            >
+            <Button size="sm" disabled={sync.busy || !verification} onClick={() => void handleConnect()}>
               {sync.busy ? t("dataSync.connect.connecting") : t("dataSync.connect.connect")}
             </Button>
           </div>

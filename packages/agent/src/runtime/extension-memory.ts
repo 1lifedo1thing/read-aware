@@ -14,8 +14,11 @@ export async function persistExtensionMemory(input: {
 }): Promise<void> {
   if (!input.candidates.length) return;
   const report = (candidate: ExternalMemoryCandidate, outcome: MemoryCandidateOutcome) => {
-    try { candidate.report?.(outcome); }
-    catch (error) { input.log?.warn("Plugin memory outcome callback failed", error); }
+    try {
+      candidate.report?.(outcome);
+    } catch (error) {
+      input.log?.warn("Plugin memory outcome callback failed", error);
+    }
   };
   let accepted = input.candidates;
   const settled = new Set<ExternalMemoryCandidate>();
@@ -28,8 +31,13 @@ export async function persistExtensionMemory(input: {
     try {
       // Report the actual write before the policy guard can discard its return
       // value on cancellation. A committed write is not a cancelled write.
-      await input.memory.saveMemory({ scope: candidate.scope, kind: candidate.kind, content: candidate.content,
-        origin: "plugin", sourceThreadKey: input.sourceThreadKey });
+      await input.memory.saveMemory({
+        scope: candidate.scope,
+        kind: candidate.kind,
+        content: candidate.content,
+        origin: "plugin",
+        sourceThreadKey: input.sourceThreadKey,
+      });
       settle(candidate, { status: "saved" });
     } catch (error) {
       settle(candidate, { status: "failed", errorCode: errorCode(error) ?? "ipc/unknown" });
@@ -39,10 +47,15 @@ export async function persistExtensionMemory(input: {
   try {
     // Prompt retrieval is truncated. Deduplicate against current active memory,
     // including extraction writes from this turn, without consulting other books.
-    const visibleScopes = new Set(["user", "global", ...(input.scope.kind === "book" ? [`book:${input.scope.bookId}`] : [])]);
+    const visibleScopes = new Set([
+      "user",
+      "global",
+      ...(input.scope.kind === "book" ? [`book:${input.scope.bookId}`] : []),
+    ]);
     const existing = await input.operation.guard(() => input.memory.listMemories())();
-    accepted = normalizeExternalMemoryCandidates({ ...input,
-      existing: existing.filter(memory => visibleScopes.has(memory.scope)),
+    accepted = normalizeExternalMemoryCandidates({
+      ...input,
+      existing: existing.filter((memory) => visibleScopes.has(memory.scope)),
       onReject: (candidate, reason) => report(candidate, { status: "rejected", reason }),
     });
     for (const candidate of accepted) {
@@ -54,8 +67,12 @@ export async function persistExtensionMemory(input: {
       await save(candidate);
     }
   } finally {
-    for (const candidate of accepted) if (!settled.has(candidate)) {
-      settle(candidate, { status: "skipped", reason: input.operation.signal.aborted ? "cancelled" : "prior-failure" });
-    }
+    for (const candidate of accepted)
+      if (!settled.has(candidate)) {
+        settle(candidate, {
+          status: "skipped",
+          reason: input.operation.signal.aborted ? "cancelled" : "prior-failure",
+        });
+      }
   }
 }

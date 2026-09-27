@@ -1,8 +1,4 @@
-import type {
-  FetchFunction,
-  ProviderStreams,
-  StreamOptions,
-} from "@earendil-works/pi-ai";
+import type { FetchFunction, ProviderStreams, StreamOptions } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 
 type CompletionEnvelope = {
@@ -23,11 +19,7 @@ type CompletionStreamState = {
 };
 
 const DONE_SENTINEL = "[DONE]";
-const REASONING_FIELDS = [
-  "reasoning_content",
-  "reasoning",
-  "reasoning_text",
-] as const;
+const REASONING_FIELDS = ["reasoning_content", "reasoning", "reasoning_text"] as const;
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -37,7 +29,10 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 function normalizeFinishReason(reason: string): string | undefined {
-  const normalized = reason.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const normalized = reason
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   switch (normalized) {
     case "":
     case "null":
@@ -74,11 +69,7 @@ function generatedToolCallId(): string {
   return `call_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
-function normalizeToolCall(
-  value: unknown,
-  position: number,
-  state: CompletionStreamState,
-): unknown {
+function normalizeToolCall(value: unknown, position: number, state: CompletionStreamState): unknown {
   const source = asRecord(value);
   if (!source) return value;
 
@@ -89,16 +80,11 @@ function normalizeToolCall(
         ? Number(source.index)
         : undefined;
   const knownIndex =
-    typeof source.id === "string"
-      ? [...state.toolCallIds].find(([, id]) => id === source.id)?.[0]
-      : undefined;
+    typeof source.id === "string" ? [...state.toolCallIds].find(([, id]) => id === source.id)?.[0] : undefined;
   const index = numericIndex ?? knownIndex ?? position;
   let id = state.toolCallIds.get(index);
   if (!id) {
-    id =
-      typeof source.id === "string" && source.id.length > 0
-        ? source.id
-        : generatedToolCallId();
+    id = typeof source.id === "string" && source.id.length > 0 ? source.id : generatedToolCallId();
     state.toolCallIds.set(index, id);
   }
 
@@ -109,9 +95,7 @@ function normalizeToolCall(
     next.type ??= "function";
     next.function = {
       ...fn,
-      ...(args !== undefined && typeof args !== "string"
-        ? { arguments: JSON.stringify(args) }
-        : {}),
+      ...(args !== undefined && typeof args !== "string" ? { arguments: JSON.stringify(args) } : {}),
     };
   }
   return next;
@@ -152,10 +136,7 @@ function completionDelta(choice: Record<string, unknown>): Record<string, unknow
   return undefined;
 }
 
-function candidateFinishReason(
-  chunk: Record<string, unknown>,
-  choice: Record<string, unknown>,
-): string | undefined {
+function candidateFinishReason(chunk: Record<string, unknown>, choice: Record<string, unknown>): string | undefined {
   const candidates = [
     choice.finish_reason,
     choice.native_finish_reason,
@@ -165,15 +146,11 @@ function candidateFinishReason(
     chunk.stop_reason,
   ];
   return candidates.find(
-    (candidate): candidate is string =>
-      typeof candidate === "string" && candidate.trim().length > 0,
+    (candidate): candidate is string => typeof candidate === "string" && candidate.trim().length > 0,
   );
 }
 
-function normalizeCompletionChunk(
-  data: string,
-  state: CompletionStreamState,
-): string {
+function normalizeCompletionChunk(data: string, state: CompletionStreamState): string {
   let parsed: unknown;
   try {
     parsed = JSON.parse(data);
@@ -182,9 +159,7 @@ function normalizeCompletionChunk(
   }
 
   const chunk = asRecord(parsed);
-  const choice = asRecord(
-    Array.isArray(chunk?.choices) ? chunk.choices[0] : undefined,
-  );
+  const choice = asRecord(Array.isArray(chunk?.choices) ? chunk.choices[0] : undefined);
   if (!chunk || !choice) return data;
 
   state.sawChoice = true;
@@ -212,10 +187,7 @@ function normalizeCompletionChunk(
         },
       ];
       delete delta.function_call;
-    } else if (
-      delta.tool_calls !== undefined &&
-      !Array.isArray(delta.tool_calls)
-    ) {
+    } else if (delta.tool_calls !== undefined && !Array.isArray(delta.tool_calls)) {
       delta.tool_calls = [delta.tool_calls];
     }
 
@@ -230,16 +202,12 @@ function normalizeCompletionChunk(
     if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
       state.sawOutput = true;
       state.sawToolCall = true;
-      delta.tool_calls = delta.tool_calls.map((toolCall, index) =>
-        normalizeToolCall(toolCall, index, state),
-      );
+      delta.tool_calls = delta.tool_calls.map((toolCall, index) => normalizeToolCall(toolCall, index, state));
     }
   }
 
   const rawFinishReason = candidateFinishReason(chunk, choice);
-  const finishReason = rawFinishReason
-    ? normalizeFinishReason(rawFinishReason)
-    : undefined;
+  const finishReason = rawFinishReason ? normalizeFinishReason(rawFinishReason) : undefined;
   if (finishReason) {
     choice.finish_reason = finishReason;
     state.sawFinishReason = true;
@@ -269,20 +237,14 @@ function syntheticFinishChunk(state: CompletionStreamState): string {
 
 function patchSseLine(line: string, state: CompletionStreamState): string {
   const withoutNewline = line.endsWith("\n") ? line.slice(0, -1) : line;
-  const normalized = withoutNewline.endsWith("\r")
-    ? withoutNewline.slice(0, -1)
-    : withoutNewline;
+  const normalized = withoutNewline.endsWith("\r") ? withoutNewline.slice(0, -1) : withoutNewline;
   const match = /^\uFEFF?data:\s?(.*)$/.exec(normalized);
   if (!match) return line;
 
   const data = match[1]?.trim() ?? "";
   if (data !== DONE_SENTINEL) {
     const normalizedData = normalizeCompletionChunk(data, state);
-    const ending = line.endsWith("\r\n")
-      ? "\r\n"
-      : line.endsWith("\n")
-        ? "\n"
-        : "";
+    const ending = line.endsWith("\r\n") ? "\r\n" : line.endsWith("\n") ? "\n" : "";
     return `data: ${normalizedData}${ending}`;
   }
 
@@ -295,9 +257,7 @@ function patchSseLine(line: string, state: CompletionStreamState): string {
   return line;
 }
 
-function patchCompletionSse(
-  source: ReadableStream<Uint8Array>,
-): ReadableStream<Uint8Array> {
+function patchCompletionSse(source: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   const state = newCompletionState();
@@ -335,10 +295,7 @@ function textStream(value: string): ReadableStream<Uint8Array> {
   });
 }
 
-function asCompletionSseResponse(
-  response: Response,
-  body: ReadableStream<Uint8Array>,
-): Response {
+function asCompletionSseResponse(response: Response, body: ReadableStream<Uint8Array>): Response {
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.set("content-type", "text/event-stream; charset=utf-8");
@@ -368,19 +325,12 @@ function jsonValuesToSse(values: unknown[], cleanBody: boolean): string {
 
   for (const value of values) {
     const record = asRecord(value);
-    hasDoneMarker ||=
-      record?.done === true ||
-      record?.event === "done" ||
-      record?.event === "completed";
+    hasDoneMarker ||= record?.done === true || record?.event === "done" || record?.event === "completed";
     const normalized = normalizeCompletionChunk(JSON.stringify(value), state);
     output += `data: ${normalized}\n\n`;
   }
 
-  if (
-    state.sawChoice &&
-    !state.sawFinishReason &&
-    (cleanBody || hasDoneMarker)
-  ) {
+  if (state.sawChoice && !state.sawFinishReason && (cleanBody || hasDoneMarker)) {
     output += syntheticFinishChunk(state);
   }
   if (cleanBody || hasDoneMarker || state.sawFinishReason) {
@@ -441,10 +391,7 @@ async function sniffJsonBody(
 }
 
 function withCompletionCompatibility(fetch: FetchFunction): FetchFunction {
-  const compatibleFetch = async (
-    input: Parameters<FetchFunction>[0],
-    init?: Parameters<FetchFunction>[1],
-  ) => {
+  const compatibleFetch = async (input: Parameters<FetchFunction>[0], init?: Parameters<FetchFunction>[1]) => {
     const response = await fetch(input, init);
     if (!response.ok || !response.body) {
       return response;
@@ -457,16 +404,10 @@ function withCompletionCompatibility(fetch: FetchFunction): FetchFunction {
       if (sse !== undefined) {
         return asCompletionSseResponse(response, textStream(sse));
       }
-      return asCompletionSseResponse(
-        response,
-        patchCompletionSse(textStream(body)),
-      );
+      return asCompletionSseResponse(response, patchCompletionSse(textStream(body)));
     }
 
-    return asCompletionSseResponse(
-      response,
-      patchCompletionSse(sniffed.body),
-    );
+    return asCompletionSseResponse(response, patchCompletionSse(sniffed.body));
   };
 
   return Object.assign(compatibleFetch, {

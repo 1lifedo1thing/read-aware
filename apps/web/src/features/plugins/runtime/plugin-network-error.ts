@@ -8,7 +8,9 @@ export function pluginNetworkAbort(error: unknown): unknown {
   if (errorCode(error)) return error;
   return named(error, "TimeoutError")
     ? new AppError("plugin/network-timeout", "Plugin network request timed out", { cause: error })
-    : new AppError("plugin/cancelled", error instanceof Error ? error.message : "Plugin network request cancelled", { cause: error });
+    : new AppError("plugin/cancelled", error instanceof Error ? error.message : "Plugin network request cancelled", {
+        cause: error,
+      });
 }
 
 /** Transport rejections may be bare native strings; never classify their prose. */

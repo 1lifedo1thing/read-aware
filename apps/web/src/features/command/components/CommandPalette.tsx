@@ -27,7 +27,14 @@ type CommandPaletteProps = {
  * shelf controls. The available commands are built dynamically from the current
  * context, ranked by query relevance, and grouped into sections.
  */
-export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToken = 0, executeHost }: CommandPaletteProps) {
+export function CommandPalette({
+  isOpen,
+  onClose,
+  ctx,
+  extraItems,
+  workspaceToken = 0,
+  executeHost,
+}: CommandPaletteProps) {
   const { t } = useTranslation("command");
   const [query, setQuery] = useAtom(commandQueryAtom);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -91,9 +98,7 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
   }, [isOpen, flat, selectedIndex, dismiss, run]);
 
   useEffect(() => {
-    listRef.current
-      ?.querySelector(`[data-index="${selectedIndex}"]`)
-      ?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector(`[data-index="${selectedIndex}"]`)?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex, groups]);
 
   if (!isOpen) return null;
@@ -132,15 +137,11 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
 
         <div ref={listRef} className="max-h-[55vh] overflow-y-auto py-2">
           {flat.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-fg-muted">
-              {t("noMatches", { query })}
-            </div>
+            <div className="px-4 py-12 text-center text-sm text-fg-muted">{t("noMatches", { query })}</div>
           ) : (
             groups.map((group) => (
               <div key={group.group} className="mb-1">
-                <div className="px-4 pb-1 pt-2 text-xs lowercase text-fg-subtle">
-                  {t(`groups.${group.group}`)}
-                </div>
+                <div className="px-4 pb-1 pt-2 text-xs lowercase text-fg-subtle">{t(`groups.${group.group}`)}</div>
                 {group.items.map((item) => {
                   runningIndex += 1;
                   const index = runningIndex;
@@ -154,8 +155,12 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
                       aria-selected={selected}
                       disabled={item.disabled || busy}
                       aria-pressed={item.checked}
-                      onMouseMove={() => { if (!item.disabled) setSelectedIndex(index); }}
-                      onClick={() => { void run(item); }}
+                      onMouseMove={() => {
+                        if (!item.disabled) setSelectedIndex(index);
+                      }}
+                      onClick={() => {
+                        void run(item);
+                      }}
                       className={cn(
                         "relative flex w-full items-center gap-3 px-4 py-2 text-left transition-colors",
                         selected ? "bg-fg/[0.07]" : "hover:bg-fg/[0.04]",
@@ -163,29 +168,18 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
                       )}
                     >
                       {selected && (
-                        <span
-                          className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-fg"
-                          aria-hidden="true"
-                        />
+                        <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-fg" aria-hidden="true" />
                       )}
                       <span className="flex h-9 w-7 shrink-0 items-center justify-center overflow-hidden rounded-sm">
                         {item.kind === "book" && item.coverUrl ? (
                           <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <span className="flex h-7 w-7 items-center justify-center text-fg-muted">
-                            {item.icon}
-                          </span>
+                          <span className="flex h-7 w-7 items-center justify-center text-fg-muted">{item.icon}</span>
                         )}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-fg">
-                          {item.title}
-                        </span>
-                        {item.subtitle && (
-                          <span className="block truncate text-xs text-fg-muted">
-                            {item.subtitle}
-                          </span>
-                        )}
+                        <span className="block truncate text-sm font-medium text-fg">{item.title}</span>
+                        {item.subtitle && <span className="block truncate text-xs text-fg-muted">{item.subtitle}</span>}
                       </span>
                       {item.checked && <Check size={16} aria-hidden="true" className="shrink-0" />}
                       {selected && !item.disabled && (

@@ -26,8 +26,7 @@ export const Route = createFileRoute("/zh/epub-reader-for-windows")({
       <p>
         ReadAware 直接读取 EPUB、MOBI、AZW3、FB2、TXT、HTML、PDF、CBZ 和
         CBR，无需转换。可重排电子书能调整字体、行距和页边距；PDF
-        和漫画保留原有固定版式。所有格式共用书架、批注和阅读进度，受 DRM
-        保护的文件除外。
+        和漫画保留原有固定版式。所有格式共用书架、批注和阅读进度，受 DRM 保护的文件除外。
       </p>
       <div className="my-8">
         <Plate
@@ -38,8 +37,7 @@ export const Route = createFileRoute("/zh/epub-reader-for-windows")({
       </div>
       <h2>安装程序、MSI 和便携包怎么选</h2>
       <p>
-        普通安装选 x64 EXE；需要通过 Windows Installer 管理安装时选
-        MSI；只想解压启动则选便携
+        普通安装选 x64 EXE；需要通过 Windows Installer 管理安装时选 MSI；只想解压启动则选便携
         ZIP。便携包是免安装的程序分发形式，不代表阅读数据自动随程序目录一起移动。各版本都从
         <a href={RELEASES_URL}>官方 Release</a>下载，完整步骤见
         <Link to="/zh/docs/install">安装指南</Link>。
@@ -57,10 +55,9 @@ export const Route = createFileRoute("/zh/epub-reader-for-windows")({
         继续阅读；免费账户有 50 MB 同步额度，付费方案扩容并可包含内置 AI。
       </p>
       <p>
-        AI 需要联网，并把相关选文、问题和上下文交给所选模型服务商。自带 API Key
-        不向 ReadAware 付 AI 订阅费，服务商调用费用另计。参见
-        <Link to="/zh/pricing">方案价格</Link>和
-        <Link to="/zh/privacy">隐私说明</Link>。
+        AI 需要联网，并把相关选文、问题和上下文交给所选模型服务商。自带 API Key 不向 ReadAware 付 AI
+        订阅费，服务商调用费用另计。参见
+        <Link to="/zh/pricing">方案价格</Link>和<Link to="/zh/privacy">隐私说明</Link>。
       </p>
     </TopicPage>
   ),
@@ -69,8 +66,7 @@ export const Route = createFileRoute("/zh/epub-reader-for-windows")({
 const FAQS: TopicFaq[] = [
   {
     question: "可以打开 Kindle 的书吗？",
-    answer:
-      "支持未加密的 MOBI 和 AZW3 文件，不移除或绕过 DRM。购买自书店的受保护文件可能无法打开。",
+    answer: "支持未加密的 MOBI 和 AZW3 文件，不移除或绕过 DRM。购买自书店的受保护文件可能无法打开。",
   },
   {
     question: "有 Windows ARM64 安装包吗？",
@@ -79,7 +75,6 @@ const FAQS: TopicFaq[] = [
   },
   {
     question: "不配置 AI 也能正常阅读吗？",
-    answer:
-      "可以。导入、阅读、搜索、划线和笔记都在本地完成。只有选用远程 AI 和同步时才需要相应网络服务。",
+    answer: "可以。导入、阅读、搜索、划线和笔记都在本地完成。只有选用远程 AI 和同步时才需要相应网络服务。",
   },
 ];

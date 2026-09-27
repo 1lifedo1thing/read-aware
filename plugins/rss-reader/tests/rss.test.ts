@@ -20,15 +20,11 @@ function memoryStorage(kv: Record<string, unknown> = {}) {
       put: async (id: string, data: unknown) => {
         documents.set(id, data);
       },
-      get: async (id: string) =>
-        documents.has(id)
-          ? { id, data: documents.get(id), updatedAt: "" }
-          : null,
+      get: async (id: string) => (documents.has(id) ? { id, data: documents.get(id), updatedAt: "" } : null),
       delete: async (id: string) => {
         documents.delete(id);
       },
-      list: async () =>
-        [...documents.entries()].map(([id, data]) => ({ id, data, updatedAt: "" })),
+      list: async () => [...documents.entries()].map(([id, data]) => ({ id, data, updatedAt: "" })),
     }),
   };
   return {
@@ -101,9 +97,7 @@ describe("parseFeed", () => {
 
   test("rejects non-feed and invalid XML", async () => {
     await expect(parseFeed("not xml at all", "https://x.example")).rejects.toThrow(/valid/);
-    await expect(parseFeed("<html><body>hi</body></html>", "https://x.example")).rejects.toThrow(
-      /valid/,
-    );
+    await expect(parseFeed("<html><body>hi</body></html>", "https://x.example")).rejects.toThrow(/valid/);
   });
 
   test("honors the article limit", async () => {
@@ -122,10 +116,7 @@ describe("feedUrlsFromOpml", () => {
         <outline text="A again" xmlUrl="https://a.example/feed"/>
         <outline text="bad" xmlUrl="ftp://nope.example/feed"/>
       </body></opml>`;
-    expect(feedUrlsFromOpml(opml)).toEqual([
-      "https://a.example/feed",
-      "https://b.example/feed",
-    ]);
+    expect(feedUrlsFromOpml(opml)).toEqual(["https://a.example/feed", "https://b.example/feed"]);
     expect(feedUrlsFromOpml("junk")).toEqual([]);
   });
 });
@@ -192,9 +183,7 @@ describe("RSS plugin data", () => {
 
     expect(kv.feeds).toBeUndefined();
     expect(documents.size).toBe(2);
-    expect((documents.get("https://example.com/feed.xml") as { title: string }).title).toBe(
-      "Legacy title",
-    );
+    expect((documents.get("https://example.com/feed.xml") as { title: string }).title).toBe("Legacy title");
 
     // Running again must not resurrect the KV or duplicate documents.
     await migrateLegacyFeeds({ services });

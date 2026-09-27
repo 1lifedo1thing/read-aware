@@ -34,9 +34,7 @@ function firstSyncLoginToken(urls: readonly string[] | null | undefined): string
  * surface through both the startup snapshot and the open event on some
  * platforms — callers must treat delivery as at-least-once.
  */
-export async function subscribeSyncLoginTokens(
-  onToken: (token: string) => void,
-): Promise<() => void> {
+export async function subscribeSyncLoginTokens(onToken: (token: string) => void): Promise<() => void> {
   const unlisten = await onOpenUrl((urls) => {
     const token = firstSyncLoginToken(urls);
     if (token) onToken(token);

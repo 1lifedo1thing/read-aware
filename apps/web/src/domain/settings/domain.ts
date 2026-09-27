@@ -39,10 +39,7 @@ import {
   readerPreferencesAtom,
 } from "../../state/ui";
 import { menuConfigAtom } from "../../features/menus/state/menu-config";
-import {
-  agentVisiblePluginSettings,
-  readPluginSettingsValues,
-} from "../../features/plugins/lib/plugin-settings";
+import { agentVisiblePluginSettings, readPluginSettingsValues } from "../../features/plugins/lib/plugin-settings";
 import {
   headerActionsAtom,
   installedPluginsAtom,
@@ -59,15 +56,11 @@ import { afterSettingsWrites, initializeSettingsObservation, settingsObservation
 import { getDefaultMarkColor } from "../../features/annotations/lib/annotation-prefs";
 import { getUpdateChannel } from "../../features/update/lib/update-channel";
 import { shortcutEnvironmentAtom } from "../../features/settings/state/shortcut-state";
-import {
-  applySettingChangesToDraft,
-  settingsSnapshotFromDraft,
-  type SettingsDraft,
-} from "./catalog-runtime";
+import { applySettingChangesToDraft, settingsSnapshotFromDraft, type SettingsDraft } from "./catalog-runtime";
 import { settled } from "../../platform/write-settlement";
 
 const log = createLogger("settings-domain");
-const dynamicOptions = new DynamicOptionsCache(error => log.warn("Dynamic setting options failed", error));
+const dynamicOptions = new DynamicOptionsCache((error) => log.warn("Dynamic setting options failed", error));
 onAppEvent("plugin-storage-changed", ({ pluginId }) => dynamicOptions.invalidate(pluginId));
 const listeners = new Set<(event: SettingsChangedEvent) => unknown>();
 
@@ -85,11 +78,7 @@ function matchesPath(pattern: string, path: string): boolean {
   return pattern === path;
 }
 
-function canAccess(
-  policy: SettingsAccessPolicy,
-  operation: "discover" | "read" | "write",
-  path: string,
-): boolean {
+function canAccess(policy: SettingsAccessPolicy, operation: "discover" | "read" | "write", path: string): boolean {
   const patterns = [
     ...(policy[operation] ?? []),
     ...(operation === "discover" ? (policy.read ?? []) : []),
@@ -98,10 +87,7 @@ function canAccess(
   return patterns.some((pattern) => matchesPath(pattern, path));
 }
 
-function actorPolicy(
-  origin: DomainActor,
-  policy: SettingsAccessPolicy | undefined,
-): SettingsAccessPolicy {
+function actorPolicy(origin: DomainActor, policy: SettingsAccessPolicy | undefined): SettingsAccessPolicy {
   if (policy) return policy;
   return actorOrigin(origin).startsWith("plugin:") ? {} : FULL_ACCESS;
 }
@@ -136,17 +122,10 @@ function readDraft(): SettingsDraft {
 }
 
 function readPluginSettingsDraft(): SettingsDraft["pluginSettings"] {
-  const declared = agentVisiblePluginSettings(
-    getDefaultStore().get(installedPluginsAtom),
-  );
+  const declared = agentVisiblePluginSettings(getDefaultStore().get(installedPluginsAtom));
   return {
     declared,
-    values: Object.fromEntries(
-      declared.map((plugin) => [
-        plugin.pluginId,
-        readPluginSettingsValues(plugin.pluginId),
-      ]),
-    ),
+    values: Object.fromEntries(declared.map((plugin) => [plugin.pluginId, readPluginSettingsValues(plugin.pluginId)])),
   };
 }
 
@@ -154,12 +133,9 @@ function settingsSnapshot(query?: SettingsQuery): SettingsSnapshot {
   return { ...settingsSnapshotFromDraft(readDraft(), query), revision: settingsObservation.revision };
 }
 
-async function visibleSnapshot(
-  policy: SettingsAccessPolicy,
-  query?: SettingsQuery,
-): Promise<SettingsSnapshot> {
+async function visibleSnapshot(policy: SettingsAccessPolicy, query?: SettingsQuery): Promise<SettingsSnapshot> {
   const snapshot = filterSnapshot(policy, settingsSnapshot(query));
-  const startup = snapshot.settings.find(setting => setting.path === "general.launchAtStartup");
+  const startup = snapshot.settings.find((setting) => setting.path === "general.launchAtStartup");
   if (startup) startup.value = desktopStartup.supported() ? await desktopStartup.read() : false;
   return snapshot;
 }
@@ -167,11 +143,23 @@ async function visibleSnapshot(
 function filterSnapshot(policy: SettingsAccessPolicy, snapshot: SettingsSnapshot): SettingsSnapshot {
   return {
     ...snapshot,
-    settings: snapshot.settings.filter(setting => canAccess(policy, "read", setting.path)).map(setting => ({
-      ...setting, writable: setting.writable && canAccess(policy, "write", setting.path)
-        && (setting.path !== "general.launchAtStartup" || desktopStartup.supported()),
-      ...(setting.shortcut ? { shortcut: { ...setting.shortcut, conflicts: setting.shortcut.conflicts.filter(path => canAccess(policy, "read", path)) } } : {}),
-    })),
+    settings: snapshot.settings
+      .filter((setting) => canAccess(policy, "read", setting.path))
+      .map((setting) => ({
+        ...setting,
+        writable:
+          setting.writable &&
+          canAccess(policy, "write", setting.path) &&
+          (setting.path !== "general.launchAtStartup" || desktopStartup.supported()),
+        ...(setting.shortcut
+          ? {
+              shortcut: {
+                ...setting.shortcut,
+                conflicts: setting.shortcut.conflicts.filter((path) => canAccess(policy, "read", path)),
+              },
+            }
+          : {}),
+      })),
     overrides: snapshot.overrides
       .map((override) => ({
         ...override,
@@ -190,12 +178,15 @@ async function applySettingsChanges(
   const before = readDraft();
   // An old inert preference or a change in OS Settings must not be replayed by
   // a language/start-view patch. Resolve the system field before validation.
-  const touchesGeneral = changes.some(change => change.path.startsWith("general."));
+  const touchesGeneral = changes.some((change) => change.path.startsWith("general."));
   const storedGeneral = before.general;
   if (touchesGeneral || canAccess(policy, "read", "general.launchAtStartup")) {
-    before.general = { ...before.general, launchAtStartup: desktopStartup.supported() ? await desktopStartup.read() : false };
+    before.general = {
+      ...before.general,
+      launchAtStartup: desktopStartup.supported() ? await desktopStartup.read() : false,
+    };
   }
-  if (changes.some(change => change.path === "general.launchAtStartup") && !desktopStartup.supported()) {
+  if (changes.some((change) => change.path === "general.launchAtStartup") && !desktopStartup.supported()) {
     throw new AppError("ui/unavailable", "Startup registration requires desktop");
   }
   signal?.throwIfAborted();
@@ -204,8 +195,18 @@ async function applySettingsChanges(
   return commitResult(origin, before, result);
 }
 
-async function commitResult(origin: DomainActor, before: SettingsDraft, result: { draft: SettingsDraft; changed: SettingChange[] }, query?: SettingsQuery): Promise<SettingsUpdateResult> {
-  await commitSettingsDraft(before, result.draft, origin, result.changed.some(change => change.path === "general.launchAtStartup"));
+async function commitResult(
+  origin: DomainActor,
+  before: SettingsDraft,
+  result: { draft: SettingsDraft; changed: SettingChange[] },
+  query?: SettingsQuery,
+): Promise<SettingsUpdateResult> {
+  await commitSettingsDraft(
+    before,
+    result.draft,
+    origin,
+    result.changed.some((change) => change.path === "general.launchAtStartup"),
+  );
   publishSettingsChanges(origin, result.changed);
   return {
     changed: result.changed,
@@ -215,16 +216,19 @@ async function commitResult(origin: DomainActor, before: SettingsDraft, result: 
 
 export function publishSettingsChanges(origin: DomainActor, changed: SettingChange[]): void {
   if (changed.length > 0) {
-    const event: SettingsChangedEvent = stampEventCause({
-      type: "settings.changed",
-      origin: actorOrigin(origin),
-      changes: changed,
-    }, origin);
+    const event: SettingsChangedEvent = stampEventCause(
+      {
+        type: "settings.changed",
+        origin: actorOrigin(origin),
+        changes: changed,
+      },
+      origin,
+    );
     for (const listener of [...listeners]) {
       try {
         const result = listener(event);
         if (result && typeof (result as PromiseLike<unknown>).then === "function") {
-          void Promise.resolve(result).catch(error => log.error("Settings event callback failed", error));
+          void Promise.resolve(result).catch((error) => log.error("Settings event callback failed", error));
         }
       } catch (error) {
         log.error(`settings event handler from "${event.origin}" failed`, error);
@@ -236,14 +240,23 @@ export function publishSettingsChanges(origin: DomainActor, changed: SettingChan
 // Read each patch from the settled predecessor, not from a failed optimistic
 // record. Different actors share this order, including after rejected writes.
 let updateTail: Promise<unknown> = Promise.resolve();
-function enqueueSettingsChanges(origin: DomainActor, changes: SettingChange[], policy: SettingsAccessPolicy, signal?: AbortSignal): Promise<SettingsUpdateResult> {
+function enqueueSettingsChanges(
+  origin: DomainActor,
+  changes: SettingChange[],
+  policy: SettingsAccessPolicy,
+  signal?: AbortSignal,
+): Promise<SettingsUpdateResult> {
   const accepted = structuredClone(changes);
-  const pluginIds = accepted.flatMap(change => /^plugins\.([a-z0-9-]+)\./.exec(change.path)?.[1] ?? []);
+  const pluginIds = accepted.flatMap((change) => /^plugins\.([a-z0-9-]+)\./.exec(change.path)?.[1] ?? []);
   const previous = updateTail;
-  const result = withPluginDataWrites(pluginIds, () => previous.then(() => afterSettingsWrites(() => {
-    signal?.throwIfAborted();
-    return applySettingsChanges(origin, accepted, policy, signal);
-  })));
+  const result = withPluginDataWrites(pluginIds, () =>
+    previous.then(() =>
+      afterSettingsWrites(() => {
+        signal?.throwIfAborted();
+        return applySettingsChanges(origin, accepted, policy, signal);
+      }),
+    ),
+  );
   // A rejected admission must not sever the ordering of an earlier command.
   updateTail = Promise.allSettled([previous, result]);
   return result;
@@ -252,7 +265,9 @@ function enqueueSettingsChanges(origin: DomainActor, changes: SettingChange[], p
 export type SettingsDomain = {
   queries: {
     modelCatalogRefreshConditions(provider: string): import("@read-aware/core").OperationCondition[];
-    modelCatalog(query: import("@read-aware/core").ModelCatalogQuery): Promise<import("@read-aware/core").ModelCatalogPage>;
+    modelCatalog(
+      query: import("@read-aware/core").ModelCatalogQuery,
+    ): Promise<import("@read-aware/core").ModelCatalogPage>;
     snapshot(query?: SettingsQuery): Promise<SettingsSnapshot>;
     observe(query: SettingsQuery, handler: (observation: SettingsObservation) => unknown): () => void;
     discover(query?: SettingsQuery): Promise<SettingCatalogEntry[]>;
@@ -277,7 +292,9 @@ export function createSettingsDomain(
   initializeSettingsObservation();
   const policy = actorPolicy(origin, access);
   const authorizeCatalog = () => {
-    if (!["ai.connection.primaryModel", "ai.connection.fastModel"].some(path => canAccess(policy, "discover", path))) {
+    if (
+      !["ai.connection.primaryModel", "ai.connection.fastModel"].some((path) => canAccess(policy, "discover", path))
+    ) {
       throw new AppError("settings/options-forbidden", "Model option discovery is not granted");
     }
   };
@@ -288,13 +305,37 @@ export function createSettingsDomain(
   };
   return {
     queries: {
-      modelCatalogRefreshConditions: provider => {
-        try { authorizeCatalog(); }
-        catch { return [{ kind: "permission", state: "unavailable", reason: "catalog-discovery-required", errorCode: "settings/options-forbidden" }]; }
-        if (!networkAllowed) return [{ kind: "permission", state: "unavailable", reason: "service:network-required", errorCode: "settings/options-forbidden" }];
-        return [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...modelCatalogRefreshConditions(provider)];
+      modelCatalogRefreshConditions: (provider) => {
+        try {
+          authorizeCatalog();
+        } catch {
+          return [
+            {
+              kind: "permission",
+              state: "unavailable",
+              reason: "catalog-discovery-required",
+              errorCode: "settings/options-forbidden",
+            },
+          ];
+        }
+        if (!networkAllowed)
+          return [
+            {
+              kind: "permission",
+              state: "unavailable",
+              reason: "service:network-required",
+              errorCode: "settings/options-forbidden",
+            },
+          ];
+        return [
+          { kind: "permission", state: "satisfied", reason: "authorized" },
+          ...modelCatalogRefreshConditions(provider),
+        ];
       },
-      modelCatalog: async query => { authorizeCatalog(); return queryModelCatalog(query); },
+      modelCatalog: async (query) => {
+        authorizeCatalog();
+        return queryModelCatalog(query);
+      },
       snapshot: settledSnapshot,
       observe: (query, handler) => {
         const accepted = structuredClone(query);
@@ -306,9 +347,13 @@ export function createSettingsDomain(
         const snapshot = await afterSettingsWrites(() => settingsSnapshot(accepted));
         return snapshot.settings
           .filter((setting) => canAccess(policy, "discover", setting.path))
-          .map(({ value: _value, shortcut: _shortcut, reading: _reading, ...definition }) => ({ ...definition,
-            writable: definition.writable && canAccess(policy, "write", definition.path)
-              && (definition.path !== "general.launchAtStartup" || desktopStartup.supported()) }));
+          .map(({ value: _value, shortcut: _shortcut, reading: _reading, ...definition }) => ({
+            ...definition,
+            writable:
+              definition.writable &&
+              canAccess(policy, "write", definition.path) &&
+              (definition.path !== "general.launchAtStartup" || desktopStartup.supported()),
+          }));
       },
       options: async (query, signal) => {
         signal?.throwIfAborted();
@@ -320,9 +365,10 @@ export function createSettingsDomain(
         await updateTail;
         const snapshot = await afterSettingsWrites(() => settingsSnapshot({ target: accepted.target }));
         signal?.throwIfAborted();
-        const setting = snapshot.settings.find(entry => entry.path === accepted.path);
+        const setting = snapshot.settings.find((entry) => entry.path === accepted.path);
         if (!setting) throw new AppError("settings/options-invalid", "Setting is unavailable for this target");
-        if (setting.dynamicOptions) return dynamicOptions.query(accepted, pluginOptionSource(accepted.path, networkAllowed), signal);
+        if (setting.dynamicOptions)
+          return dynamicOptions.query(accepted, pluginOptionSource(accepted.path, networkAllowed), signal);
         return dynamicOptions.staticPage([...(setting.options ?? []), ...system], snapshot.revision, accepted);
       },
       read: async (path, target) => {
@@ -332,9 +378,9 @@ export function createSettingsDomain(
         }
         const resolvedTarget = target ?? { kind: "global" as const };
         await updateTail;
-        const descriptor = (await afterSettingsWrites(() => visibleSnapshot({ read: [normalizedPath] }, { target: resolvedTarget }))).settings.find(
-          (setting) => setting.path === normalizedPath,
-        );
+        const descriptor = (
+          await afterSettingsWrites(() => visibleSnapshot({ read: [normalizedPath] }, { target: resolvedTarget }))
+        ).settings.find((setting) => setting.path === normalizedPath);
         if (!descriptor) throw new Error(`unknown setting: ${normalizedPath}`);
         return {
           path: descriptor.path,
@@ -347,21 +393,29 @@ export function createSettingsDomain(
     commands: {
       refreshModelCatalog: (provider, signal) => {
         authorizeCatalog();
-        if (!networkAllowed) throw new AppError("settings/options-forbidden", "Model catalog refresh requires network authorization");
+        if (!networkAllowed)
+          throw new AppError("settings/options-forbidden", "Model catalog refresh requires network authorization");
         return refreshModelCatalog(provider, signal);
       },
       resetReading: async (request, signal) => {
         const accepted = structuredClone(request);
-        const result = updateTail.then(() => afterSettingsWrites(async () => {
-          signal?.throwIfAborted();
-          const before = readDraft();
-          if (readingResetPaths(before).some(path => !canAccess(policy, "write", path))) {
-            throw new AppError("memory/forbidden", "Reset requires write access to every reader preference");
-          }
-          const result = resetReadingDraft(before, accepted);
-          return commitResult(origin, before, result, { section: "reading", target: accepted.target.kind === "book"
-            ? { kind: "book", bookId: accepted.target.bookId.trim() } : { kind: "global" } });
-        }));
+        const result = updateTail.then(() =>
+          afterSettingsWrites(async () => {
+            signal?.throwIfAborted();
+            const before = readDraft();
+            if (readingResetPaths(before).some((path) => !canAccess(policy, "write", path))) {
+              throw new AppError("memory/forbidden", "Reset requires write access to every reader preference");
+            }
+            const result = resetReadingDraft(before, accepted);
+            return commitResult(origin, before, result, {
+              section: "reading",
+              target:
+                accepted.target.kind === "book"
+                  ? { kind: "book", bookId: accepted.target.bookId.trim() }
+                  : { kind: "global" },
+            });
+          }),
+        );
         updateTail = settled(result);
         const committed = await result;
         return { ...committed, settings: filterSnapshot(policy, committed.settings) };
@@ -380,9 +434,7 @@ export function createSettingsDomain(
     events: {
       subscribe: (handler) => {
         const filtered = (event: SettingsChangedEvent) => {
-          const changes = event.changes.filter((change) =>
-            canAccess(policy, "read", change.path),
-          );
+          const changes = event.changes.filter((change) => canAccess(policy, "read", change.path));
           if (changes.length > 0) return handler(copyEventCause(event, { ...event, changes }));
         };
         listeners.add(filtered);
@@ -393,7 +445,11 @@ export function createSettingsDomain(
 }
 
 /** Host-only planning. The returned KV bytes never enter the public capability. */
-export async function prepareAtomicSettings(origin: DomainActor, changes: SettingChange[], access?: SettingsAccessPolicy) {
+export async function prepareAtomicSettings(
+  origin: DomainActor,
+  changes: SettingChange[],
+  access?: SettingsAccessPolicy,
+) {
   initializeSettingsObservation();
   const accepted = structuredClone(changes);
   const policy = actorPolicy(origin, access);
@@ -408,26 +464,47 @@ export async function prepareAtomicSettings(origin: DomainActor, changes: Settin
     const before = readDraft();
     const result = applySettingChangesToDraft(before, accepted);
     const entries = settingsDraftEntries(before, result.draft);
-    const beforeValues = result.changed.flatMap(change => {
-      const targets = change.target?.kind === "all-books"
-        ? [{ kind: "global" as const }, ...Object.keys(before.readerOverrides).map(bookId => ({ kind: "book" as const, bookId }))]
-        : [change.target ?? { kind: "global" as const }];
-      return targets.map(target => {
-        const descriptor = settingsSnapshotFromDraft(before, { target }).settings.find(item => item.path === change.path);
+    const beforeValues = result.changed.flatMap((change) => {
+      const targets =
+        change.target?.kind === "all-books"
+          ? [
+              { kind: "global" as const },
+              ...Object.keys(before.readerOverrides).map((bookId) => ({ kind: "book" as const, bookId })),
+            ]
+          : [change.target ?? { kind: "global" as const }];
+      return targets.map((target) => {
+        const descriptor = settingsSnapshotFromDraft(before, { target }).settings.find(
+          (item) => item.path === change.path,
+        );
         if (!descriptor) throw new AppError("transaction/invalid-operation", "Setting cannot be restored");
         return { path: change.path, target, value: descriptor.value } as SettingChange;
       });
     });
     // A book override can later be removed by undo. Retain the inherited
     // baseline as a read-only native condition, so its event/preview value stays true.
-    const readingBaseline = result.changed.some(change => (change.target?.kind === "book" || change.target?.kind === "all-books") && change.path.startsWith("reading."))
-      ? [{ key: READER_PREFERENCES_KEY, expected: localKV.getItem(READER_PREFERENCES_KEY), value: localKV.getItem(READER_PREFERENCES_KEY) }] : [];
-    return { changed: result.changed, beforeValues, readingBaseline, revision: settingsObservation.revision,
+    const readingBaseline = result.changed.some(
+      (change) =>
+        (change.target?.kind === "book" || change.target?.kind === "all-books") && change.path.startsWith("reading."),
+    )
+      ? [
+          {
+            key: READER_PREFERENCES_KEY,
+            expected: localKV.getItem(READER_PREFERENCES_KEY),
+            value: localKV.getItem(READER_PREFERENCES_KEY),
+          },
+        ]
+      : [];
+    return {
+      changed: result.changed,
+      beforeValues,
+      readingBaseline,
+      revision: settingsObservation.revision,
       entries: [...entries].map(([key, value]) => ({ key, expected: localKV.getItem(key), value })),
     };
   });
 }
 
 export function assertAtomicSettingsRevision(revision: number): void {
-  if (settingsObservation.revision !== revision) throw new AppError("transaction/conflict", "Settings or their providers changed before dispatch");
+  if (settingsObservation.revision !== revision)
+    throw new AppError("transaction/conflict", "Settings or their providers changed before dispatch");
 }

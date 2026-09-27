@@ -15,7 +15,9 @@ export function useSearchConfig() {
   const { toast } = useToast();
   const [initial] = useState(() => {
     let readError: string | null = null;
-    const config = getSearchConfig(error => { readError = describeError(error).body; });
+    const config = getSearchConfig((error) => {
+      readError = describeError(error).body;
+    });
     return { config, readError };
   });
   const [config, setConfig] = useState(initial.config);
@@ -26,11 +28,21 @@ export function useSearchConfig() {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const active = useRef<AbortController | null>(null);
   const { flush } = useReactiveSetting({ value: config, revision, persist: saveSearchConfig });
-  useEffect(() => () => { active.current?.abort(); active.current = null; }, []);
+  useEffect(
+    () => () => {
+      active.current?.abort();
+      active.current = null;
+    },
+    [],
+  );
   const change = (next: Partial<SearchConfig>) => {
-    active.current?.abort(); active.current = null;
-    setTesting(false); setResult(null); setReadError(null);
-    setConfig(value => ({ ...value, ...next })); setRevision(value => value + 1);
+    active.current?.abort();
+    active.current = null;
+    setTesting(false);
+    setResult(null);
+    setReadError(null);
+    setConfig((value) => ({ ...value, ...next }));
+    setRevision((value) => value + 1);
   };
   const changeProvider = (value: string) => {
     if (!isWebProviderId(value)) return;
@@ -41,8 +53,10 @@ export function useSearchConfig() {
   const test = async () => {
     if (active.current || !config.apiKey.trim()) return;
     flush();
-    const controller = new AbortController(); active.current = controller;
-    setTesting(true); setResult(null);
+    const controller = new AbortController();
+    active.current = controller;
+    setTesting(true);
+    setResult(null);
     try {
       await Promise.all([flushLocalKV(), flushSecretWrites()]);
       controller.signal.throwIfAborted();
@@ -52,9 +66,16 @@ export function useSearchConfig() {
       controller.signal.throwIfAborted();
       if (provider.supportsFetch) {
         if (!client.fetch) throw new Error("Provider lacks its declared page reading capability");
-        await client.fetch({ url: provider.connectionTestUrl ?? "https://example.com", maxChars: 500, fresh: true }, controller.signal);
+        await client.fetch(
+          { url: provider.connectionTestUrl ?? "https://example.com", maxChars: 500, fresh: true },
+          controller.signal,
+        );
       }
-      if (active.current === controller) setResult({ success: true, message: t(provider.supportsFetch ? "search.testSuccess" : "search.testSearchSuccess") });
+      if (active.current === controller)
+        setResult({
+          success: true,
+          message: t(provider.supportsFetch ? "search.testSuccess" : "search.testSearchSuccess"),
+        });
     } catch (error) {
       if (!controller.signal.aborted) {
         log.error("Search connection test failed", error);
@@ -65,7 +86,10 @@ export function useSearchConfig() {
         }
       }
     } finally {
-      if (active.current === controller) { active.current = null; setTesting(false); }
+      if (active.current === controller) {
+        active.current = null;
+        setTesting(false);
+      }
     }
   };
   return { config, change, changeProvider, flush, showKey, setShowKey, testing, result, readError, test };

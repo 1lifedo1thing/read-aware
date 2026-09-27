@@ -5,25 +5,16 @@ import { formatPostDate } from "./BlogPost";
 
 export function BlogIndexPage({ locale }: { locale: BlogLocale }) {
   const copy = useSiteCopy("blog");
-  const posts = Object.entries(copy.posts).sort(([, a], [, b]) =>
-    b.date.localeCompare(a.date),
-  );
+  const posts = Object.entries(copy.posts).sort(([, a], [, b]) => b.date.localeCompare(a.date));
 
   return (
     <div>
-      <h1 className="text-[clamp(1.75rem,3.6vw,2.2rem)] font-normal leading-[1.15] tracking-[-0.01em]">
-        {copy.title}
-      </h1>
-      <p className="mt-4 text-[1.0625rem] leading-[1.75] text-fg-muted">
-        {copy.lead}
-      </p>
+      <h1 className="text-[clamp(1.75rem,3.6vw,2.2rem)] font-normal leading-[1.15] tracking-[-0.01em]">{copy.title}</h1>
+      <p className="mt-4 text-[1.0625rem] leading-[1.75] text-fg-muted">{copy.lead}</p>
 
       <ul className="mt-10">
         {posts.map(([slug, post], index) => (
-          <li
-            key={slug}
-            className={index > 0 ? "border-t border-border py-7" : "pb-7"}
-          >
+          <li key={slug} className={index > 0 ? "border-t border-border py-7" : "pb-7"}>
             <time dateTime={post.date} className="text-[0.875rem] text-fg-subtle">
               {formatPostDate(post.date, locale)}
             </time>
@@ -35,9 +26,7 @@ export function BlogIndexPage({ locale }: { locale: BlogLocale }) {
                 {post.title}
               </Link>
             </h2>
-            <p className="mt-2 text-[1.0625rem] leading-[1.7] text-fg-muted">
-              {post.description}
-            </p>
+            <p className="mt-2 text-[1.0625rem] leading-[1.7] text-fg-muted">{post.description}</p>
           </li>
         ))}
       </ul>

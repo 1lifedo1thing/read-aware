@@ -23,8 +23,12 @@ export function sourceFileInfo(source: BookImportSource): {
 /** Format from the file name / MIME type alone; null when neither says. */
 export function formatFromName(name: string, type = ""): BookFormat | null {
   const lower = name.toLowerCase();
-  return BOOK_IMPORT_FORMATS.find(entry =>
-    entry.extensions.some(extension => lower.endsWith("." + extension)) || entry.mimeTypes.includes(type))?.format ?? null;
+  return (
+    BOOK_IMPORT_FORMATS.find(
+      (entry) =>
+        entry.extensions.some((extension) => lower.endsWith("." + extension)) || entry.mimeTypes.includes(type),
+    )?.format ?? null
+  );
 }
 
 /**
@@ -38,7 +42,11 @@ async function sniffSource(source: BookImportSource, name: string): Promise<Book
   if (source.kind === "file") return sniffBookFormat(source.file);
   if (!isTauri()) return null;
   if (source.kind === "native-resource") {
-    const head = await invoke<ArrayBuffer>("resource_read", { id: source.resourceId, offset: 0, length: SNIFF_HEAD_BYTES });
+    const head = await invoke<ArrayBuffer>("resource_read", {
+      id: source.resourceId,
+      offset: 0,
+      length: SNIFF_HEAD_BYTES,
+    });
     return sniffBookFormat(new File([head], name));
   }
   try {
@@ -60,10 +68,7 @@ async function sniffSource(source: BookImportSource, name: string): Promise<Book
  * exist everywhere). Throws the localized "unsupported" error when neither
  * recognizes it.
  */
-export async function detectBookFormat(
-  source: BookImportSource,
-  t: TFunction<"shelf">,
-): Promise<BookFormat> {
+export async function detectBookFormat(source: BookImportSource, t: TFunction<"shelf">): Promise<BookFormat> {
   const info = sourceFileInfo(source);
   const named = formatFromName(info.name, info.type);
   if (named) return named;

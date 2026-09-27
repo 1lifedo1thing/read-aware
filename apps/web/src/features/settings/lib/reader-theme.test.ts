@@ -5,10 +5,7 @@ import {
   readerThemeSwatch,
   resolveReaderPalette,
 } from "./reader-theme";
-import {
-  DEFAULT_READER_PREFERENCES,
-  normalizeReaderTheme,
-} from "./reader-settings";
+import { DEFAULT_READER_PREFERENCES, normalizeReaderTheme } from "./reader-settings";
 import type { RegisteredPluginTheme } from "../../plugins/lib/plugin-types";
 
 const NOCTURNE: RegisteredPluginTheme = {
@@ -42,15 +39,11 @@ describe("resolveReaderPalette", () => {
   });
 
   test("a registered plugin theme resolves to its palette", () => {
-    expect(resolveReaderPalette("plugin:editorial-themes:nocturne", [NOCTURNE]).bg).toBe(
-      "#161a22",
-    );
+    expect(resolveReaderPalette("plugin:editorial-themes:nocturne", [NOCTURNE]).bg).toBe("#161a22");
   });
 
   test("a dangling plugin ref falls back to warm", () => {
-    expect(resolveReaderPalette("plugin:gone:theme", [NOCTURNE])).toBe(
-      BUILTIN_READER_PALETTES.warm,
-    );
+    expect(resolveReaderPalette("plugin:gone:theme", [NOCTURNE])).toBe(BUILTIN_READER_PALETTES.warm);
   });
 
   test("an app-only theme does not claim the reader mount", () => {
@@ -59,9 +52,7 @@ describe("resolveReaderPalette", () => {
       reader: undefined,
       app: { paper: "#14171e" },
     };
-    expect(
-      resolveReaderPalette("plugin:editorial-themes:nocturne", [appOnly]),
-    ).toBe(BUILTIN_READER_PALETTES.warm);
+    expect(resolveReaderPalette("plugin:editorial-themes:nocturne", [appOnly])).toBe(BUILTIN_READER_PALETTES.warm);
   });
 });
 
@@ -91,11 +82,7 @@ describe("applyReaderThemeSelection", () => {
   });
 
   test("plugin selection seeds its typography preset", () => {
-    const next = applyReaderThemeSelection(
-      DEFAULT_READER_PREFERENCES,
-      "plugin:editorial-themes:nocturne",
-      [NOCTURNE],
-    );
+    const next = applyReaderThemeSelection(DEFAULT_READER_PREFERENCES, "plugin:editorial-themes:nocturne", [NOCTURNE]);
     expect(next.theme).toBe("plugin:editorial-themes:nocturne");
     expect(next.fontFamily).toBe("plugin:editorial-themes:eb-garamond");
     expect(next.fontSize).toBe("large");
@@ -115,9 +102,7 @@ describe("normalizeReaderTheme", () => {
   test("keeps built-ins, auto, and well-formed plugin refs", () => {
     expect(normalizeReaderTheme("auto")).toBe("auto");
     expect(normalizeReaderTheme("dark")).toBe("dark");
-    expect(normalizeReaderTheme("plugin:editorial-themes:nocturne")).toBe(
-      "plugin:editorial-themes:nocturne",
-    );
+    expect(normalizeReaderTheme("plugin:editorial-themes:nocturne")).toBe("plugin:editorial-themes:nocturne");
   });
 
   test("coerces junk to the default", () => {

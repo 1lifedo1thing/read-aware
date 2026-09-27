@@ -54,7 +54,7 @@ export function EndCard() {
           ...arrive(progress(frame, 18, 20), 12, 4),
         }}
       >
-        Free and open source  ·  readaware.app
+        Free and open source · readaware.app
       </div>
     </AbsoluteFill>
   );

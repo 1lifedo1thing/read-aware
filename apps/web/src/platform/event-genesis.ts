@@ -19,18 +19,9 @@
  * (see the envelope contract in @read-aware/core events.ts).
  */
 import { invoke } from "./ipc";
-import type {
-  BookFormat,
-  HighlightColor,
-  HighlightStyle,
-  ReadingStatus,
-} from "@read-aware/core";
+import type { BookFormat, HighlightColor, HighlightStyle, ReadingStatus } from "@read-aware/core";
 import { isTauri } from "./environment";
-import {
-  appendDomainEvents,
-  listEventAggregateIds,
-  type DomainEventDraft,
-} from "./domain-events";
+import { appendDomainEvents, listEventAggregateIds, type DomainEventDraft } from "./domain-events";
 import { createLogger } from "./logger";
 
 const log = createLogger("event-genesis");
@@ -92,8 +83,7 @@ type AiMessageRow = {
  * (conversation-store.ts); duplicated here because platform code must not
  * import feature libs.
  */
-const isGlobalThreadId = (id: string): boolean =>
-  id === "__global__" || id.startsWith("thread-");
+const isGlobalThreadId = (id: string): boolean => id === "__global__" || id.startsWith("thread-");
 
 function conversationDrafts(conversationId: string, rows: AiMessageRow[]): DomainEventDraft[] {
   const messages = [...rows].filter((row) => !row.error).sort((a, b) => a.seq - b.seq);
@@ -126,13 +116,22 @@ function conversationDrafts(conversationId: string, rows: AiMessageRow[]): Domai
         content: row.content,
         attachments:
           attachments.length > 0
-            ? attachments.map((attachment) => attachment.kind === "image" ? { attachmentId: crypto.randomUUID(), kind: "image" as const, cacheKey: attachment.cacheKey, name: attachment.name } : ({
-                attachmentId: crypto.randomUUID(),
-                kind: "selection" as const,
-                text: attachment.text,
-                anchor: attachment.cfiRange ?? undefined,
-                chapterHref: attachment.chapterHref ?? undefined,
-              }))
+            ? attachments.map((attachment) =>
+                attachment.kind === "image"
+                  ? {
+                      attachmentId: crypto.randomUUID(),
+                      kind: "image" as const,
+                      cacheKey: attachment.cacheKey,
+                      name: attachment.name,
+                    }
+                  : {
+                      attachmentId: crypto.randomUUID(),
+                      kind: "selection" as const,
+                      text: attachment.text,
+                      anchor: attachment.cfiRange ?? undefined,
+                      chapterHref: attachment.chapterHref ?? undefined,
+                    },
+              )
             : undefined,
       },
       origin: row.role === "assistant" ? "agent" : "user",
@@ -164,9 +163,7 @@ function memoryDrafts(memory: MemoryRow): DomainEventDraft[] {
       payload: {
         memoryId: memory.id,
         kind: memory.kind,
-        scope: bookScoped
-          ? "book"
-          : ((memory.scope === "global" ? "global" : "user") as "global" | "user"),
+        scope: bookScoped ? "book" : ((memory.scope === "global" ? "global" : "user") as "global" | "user"),
         bookId: bookScoped ? memory.scope.slice("book:".length) : undefined,
         content: memory.content,
         importance: memory.importance,

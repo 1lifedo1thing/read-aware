@@ -22,10 +22,7 @@ const NOT_SET = 0xffffffff;
 const PDB_RECORD_LIST_OFFSET = 78;
 const PDB_RECORD_ENTRY_BYTES = 8;
 
-export async function readPalmDocFormat(
-  file: File,
-  head: Uint8Array,
-): Promise<BookFormat> {
+export async function readPalmDocFormat(file: File, head: Uint8Array): Promise<BookFormat> {
   try {
     const record = await readFirstRecord(file, head);
     return record && isKf8Record(record) ? "azw3" : "mobi";
@@ -42,15 +39,11 @@ async function readFirstRecord(file: File, head: Uint8Array): Promise<DataView |
   if (numRecords < 1) return null;
 
   const listEnd = PDB_RECORD_LIST_OFFSET + numRecords * PDB_RECORD_ENTRY_BYTES;
-  const list = listEnd <= head.byteLength
-    ? headView
-    : new DataView(await file.slice(0, listEnd).arrayBuffer());
+  const list = listEnd <= head.byteLength ? headView : new DataView(await file.slice(0, listEnd).arrayBuffer());
   if (list.byteLength < PDB_RECORD_LIST_OFFSET + PDB_RECORD_ENTRY_BYTES) return null;
 
   const start = list.getUint32(PDB_RECORD_LIST_OFFSET);
-  const next = numRecords > 1
-    ? list.getUint32(PDB_RECORD_LIST_OFFSET + PDB_RECORD_ENTRY_BYTES)
-    : file.size;
+  const next = numRecords > 1 ? list.getUint32(PDB_RECORD_LIST_OFFSET + PDB_RECORD_ENTRY_BYTES) : file.size;
   const end = Math.min(next > start ? next : file.size, start + MAX_RECORD_BYTES);
   if (!(end > start)) return null;
 

@@ -24,8 +24,5 @@ export interface ChatTransport {
    *
    * The returned iterable is consumed exactly once.
    */
-  sendTurn(
-    request: ChatTurnRequest,
-    signal?: AbortSignal,
-  ): AsyncIterable<ChatStreamChunk>;
+  sendTurn(request: ChatTurnRequest, signal?: AbortSignal): AsyncIterable<ChatStreamChunk>;
 }

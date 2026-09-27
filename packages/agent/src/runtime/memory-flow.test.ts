@@ -29,12 +29,7 @@ describe("memory write path", () => {
     faux?.unregister();
   });
 
-  function makeThread(
-    scope: ThreadScope,
-    deps: RuntimeDeps,
-    model: Model<Api>,
-    completeFn: CompleteFn,
-  ) {
+  function makeThread(scope: ThreadScope, deps: RuntimeDeps, model: Model<Api>, completeFn: CompleteFn) {
     return new AgentThread({
       scope,
       deps,
@@ -81,11 +76,7 @@ describe("memory write path", () => {
 
   test("ask-notes anchor at the selection, else the reading position; global thread leaves none", async () => {
     const model = makeFaux();
-    faux.setResponses([
-      fauxAssistantMessage("回答一"),
-      fauxAssistantMessage("回答二"),
-      fauxAssistantMessage("回答三"),
-    ]);
+    faux.setResponses([fauxAssistantMessage("回答一"), fauxAssistantMessage("回答二"), fauxAssistantMessage("回答三")]);
     const { deps, stores } = createInMemoryDeps();
     const noop: CompleteFn = async () => fauxAssistantMessage('{"new": [], "reinforced": []}');
     const bookThread = makeThread(BOOK, deps, model, noop);

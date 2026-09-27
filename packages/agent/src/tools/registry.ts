@@ -52,12 +52,27 @@ export { createAgentTurnState } from "./turn-state";
 // request. Changes here require the model-surface budget test, not a count of the
 // entire host catalog. Domain permissions still belong to the original tools.
 const CORE_TOOLS = new Set([
-  "get_host_capabilities", "ask_user", "list_books", "get_book_overview",
+  "get_host_capabilities",
+  "ask_user",
+  "list_books",
+  "get_book_overview",
   "query_conversation",
-  "get_annotations", "get_toc", "read_chapter", "search_book_text",
-  "query_book_graph", "search_memory", "remember", "get_user_profile",
-  "get_settings", "get_setting_options", "update_settings",
-  "web_search", "web_fetch", "present_web_images", "present_books", "open_book",
+  "get_annotations",
+  "get_toc",
+  "read_chapter",
+  "search_book_text",
+  "query_book_graph",
+  "search_memory",
+  "remember",
+  "get_user_profile",
+  "get_settings",
+  "get_setting_options",
+  "update_settings",
+  "web_search",
+  "web_fetch",
+  "present_web_images",
+  "present_books",
+  "open_book",
 ]);
 const MAX_LOADED_TOOLS = 12;
 
@@ -113,18 +128,21 @@ export function buildAgentTools(
   const extensions = deps.extraTools?.(scope) ?? [];
   const prepared = consolidateHostTools(prepareHostTools(hostTools, scope, deps, turnState).all);
   const loaded = turnState ? (turnState.loadedTools ??= new Set<string>()) : new Set<string>();
-  const discover = modelFacing ? (names: string[]) => {
-    for (const name of names) {
-      if (CORE_TOOLS.has(name)) continue;
-      loaded.delete(name);
-      loaded.add(name);
-      while (loaded.size > MAX_LOADED_TOOLS) loaded.delete(loaded.values().next().value!);
-    }
-    return [...loaded];
-  } : undefined;
+  const discover = modelFacing
+    ? (names: string[]) => {
+        for (const name of names) {
+          if (CORE_TOOLS.has(name)) continue;
+          loaded.delete(name);
+          loaded.add(name);
+          while (loaded.size > MAX_LOADED_TOOLS) loaded.delete(loaded.values().next().value!);
+        }
+        return [...loaded];
+      }
+    : undefined;
   const catalog = buildCapabilityTool(scope, prepared.enabled, extensions, prepared.all, discover);
-  return [...prepared.enabled, catalog, ...extensions]
-    .filter(tool => !modelFacing || CORE_TOOLS.has(tool.name) || loaded.has(tool.name));
+  return [...prepared.enabled, catalog, ...extensions].filter(
+    (tool) => !modelFacing || CORE_TOOLS.has(tool.name) || loaded.has(tool.name),
+  );
 }
 
 export function buildModelTools(scope: ThreadScope, deps: RuntimeDeps, state: AgentTurnState): AgentTool[] {

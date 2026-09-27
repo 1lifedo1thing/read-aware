@@ -1,6 +1,17 @@
 import type { InferenceHistoryStorage } from "./plugin-inference-history";
 import type { AgentRuntime, OneShotInput } from "@read-aware/agent";
-import { validateModelImages, MODEL_IMAGES_MAX_COUNT, MODEL_IMAGE_MAX_BYTES, MODEL_IMAGES_MAX_BYTES, type ModelImageInput, AppError, ERR_AI_BUSY, ERR_AI_REQUEST_CANCELLED, ERR_AI_REQUEST_TIMEOUT, ERR_PLUGIN_INVALID_ARGUMENT } from "@read-aware/core";
+import {
+  validateModelImages,
+  MODEL_IMAGES_MAX_COUNT,
+  MODEL_IMAGE_MAX_BYTES,
+  MODEL_IMAGES_MAX_BYTES,
+  type ModelImageInput,
+  AppError,
+  ERR_AI_BUSY,
+  ERR_AI_REQUEST_CANCELLED,
+  ERR_AI_REQUEST_TIMEOUT,
+  ERR_PLUGIN_INVALID_ARGUMENT,
+} from "@read-aware/core";
 import type { PluginHostServices } from "@read-aware/plugin-types";
 import { AiNotConfiguredError } from "../../ai/lib/ai-errors";
 import { createLogger } from "../../../platform/logger";
@@ -8,9 +19,25 @@ import type { PluginLifecycleController } from "./plugin-lifecycle";
 import { PluginInferenceReceipts } from "./plugin-inference-receipts";
 import { assertOperationAvailable, type OperationAvailabilityPort } from "@read-aware/core";
 
-const LIMITS = { defaultTimeoutMs: 60_000, maxTimeoutMs: 110_000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65_536, maxImageCount: MODEL_IMAGES_MAX_COUNT, maxImageBytes: MODEL_IMAGE_MAX_BYTES, maxImageTotalBytes: MODEL_IMAGES_MAX_BYTES, maxTotalOutputTokensLimit: 131_072, maxOutputCharsLimit: 262_144, maxInputChars: 262_144 };
+const LIMITS = {
+  defaultTimeoutMs: 60_000,
+  maxTimeoutMs: 110_000,
+  perPluginLimit: 2,
+  appLimit: 8,
+  maxOutputTokensLimit: 65_536,
+  maxImageCount: MODEL_IMAGES_MAX_COUNT,
+  maxImageBytes: MODEL_IMAGE_MAX_BYTES,
+  maxImageTotalBytes: MODEL_IMAGES_MAX_BYTES,
+  maxTotalOutputTokensLimit: 131_072,
+  maxOutputCharsLimit: 262_144,
+  maxInputChars: 262_144,
+};
 const log = createLogger("plugin-llm");
-type Input = Omit<OneShotInput, "trackSource" | "onAttempt" | "images"> & { images?: { resourceId: string }[]; timeoutMs?: number; requestId?: string };
+type Input = Omit<OneShotInput, "trackSource" | "onAttempt" | "images"> & {
+  images?: { resourceId: string }[];
+  timeoutMs?: number;
+  requestId?: string;
+};
 
 export class PluginInferenceSlots {
   private total = 0;
@@ -36,28 +63,77 @@ export class PluginInferenceSlots {
 const slots = new PluginInferenceSlots();
 
 function normalize(input: Input): Input {
-  const invalid = (): never => { throw new AppError(ERR_PLUGIN_INVALID_ARGUMENT, "Invalid plugin inference request"); };
+  const invalid = (): never => {
+    throw new AppError(ERR_PLUGIN_INVALID_ARGUMENT, "Invalid plugin inference request");
+  };
   if (!input || typeof input !== "object" || typeof input.prompt !== "string") return invalid();
   if (input.system !== undefined && typeof input.system !== "string") return invalid();
   if (input.model !== undefined && input.model !== "fast" && input.model !== "smart") return invalid();
-  if (input.schema !== undefined && (!input.schema || typeof input.schema !== "object" || Array.isArray(input.schema))) return invalid();
+  if (input.schema !== undefined && (!input.schema || typeof input.schema !== "object" || Array.isArray(input.schema)))
+    return invalid();
   if (input.onText !== undefined && typeof input.onText !== "function") return invalid();
   if (input.schema && input.onText) return invalid();
   if (input.signal !== undefined && !(input.signal instanceof AbortSignal)) return invalid();
-  if (input.requestId !== undefined && (typeof input.requestId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(input.requestId))) return invalid();
-  if (input.maxOutputTokens !== undefined && (!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1 || input.maxOutputTokens > LIMITS.maxOutputTokensLimit)) return invalid();
-  if (input.images !== undefined && (!Array.isArray(input.images) || input.images.length > MODEL_IMAGES_MAX_COUNT
-    || Array.from(input.images).some(image => !image || typeof image !== "object" || typeof image.resourceId !== "string" || !image.resourceId.length
-      || image.resourceId.length > 256 || Object.keys(image).some(key => key !== "resourceId")))) return invalid();
-  if (input.maxTotalOutputTokens !== undefined && (!Number.isSafeInteger(input.maxTotalOutputTokens) || input.maxTotalOutputTokens < 1 || input.maxTotalOutputTokens > LIMITS.maxTotalOutputTokensLimit)) return invalid();
-  if (input.maxOutputChars !== undefined && (!Number.isSafeInteger(input.maxOutputChars) || input.maxOutputChars < 1 || input.maxOutputChars > LIMITS.maxOutputCharsLimit)) return invalid();
-  if (input.prompt.length + (input.system?.length ?? 0) > LIMITS.maxInputChars) throw new AppError("ai/input-budget-exceeded", "Inference text input exceeds its budget");
+  if (
+    input.requestId !== undefined &&
+    (typeof input.requestId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(input.requestId))
+  )
+    return invalid();
+  if (
+    input.maxOutputTokens !== undefined &&
+    (!Number.isSafeInteger(input.maxOutputTokens) ||
+      input.maxOutputTokens < 1 ||
+      input.maxOutputTokens > LIMITS.maxOutputTokensLimit)
+  )
+    return invalid();
+  if (
+    input.images !== undefined &&
+    (!Array.isArray(input.images) ||
+      input.images.length > MODEL_IMAGES_MAX_COUNT ||
+      Array.from(input.images).some(
+        (image) =>
+          !image ||
+          typeof image !== "object" ||
+          typeof image.resourceId !== "string" ||
+          !image.resourceId.length ||
+          image.resourceId.length > 256 ||
+          Object.keys(image).some((key) => key !== "resourceId"),
+      ))
+  )
+    return invalid();
+  if (
+    input.maxTotalOutputTokens !== undefined &&
+    (!Number.isSafeInteger(input.maxTotalOutputTokens) ||
+      input.maxTotalOutputTokens < 1 ||
+      input.maxTotalOutputTokens > LIMITS.maxTotalOutputTokensLimit)
+  )
+    return invalid();
+  if (
+    input.maxOutputChars !== undefined &&
+    (!Number.isSafeInteger(input.maxOutputChars) ||
+      input.maxOutputChars < 1 ||
+      input.maxOutputChars > LIMITS.maxOutputCharsLimit)
+  )
+    return invalid();
+  if (input.prompt.length + (input.system?.length ?? 0) > LIMITS.maxInputChars)
+    throw new AppError("ai/input-budget-exceeded", "Inference text input exceeds its budget");
   const timeoutMs = input.timeoutMs ?? LIMITS.defaultTimeoutMs;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > LIMITS.maxTimeoutMs) return invalid();
-  return { images: input.images?.map(image => ({ resourceId: image.resourceId })), prompt: input.prompt, system: input.system, model: input.model ?? "fast", timeoutMs, signal: input.signal,
-    maxOutputTokens: input.maxOutputTokens, maxTotalOutputTokens: input.maxTotalOutputTokens, maxOutputChars: input.maxOutputChars, requestId: input.requestId,
+  return {
+    images: input.images?.map((image) => ({ resourceId: image.resourceId })),
+    prompt: input.prompt,
+    system: input.system,
+    model: input.model ?? "fast",
+    timeoutMs,
+    signal: input.signal,
+    maxOutputTokens: input.maxOutputTokens,
+    maxTotalOutputTokens: input.maxTotalOutputTokens,
+    maxOutputChars: input.maxOutputChars,
+    requestId: input.requestId,
     schema: input.schema === undefined ? undefined : structuredClone(input.schema),
-    readingContext: input.readingContext === undefined ? undefined : structuredClone(input.readingContext), onText: input.onText };
+    readingContext: input.readingContext === undefined ? undefined : structuredClone(input.readingContext),
+    onText: input.onText,
+  };
 }
 
 export function createPluginLlm(
@@ -79,47 +155,84 @@ export function createPluginLlm(
     const receipt = input.requestId === undefined ? undefined : await receipts.begin(input.requestId, cancel);
     let cleanup: Promise<void> | undefined;
     try {
-      if (input.signal?.aborted || lifecycle.signal.aborted) throw new AppError(ERR_AI_REQUEST_CANCELLED, "Plugin inference was cancelled before dispatch");
-      if (Date.now() >= deadlineAt) throw new AppError(ERR_AI_REQUEST_TIMEOUT, "Plugin inference deadline exceeded during admission");
+      if (input.signal?.aborted || lifecycle.signal.aborted)
+        throw new AppError(ERR_AI_REQUEST_CANCELLED, "Plugin inference was cancelled before dispatch");
+      if (Date.now() >= deadlineAt)
+        throw new AppError(ERR_AI_REQUEST_TIMEOUT, "Plugin inference deadline exceeded during admission");
       const release = capacity.acquire(pluginId);
       const external = AbortSignal.any([lifecycle.signal, ...(input.signal ? [input.signal] : [])]);
       external.addEventListener("abort", cancel, { once: true });
       if (external.aborted) cancel();
-      const timer = setTimeout(() => controller.abort(new AppError(ERR_AI_REQUEST_TIMEOUT, "Plugin inference deadline exceeded")), Math.max(0, deadlineAt - Date.now()));
+      const timer = setTimeout(
+        () => controller.abort(new AppError(ERR_AI_REQUEST_TIMEOUT, "Plugin inference deadline exceeded")),
+        Math.max(0, deadlineAt - Date.now()),
+      );
       const sources = new Set<Promise<unknown>>();
       const trackSource = (source: Promise<unknown>) => {
         sources.add(source);
-        void source.then(() => sources.delete(source), error => {
-          sources.delete(source);
-          if (controller.signal.aborted && error !== controller.signal.reason && !(error instanceof Error && error.name === "AbortError")) {
-            log.warn("Provider source failed after plugin inference cancellation", error);
-          }
-        });
+        void source.then(
+          () => sources.delete(source),
+          (error) => {
+            sources.delete(source);
+            if (
+              controller.signal.aborted &&
+              error !== controller.signal.reason &&
+              !(error instanceof Error && error.name === "AbortError")
+            ) {
+              log.warn("Provider source failed after plugin inference cancellation", error);
+            }
+          },
+        );
       };
-      const work = Promise.resolve().then(async () => {
-        controller.signal.throwIfAborted();
-        const images: ModelImageInput[] = [];
-        for (const image of input.images ?? []) {
-          if (!readImage) throw new AppError("ai/invalid-image", "Image input is unavailable");
-          images.push(await readImage(image.resourceId, controller.signal));
-          validateModelImages(images);
+      const work = Promise.resolve()
+        .then(async () => {
           controller.signal.throwIfAborted();
-        }
-        if (availability) assertOperationAvailable(await availability.check({ operation: "llm.infer", model: input.model, images: images.length > 0 }, controller.signal));
-        controller.signal.throwIfAborted();
-        // Resolve the current runtime after resource/precondition reads. A
-        // cached query result cannot authorize a now-unconfigured request.
-        const runtime = getRuntime();
-        if (!runtime) throw new AiNotConfiguredError();
-        const base = { images, prompt: input.prompt, system: input.system, model: input.model,
-          readingContext: input.readingContext, signal: controller.signal, trackSource, maxOutputTokens: input.maxOutputTokens ?? (input.maxTotalOutputTokens === undefined ? undefined : LIMITS.maxOutputTokensLimit), maxTotalOutputTokens: input.maxTotalOutputTokens, maxOutputChars: input.maxOutputChars,
-          onAttempt: receipt?.attempt };
-        if (detailed) return input.schema ? runtime.askDetailed({ ...base, schema: input.schema }) : runtime.askDetailed({ ...base, onText: input.onText });
-        return input.schema ? runtime.ask({ ...base, schema: input.schema }) : runtime.ask({ ...base, onText: input.onText });
-      }).catch(error => {
-        controller.abort(error);
-        throw error;
-      });
+          const images: ModelImageInput[] = [];
+          for (const image of input.images ?? []) {
+            if (!readImage) throw new AppError("ai/invalid-image", "Image input is unavailable");
+            images.push(await readImage(image.resourceId, controller.signal));
+            validateModelImages(images);
+            controller.signal.throwIfAborted();
+          }
+          if (availability)
+            assertOperationAvailable(
+              await availability.check(
+                { operation: "llm.infer", model: input.model, images: images.length > 0 },
+                controller.signal,
+              ),
+            );
+          controller.signal.throwIfAborted();
+          // Resolve the current runtime after resource/precondition reads. A
+          // cached query result cannot authorize a now-unconfigured request.
+          const runtime = getRuntime();
+          if (!runtime) throw new AiNotConfiguredError();
+          const base = {
+            images,
+            prompt: input.prompt,
+            system: input.system,
+            model: input.model,
+            readingContext: input.readingContext,
+            signal: controller.signal,
+            trackSource,
+            maxOutputTokens:
+              input.maxOutputTokens ??
+              (input.maxTotalOutputTokens === undefined ? undefined : LIMITS.maxOutputTokensLimit),
+            maxTotalOutputTokens: input.maxTotalOutputTokens,
+            maxOutputChars: input.maxOutputChars,
+            onAttempt: receipt?.attempt,
+          };
+          if (detailed)
+            return input.schema
+              ? runtime.askDetailed({ ...base, schema: input.schema })
+              : runtime.askDetailed({ ...base, onText: input.onText });
+          return input.schema
+            ? runtime.ask({ ...base, schema: input.schema })
+            : runtime.ask({ ...base, onText: input.onText });
+        })
+        .catch((error) => {
+          controller.abort(error);
+          throw error;
+        });
       // Caller cancellation is prompt. Capacity and retirement still wait for the
       // original provider source, even if the policy wrapper has already rejected.
       cleanup = (async () => {
@@ -142,10 +255,16 @@ export function createPluginLlm(
         controller.signal.throwIfAborted();
         await receipt?.finish();
         return value;
-      } finally { controller.signal.removeEventListener("abort", onAbort); }
+      } finally {
+        controller.signal.removeEventListener("abort", onAbort);
+      }
     } catch (error) {
       const failure = error ?? new AppError("ai/unknown", "Inference failed without an error");
-      try { await receipt?.finish(failure); } catch (writeError) { log.warn("Could not persist inference failure metadata", writeError); }
+      try {
+        await receipt?.finish(failure);
+      } catch (writeError) {
+        log.warn("Could not persist inference failure metadata", writeError);
+      }
       throw failure;
     } finally {
       if (receipt) {
@@ -154,8 +273,15 @@ export function createPluginLlm(
       }
     }
   };
-  return { ask: (input: Input) => run(input, false), askDetailed: (input: Input) => run(input, true),
-    getRequest: async (id: string) => receipts.get(id), listRequests: async () => receipts.list(),
+  return {
+    ask: (input: Input) => run(input, false),
+    askDetailed: (input: Input) => run(input, true),
+    getRequest: async (id: string) => receipts.get(id),
+    listRequests: async () => receipts.list(),
     cancelRequest: async (id: string) => receipts.cancel(id),
-    policy: async () => { lifecycle.assertActive("services.llm.policy"); return { ...LIMITS }; } } as NonNullable<PluginHostServices["llm"]>;
+    policy: async () => {
+      lifecycle.assertActive("services.llm.policy");
+      return { ...LIMITS };
+    },
+  } as NonNullable<PluginHostServices["llm"]>;
 }

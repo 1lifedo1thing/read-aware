@@ -10,12 +10,16 @@ test("fixed-layout viewport strings become dimensions, not key/value arrays", ()
   expect(parseViewport({ width: 0, height: -1 })).toBeUndefined();
 });
 
-test("SVG, page metadata and book fallback dimensions preserve their precedence", () => withDom(window => {
-  const svg = new window.DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0,0,300,400"/>', "image/svg+xml");
-  expect(getViewport(svg, "width=600,height=800")).toEqual({ width: 300, height: 400 });
-  const doc = window.document;
-  doc.head.innerHTML = '<meta name="viewport" content="width=720,height=960">';
-  expect(getViewport(doc, "width=600,height=800")).toEqual({ width: 720, height: 960 });
-  doc.head.replaceChildren();
-  expect(getViewport(doc, "width=600,height=800")).toEqual({ width: 600, height: 800 });
-}));
+test("SVG, page metadata and book fallback dimensions preserve their precedence", () =>
+  withDom((window) => {
+    const svg = new window.DOMParser().parseFromString(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0,0,300,400"/>',
+      "image/svg+xml",
+    );
+    expect(getViewport(svg, "width=600,height=800")).toEqual({ width: 300, height: 400 });
+    const doc = window.document;
+    doc.head.innerHTML = '<meta name="viewport" content="width=720,height=960">';
+    expect(getViewport(doc, "width=600,height=800")).toEqual({ width: 720, height: 960 });
+    doc.head.replaceChildren();
+    expect(getViewport(doc, "width=600,height=800")).toEqual({ width: 600, height: 800 });
+  }));

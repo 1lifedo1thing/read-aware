@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type {
-  PluginContext,
-  PluginSelectionAction,
-} from "@read-aware/plugin-types";
+import type { PluginContext, PluginSelectionAction } from "@read-aware/plugin-types";
 import plugin from "../src/index";
 
 describe("Dictionary contributions", () => {

@@ -40,11 +40,7 @@ type StagedImport = {
  * the final id and the file-name-derived title, so its sorted slot is the
  * committed book's slot and the tile does not jump when the import lands.
  */
-export function pendingImportPlaceholder(
-  bookId: string,
-  source: BookImportSource,
-  format: BookFormat,
-): LibraryBook {
+export function pendingImportPlaceholder(bookId: string, source: BookImportSource, format: BookFormat): LibraryBook {
   const now = new Date().toISOString();
   const file = sourceFileInfo(source);
   const parsed = parseFileName(file.name);
@@ -97,25 +93,23 @@ export type ImportBookOptions = {
  * PDF covers off macOS, RAR comics) is handed to the engine job, which fills
  * the tile in a moment later — the shelf never waits on it.
  */
-export async function importBook(
-  source: BookImportSource,
-  options: ImportBookOptions,
-): Promise<ImportOutcome> {
+export async function importBook(source: BookImportSource, options: ImportBookOptions): Promise<ImportOutcome> {
   options.signal?.throwIfAborted();
   if (!isTauri()) {
     throw new Error("Importing a book is desktop-only — the browser build is a UI shell without storage.");
   }
   const file = sourceFileInfo(source);
   const progress = (phase: BookImportPhase) => {
-    try { options.onProgress?.(phase); }
-    catch (error) { log.warn("Import progress observer failed", error); }
+    try {
+      options.onProgress?.(phase);
+    } catch (error) {
+      log.warn("Import progress observer failed", error);
+    }
   };
   progress("preparing");
 
   // Cheap pass: the identical file (same name + size) is already imported.
-  const byFile = options.knownBooks.find(
-    (entry) => entry.fileName === file.name && entry.fileSize === file.size,
-  );
+  const byFile = options.knownBooks.find((entry) => entry.fileName === file.name && entry.fileSize === file.size);
   if (byFile && source.kind !== "native-resource") return { status: "duplicate", book: byFile };
 
   const startedAt = performance.now();
@@ -138,11 +132,7 @@ export async function importBook(
         progress("staging");
         await invoke("library_begin_import", { bookId });
         began = true;
-        await putDesktopBlob(
-          bookFileKey(bookId),
-          bytes,
-          file.type || undefined,
-        );
+        await putDesktopBlob(bookFileKey(bookId), bytes, file.type || undefined);
       } else {
         options.signal?.throwIfAborted();
         options.beforeWrite?.();
@@ -157,9 +147,14 @@ export async function importBook(
           format,
           mimeType: file.type || null,
           ...(source.kind === "native-path" && source.externalOpenEpoch !== undefined
-            ? { externalOpenEpoch: source.externalOpenEpoch } : {}),
-          source: source.kind === "native-path" ? { kind: "path", path: source.path }
-            : source.kind === "native-resource" ? { kind: "resource", id: source.resourceId } : { kind: "blob" },
+            ? { externalOpenEpoch: source.externalOpenEpoch }
+            : {}),
+          source:
+            source.kind === "native-path"
+              ? { kind: "path", path: source.path }
+              : source.kind === "native-resource"
+                ? { kind: "resource", id: source.resourceId }
+                : { kind: "blob" },
         },
       });
 
@@ -237,8 +232,11 @@ export async function importBook(
         // A committed book atomically clears the intent. Failed/duplicate
         // staging releases only this import's assets; failed cleanup remains
         // durable for the next native process and must not mask the outcome.
-        try { await invoke("library_finish_import", { bookId }); }
-        catch (error) { log.warn("Import staging cleanup deferred", error); }
+        try {
+          await invoke("library_finish_import", { bookId });
+        } catch (error) {
+          log.warn("Import staging cleanup deferred", error);
+        }
       }
     }
   });

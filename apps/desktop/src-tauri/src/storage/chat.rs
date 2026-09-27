@@ -6,8 +6,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- AI chat transcripts (per-book conversations + the global thread) ---
 
@@ -60,11 +60,8 @@ pub async fn ai_chat_load(
             .prepare(
                 "SELECT * FROM ai_messages WHERE conversation_id = ?1
              ORDER BY seq, created_at, id",
-            )
-            ?;
-        let rows = stmt
-            .query_map(params![conversation_id], row_to_ai_message)
-            ?;
+            )?;
+        let rows = stmt.query_map(params![conversation_id], row_to_ai_message)?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -75,18 +72,13 @@ pub async fn ai_chat_load(
 }
 
 #[tauri::command]
-pub async fn ai_chat_load_all(
-    app: tauri::AppHandle,
-) -> Result<Vec<AiMessage>, CommandError> {
+pub async fn ai_chat_load_all(app: tauri::AppHandle) -> Result<Vec<AiMessage>, CommandError> {
     crate::storage::blocking("ai_chat_load_all", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
         let mut stmt = conn
-            .prepare("SELECT * FROM ai_messages ORDER BY conversation_id, seq, created_at, id")
-            ?;
-        let rows = stmt
-            .query_map([], row_to_ai_message)
-            ?;
+            .prepare("SELECT * FROM ai_messages ORDER BY conversation_id, seq, created_at, id")?;
+        let rows = stmt.query_map([], row_to_ai_message)?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -133,13 +125,11 @@ pub(crate) fn ai_chat_replace_inner(
          ON CONFLICT(id) DO UPDATE SET
             updated_at = excluded.updated_at, cleared_at = NULL",
         params![conversation_id],
-    )
-    ?;
+    )?;
     tx.execute(
         "DELETE FROM ai_messages WHERE conversation_id = ?1 AND error IS NOT NULL",
         params![conversation_id],
-    )
-    ?;
+    )?;
     for (seq, message) in messages.iter().enumerate() {
         tx.execute(
             "INSERT INTO ai_messages
@@ -162,8 +152,7 @@ pub(crate) fn ai_chat_replace_inner(
                 message.parts_json,
                 message.error,
             ],
-        )
-        ?;
+        )?;
     }
     Ok(tx.commit()?)
 }
@@ -183,7 +172,11 @@ pub struct AiMessagePresentation {
 
 /// The event types a conversation save may carry. A clear is its own
 /// `commit_events` write; everything else belongs to other aggregates.
-const SAVE_EVENT_TYPES: &[&str] = &["aiConversation.started", "aiMessage.appended", "aiMessage.removed"];
+const SAVE_EVENT_TYPES: &[&str] = &[
+    "aiConversation.started",
+    "aiMessage.appended",
+    "aiMessage.removed",
+];
 
 /// Save one conversation: append + apply its events AND write the
 /// presentation-only state in ONE transaction, so the projection can never
@@ -212,7 +205,13 @@ pub async fn ai_chat_commit(
     crate::storage::blocking("ai_chat_commit", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
-        ai_chat_commit_inner(&mut conn, &conversation_id, &events, &presentation, &error_stubs)
+        ai_chat_commit_inner(
+            &mut conn,
+            &conversation_id,
+            &events,
+            &presentation,
+            &error_stubs,
+        )
     })
     .await
 }
@@ -314,15 +313,12 @@ pub struct AiChatSummary {
 }
 
 #[tauri::command]
-pub async fn ai_chat_list(
-    app: tauri::AppHandle,
-) -> Result<Vec<AiChatSummary>, CommandError> {
+pub async fn ai_chat_list(app: tauri::AppHandle) -> Result<Vec<AiChatSummary>, CommandError> {
     crate::storage::blocking("ai_chat_list", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        let mut stmt = conn
-            .prepare(
-                "SELECT c.id, c.updated_at, COUNT(m.id) AS message_count,
+        let mut stmt = conn.prepare(
+            "SELECT c.id, c.updated_at, COUNT(m.id) AS message_count,
                     (SELECT content FROM ai_messages
                      WHERE conversation_id = c.id AND role = 'user'
                      ORDER BY seq, created_at, id LIMIT 1) AS preview
@@ -331,18 +327,15 @@ pub async fn ai_chat_list(
              GROUP BY c.id
              HAVING COUNT(m.id) > 0
              ORDER BY c.updated_at DESC",
-            )
-            ?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok(AiChatSummary {
-                    id: row.get(0)?,
-                    updated_at: row.get(1)?,
-                    message_count: row.get(2)?,
-                    preview: row.get(3)?,
-                })
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(AiChatSummary {
+                id: row.get(0)?,
+                updated_at: row.get(1)?,
+                message_count: row.get(2)?,
+                preview: row.get(3)?,
             })
-            ?;
+        })?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -351,4 +344,3 @@ pub async fn ai_chat_list(
     })
     .await
 }
-

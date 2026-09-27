@@ -91,13 +91,7 @@ function modelToolAssessment(
     const tools = request.context.tools;
     return (
       Array.isArray(tools) &&
-      tools.some(
-        (tool) =>
-          tool &&
-          typeof tool === "object" &&
-          !Array.isArray(tool) &&
-          tool.name === toolName,
-      )
+      tools.some((tool) => tool && typeof tool === "object" && !Array.isArray(tool) && tool.name === toolName)
     );
   });
   const passed = expected === "present" ? exposed : !exposed;
@@ -128,9 +122,7 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
       scope: { kind: "global", threadId: "tools-shelf" },
       seed: {
         profile: "The reader has already completed onboarding.",
-        books: [
-          { id: TOOL_BOOK_ID, title: "Visible Book", author: "A. Writer", status: "reading" },
-        ],
+        books: [{ id: TOOL_BOOK_ID, title: "Visible Book", author: "A. Writer", status: "reading" }],
       },
       turns: [{ text: "Show me every book currently on my shelf." }],
       expectation: {
@@ -200,14 +192,10 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
       tags: ["economy", "retrieval", "book"],
       scope: { kind: "book", bookId: ECONOMY_BOOK_ID },
       seed: {
-        books: [
-          { id: ECONOMY_BOOK_ID, title: "The Salt Road", author: "T. Merch", status: "reading" },
-        ],
+        books: [{ id: ECONOMY_BOOK_ID, title: "The Salt Road", author: "T. Merch", status: "reading" }],
         chapters: { [ECONOMY_BOOK_ID]: ECONOMY_CHAPTERS },
       },
-      turns: [
-        { text: "Does this book ever talk about family or kinship? Point me to where." },
-      ],
+      turns: [{ text: "Does this book ever talk about family or kinship? Point me to where." }],
       expectation: {
         tools: { required: ["search_book_text"], noErrors: true, maxCalls: 4 },
       },
@@ -316,14 +304,11 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "toc-chapter-position-unknown",
-      description:
-        "无光标且无记录位置时，以警告回答显式章节请求——绝不探测 status 工具。",
+      description: "无光标且无记录位置时，以警告回答显式章节请求——绝不探测 status 工具。",
       tags: ["honesty", "toc", "economy", "book"],
       scope: { kind: "book", bookId: ECONOMY_BOOK_ID },
       seed: {
-        books: [
-          { id: ECONOMY_BOOK_ID, title: "The Salt Road", author: "T. Merch", status: "reading" },
-        ],
+        books: [{ id: ECONOMY_BOOK_ID, title: "The Salt Road", author: "T. Merch", status: "reading" }],
         chapters: { [ECONOMY_BOOK_ID]: ECONOMY_CHAPTERS },
       },
       // 位置未知协议：明确的章节请求 → 带剧透提示直接答（问一句也可接受）；
@@ -354,9 +339,7 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
       scope: { kind: "global", threadId: "tools-missing-book" },
       seed: {
         profile: "The reader has already completed onboarding.",
-        books: [
-          { id: TOOL_BOOK_ID, title: "Visible Book", author: "A. Writer", status: "reading" },
-        ],
+        books: [{ id: TOOL_BOOK_ID, title: "Visible Book", author: "A. Writer", status: "reading" }],
       },
       turns: [{ text: "Mark 'Ghost Volume' as finished." }],
       // fixture 默认替用户选第一个选项——在这里等于替用户同意"改标另一本"。
@@ -396,9 +379,7 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
         interactions: { forbiddenKinds: ["permission"] },
       },
       criteria: { presentOnce: true, presentedAtMost: 3 },
-      rubric: [
-        "Gives one clear recommendation with a short reason, instead of re-listing the shelf in prose",
-      ],
+      rubric: ["Gives one clear recommendation with a short reason, instead of re-listing the shelf in prose"],
       evaluate: (observation) => {
         const presents = toolCalls(observation, "present_books");
         const presentedIds = presents.flatMap((call) => {

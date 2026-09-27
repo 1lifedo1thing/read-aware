@@ -44,12 +44,22 @@ type ReaderHoldMenuProps = {
  * action under it is raised and named; lifting runs it. Once the finger has
  * lifted in place the same row works by taps.
  */
-export function ReaderHoldMenu({ state, title, actions, moreLabel, moreItems, menuRef, onMoreOpenChange, onClose }: ReaderHoldMenuProps) {
+export function ReaderHoldMenu({
+  state,
+  title,
+  actions,
+  moreLabel,
+  moreItems,
+  menuRef,
+  onMoreOpenChange,
+  onClose,
+}: ReaderHoldMenuProps) {
   // Stable per anchor: the positioning hook re-measures whenever this changes.
   const anchor = state.anchor;
-  const anchorRect = useMemo(() => anchor ? { left: anchor.x, top: anchor.y, width: 1, height: 1 } : null, [anchor]);
+  const anchorRect = useMemo(() => (anchor ? { left: anchor.x, top: anchor.y, width: 1, height: 1 } : null), [anchor]);
   const { containerRef, menuRef: positionedRef, position } = useAnchoredMenuPosition(anchorRect);
-  const hoveredAction = state.hovered == null ? null : state.hovered < actions.length ? actions[state.hovered] ?? null : null;
+  const hoveredAction =
+    state.hovered == null ? null : state.hovered < actions.length ? (actions[state.hovered] ?? null) : null;
   const hoveredLabel = state.hovered == null ? null : hoveredAction ? hoveredAction.label : moreLabel;
 
   // A tap outside the row (on the app's chrome) dismisses a resting menu; taps
@@ -58,7 +68,11 @@ export function ReaderHoldMenu({ state, title, actions, moreLabel, moreItems, me
     if (!state.anchor || state.sliding) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && (positionedRef.current?.contains(target) || (target instanceof Element && target.closest("[data-ui-portal]")))) return;
+      if (
+        target instanceof Node &&
+        (positionedRef.current?.contains(target) || (target instanceof Element && target.closest("[data-ui-portal]")))
+      )
+        return;
       onClose();
     };
     document.addEventListener("pointerdown", onPointerDown, true);
@@ -67,7 +81,8 @@ export function ReaderHoldMenu({ state, title, actions, moreLabel, moreItems, me
 
   if (!anchorRect) return null;
 
-  const actionButtonClass = "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40 h-10 w-10";
+  const actionButtonClass =
+    "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40 h-10 w-10";
   const raised = "bg-fill-strong text-fg scale-110";
 
   return (
@@ -103,8 +118,15 @@ export function ReaderHoldMenu({ state, title, actions, moreLabel, moreItems, me
                 size="sm"
                 disabled={action.disabled}
                 aria-pressed={action.pressed}
-                onClick={() => { onClose(); action.run(); }}
-                className={cn(actionButtonClass, action.pressed && "bg-fill-strong text-fg", state.sliding && state.hovered === index && raised)}
+                onClick={() => {
+                  onClose();
+                  action.run();
+                }}
+                className={cn(
+                  actionButtonClass,
+                  action.pressed && "bg-fill-strong text-fg",
+                  state.sliding && state.hovered === index && raised,
+                )}
                 icon={action.icon}
               />
             ))}
@@ -124,8 +146,17 @@ export function ReaderHoldMenu({ state, title, actions, moreLabel, moreItems, me
               align="right"
               side={position.top > 240 ? "top" : "bottom"}
               open={state.moreOpen}
-              onOpenChange={open => { onMoreOpenChange(open); if (!open) onClose(); }}
-              items={moreItems.map(item => ({ ...item, onClick: () => { onClose(); item.onClick(); } }))}
+              onOpenChange={(open) => {
+                onMoreOpenChange(open);
+                if (!open) onClose();
+              }}
+              items={moreItems.map((item) => ({
+                ...item,
+                onClick: () => {
+                  onClose();
+                  item.onClick();
+                },
+              }))}
             />
           </div>
         </div>

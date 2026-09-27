@@ -13,7 +13,7 @@
  * their own and are not followed.
  */
 /** Resolved npm paths, hoisted or bun-isolated (node_modules/.bun/<pkg>@<ver>/node_modules/<pkg>/). */
-const npm = name => [`^node_modules/${name}`, `/node_modules/${name}`];
+const npm = (name) => [`^node_modules/${name}`, `/node_modules/${name}`];
 
 /** @type {import("dependency-cruiser").IConfiguration} */
 module.exports = {
@@ -21,42 +21,48 @@ module.exports = {
     {
       name: "no-circular",
       severity: "error",
-      comment: "Import cycles make module initialization order-dependent (a cycle through the domain barrel already produced a TDZ error). Break the cycle by importing the defining module or moving the shared piece down a layer.",
+      comment:
+        "Import cycles make module initialization order-dependent (a cycle through the domain barrel already produced a TDZ error). Break the cycle by importing the defining module or moving the shared piece down a layer.",
       from: {},
       to: { circular: true },
     },
     {
       name: "lower-layers-not-to-features",
       severity: "error",
-      comment: "domain, platform, services and state sit below features; they must not import feature code, not even types. Move the shared implementation or type down into the lower layer.",
+      comment:
+        "domain, platform, services and state sit below features; they must not import feature code, not even types. Move the shared implementation or type down into the lower layer.",
       from: { path: "^src/(domain|platform|services|state)/" },
       to: { path: "^src/features/" },
     },
     {
       name: "platform-not-to-domain-or-services",
       severity: "error",
-      comment: "platform is infrastructure (IPC, event store, KV, secrets, blobs, sync, OS shell) and depends only on @read-aware/core and other platform modules.",
+      comment:
+        "platform is infrastructure (IPC, event store, KV, secrets, blobs, sync, OS shell) and depends only on @read-aware/core and other platform modules.",
       from: { path: "^src/platform/" },
       to: { path: "^src/(domain|services)/" },
     },
     {
       name: "features-via-public-index",
       severity: "error",
-      comment: "A feature may use another feature only through that feature's public src/features/<name>/index.ts. Add the export there instead of reaching into its internals.",
+      comment:
+        "A feature may use another feature only through that feature's public src/features/<name>/index.ts. Add the export there instead of reaching into its internals.",
       from: { path: "^src/features/([^/]+)/" },
       to: { path: "^src/features/[^/]+/", pathNot: ["^src/features/$1/", "^src/features/[^/]+/index\\.tsx?$"] },
     },
     {
       name: "tauri-core-only-in-ipc",
       severity: "error",
-      comment: "platform/ipc.ts is the IPC seam: it normalizes native failures and re-exports Channel. Import invoke/Channel from there.",
+      comment:
+        "platform/ipc.ts is the IPC seam: it normalizes native failures and re-exports Channel. Import invoke/Channel from there.",
       from: { pathNot: "^src/platform/ipc\\.ts$" },
       to: { path: npm("@tauri-apps/api/core\\.") },
     },
     {
       name: "no-jotai-in-domain-or-platform",
       severity: "error",
-      comment: "Jotai is the React state adapter (src/state). Domain and platform stay framework-free and expose observable reads the state layer mirrors.",
+      comment:
+        "Jotai is the React state adapter (src/state). Domain and platform stay framework-free and expose observable reads the state layer mirrors.",
       from: { path: "^src/(domain|platform)/" },
       to: { path: npm("jotai/") },
     },

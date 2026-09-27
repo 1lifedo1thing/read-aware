@@ -9,14 +9,16 @@ type NavigationView = Pick<FoliateView, "getSectionFractions" | "resolveNavigati
 export async function attachTocFractions(view: NavigationView, entries: TocEntry[]): Promise<TocEntry[]> {
   const fractions = view.getSectionFractions();
   if (!fractions.length) return entries;
-  return Promise.all(entries.map(async entry => {
-    try {
-      const target = await view.resolveNavigation(entry.href);
-      const fraction = target ? fractions[target.index] : undefined;
-      return typeof fraction === "number" ? { ...entry, fraction } : entry;
-    } catch (error) {
-      log.warn("Could not resolve chapter mark", error);
-      return entry;
-    }
-  }));
+  return Promise.all(
+    entries.map(async (entry) => {
+      try {
+        const target = await view.resolveNavigation(entry.href);
+        const fraction = target ? fractions[target.index] : undefined;
+        return typeof fraction === "number" ? { ...entry, fraction } : entry;
+      } catch (error) {
+        log.warn("Could not resolve chapter mark", error);
+        return entry;
+      }
+    }),
+  );
 }

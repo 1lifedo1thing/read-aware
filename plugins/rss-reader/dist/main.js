@@ -3736,8 +3736,22 @@ async function upsertFeed(ctx, feed, content) {
   if (!content && !cached)
     throw Object.assign(new Error("Referenced RSS cache is missing"), { code: "library/content-unavailable" });
   const result = await ctx.services.storage.applyDocuments([
-    { kind: "put", collection: COLLECTION, id: feed.url, expectedRevision: current?.revision ?? null, data: feed, bookId: feed.bookId },
-    content ? { kind: "put", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached?.revision ?? null, data: content, bookId: feed.bookId } : { kind: "check", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached.revision }
+    {
+      kind: "put",
+      collection: COLLECTION,
+      id: feed.url,
+      expectedRevision: current?.revision ?? null,
+      data: feed,
+      bookId: feed.bookId
+    },
+    content ? {
+      kind: "put",
+      collection: CONTENT_COLLECTION,
+      id: feed.contentId,
+      expectedRevision: cached?.revision ?? null,
+      data: content,
+      bookId: feed.bookId
+    } : { kind: "check", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached.revision }
   ]);
   if (result.status !== "applied")
     throw conflict();
@@ -3751,7 +3765,9 @@ async function removeFeed(ctx, url, expected) {
     throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
   if (expected && (feed.bookId !== expected.bookId || feed.removalId !== expected.removalId))
     throw conflict();
-  const result = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: COLLECTION, id: url, expectedRevision: document.revision }]);
+  const result = await ctx.services.storage.applyDocuments([
+    { kind: "delete", collection: COLLECTION, id: url, expectedRevision: document.revision }
+  ]);
   if (result.status !== "applied")
     throw conflict();
   if (feed.contentId)
@@ -3828,14 +3844,16 @@ async function markFeedRemoval(ctx, url, expectedBookId) {
   if (feed.removalId)
     return feed;
   const marked = { ...feed, removalId: crypto.randomUUID() };
-  const result = await ctx.services.storage.applyDocuments([{
-    kind: "put",
-    collection: COLLECTION,
-    id: url,
-    expectedRevision: document.revision,
-    data: marked,
-    bookId: feed.bookId
-  }]);
+  const result = await ctx.services.storage.applyDocuments([
+    {
+      kind: "put",
+      collection: COLLECTION,
+      id: url,
+      expectedRevision: document.revision,
+      data: marked,
+      bookId: feed.bookId
+    }
+  ]);
   if (result.status !== "applied")
     throw conflict();
   return marked;
@@ -3887,7 +3905,12 @@ async function saveRefresh(ctx, url, notify) {
   const existing = await getFeed(ctx, url);
   assertNotRemoving(existing);
   const { title, articles, content } = await fetchFeed(ctx, url);
-  const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: url, title, author: "RSS" });
+  const book = await ctx.domains.library.commands.books.addVirtualBook({
+    providerId: PROVIDER_ID,
+    key: url,
+    title,
+    author: "RSS"
+  });
   const prepared = await prepareContent(url, content);
   const contentId = prepared.id;
   const now = new Date().toISOString();
@@ -3945,7 +3968,12 @@ function ensureBook(ctx, input) {
     if (!feed)
       throw Object.assign(new Error("RSS subscription was removed"), { code: "library/book-not-found" });
     assertNotRemoving(feed);
-    const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: feed.url, title: feed.title, author: "RSS" });
+    const book = await ctx.domains.library.commands.books.addVirtualBook({
+      providerId: PROVIDER_ID,
+      key: feed.url,
+      title: feed.title,
+      author: "RSS"
+    });
     if (book.id === feed.bookId)
       return feed;
     const healed = { ...feed, bookId: book.id };
@@ -3995,7 +4023,9 @@ async function openFeed(ctx, input, articleId) {
   await loadFeedContent(ctx, feed.url);
   const current = await getFeed(ctx, feed.url);
   if (!current || articleId && !current.articles.some((article) => article.id === articleId)) {
-    throw Object.assign(new Error("RSS article no longer exists in this snapshot"), { code: "reader/target-not-found" });
+    throw Object.assign(new Error("RSS article no longer exists in this snapshot"), {
+      code: "reader/target-not-found"
+    });
   }
   feed = current;
   let session = await ctx.domains.reading.queries.session();
@@ -4008,11 +4038,17 @@ async function openFeed(ctx, input, articleId) {
   await ctx.domains.reading.commands.openBook(feed.bookId);
   session = await ctx.domains.reading.queries.session();
   if (articleId)
-    await ctx.domains.reading.commands.goTo({ bookId: feed.bookId, href: articleId, contentVersion: session.location?.contentVersion });
+    await ctx.domains.reading.commands.goTo({
+      bookId: feed.bookId,
+      href: articleId,
+      contentVersion: session.location?.contentVersion
+    });
 }
 function assertNotRemoving(feed) {
   if (feed?.removalId)
-    throw Object.assign(new Error("RSS removal is pending; finish unsubscribe before opening or refreshing"), { code: "plugin/storage-conflict" });
+    throw Object.assign(new Error("RSS removal is pending; finish unsubscribe before opening or refreshing"), {
+      code: "plugin/storage-conflict"
+    });
 }
 async function finishFeedRemoval(ctx, feed) {
   const current = await getFeed(ctx, feed.url);
@@ -4021,7 +4057,11 @@ async function finishFeedRemoval(ctx, feed) {
   if (!feed.removalId || current.removalId !== feed.removalId || current.bookId !== feed.bookId) {
     throw Object.assign(new Error("RSS removal intent was replaced"), { code: "plugin/storage-conflict" });
   }
-  await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: feed.url, expectedBookId: feed.bookId });
+  await ctx.domains.library.commands.books.removeVirtualBook({
+    providerId: PROVIDER_ID,
+    key: feed.url,
+    expectedBookId: feed.bookId
+  });
   await removeFeed(ctx, feed.url, { bookId: feed.bookId, removalId: feed.removalId });
 }
 async function recoverFeedRemovals(ctx) {
@@ -4111,11 +4151,21 @@ async function importOpml(ctx, text, offset = 0, limit = 10) {
       const index = next++, url = batch[index];
       try {
         const { created, feed } = await subscribeIfMissing(ctx, url);
-        items[index] = { url, status: created ? "added" : "existing", title: feed.title, bookId: feed.bookId, contentPending: feed.contentPending === true };
+        items[index] = {
+          url,
+          status: created ? "added" : "existing",
+          title: feed.title,
+          bookId: feed.bookId,
+          contentPending: feed.contentPending === true
+        };
       } catch (error) {
         console.warn("RSS OPML entry import failed", error);
         const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
-        items[index] = { url, status: "failed", errorCode: typeof code === "string" && /^[a-z0-9-]+\/[a-z0-9-]+$/.test(code) ? code : "ipc/unknown" };
+        items[index] = {
+          url,
+          status: "failed",
+          errorCode: typeof code === "string" && /^[a-z0-9-]+\/[a-z0-9-]+$/.test(code) ? code : "ipc/unknown"
+        };
       }
     }
   }));
@@ -4152,11 +4202,16 @@ function registerAgentTools(ctx) {
     contexts: ["global"],
     approval: "required",
     description: "Import one page of RSS/Atom subscriptions from user-provided OPML XML after host approval. Fetches the selected feed URLs and adds virtual books with cached articles. Existing subscriptions are skipped, not refreshed. Each page is separately approved; pass the unchanged XML and returned nextOffset to continue. Results distinguish added/existing/failed; failures may have persisted a subscription or pending source notification, so this is not an atomic transaction. XML input is at most 8000 characters for the confirmation surface; larger files use the RSS plugin's native file-import action. Does not open a book, change the current reading position or remove existing subscriptions.",
-    parameters: { type: "object", properties: {
-      opml: { type: "string", minLength: 1, maxLength: 8000 },
-      offset: { type: "integer", minimum: 0 },
-      limit: { type: "integer", minimum: 1, maximum: 20 }
-    }, required: ["opml"], additionalProperties: false },
+    parameters: {
+      type: "object",
+      properties: {
+        opml: { type: "string", minLength: 1, maxLength: 8000 },
+        offset: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 20 }
+      },
+      required: ["opml"],
+      additionalProperties: false
+    },
     execute: async (params) => {
       if (typeof params.opml !== "string" || !params.opml.trim() || params.opml.length > 8000) {
         throw Object.assign(new Error("Invalid OPML tool input"), { code: "plugin/invalid-input" });
@@ -4170,10 +4225,15 @@ function registerAgentTools(ctx) {
     contexts: ["global"],
     approval: "required",
     description: "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused. The deletion intent is saved before host removal and retried after interruptions; list_feeds exposes removalPending. Pending removal is not a completed unsubscribe, and refresh/open will not recreate its book.",
-    parameters: { type: "object", properties: {
-      url: { type: "string", minLength: 1, maxLength: 2048 },
-      bookId: { type: "string", minLength: 1, maxLength: 256 }
-    }, required: ["url", "bookId"], additionalProperties: false },
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", minLength: 1, maxLength: 2048 },
+        bookId: { type: "string", minLength: 1, maxLength: 256 }
+      },
+      required: ["url", "bookId"],
+      additionalProperties: false
+    },
     execute: async (params) => {
       if (typeof params.url !== "string" || !params.url.trim() || params.url.length > 2048 || typeof params.bookId !== "string" || !params.bookId.trim() || params.bookId.length > 256) {
         throw Object.assign(new Error("Invalid RSS subscription target"), { code: "plugin/invalid-input" });
@@ -4232,7 +4292,11 @@ function registerAgentTools(ctx) {
       const url = typeof params.url === "string" ? params.url.trim() : "";
       const existing = await getFeed(ctx, url);
       if (existing) {
-        return { subscribed: false, reason: existing.removalId ? "unsubscribe pending" : "already subscribed", feed: existing.title };
+        return {
+          subscribed: false,
+          reason: existing.removalId ? "unsubscribe pending" : "already subscribed",
+          feed: existing.title
+        };
       }
       const feed = await subscribe(ctx, url);
       return {
@@ -4292,7 +4356,16 @@ var STRINGS = {
     de: "Abbestellung ausstehend. Öffnen und Aktualisieren sind bis zum Abschluss der gespeicherten Löschung gesperrt. Ein neuer Versuch erstellt das Buch nicht erneut.",
     es: "Baja pendiente. La apertura y actualización están pausadas hasta terminar la eliminación guardada. Reintentar no vuelve a crear el libro."
   },
-  finishRemoval: { default: "Finish unsubscribe", "zh-Hans": "完成退订", "zh-Hant": "完成退訂", ja: "購読解除を完了", ru: "Завершить отмену", fr: "Terminer le désabonnement", de: "Abbestellung abschließen", es: "Completar baja" },
+  finishRemoval: {
+    default: "Finish unsubscribe",
+    "zh-Hans": "完成退订",
+    "zh-Hant": "完成退訂",
+    ja: "購読解除を完了",
+    ru: "Завершить отмену",
+    fr: "Terminer le désabonnement",
+    de: "Abbestellung abschließen",
+    es: "Completar baja"
+  },
   chooseOpmlFile: {
     default: "Choose OPML file",
     "zh-Hans": "选择 OPML 文件",
@@ -4694,28 +4767,119 @@ var en = [
 ];
 var copies = {
   en,
-  "zh-Hans": ["存储数据", "偏好设置", "订阅与文章缓存", "私有文件", "刷新", "偏好设置可漫游；订阅、文章缓存和私有文件仅保存在本机。此处未检查同步是否送达。", "完整应用备份包含偏好、文档和私有文件，但不含插件凭据。OPML 导出仅含订阅地址，不含文章缓存。", "偏好和文档未设总配额。批量文档写入有单文档和单批限制。以下仅统计已落盘的内容字节，不代表磁盘总占用。", "单文档 / 单批写入限制"],
-  "zh-Hant": ["儲存資料", "偏好設定", "訂閱與文章快取", "私人檔案", "重新整理", "偏好設定可漫遊；訂閱、文章快取與私人檔案僅存在本機。此處未檢查同步是否送達。", "完整應用程式備份包含偏好、文件與私人檔案，但不含外掛憑證。OPML 僅匯出訂閱網址，不含文章快取。", "偏好與文件未設總配額。批次文件寫入有單文件與單批限制。以下僅統計已保存的內容位元組，不代表磁碟總用量。", "單文件 / 單批寫入限制"],
-  ja: ["保存データ", "設定", "購読と記事キャッシュ", "非公開ファイル", "更新", "設定は同期対象です。購読・記事キャッシュ・非公開ファイルは端末内のみです。同期の到達状況は未確認です。", "アプリ全体のバックアップには設定・文書・非公開ファイルが含まれますが、プラグイン認証情報は含まれません。OPML は購読 URL のみです。", "設定と文書には合計容量制限がありません。文書の一括書き込みには文書単位と一括単位の制限があります。表示は保存済み本文のバイト数で、ディスク使用量全体ではありません。", "文書 / 一括書き込み制限"],
-  de: ["Gespeicherte Daten", "Einstellungen", "Abonnements und Artikelcache", "Private Dateien", "Aktualisieren", "Einstellungen können synchronisiert werden. Abonnements, Artikelcache und private Dateien bleiben lokal. Die Übertragung wurde nicht geprüft.", "Vollständige App-Backups enthalten Einstellungen, Dokumente und private Dateien, aber keine Plugin-Zugangsdaten. OPML exportiert nur Abonnement-URLs.", "Für Einstellungen und Dokumente gilt kein Gesamtkontingent. Dokumentstapel haben Einzel- und Stapellimits. Angezeigt werden gespeicherte Nutzdatenbytes, nicht der gesamte Speicherbedarf.", "Limit pro Dokument / Stapel"],
-  fr: ["Données stockées", "Préférences", "Abonnements et cache d’articles", "Fichiers privés", "Actualiser", "Les préférences peuvent être synchronisées. Abonnements, cache et fichiers privés restent locaux. La livraison de la synchronisation n’a pas été vérifiée.", "Les sauvegardes complètes incluent préférences, documents et fichiers privés, mais pas les identifiants du plugin. OPML exporte uniquement les URL d’abonnement.", "Aucun quota total pour les préférences et documents. Les écritures groupées ont des limites par document et par lot. Les chiffres comptent les octets de contenu enregistrés, pas l’espace disque total.", "Limite par document / lot"],
-  es: ["Datos almacenados", "Preferencias", "Suscripciones y caché de artículos", "Archivos privados", "Actualizar", "Las preferencias pueden sincronizarse. Suscripciones, caché y archivos privados son locales. No se ha comprobado la entrega de la sincronización.", "Las copias completas incluyen preferencias, documentos y archivos privados, pero no credenciales del plugin. OPML solo exporta las URL de suscripción.", "No hay cuota total para preferencias y documentos. Las escrituras por lotes tienen límites por documento y lote. Las cifras cuentan bytes de contenido guardado, no el uso total del disco.", "Límite por documento / lote"],
-  ru: ["Сохранённые данные", "Настройки", "Подписки и кэш статей", "Личные файлы", "Обновить", "Настройки могут синхронизироваться. Подписки, кэш и личные файлы остаются на устройстве. Доставка синхронизации не проверена.", "Полная резервная копия включает настройки, документы и личные файлы, но не учётные данные плагина. OPML экспортирует только URL подписок.", "Общей квоты настроек и документов нет. Пакетная запись ограничена размером документа и пакета. Показаны байты сохранённого содержимого, а не полный объём на диске.", "Лимит документа / пакета"]
+  "zh-Hans": [
+    "存储数据",
+    "偏好设置",
+    "订阅与文章缓存",
+    "私有文件",
+    "刷新",
+    "偏好设置可漫游；订阅、文章缓存和私有文件仅保存在本机。此处未检查同步是否送达。",
+    "完整应用备份包含偏好、文档和私有文件，但不含插件凭据。OPML 导出仅含订阅地址，不含文章缓存。",
+    "偏好和文档未设总配额。批量文档写入有单文档和单批限制。以下仅统计已落盘的内容字节，不代表磁盘总占用。",
+    "单文档 / 单批写入限制"
+  ],
+  "zh-Hant": [
+    "儲存資料",
+    "偏好設定",
+    "訂閱與文章快取",
+    "私人檔案",
+    "重新整理",
+    "偏好設定可漫遊；訂閱、文章快取與私人檔案僅存在本機。此處未檢查同步是否送達。",
+    "完整應用程式備份包含偏好、文件與私人檔案，但不含外掛憑證。OPML 僅匯出訂閱網址，不含文章快取。",
+    "偏好與文件未設總配額。批次文件寫入有單文件與單批限制。以下僅統計已保存的內容位元組，不代表磁碟總用量。",
+    "單文件 / 單批寫入限制"
+  ],
+  ja: [
+    "保存データ",
+    "設定",
+    "購読と記事キャッシュ",
+    "非公開ファイル",
+    "更新",
+    "設定は同期対象です。購読・記事キャッシュ・非公開ファイルは端末内のみです。同期の到達状況は未確認です。",
+    "アプリ全体のバックアップには設定・文書・非公開ファイルが含まれますが、プラグイン認証情報は含まれません。OPML は購読 URL のみです。",
+    "設定と文書には合計容量制限がありません。文書の一括書き込みには文書単位と一括単位の制限があります。表示は保存済み本文のバイト数で、ディスク使用量全体ではありません。",
+    "文書 / 一括書き込み制限"
+  ],
+  de: [
+    "Gespeicherte Daten",
+    "Einstellungen",
+    "Abonnements und Artikelcache",
+    "Private Dateien",
+    "Aktualisieren",
+    "Einstellungen können synchronisiert werden. Abonnements, Artikelcache und private Dateien bleiben lokal. Die Übertragung wurde nicht geprüft.",
+    "Vollständige App-Backups enthalten Einstellungen, Dokumente und private Dateien, aber keine Plugin-Zugangsdaten. OPML exportiert nur Abonnement-URLs.",
+    "Für Einstellungen und Dokumente gilt kein Gesamtkontingent. Dokumentstapel haben Einzel- und Stapellimits. Angezeigt werden gespeicherte Nutzdatenbytes, nicht der gesamte Speicherbedarf.",
+    "Limit pro Dokument / Stapel"
+  ],
+  fr: [
+    "Données stockées",
+    "Préférences",
+    "Abonnements et cache d’articles",
+    "Fichiers privés",
+    "Actualiser",
+    "Les préférences peuvent être synchronisées. Abonnements, cache et fichiers privés restent locaux. La livraison de la synchronisation n’a pas été vérifiée.",
+    "Les sauvegardes complètes incluent préférences, documents et fichiers privés, mais pas les identifiants du plugin. OPML exporte uniquement les URL d’abonnement.",
+    "Aucun quota total pour les préférences et documents. Les écritures groupées ont des limites par document et par lot. Les chiffres comptent les octets de contenu enregistrés, pas l’espace disque total.",
+    "Limite par document / lot"
+  ],
+  es: [
+    "Datos almacenados",
+    "Preferencias",
+    "Suscripciones y caché de artículos",
+    "Archivos privados",
+    "Actualizar",
+    "Las preferencias pueden sincronizarse. Suscripciones, caché y archivos privados son locales. No se ha comprobado la entrega de la sincronización.",
+    "Las copias completas incluyen preferencias, documentos y archivos privados, pero no credenciales del plugin. OPML solo exporta las URL de suscripción.",
+    "No hay cuota total para preferencias y documentos. Las escrituras por lotes tienen límites por documento y lote. Las cifras cuentan bytes de contenido guardado, no el uso total del disco.",
+    "Límite por documento / lote"
+  ],
+  ru: [
+    "Сохранённые данные",
+    "Настройки",
+    "Подписки и кэш статей",
+    "Личные файлы",
+    "Обновить",
+    "Настройки могут синхронизироваться. Подписки, кэш и личные файлы остаются на устройстве. Доставка синхронизации не проверена.",
+    "Полная резервная копия включает настройки, документы и личные файлы, но не учётные данные плагина. OPML экспортирует только URL подписок.",
+    "Общей квоты настроек и документов нет. Пакетная запись ограничена размером документа и пакета. Показаны байты сохранённого содержимого, а не полный объём на диске.",
+    "Лимит документа / пакета"
+  ]
 };
 var storageCopy = (locale) => copies[locale] ?? copies[locale.split("-")[0]] ?? en;
 var bytes = (value) => `${(value / 1024 / 1024).toFixed(2)} MiB`;
 async function storageView(ctx) {
   await ctx.services.storage.flush();
   const policy = await ctx.services.storage.policy(), t = storageCopy(ctx.locale);
-  return { kind: "detail", title: t[0], content: [
-    { kind: "keyValue", rows: [
-      { label: t[1], value: bytes(policy.usage.kv.valueBytes) },
-      { label: t[2], value: `${policy.usage.documents.items} · ${bytes(policy.usage.documents.valueBytes)}` },
-      { label: t[3], value: `${policy.usage.assets.items} / ${policy.assets.maxItems} · ${bytes(policy.usage.assets.valueBytes)} / ${bytes(policy.assets.maxBytes)}` },
-      { label: t[8], value: `${bytes(policy.documents.applyMaxDocumentBytes)} / ${bytes(policy.documents.applyMaxBatchBytes)}` }
-    ] },
-    ...[5, 6, 7].map((index) => ({ kind: "text", text: t[index] }))
-  ], actions: [{ id: "refresh", label: t[4], icon: "arrows-clockwise", run: async () => ({ view: await storageView(ctx), navigation: "replace" }) }] };
+  return {
+    kind: "detail",
+    title: t[0],
+    content: [
+      {
+        kind: "keyValue",
+        rows: [
+          { label: t[1], value: bytes(policy.usage.kv.valueBytes) },
+          { label: t[2], value: `${policy.usage.documents.items} · ${bytes(policy.usage.documents.valueBytes)}` },
+          {
+            label: t[3],
+            value: `${policy.usage.assets.items} / ${policy.assets.maxItems} · ${bytes(policy.usage.assets.valueBytes)} / ${bytes(policy.assets.maxBytes)}`
+          },
+          {
+            label: t[8],
+            value: `${bytes(policy.documents.applyMaxDocumentBytes)} / ${bytes(policy.documents.applyMaxBatchBytes)}`
+          }
+        ]
+      },
+      ...[5, 6, 7].map((index) => ({ kind: "text", text: t[index] }))
+    ],
+    actions: [
+      {
+        id: "refresh",
+        label: t[4],
+        icon: "arrows-clockwise",
+        run: async () => ({ view: await storageView(ctx), navigation: "replace" })
+      }
+    ]
+  };
 }
 
 // src/opml-file.ts
@@ -4826,13 +4990,188 @@ var en2 = {
 };
 var copies2 = {
   en: en2,
-  "zh-Hans": { title: "自动刷新", enabled: "已启用", paused: "已暂停", running: "运行中", state: "计划", attempt: "上次执行", started: "上次开始", finished: "上次结束", succeededAt: "上次成功刷新", interval: "间隔（分钟）", none: "无", succeeded: "成功", failed: "失败", cancelled: "已取消", interrupted: "已中断", unavailable: "计划不可用", pause: "暂停", resume: "恢复", run: "立即运行", refresh: "刷新状态", pausedReceipt: "自动刷新已暂停", resumedReceipt: "自动刷新已恢复", completed: "计划刷新已完成", alreadyRunning: "刷新已在运行" },
-  "zh-Hant": { title: "自動重新整理", enabled: "已啟用", paused: "已暫停", running: "執行中", state: "排程", attempt: "上次執行", started: "上次開始", finished: "上次結束", succeededAt: "上次成功重新整理", interval: "間隔（分鐘）", none: "無", succeeded: "成功", failed: "失敗", cancelled: "已取消", interrupted: "已中斷", unavailable: "排程無法使用", pause: "暫停", resume: "恢復", run: "立即執行", refresh: "重新整理狀態", pausedReceipt: "已暫停自動重新整理", resumedReceipt: "已恢復自動重新整理", completed: "排程重新整理已完成", alreadyRunning: "重新整理正在執行" },
-  ja: { title: "自動更新", enabled: "有効", paused: "一時停止", running: "実行中", state: "スケジュール", attempt: "前回の実行", started: "前回の開始", finished: "前回の終了", succeededAt: "前回の更新成功", interval: "間隔（分）", none: "なし", succeeded: "成功", failed: "失敗", cancelled: "キャンセル済み", interrupted: "中断", unavailable: "スケジュールは利用できません", pause: "一時停止", resume: "再開", run: "今すぐ実行", refresh: "状態を更新", pausedReceipt: "自動更新を一時停止しました", resumedReceipt: "自動更新を再開しました", completed: "定期更新が完了しました", alreadyRunning: "更新は実行中です" },
-  de: { title: "Automatische Aktualisierung", enabled: "Aktiviert", paused: "Pausiert", running: "Läuft", state: "Zeitplan", attempt: "Letzter Versuch", started: "Zuletzt gestartet", finished: "Zuletzt beendet", succeededAt: "Letzte erfolgreiche Aktualisierung", interval: "Intervall (Minuten)", none: "Keine", succeeded: "Erfolgreich", failed: "Fehlgeschlagen", cancelled: "Abgebrochen", interrupted: "Unterbrochen", unavailable: "Zeitplan nicht verfügbar", pause: "Pausieren", resume: "Fortsetzen", run: "Jetzt ausführen", refresh: "Status aktualisieren", pausedReceipt: "Automatische Aktualisierung pausiert", resumedReceipt: "Automatische Aktualisierung fortgesetzt", completed: "Geplante Aktualisierung abgeschlossen", alreadyRunning: "Aktualisierung läuft bereits" },
-  fr: { title: "Actualisation automatique", enabled: "Activée", paused: "En pause", running: "En cours", state: "Planification", attempt: "Dernière tentative", started: "Dernier démarrage", finished: "Dernière fin", succeededAt: "Dernière actualisation réussie", interval: "Intervalle (minutes)", none: "Aucune", succeeded: "Réussie", failed: "Échouée", cancelled: "Annulée", interrupted: "Interrompue", unavailable: "Planification indisponible", pause: "Suspendre", resume: "Reprendre", run: "Exécuter maintenant", refresh: "Actualiser l'état", pausedReceipt: "Actualisation automatique suspendue", resumedReceipt: "Actualisation automatique reprise", completed: "Actualisation planifiée terminée", alreadyRunning: "Actualisation déjà en cours" },
-  es: { title: "Actualización automática", enabled: "Activada", paused: "En pausa", running: "En curso", state: "Programación", attempt: "Último intento", started: "Último inicio", finished: "Última finalización", succeededAt: "Última actualización correcta", interval: "Intervalo (minutos)", none: "Ninguno", succeeded: "Correcto", failed: "Fallido", cancelled: "Cancelado", interrupted: "Interrumpido", unavailable: "Programación no disponible", pause: "Pausar", resume: "Reanudar", run: "Ejecutar ahora", refresh: "Actualizar estado", pausedReceipt: "Actualización automática pausada", resumedReceipt: "Actualización automática reanudada", completed: "Actualización programada completada", alreadyRunning: "La actualización ya está en curso" },
-  ru: { title: "Автообновление", enabled: "Включено", paused: "Приостановлено", running: "Выполняется", state: "Расписание", attempt: "Последняя попытка", started: "Последний запуск", finished: "Последнее завершение", succeededAt: "Последнее успешное обновление", interval: "Интервал (минуты)", none: "Нет", succeeded: "Успешно", failed: "Ошибка", cancelled: "Отменено", interrupted: "Прервано", unavailable: "Расписание недоступно", pause: "Приостановить", resume: "Возобновить", run: "Запустить сейчас", refresh: "Обновить статус", pausedReceipt: "Автообновление приостановлено", resumedReceipt: "Автообновление возобновлено", completed: "Плановое обновление завершено", alreadyRunning: "Обновление уже выполняется" }
+  "zh-Hans": {
+    title: "自动刷新",
+    enabled: "已启用",
+    paused: "已暂停",
+    running: "运行中",
+    state: "计划",
+    attempt: "上次执行",
+    started: "上次开始",
+    finished: "上次结束",
+    succeededAt: "上次成功刷新",
+    interval: "间隔（分钟）",
+    none: "无",
+    succeeded: "成功",
+    failed: "失败",
+    cancelled: "已取消",
+    interrupted: "已中断",
+    unavailable: "计划不可用",
+    pause: "暂停",
+    resume: "恢复",
+    run: "立即运行",
+    refresh: "刷新状态",
+    pausedReceipt: "自动刷新已暂停",
+    resumedReceipt: "自动刷新已恢复",
+    completed: "计划刷新已完成",
+    alreadyRunning: "刷新已在运行"
+  },
+  "zh-Hant": {
+    title: "自動重新整理",
+    enabled: "已啟用",
+    paused: "已暫停",
+    running: "執行中",
+    state: "排程",
+    attempt: "上次執行",
+    started: "上次開始",
+    finished: "上次結束",
+    succeededAt: "上次成功重新整理",
+    interval: "間隔（分鐘）",
+    none: "無",
+    succeeded: "成功",
+    failed: "失敗",
+    cancelled: "已取消",
+    interrupted: "已中斷",
+    unavailable: "排程無法使用",
+    pause: "暫停",
+    resume: "恢復",
+    run: "立即執行",
+    refresh: "重新整理狀態",
+    pausedReceipt: "已暫停自動重新整理",
+    resumedReceipt: "已恢復自動重新整理",
+    completed: "排程重新整理已完成",
+    alreadyRunning: "重新整理正在執行"
+  },
+  ja: {
+    title: "自動更新",
+    enabled: "有効",
+    paused: "一時停止",
+    running: "実行中",
+    state: "スケジュール",
+    attempt: "前回の実行",
+    started: "前回の開始",
+    finished: "前回の終了",
+    succeededAt: "前回の更新成功",
+    interval: "間隔（分）",
+    none: "なし",
+    succeeded: "成功",
+    failed: "失敗",
+    cancelled: "キャンセル済み",
+    interrupted: "中断",
+    unavailable: "スケジュールは利用できません",
+    pause: "一時停止",
+    resume: "再開",
+    run: "今すぐ実行",
+    refresh: "状態を更新",
+    pausedReceipt: "自動更新を一時停止しました",
+    resumedReceipt: "自動更新を再開しました",
+    completed: "定期更新が完了しました",
+    alreadyRunning: "更新は実行中です"
+  },
+  de: {
+    title: "Automatische Aktualisierung",
+    enabled: "Aktiviert",
+    paused: "Pausiert",
+    running: "Läuft",
+    state: "Zeitplan",
+    attempt: "Letzter Versuch",
+    started: "Zuletzt gestartet",
+    finished: "Zuletzt beendet",
+    succeededAt: "Letzte erfolgreiche Aktualisierung",
+    interval: "Intervall (Minuten)",
+    none: "Keine",
+    succeeded: "Erfolgreich",
+    failed: "Fehlgeschlagen",
+    cancelled: "Abgebrochen",
+    interrupted: "Unterbrochen",
+    unavailable: "Zeitplan nicht verfügbar",
+    pause: "Pausieren",
+    resume: "Fortsetzen",
+    run: "Jetzt ausführen",
+    refresh: "Status aktualisieren",
+    pausedReceipt: "Automatische Aktualisierung pausiert",
+    resumedReceipt: "Automatische Aktualisierung fortgesetzt",
+    completed: "Geplante Aktualisierung abgeschlossen",
+    alreadyRunning: "Aktualisierung läuft bereits"
+  },
+  fr: {
+    title: "Actualisation automatique",
+    enabled: "Activée",
+    paused: "En pause",
+    running: "En cours",
+    state: "Planification",
+    attempt: "Dernière tentative",
+    started: "Dernier démarrage",
+    finished: "Dernière fin",
+    succeededAt: "Dernière actualisation réussie",
+    interval: "Intervalle (minutes)",
+    none: "Aucune",
+    succeeded: "Réussie",
+    failed: "Échouée",
+    cancelled: "Annulée",
+    interrupted: "Interrompue",
+    unavailable: "Planification indisponible",
+    pause: "Suspendre",
+    resume: "Reprendre",
+    run: "Exécuter maintenant",
+    refresh: "Actualiser l'état",
+    pausedReceipt: "Actualisation automatique suspendue",
+    resumedReceipt: "Actualisation automatique reprise",
+    completed: "Actualisation planifiée terminée",
+    alreadyRunning: "Actualisation déjà en cours"
+  },
+  es: {
+    title: "Actualización automática",
+    enabled: "Activada",
+    paused: "En pausa",
+    running: "En curso",
+    state: "Programación",
+    attempt: "Último intento",
+    started: "Último inicio",
+    finished: "Última finalización",
+    succeededAt: "Última actualización correcta",
+    interval: "Intervalo (minutos)",
+    none: "Ninguno",
+    succeeded: "Correcto",
+    failed: "Fallido",
+    cancelled: "Cancelado",
+    interrupted: "Interrumpido",
+    unavailable: "Programación no disponible",
+    pause: "Pausar",
+    resume: "Reanudar",
+    run: "Ejecutar ahora",
+    refresh: "Actualizar estado",
+    pausedReceipt: "Actualización automática pausada",
+    resumedReceipt: "Actualización automática reanudada",
+    completed: "Actualización programada completada",
+    alreadyRunning: "La actualización ya está en curso"
+  },
+  ru: {
+    title: "Автообновление",
+    enabled: "Включено",
+    paused: "Приостановлено",
+    running: "Выполняется",
+    state: "Расписание",
+    attempt: "Последняя попытка",
+    started: "Последний запуск",
+    finished: "Последнее завершение",
+    succeededAt: "Последнее успешное обновление",
+    interval: "Интервал (минуты)",
+    none: "Нет",
+    succeeded: "Успешно",
+    failed: "Ошибка",
+    cancelled: "Отменено",
+    interrupted: "Прервано",
+    unavailable: "Расписание недоступно",
+    pause: "Приостановить",
+    resume: "Возобновить",
+    run: "Запустить сейчас",
+    refresh: "Обновить статус",
+    pausedReceipt: "Автообновление приостановлено",
+    resumedReceipt: "Автообновление возобновлено",
+    completed: "Плановое обновление завершено",
+    alreadyRunning: "Обновление уже выполняется"
+  }
 };
 var scheduleCopy = (locale) => copies2[locale] ?? copies2[locale.split("-")[0]] ?? en2;
 
@@ -4861,51 +5200,89 @@ async function refreshScheduleView(ctx) {
     if (!current)
       return { kind: "detail", title: t.title, content: [{ kind: "text", text: t.unavailable }], actions: [refresh] };
     const action = current.paused ? "resume" : "pause";
-    return { kind: "detail", title: t.title, content: [
-      { kind: "keyValue", rows: [
-        { label: t.state, value: current.paused ? t.paused : t.enabled },
-        { label: t.interval, value: String(current.everyMinutes) },
-        { label: t.attempt, value: current.running ? t.running : current.lastOutcome ? t[current.lastOutcome] : t.none },
-        { label: t.started, value: when(current.lastStartedAt, ctx.locale, t.none) },
-        { label: t.finished, value: when(current.lastFinishedAt, ctx.locale, t.none) },
-        { label: t.succeededAt, value: when(current.lastSuccessAt, ctx.locale, t.none) }
-      ] },
-      ...current.lastErrorCode ? [{ kind: "error", code: current.lastErrorCode }] : []
-    ], actions: [
-      { id: action, label: t[action], icon: action === "pause" ? "pause" : "play", run: async () => {
-        await ctx.services.schedules.control(REFRESH_SCHEDULE, action);
-        return { toast: action === "pause" ? t.pausedReceipt : t.resumedReceipt };
-      } },
-      { id: "run", label: t.run, icon: "arrows-clockwise", run: async () => {
-        const availability = await ctx.services.session.operationAvailability({ operation: "schedules.control", schedule: { pluginId: current.pluginId, id: REFRESH_SCHEDULE, action: "run" } });
-        const blocked = availability.conditions.find((item) => item.state === "unavailable" || item.state === "unconfigured");
-        if (blocked)
-          return { view: { kind: "detail", title: t.title, content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }], actions: [refresh] } };
-        const result = await ctx.services.schedules.control(REFRESH_SCHEDULE, "run");
-        return { toast: result.status === "already-running" ? t.alreadyRunning : t.completed };
-      } },
-      refresh
-    ] };
+    return {
+      kind: "detail",
+      title: t.title,
+      content: [
+        {
+          kind: "keyValue",
+          rows: [
+            { label: t.state, value: current.paused ? t.paused : t.enabled },
+            { label: t.interval, value: String(current.everyMinutes) },
+            {
+              label: t.attempt,
+              value: current.running ? t.running : current.lastOutcome ? t[current.lastOutcome] : t.none
+            },
+            { label: t.started, value: when(current.lastStartedAt, ctx.locale, t.none) },
+            { label: t.finished, value: when(current.lastFinishedAt, ctx.locale, t.none) },
+            { label: t.succeededAt, value: when(current.lastSuccessAt, ctx.locale, t.none) }
+          ]
+        },
+        ...current.lastErrorCode ? [{ kind: "error", code: current.lastErrorCode }] : []
+      ],
+      actions: [
+        {
+          id: action,
+          label: t[action],
+          icon: action === "pause" ? "pause" : "play",
+          run: async () => {
+            await ctx.services.schedules.control(REFRESH_SCHEDULE, action);
+            return { toast: action === "pause" ? t.pausedReceipt : t.resumedReceipt };
+          }
+        },
+        {
+          id: "run",
+          label: t.run,
+          icon: "arrows-clockwise",
+          run: async () => {
+            const availability = await ctx.services.session.operationAvailability({
+              operation: "schedules.control",
+              schedule: { pluginId: current.pluginId, id: REFRESH_SCHEDULE, action: "run" }
+            });
+            const blocked = availability.conditions.find((item) => item.state === "unavailable" || item.state === "unconfigured");
+            if (blocked)
+              return {
+                view: {
+                  kind: "detail",
+                  title: t.title,
+                  content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }],
+                  actions: [refresh]
+                }
+              };
+            const result = await ctx.services.schedules.control(REFRESH_SCHEDULE, "run");
+            return { toast: result.status === "already-running" ? t.alreadyRunning : t.completed };
+          }
+        },
+        refresh
+      ]
+    };
   };
-  return { ...render(), live: { subscribe(channel) {
-    let active = true, revision = 0;
-    const subscription = ctx.services.schedules.observe(query, async (page, delivery) => {
-      if (!active || delivery?.reaction?.status === "cycle")
-        return;
-      schedule = page.schedules.find((item) => item.id === REFRESH_SCHEDULE);
-      try {
-        await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render() });
-      } catch (error) {
-        console.warn("RSS schedule view publication failed", error);
+  return {
+    ...render(),
+    live: {
+      subscribe(channel) {
+        let active = true, revision = 0;
+        const subscription = ctx.services.schedules.observe(query, async (page, delivery) => {
+          if (!active || delivery?.reaction?.status === "cycle")
+            return;
+          schedule = page.schedules.find((item) => item.id === REFRESH_SCHEDULE);
+          try {
+            await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render() });
+          } catch (error) {
+            console.warn("RSS schedule view publication failed", error);
+          }
+        });
+        return {
+          dispose() {
+            if (!active)
+              return;
+            active = false;
+            subscription.dispose();
+          }
+        };
       }
-    });
-    return { dispose() {
-      if (!active)
-        return;
-      active = false;
-      subscription.dispose();
-    } };
-  } } };
+    }
+  };
 }
 
 // src/views.ts
@@ -4990,29 +5367,54 @@ function opmlResultView(ctx, text, result) {
     kind: "detail",
     title: tr(ctx.locale, "importOpml"),
     content: [
-      { kind: "text", text: tr(ctx.locale, "importSummary", {
-        added: result.added,
-        existing: result.existing,
-        failed: result.failed,
-        from: result.offset + 1,
-        to: result.offset + result.items.length,
-        total: result.total
-      }) },
-      { kind: "list", items: result.items.map((item) => ({
-        id: item.url,
-        title: item.url,
-        subtitle: tr(ctx.locale, item.status === "added" ? "importAdded" : item.status === "existing" ? "alreadySubscribed" : "importFailed"),
-        onSelect: () => ({ view: { kind: "detail", title: item.url, content: item.status === "failed" ? [{ kind: "error", code: item.errorCode }] : [{ kind: "text", text: item.title }, ...item.contentPending ? [{ kind: "text", text: tr(ctx.locale, "pendingPublication") }] : []] } })
-      })) }
+      {
+        kind: "text",
+        text: tr(ctx.locale, "importSummary", {
+          added: result.added,
+          existing: result.existing,
+          failed: result.failed,
+          from: result.offset + 1,
+          to: result.offset + result.items.length,
+          total: result.total
+        })
+      },
+      {
+        kind: "list",
+        items: result.items.map((item) => ({
+          id: item.url,
+          title: item.url,
+          subtitle: tr(ctx.locale, item.status === "added" ? "importAdded" : item.status === "existing" ? "alreadySubscribed" : "importFailed"),
+          onSelect: () => ({
+            view: {
+              kind: "detail",
+              title: item.url,
+              content: item.status === "failed" ? [{ kind: "error", code: item.errorCode }] : [
+                { kind: "text", text: item.title },
+                ...item.contentPending ? [{ kind: "text", text: tr(ctx.locale, "pendingPublication") }] : []
+              ]
+            }
+          })
+        }))
+      }
     ],
     actions: [
-      ...result.nextOffset !== null ? [{
-        id: "next",
-        icon: "arrow-right",
-        label: tr(ctx.locale, "importNext"),
-        run: async () => ({ view: opmlResultView(ctx, text, await importOpml(ctx, text, result.nextOffset)), navigation: "replace" })
-      }] : [],
-      { id: "done", icon: "list", label: tr(ctx.locale, "subscriptions"), run: async () => ({ view: await rssPageView(ctx), navigation: "reset" }) }
+      ...result.nextOffset !== null ? [
+        {
+          id: "next",
+          icon: "arrow-right",
+          label: tr(ctx.locale, "importNext"),
+          run: async () => ({
+            view: opmlResultView(ctx, text, await importOpml(ctx, text, result.nextOffset)),
+            navigation: "replace"
+          })
+        }
+      ] : [],
+      {
+        id: "done",
+        icon: "list",
+        label: tr(ctx.locale, "subscriptions"),
+        run: async () => ({ view: await rssPageView(ctx), navigation: "reset" })
+      }
     ]
   };
 }
@@ -5022,10 +5424,22 @@ function feedDetailView(ctx, feed) {
       kind: "detail",
       title: feed.title,
       content: [{ kind: "text", text: tr(ctx.locale, "pendingRemoval") }],
-      actions: [{ id: "remove", label: tr(ctx.locale, "finishRemoval"), icon: "trash", variant: "danger", run: async () => {
-        await unsubscribeFeed(ctx, feed.url, feed.bookId);
-        return { toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }), view: await rssPageView(ctx), navigation: "reset" };
-      } }]
+      actions: [
+        {
+          id: "remove",
+          label: tr(ctx.locale, "finishRemoval"),
+          icon: "trash",
+          variant: "danger",
+          run: async () => {
+            await unsubscribeFeed(ctx, feed.url, feed.bookId);
+            return {
+              toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }),
+              view: await rssPageView(ctx),
+              navigation: "reset"
+            };
+          }
+        }
+      ]
     };
   const articleItems = feed.articles.map((article) => ({
     id: article.id,
@@ -5114,7 +5528,10 @@ async function rssPageView(ctx) {
     icon: "globe",
     keywords: feed.articles.slice(0, 40).map((article) => article.title),
     accessories: [
-      { kind: "tag", text: feed.removalId ? tr(ctx.locale, "finishRemoval") : articlesTag(ctx.locale, feed.articles.length) },
+      {
+        kind: "tag",
+        text: feed.removalId ? tr(ctx.locale, "finishRemoval") : articlesTag(ctx.locale, feed.articles.length)
+      },
       ...formatWhen(ctx, feed.lastFetched, "date") ? [{ kind: "text", text: formatWhen(ctx, feed.lastFetched, "date") }] : []
     ],
     onSelect: () => ({ view: feedDetailView(ctx, feed) })
@@ -5132,8 +5549,18 @@ async function rssPageView(ctx) {
         icon: "plus",
         run: () => ({ view: addFeedView(ctx) })
       },
-      { id: "storage", label: storageCopy(ctx.locale)[0], icon: "database", run: async () => ({ view: await storageView(ctx) }) },
-      { id: "schedule", label: scheduleCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await refreshScheduleView(ctx) }) },
+      {
+        id: "storage",
+        label: storageCopy(ctx.locale)[0],
+        icon: "database",
+        run: async () => ({ view: await storageView(ctx) })
+      },
+      {
+        id: "schedule",
+        label: scheduleCopy(ctx.locale).title,
+        icon: "clock",
+        run: async () => ({ view: await refreshScheduleView(ctx) })
+      },
       {
         id: "import",
         label: tr(ctx.locale, "importOpml"),
@@ -5169,11 +5596,14 @@ async function rssPageView(ctx) {
 var plugin = {
   async activate(ctx) {
     assertPluginCapabilities(ctx);
-    ctx.contributions.uriHandlers.register({ id: "subscribe", open: (request) => {
-      if (request.parameters.length !== 1 || request.parameters[0]?.key !== "url" || !isHttpFeedUrl(request.parameters[0].value))
-        throw Object.assign(Error("Expected one HTTP feed URL"), { code: "plugin/invalid-input" });
-      return { view: addFeedView(ctx, request.parameters[0].value) };
-    } });
+    ctx.contributions.uriHandlers.register({
+      id: "subscribe",
+      open: (request) => {
+        if (request.parameters.length !== 1 || request.parameters[0]?.key !== "url" || !isHttpFeedUrl(request.parameters[0].value))
+          throw Object.assign(Error("Expected one HTTP feed URL"), { code: "plugin/invalid-input" });
+        return { view: addFeedView(ctx, request.parameters[0].value) };
+      }
+    });
     ctx.contributions.contentProviders.register({
       id: PROVIDER_ID,
       load: (url) => loadFeedContent(ctx, url)

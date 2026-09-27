@@ -19,7 +19,10 @@ function answering(status: number, body: unknown) {
 async function refusal(status: number, body: unknown): Promise<RelayError> {
   const error = await answering(status, body)
     .putBlob("bookfile:b1", new Uint8Array(4))
-    .then(() => null, (thrown: unknown) => thrown);
+    .then(
+      () => null,
+      (thrown: unknown) => thrown,
+    );
   expect(error).toBeInstanceOf(RelayError);
   return error as RelayError;
 }
@@ -38,9 +41,7 @@ describe("relay error bodies", () => {
 
   test("per-file and per-part size refusals read as file-too-large", async () => {
     for (const code of ["relay/blob-too-large", "relay/blob-part-too-large"]) {
-      expect(errorCode(await refusal(413, { error: "too big", code }))).toBe(
-        ERR_SYNC_FILE_TOO_LARGE,
-      );
+      expect(errorCode(await refusal(413, { error: "too big", code }))).toBe(ERR_SYNC_FILE_TOO_LARGE);
     }
   });
 
@@ -62,16 +63,12 @@ describe("relay error bodies", () => {
 
 describe("classifySyncError on relay 413s", () => {
   test("quota codes read as quota; size-limit codes do not", () => {
-    expect(
-      classifySyncError(new RelayError(413, "full", "relay/event-quota-exceeded")),
-    ).toBe(ERR_SYNC_QUOTA);
+    expect(classifySyncError(new RelayError(413, "full", "relay/event-quota-exceeded"))).toBe(ERR_SYNC_QUOTA);
     expect(classifySyncError(new RelayError(413, "big", "relay/batch-too-large"))).toBeNull();
     expect(classifySyncError(new RelayError(413, "big", "relay/event-too-large"))).toBeNull();
   });
 
   test("an uncoded 413 from an older relay still reads as quota", () => {
-    expect(classifySyncError(new RelayError(413, "account event quota exceeded"))).toBe(
-      ERR_SYNC_QUOTA,
-    );
+    expect(classifySyncError(new RelayError(413, "account event quota exceeded"))).toBe(ERR_SYNC_QUOTA);
   });
 });

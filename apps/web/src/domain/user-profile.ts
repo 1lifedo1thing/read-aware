@@ -1,7 +1,14 @@
 import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
-import { normalizeUserProfileChange, normalizeUserProfileQuery, userProfilePage,
-  type UserProfileChange, type UserProfileQuery, type UserProfileReceipt, type UserProfileSnapshot } from "@read-aware/core";
+import {
+  normalizeUserProfileChange,
+  normalizeUserProfileQuery,
+  userProfilePage,
+  type UserProfileChange,
+  type UserProfileQuery,
+  type UserProfileReceipt,
+  type UserProfileSnapshot,
+} from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 
@@ -11,11 +18,18 @@ type ProfileHost = { invoke: typeof invoke; mint: typeof mintEventRows; broadcas
 /** Initialization is shared housekeeping; actor cancellation only gates its own read/write. */
 export function createUserProfileService(host: ProfileHost) {
   let initialization: Promise<void> | undefined;
-  const initialize = (): Promise<void> => initialization ??= runDomainWrite(async () => {
-    const [event] = await host.mint([{ type: "profile.updated", payload: {}, origin: "system" }]);
-    const result = await host.invoke<{ migrated: boolean; snapshot: UserProfileSnapshot }>("profile_initialize", { event });
-    if (result.migrated) host.broadcast([{ type: "profile.updated", payload: { summary: result.snapshot.summary }, origin: "system" }]);
-  }).catch(error => { initialization = undefined; throw error; });
+  const initialize = (): Promise<void> =>
+    (initialization ??= runDomainWrite(async () => {
+      const [event] = await host.mint([{ type: "profile.updated", payload: {}, origin: "system" }]);
+      const result = await host.invoke<{ migrated: boolean; snapshot: UserProfileSnapshot }>("profile_initialize", {
+        event,
+      });
+      if (result.migrated)
+        host.broadcast([{ type: "profile.updated", payload: { summary: result.snapshot.summary }, origin: "system" }]);
+    }).catch((error) => {
+      initialization = undefined;
+      throw error;
+    }));
 
   const readSnapshot = async (signal?: AbortSignal): Promise<UserProfileSnapshot> => {
     signal?.throwIfAborted();
@@ -41,7 +55,9 @@ export function createUserProfileService(host: ProfileHost) {
     });
   };
   return {
-    initialize, readSnapshot, change,
+    initialize,
+    readSnapshot,
+    change,
     read: async () => (await readSnapshot()).summary ?? undefined,
     page: async (input?: UserProfileQuery, signal?: AbortSignal) => {
       const query = normalizeUserProfileQuery(input);

@@ -14,16 +14,9 @@ import { useTranslation } from "../../../i18n";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
 import { libraryBooksAtom } from "../../library/state/library-store";
-import {
-  fetchMarketplaceRegistry,
-  prepareMarketplaceInstall,
-  type MarketplaceEntry,
-} from "../runtime/marketplace";
+import { fetchMarketplaceRegistry, prepareMarketplaceInstall, type MarketplaceEntry } from "../runtime/marketplace";
 import { installedPluginsAtom, requestInstallConsent } from "../state/plugin-store";
-import {
-  PluginMarketplaceView,
-  type MarketplaceLoadState,
-} from "./PluginMarketplaceView";
+import { PluginMarketplaceView, type MarketplaceLoadState } from "./PluginMarketplaceView";
 
 const log = createLogger("plugins");
 

@@ -10,6 +10,9 @@ export function queryReadingTime(query: ReadingTimeQuery = {}): Promise<ReadingT
 const log = createLogger("reading-time-observer");
 export const readingTimeObserver = new ReadingTimeObserver({
   read: queryReadingTime,
-  schedule: callback => { const timer = setTimeout(callback, 1000); return () => clearTimeout(timer); },
-  report: error => log.warn("Reading time observation failed", error),
+  schedule: (callback) => {
+    const timer = setTimeout(callback, 1000);
+    return () => clearTimeout(timer);
+  },
+  report: (error) => log.warn("Reading time observation failed", error),
 });

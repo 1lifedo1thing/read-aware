@@ -1,14 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { SyncTier } from "@read-aware/core";
 import type { SyncProfile } from "../../../platform/sync/sync-store";
-import {
-  backlog,
-  failed,
-  idle,
-  snapshot,
-  unauthenticated,
-  uploadingBook,
-} from "../../sync/components/sync.fixtures";
+import { backlog, failed, idle, snapshot, unauthenticated, uploadingBook } from "../../sync/components/sync.fixtures";
 import type { SyncBookBacklogRow } from "../../sync/hooks/useSyncStatus";
 import type { RegisteredSyncTransport } from "../../../platform/sync/transport-registry";
 import type { SyncAccountInfo } from "../hooks/useSyncAccountInfo";
@@ -26,10 +19,7 @@ const profile: SyncProfile = {
   lastPullAt: "2026-06-28T20:14:00.000Z",
 };
 
-function account(
-  tier: SyncTier,
-  patch: Partial<SyncAccountInfo> = {},
-): SyncAccountInfo {
+function account(tier: SyncTier, patch: Partial<SyncAccountInfo> = {}): SyncAccountInfo {
   const limits =
     tier === "free"
       ? { maxBlobBytes: 50 * MB, maxAccountBlobBytes: GB, maxAccountEvents: 50_000, aiMonthlyCredits: 0 }
@@ -46,11 +36,7 @@ function account(
   };
 }
 
-function bookRow(
-  bookId: string,
-  title: string,
-  patch: Partial<SyncBookBacklogRow> = {},
-): SyncBookBacklogRow {
+function bookRow(bookId: string, title: string, patch: Partial<SyncBookBacklogRow> = {}): SyncBookBacklogRow {
   return {
     bookId,
     title,

@@ -13,21 +13,14 @@ export const CUSTOM_OPENAI_PROVIDER_ID = "custom-openai";
 export const DEFAULT_CUSTOM_OPENAI_API = "openai-completions";
 export const LEGACY_CUSTOM_OPENAI_API = "openai-responses";
 
-export const CUSTOM_OPENAI_APIS = [
-  "openai-completions",
-  "openai-responses",
-] as const;
+export const CUSTOM_OPENAI_APIS = ["openai-completions", "openai-responses"] as const;
 
 export type CustomOpenAIApi = (typeof CUSTOM_OPENAI_APIS)[number];
 
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const INTERNAL_DEFAULT_MAX_OUTPUT_TOKENS = 8_192;
 const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-const OPENAI_ENDPOINT_SUFFIXES = [
-  "/chat/completions",
-  "/responses",
-  "/completions",
-] as const;
+const OPENAI_ENDPOINT_SUFFIXES = ["/chat/completions", "/responses", "/completions"] as const;
 
 export type CustomOpenAIProviderConfig = {
   baseUrl: string;
@@ -64,9 +57,7 @@ export function normalizeCustomOpenAIBaseUrl(value: string): string {
   url.hash = "";
   let path = url.pathname.replace(/\/+$/, "");
   const lowerPath = path.toLowerCase();
-  const endpoint = OPENAI_ENDPOINT_SUFFIXES.find((suffix) =>
-    lowerPath.endsWith(suffix),
-  );
+  const endpoint = OPENAI_ENDPOINT_SUFFIXES.find((suffix) => lowerPath.endsWith(suffix));
   if (endpoint) path = path.slice(0, -endpoint.length);
   url.pathname = path || "/";
 
@@ -86,8 +77,7 @@ export function createCustomOpenAIModel(
   id: string,
   config: Omit<CustomOpenAIProviderConfig, "modelIds">,
 ): Model<CustomOpenAIApi> {
-  const maxTokens =
-    positiveInteger(config.maxOutputTokens) ?? INTERNAL_DEFAULT_MAX_OUTPUT_TOKENS;
+  const maxTokens = positiveInteger(config.maxOutputTokens) ?? INTERNAL_DEFAULT_MAX_OUTPUT_TOKENS;
   const common = {
     id,
     name: id,
@@ -134,10 +124,7 @@ export function createCustomOpenAIModel(
   };
 }
 
-export function registerCustomOpenAIProvider(
-  registry: MutableModels,
-  config: CustomOpenAIProviderConfig,
-): void {
+export function registerCustomOpenAIProvider(registry: MutableModels, config: CustomOpenAIProviderConfig): void {
   const modelIds = [...new Set(config.modelIds.map((id) => id.trim()).filter(Boolean))];
   if (modelIds.length === 0) {
     throw new Error("custom OpenAI-compatible provider requires at least one model id");
@@ -166,10 +153,7 @@ export function registerCustomOpenAIProvider(
  * the upstream unless the user explicitly configured a cap. Also omit
  * first-party Responses storage/cache extensions from compatibility requests.
  */
-export function sanitizeCustomOpenAIPayload(
-  payload: unknown,
-  maxOutputTokens?: number,
-): unknown {
+export function sanitizeCustomOpenAIPayload(payload: unknown, maxOutputTokens?: number): unknown {
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
     return payload;
   }

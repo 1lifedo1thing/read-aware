@@ -4,11 +4,7 @@ import { emitAppEvent } from "../../../platform/app-events";
 import { commitDomainEvents } from "../../../platform/domain-events";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
-import {
-  foliateAuthor,
-  foliateTitle,
-  type FoliateBook,
-} from "../../reader/lib/foliate-engine";
+import { foliateAuthor, foliateTitle, type FoliateBook } from "../../reader/lib/foliate-engine";
 import { parseBookFile } from "../../reader/lib/parse-book";
 import { parseFileName } from "./book-file-name";
 import { getBookRecord, openLocalBookFile } from "./library-db";
@@ -50,15 +46,18 @@ export const ENRICHMENT_FORMATS: ReadonlySet<BookFormat> = new Set([
 
 type StoredCover = { coverBlobKey: string; sha256: string } | null;
 
-export const enrichmentQueue = new EnrichmentQueue(runJob, error => log.warn("Engine enrichment failed", error));
+export const enrichmentQueue = new EnrichmentQueue(runJob, (error) => log.warn("Engine enrichment failed", error));
 /** Books this session already tried: a failed parse is not retried in a loop. */
 const attempted = new Set<string>();
 
 /** Queue a book; a request already queued for the same id merges into it. */
 export function scheduleBookEnrichment(request: EnrichmentRequest): void {
   if (!isTauri()) return;
-  try { enrichmentQueue.enqueue(request); }
-  catch (error) { log.warn("Unable to schedule enrichment", error); }
+  try {
+    enrichmentQueue.enqueue(request);
+  } catch (error) {
+    log.warn("Unable to schedule enrichment", error);
+  }
 }
 
 /**
@@ -74,8 +73,10 @@ export function metadataStillFromFileName(book: LibraryBook): boolean {
 /** Retry eligibility is broader than the automatic PDF catch-up policy. */
 export function metadataNeedsEnrichment(book: LibraryBook): boolean {
   const fromFile = parseFileName(book.fileName);
-  return ENRICHMENT_FORMATS.has(book.format)
-    && (book.title === fromFile.title || !book.author || book.author === fromFile.author);
+  return (
+    ENRICHMENT_FORMATS.has(book.format) &&
+    (book.title === fromFile.title || !book.author || book.author === fromFile.author)
+  );
 }
 
 /**
@@ -105,7 +106,11 @@ export async function enrichFromOpenBook(book: LibraryBook, parsed: FoliateBook)
   if (!ENRICHMENT_FORMATS.has(book.format)) return;
   attempted.add(book.id);
   try {
-    await enrichmentQueue.enqueue({ bookId: book.id, cover, metadata }, request => applyParsedBook(request, parsed), true).done;
+    await enrichmentQueue.enqueue(
+      { bookId: book.id, cover, metadata },
+      (request) => applyParsedBook(request, parsed),
+      true,
+    ).done;
   } catch (error) {
     log.warn(`cover from the open book failed for ${book.id}`, error);
   }
@@ -136,8 +141,10 @@ async function runJob(request: EnrichmentRequest): Promise<EnrichmentOutcome> {
 async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook): Promise<EnrichmentOutcome> {
   const observed = await getBookRecord(request.bookId);
   if (!observed) return { reason: "book-removed" };
-  const cover = request.cover && observed.coverStatus === "unchecked"
-    ? await prepareParsedCover(request.bookId, parsed) : undefined;
+  const cover =
+    request.cover && observed.coverStatus === "unchecked"
+      ? await prepareParsedCover(request.bookId, parsed)
+      : undefined;
   return runDomainWrite(async () => {
     const current = await getBookRecord(request.bookId);
     if (!current) return { reason: "book-removed" };
@@ -149,22 +156,26 @@ async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook):
       const fromFile = parseFileName(current.fileName);
       const patch = {
         ...(title && current.title === fromFile.title && title !== current.title ? { title } : {}),
-        ...(author && (!current.author || current.author === fromFile.author) && author !== current.author ? { author } : {}),
+        ...(author && (!current.author || current.author === fromFile.author) && author !== current.author
+          ? { author }
+          : {}),
       };
       if (Object.keys(patch).length > 0) {
         events.push({
           type: "book.metadataEdited" as const,
           payload: { bookId: request.bookId, ...patch },
           // Parsed-metadata enrichment is app machinery, not a user edit.
-          origin: request.origin ?? "system" as const,
+          origin: request.origin ?? ("system" as const),
         });
       }
     }
 
     if (cover !== undefined && request.cover && current.coverStatus === "unchecked") {
-      const stored = cover ? await invoke<StoredCover>("library_put_cover", cover.bytes, {
-        headers: { "x-book-id": request.bookId, ...(cover.mimeType ? { "x-blob-mime": cover.mimeType } : {}) },
-      }) : null;
+      const stored = cover
+        ? await invoke<StoredCover>("library_put_cover", cover.bytes, {
+            headers: { "x-book-id": request.bookId, ...(cover.mimeType ? { "x-blob-mime": cover.mimeType } : {}) },
+          })
+        : null;
       events.push(
         stored
           ? {
@@ -174,12 +185,12 @@ async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook):
                 status: "ready" as const,
                 coverBlobKey: stored.coverBlobKey,
               },
-              origin: request.origin ?? "system" as const,
+              origin: request.origin ?? ("system" as const),
             }
           : {
               type: "book.coverExtracted" as const,
               payload: { bookId: request.bookId, status: "none" as const },
-              origin: request.origin ?? "system" as const,
+              origin: request.origin ?? ("system" as const),
             },
       );
     }
@@ -195,7 +206,6 @@ async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook):
 const FALLBACK_SECTIONS = 6;
 /** Shortest side an in-book image needs to pass as a cover (mirrors covers.rs). */
 const FALLBACK_MIN_SIDE = 120;
-
 
 /**
  * A book that declares no cover shows its first image instead: the first
@@ -216,10 +226,7 @@ async function firstInBookImage(parsed: FoliateBook): Promise<Blob | null> {
       continue;
     }
     const element = doc.querySelector("img[src], image");
-    const src =
-      element?.getAttribute("src") ??
-      element?.getAttribute("href") ??
-      element?.getAttribute("xlink:href");
+    const src = element?.getAttribute("src") ?? element?.getAttribute("href") ?? element?.getAttribute("xlink:href");
     if (!src || !src.startsWith("blob:")) continue;
     try {
       const blob = await (await fetch(src)).blob();
@@ -235,7 +242,10 @@ async function firstInBookImage(parsed: FoliateBook): Promise<Blob | null> {
   return null;
 }
 
-async function prepareParsedCover(bookId: string, parsed: FoliateBook): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
+async function prepareParsedCover(
+  bookId: string,
+  parsed: FoliateBook,
+): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
   let blob: Blob | null = null;
   try {
     blob = (await parsed.getCover?.()) ?? null;

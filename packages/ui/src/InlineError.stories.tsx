@@ -30,10 +30,7 @@ export const WithFixAction: Story = {
     title: "Reply failed",
     children: "AI isn't set up yet — add an API key to start chatting.",
     action: (
-      <Button
-        variant="link"
-        className="h-auto p-0 align-baseline text-xs underline underline-offset-2"
-      >
+      <Button variant="link" className="h-auto p-0 align-baseline text-xs underline underline-offset-2">
         Open settings
       </Button>
     ),

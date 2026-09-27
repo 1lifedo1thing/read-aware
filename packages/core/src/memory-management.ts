@@ -11,10 +11,13 @@ export type MemoryMutation = { memoryId: string; expectedRevision: string } & (
 export type MemoryMutationReceipt = { memoryId: string; revision: string | null };
 
 export function validateMemoryId(id: string): void {
-  if (typeof id !== "string" || !id.trim() || id.length > 256) throw new AppError("memory/invalid-input", "Expected a memory ID");
+  if (typeof id !== "string" || !id.trim() || id.length > 256)
+    throw new AppError("memory/invalid-input", "Expected a memory ID");
 }
 export function normalizeMemoryMutation(input: MemoryMutation): MemoryMutation {
-  const fail = (): never => { throw new AppError("memory/invalid-input", "Invalid conditional memory operation"); };
+  const fail = (): never => {
+    throw new AppError("memory/invalid-input", "Invalid conditional memory operation");
+  };
   if (!input || typeof input !== "object" || Array.isArray(input)) return fail();
   validateMemoryId(input.memoryId);
   if (typeof input.expectedRevision !== "string" || !/^mem1:[a-f0-9]{64}$/.test(input.expectedRevision)) return fail();
@@ -27,7 +30,10 @@ export function normalizeMemoryMutation(input: MemoryMutation): MemoryMutation {
     fields.push("pinned");
     if (typeof input.pinned !== "boolean") return fail();
   } else if (input.op !== "forget") return fail();
-  if (Object.keys(input).some(key => !fields.includes(key))) return fail();
-  return input.op === "correct" ? { ...common, op: input.op, content: input.content.trim() }
-    : input.op === "setPinned" ? { ...common, op: input.op, pinned: input.pinned } : { ...common, op: "forget" };
+  if (Object.keys(input).some((key) => !fields.includes(key))) return fail();
+  return input.op === "correct"
+    ? { ...common, op: input.op, content: input.content.trim() }
+    : input.op === "setPinned"
+      ? { ...common, op: input.op, pinned: input.pinned }
+      : { ...common, op: "forget" };
 }

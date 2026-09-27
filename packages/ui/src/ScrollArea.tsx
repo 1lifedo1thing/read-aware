@@ -20,28 +20,25 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T) {
   }
 }
 
-export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
-  function ScrollArea({ className, children, scrollableNodeProps, ...props }, ref) {
-    const {
-      className: scrollableClassName,
-      ref: scrollableRef,
-      ...scrollableProps
-    } = scrollableNodeProps ?? {};
+export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(function ScrollArea(
+  { className, children, scrollableNodeProps, ...props },
+  ref,
+) {
+  const { className: scrollableClassName, ref: scrollableRef, ...scrollableProps } = scrollableNodeProps ?? {};
 
-    return (
-      <div
-        ref={(node) => {
-          assignRef(ref, node);
-          assignRef(scrollableRef, node);
-        }}
-        className={cn("ra-scrollarea overflow-auto", className, scrollableClassName)}
-        {...props}
-        {...scrollableProps}
-      >
-        {children}
-      </div>
-    );
-  },
-);
+  return (
+    <div
+      ref={(node) => {
+        assignRef(ref, node);
+        assignRef(scrollableRef, node);
+      }}
+      className={cn("ra-scrollarea overflow-auto", className, scrollableClassName)}
+      {...props}
+      {...scrollableProps}
+    >
+      {children}
+    </div>
+  );
+});
 
 ScrollArea.displayName = "ScrollArea";

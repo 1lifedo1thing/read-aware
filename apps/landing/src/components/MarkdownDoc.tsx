@@ -1,9 +1,4 @@
-import {
-  Children,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useRouterState } from "@tanstack/react-router";
@@ -23,18 +18,11 @@ function plainText(children: ReactNode): string {
     )
     .join("");
 }
-function DocLink({
-  href = "",
-  children,
-}: {
-  href?: string;
-  children?: ReactNode;
-}) {
+function DocLink({ href = "", children }: { href?: string; children?: ReactNode }) {
   const locale = useRouterState({
     select: (state) => localeFromPathname(state.location.pathname),
   });
-  if (href.startsWith("/") && !href.startsWith("//"))
-    return <a href={localizePath(href, locale)}>{children}</a>;
+  if (href.startsWith("/") && !href.startsWith("//")) return <a href={localizePath(href, locale)}>{children}</a>;
   if (href.startsWith("#")) return <a href={href}>{children}</a>;
   return (
     <a href={href} target="_blank" rel="noopener noreferrer">
@@ -53,13 +41,9 @@ const components: Components = {
         children?: ReactNode;
         className?: string;
       }>;
-      const language =
-        codeElement.props.className?.match(/language-([^\s]+)/)?.[1];
+      const language = codeElement.props.className?.match(/language-([^\s]+)/)?.[1];
       return (
-        <CodeBlock
-          code={plainText(codeElement.props.children).replace(/\n$/, "")}
-          language={language ?? "text"}
-        />
+        <CodeBlock code={plainText(codeElement.props.children).replace(/\n$/, "")} language={language ?? "text"} />
       );
     }
     return <CodeBlock code={plainText(children)} language="text" />;

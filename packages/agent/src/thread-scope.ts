@@ -7,9 +7,7 @@ import type { Id } from "@read-aware/core";
  * 记忆不随线程分裂：user/global 记忆跨所有全局线程共享 ——
  * 线程只是对话容器，连续性靠记忆层。
  */
-export type ThreadScope =
-  | { kind: "book"; bookId: Id }
-  | { kind: "global"; threadId: string };
+export type ThreadScope = { kind: "book"; bookId: Id } | { kind: "global"; threadId: string };
 
 /**
  * scope 的稳定字符串键（`book:<id>` | `global:<threadId>`）；

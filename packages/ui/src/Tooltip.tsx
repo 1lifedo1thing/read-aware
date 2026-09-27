@@ -1,13 +1,4 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-  Children,
-  cloneElement,
-  isValidElement,
-} from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, Children, cloneElement, isValidElement } from "react";
 import { cn } from "./lib/cn";
 
 const sideClasses = {
@@ -45,13 +36,7 @@ type TooltipProps = {
   className?: string;
 };
 
-export function Tooltip({
-  content,
-  side = "top",
-  align = "center",
-  children,
-  className,
-}: TooltipProps) {
+export function Tooltip({ content, side = "top", align = "center", children, className }: TooltipProps) {
   const id = useId();
   const tooltipId = `${id}-tooltip`;
   // Hover visibility is state-driven (it carries the delay); keyboard focus
@@ -88,10 +73,9 @@ export function Tooltip({
 
   // Clone the child to inject aria-describedby
   const child = Children.only(children);
-  const trigger =
-    isValidElement<Record<string, unknown>>(child)
-      ? cloneElement(child, { "aria-describedby": tooltipId } as Record<string, unknown>)
-      : child;
+  const trigger = isValidElement<Record<string, unknown>>(child)
+    ? cloneElement(child, { "aria-describedby": tooltipId } as Record<string, unknown>)
+    : child;
 
   return (
     <span

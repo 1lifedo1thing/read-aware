@@ -16,7 +16,11 @@ import type { PluginSyncTransport, PluginSyncTransportSession, PluginText } from
 import { AppError } from "@read-aware/core";
 import { closeTransportSessionValue, ownTransportSession } from "./transport-session";
 import { createLogger } from "../logger";
-import { commitContributionReplacement, publishContributionChange, undoContributionReplacement } from "../../features/plugins/state/contribution-activation";
+import {
+  commitContributionReplacement,
+  publishContributionChange,
+  undoContributionReplacement,
+} from "../../features/plugins/state/contribution-activation";
 import { causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../domain-actor";
 
 const log = createLogger("sync-transports");
@@ -46,32 +50,45 @@ function publish(): void {
     for (const [ref, entry] of transports) {
       const previous = published.get(ref);
       if (previous?.entry !== entry || previous.generation !== entry.generation) {
-        const source = pending.get(entry); if (source) sources.push(source);
+        const source = pending.get(entry);
+        if (source) sources.push(source);
       }
     }
-    for (const [ref, previous] of published) if (!transports.has(ref)) {
-      const source = pending.get(previous.entry); if (source) sources.push(source);
-    }
+    for (const [ref, previous] of published)
+      if (!transports.has(ref)) {
+        const source = pending.get(previous.entry);
+        if (source) sources.push(source);
+      }
     const notification = mergeEventCauses(sources, {});
     pending.clear();
-    if (published.size === transports.size && [...transports].every(([ref, entry]) => {
-      const previous = published.get(ref);
-      return previous?.entry === entry && previous.generation === entry.generation;
-    })) return;
+    if (
+      published.size === transports.size &&
+      [...transports].every(([ref, entry]) => {
+        const previous = published.get(ref);
+        return previous?.entry === entry && previous.generation === entry.generation;
+      })
+    )
+      return;
     published = new Map([...transports].map(([ref, entry]) => [ref, { entry, generation: entry.generation }]));
     const snapshot = published;
     for (const listener of [...listeners]) {
       if (published !== snapshot) break;
-      try { listener(notification); } catch (error) { log.warn("Transport observer failed", error); }
+      try {
+        listener(notification);
+      } catch (error) {
+        log.warn("Transport observer failed", error);
+      }
     }
   });
 }
 function remember(entry: RegisteredSyncTransport, source: DomainActor): void {
-  const previous = pending.get(entry), next = stampEventCause({}, source);
+  const previous = pending.get(entry),
+    next = stampEventCause({}, source);
   pending.set(entry, previous ? mergeEventCauses([previous, next], {}) : next);
 }
 function notify(entry: RegisteredSyncTransport, source: DomainActor): void {
-  remember(entry, source); publish();
+  remember(entry, source);
+  publish();
 }
 
 export function syncTransportRef(pluginId: string, transportId: string): string {
@@ -92,30 +109,36 @@ export function registerSyncTransport(
   let retirement: Promise<void> | undefined;
   const sessions = new Set<PluginSyncTransportSession>();
   const closeSessions = async () => {
-    const results = await Promise.allSettled([...sessions].map(session => session.close()));
-    const errors = results.flatMap(result => result.status === "rejected" ? [result.reason] : []);
+    const results = await Promise.allSettled([...sessions].map((session) => session.close()));
+    const errors = results.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
     if (errors.length) throw new AggregateError(errors, "Sync transport sessions failed to close");
   };
   const retire = () => {
     retired = true;
     retiredEntries.add(entry);
-    return retirement ??= closeSessions();
+    return (retirement ??= closeSessions());
   };
   const entry: RegisteredSyncTransport = {
     ref: syncTransportRef(pluginId, transport.id),
     pluginId,
     transportId: transport.id,
-    get generation() { return generation; },
+    get generation() {
+      return generation;
+    },
     label: transport.label,
     async open() {
       if (retired) throw new AppError("plugin/unavailable", "Sync transport is retired");
       const openedGeneration = generation;
       const raw = await transport.open();
       let session: PluginSyncTransportSession;
-      try { session = ownTransportSession(raw, release, () => sessions.delete(session)); }
-      catch (error) {
-        try { await closeTransportSessionValue(raw, release); }
-        catch (cleanupError) { log.warn("Invalid transport session cleanup failed", cleanupError); }
+      try {
+        session = ownTransportSession(raw, release, () => sessions.delete(session));
+      } catch (error) {
+        try {
+          await closeTransportSessionValue(raw, release);
+        } catch (cleanupError) {
+          log.warn("Invalid transport session cleanup failed", cleanupError);
+        }
         throw error;
       }
       if (retired || generation !== openedGeneration) {
@@ -128,7 +151,7 @@ export function registerSyncTransport(
   };
   const previous = transports.get(entry.ref);
   undoContributionReplacement(() => {
-    void retire().catch(error => log.warn("Rolled back transport cleanup failed", error));
+    void retire().catch((error) => log.warn("Rolled back transport cleanup failed", error));
     if (transports.has(entry.ref) && transports.get(entry.ref) !== entry) return;
     pending.delete(entry);
     if (previous && !retiredEntries.has(previous)) transports.set(entry.ref, previous);
@@ -136,11 +159,17 @@ export function registerSyncTransport(
     publish();
   });
   retirements.set(entry, retire);
-  invalidations.set(entry, () => { generation++; return closeSessions(); });
-  transports.set(entry.ref, entry);
-  if (previous) commitContributionReplacement(() => {
-    void retirements.get(previous)?.().catch(error => log.warn("Replaced transport cleanup failed", error));
+  invalidations.set(entry, () => {
+    generation++;
+    return closeSessions();
   });
+  transports.set(entry.ref, entry);
+  if (previous)
+    commitContributionReplacement(() => {
+      void retirements
+        .get(previous)?.()
+        .catch((error) => log.warn("Replaced transport cleanup failed", error));
+    });
   notify(entry, origin);
   return (source = origin) => {
     const retirementSource = causalActor(source);
@@ -163,7 +192,9 @@ export function invalidateSyncTransportSessions(pluginId: string, source: Domain
     if (entry.pluginId !== pluginId) continue;
     changed = true;
     remember(entry, origin);
-    void invalidations.get(entry)?.().catch(error => log.warn("Transport configuration cleanup failed", error));
+    void invalidations
+      .get(entry)?.()
+      .catch((error) => log.warn("Transport configuration cleanup failed", error));
   }
   if (changed) publish();
 }
@@ -201,9 +232,7 @@ export function transportAccountId(ref: string, endpointId: string): string {
   return `transport:${ref.replace(/^plugin:/, "")}:${endpointId}`;
 }
 
-export function parseTransportAccountId(
-  remoteAccountId: string | null | undefined,
-): TransportAccountRef | null {
+export function parseTransportAccountId(remoteAccountId: string | null | undefined): TransportAccountRef | null {
   if (!remoteAccountId || !remoteAccountId.startsWith("transport:")) return null;
   const rest = remoteAccountId.slice("transport:".length);
   const first = rest.indexOf(":");

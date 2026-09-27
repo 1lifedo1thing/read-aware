@@ -26,7 +26,8 @@ export function restorePluginData(id: string, snapshot: PluginDataSnapshot): Pro
   // Own the baseline before joining the write queue; no caller mutation can change it.
   const baseline = structuredClone(snapshot);
   return restoreLocalKVTransaction(
-    `read-aware-plugin.${id}.`, baseline.kv,
+    `read-aware-plugin.${id}.`,
+    baseline.kv,
     new Map([[PLUGIN_SCHEMA_KEY_PREFIX + id, baseline.schema]]),
     () => invoke("plugin_data_restore", { pluginId: id, snapshot: baseline }),
   );

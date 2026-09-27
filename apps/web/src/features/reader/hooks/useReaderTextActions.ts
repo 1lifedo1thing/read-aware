@@ -22,10 +22,7 @@ import { createHighlight } from "../../annotations/lib/annotation-db";
 import { changeObservedAnnotation } from "../../annotations/lib/native-annotation-mutations";
 import { useReaderNoteEditor } from "./useReaderNoteEditor";
 import type { ActionTarget } from "../lib/reader-types";
-import {
-  getDefaultMarkColor,
-  setDefaultMarkColor,
-} from "../../annotations/lib/annotation-prefs";
+import { getDefaultMarkColor, setDefaultMarkColor } from "../../annotations/lib/annotation-prefs";
 import type { Highlight, Note } from "../../annotations/lib/annotation-types";
 import type { LibraryBook } from "../../library/lib/library-types";
 import type { SelectionOverlayRect } from "../lib/selection-overlay";
@@ -57,7 +54,10 @@ type Options = {
   /** Owned by the view: a relocate clears it, so it cannot live in here. */
   setActiveAnnotation: (value: ActiveAnnotation) => void;
   /** The guided-reading unit currently washed, if that mode is on. */
-  textUnitNavigator: { current: { text: string; cfiRange: string | null } | null; position: ReadingModePosition | null };
+  textUnitNavigator: {
+    current: { text: string; cfiRange: string | null } | null;
+    position: ReadingModePosition | null;
+  };
   clearSelection: () => void;
   notesRef: RefObject<Note[]>;
   currentChapterHrefRef: RefObject<string | null>;
@@ -101,7 +101,9 @@ export function useReaderTextActions({
   const dispatchAskAi = useSetAtom(askAiRequestAtom);
   const pluginSelectionActions = useAtomValue(selectionActionsAtom);
   const lookupAction =
-    pluginSelectionActions.find((action) => action.role === "lookup" && action.state?.visible !== false && action.state?.enabled !== false) ?? null;
+    pluginSelectionActions.find(
+      (action) => action.role === "lookup" && action.state?.visible !== false && action.state?.enabled !== false,
+    ) ?? null;
 
   const reportNoteFailure = useCallback((error: unknown) => {
     log.error("failed to save note", error);
@@ -126,11 +128,14 @@ export function useReaderTextActions({
         ? notesRef.current?.find((note) => note.cfiRange === target.cfiRange)
         : undefined;
       if (existing) {
-        openNoteEditorFor({
-          text: existing.text,
-          cfiRange: existing.cfiRange,
-          chapterHref: existing.chapterHref,
-        }, existing);
+        openNoteEditorFor(
+          {
+            text: existing.text,
+            cfiRange: existing.cfiRange,
+            chapterHref: existing.chapterHref,
+          },
+          existing,
+        );
       } else {
         openNoteEditorFor(target);
       }
@@ -143,20 +148,22 @@ export function useReaderTextActions({
    * `openNoteEditorForPassage`, which has to go looking for one by anchor —
    * here the note is already in hand.
    */
-  const openExistingNote = useCallback((note: Note) => {
-    openNoteEditorFor({
-      text: note.text,
-      cfiRange: note.cfiRange,
-      chapterHref: note.chapterHref,
-    }, note);
-  }, [openNoteEditorFor]);
+  const openExistingNote = useCallback(
+    (note: Note) => {
+      openNoteEditorFor(
+        {
+          text: note.text,
+          cfiRange: note.cfiRange,
+          chapterHref: note.chapterHref,
+        },
+        note,
+      );
+    },
+    [openNoteEditorFor],
+  );
 
   const pluginInputFor = useCallback(
-    (
-      target: ActionTarget | null,
-      source: SelectionActionSource,
-      context?: string,
-    ): SelectionActionInput | null => {
+    (target: ActionTarget | null, source: SelectionActionSource, context?: string): SelectionActionInput | null => {
       if (!selectedBook || !target) return null;
       return {
         text: target.text,
@@ -174,12 +181,10 @@ export function useReaderTextActions({
   const runLookupAction = useCallback(
     (input: SelectionActionInput | null) => {
       if (!lookupAction || !input) return;
-      void runPluginContribution(
-        lookupAction.pluginId,
-        lookupAction.pluginName,
-        () => lookupAction.run(input),
-        { presentation: lookupAction.presentation, owner: lookupAction.run },
-      );
+      void runPluginContribution(lookupAction.pluginId, lookupAction.pluginName, () => lookupAction.run(input), {
+        presentation: lookupAction.presentation,
+        owner: lookupAction.run,
+      });
     },
     [lookupAction],
   );
@@ -210,14 +215,7 @@ export function useReaderTextActions({
     ): Promise<boolean> => {
       if (!selectedBook) return false;
       try {
-        await createHighlight(
-          selectedBook.id,
-          target.cfiRange,
-          target.chapterHref,
-          target.text,
-          color,
-          style,
-        );
+        await createHighlight(selectedBook.id, target.cfiRange, target.chapterHref, target.text, color, style);
         return true;
       } catch (highlightError) {
         log.error("failed to save highlight", highlightError);
@@ -231,13 +229,15 @@ export function useReaderTextActions({
   // ── Against the live selection ─────────────────────────────────────────────
 
   const handleHighlight = useCallback(
-    async (
-      color: Highlight["color"] = getDefaultMarkColor(),
-      style: NonNullable<Highlight["style"]> = "highlight",
-    ) => {
+    async (color: Highlight["color"] = getDefaultMarkColor(), style: NonNullable<Highlight["style"]> = "highlight") => {
       if (!selection) return;
       const saved = await saveMark(
-        { text: selection.text, cfiRange: selection.cfiRange, chapterHref: selection.chapterHref, range: selection.captured?.range },
+        {
+          text: selection.text,
+          cfiRange: selection.cfiRange,
+          chapterHref: selection.chapterHref,
+          range: selection.captured?.range,
+        },
         color,
         style,
       );
@@ -254,7 +254,12 @@ export function useReaderTextActions({
     if (!selection) return;
     runLookupAction(
       pluginInputFor(
-        { text: selection.text, cfiRange: selection.cfiRange, chapterHref: selection.chapterHref, range: selection.captured?.range },
+        {
+          text: selection.text,
+          cfiRange: selection.cfiRange,
+          chapterHref: selection.chapterHref,
+          range: selection.captured?.range,
+        },
         "selection",
         selection.context,
       ),
@@ -347,8 +352,10 @@ export function useReaderTextActions({
       text: unit.text,
       cfiRange: unit.cfiRange,
       chapterHref: currentChapterHrefRef.current,
-      range: location && location.bookId === selectedBook?.id && location.cfi === unit.cfiRange
-        ? { bookId: location.bookId, contentVersion: location.contentVersion, cfi: location.cfi } : null,
+      range:
+        location && location.bookId === selectedBook?.id && location.cfi === unit.cfiRange
+          ? { bookId: location.bookId, contentVersion: location.contentVersion, cfi: location.cfi }
+          : null,
     };
   }, [currentChapterHrefRef, textUnitNavigator, selectedBook?.id]);
 

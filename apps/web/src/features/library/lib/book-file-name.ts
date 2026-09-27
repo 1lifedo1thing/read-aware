@@ -9,8 +9,7 @@
  */
 
 /** Known book extensions, stripped repeatedly so "book.fb2.zip" fully bares. */
-const EXTENSION_RE =
-  /\.(?:pdf|epub|mobi|azw3?|kf8|prc|fb2|fbz|zip|cbz|cbr|txt|text|html?|xhtml)$/i;
+const EXTENSION_RE = /\.(?:pdf|epub|mobi|azw3?|kf8|prc|fb2|fbz|zip|cbz|cbr|txt|text|html?|xhtml)$/i;
 
 /** A domain-looking token ("www.site.com", "z-lib.org/..."), wherever it sits. */
 const DOMAIN_TOKEN_RE =
@@ -29,12 +28,7 @@ const YEAR_ONLY_RE = /^(?:19|20)\d{2}$/;
 /** Pure counters: "(1)" download dupes, "v2", stray digit runs. */
 const COUNTER_ONLY_RE = /^[\d\s._\-v]+$/i;
 
-const BRACKET_GROUP_RES = [
-  /\(([^()]*)\)/g,
-  /\[([^[\]]*)\]/g,
-  /【([^【】]*)】/g,
-  /（([^（）]*)）/g,
-];
+const BRACKET_GROUP_RES = [/\(([^()]*)\)/g, /\[([^[\]]*)\]/g, /【([^【】]*)】/g, /（([^（）]*)）/g];
 
 function isJunkGroup(content: string): boolean {
   const inner = content.trim();
@@ -52,9 +46,7 @@ function isJunkGroup(content: string): boolean {
 function stripDistributionJunk(value: string): string {
   let out = value;
   for (const groupRe of BRACKET_GROUP_RES) {
-    out = out.replace(groupRe, (match, inner) =>
-      isJunkGroup(String(inner)) ? " " : match,
-    );
+    out = out.replace(groupRe, (match, inner) => (isJunkGroup(String(inner)) ? " " : match));
   }
   DOMAIN_TOKEN_RE.lastIndex = 0;
   out = out.replace(DOMAIN_TOKEN_RE, " ");
@@ -70,9 +62,7 @@ function stripBookExtensions(fileName: string): string {
 }
 
 function toTitleCase(value: string) {
-  return value.replace(/\w\S*/g, (segment) => (
-    segment.charAt(0).toUpperCase() + segment.slice(1)
-  ));
+  return value.replace(/\w\S*/g, (segment) => segment.charAt(0).toUpperCase() + segment.slice(1));
 }
 
 function normalizeFileNamePart(value: string) {

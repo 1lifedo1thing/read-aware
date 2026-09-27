@@ -20,11 +20,7 @@ type ReaderPageTurnControlsProps = {
  * Hidden on coarse pointers: touch turns pages by swiping, and dropping the
  * edge chrome keeps the text immersive.
  */
-export function ReaderPageTurnControls({
-  visible,
-  onPrev,
-  onNext,
-}: ReaderPageTurnControlsProps) {
+export function ReaderPageTurnControls({ visible, onPrev, onNext }: ReaderPageTurnControlsProps) {
   const { t } = useTranslation("reader");
   if (!visible) return null;
 

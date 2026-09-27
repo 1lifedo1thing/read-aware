@@ -15,21 +15,9 @@ type HeadingProps<T extends ElementType = "h2"> = {
   size?: HeadingSize;
 } & Omit<ComponentPropsWithRef<T>, "as" | "size">;
 
-export function Heading<T extends ElementType = "h2">({
-  as,
-  size = "2xl",
-  className,
-  ...props
-}: HeadingProps<T>) {
+export function Heading<T extends ElementType = "h2">({ as, size = "2xl", className, ...props }: HeadingProps<T>) {
   const Tag = (as || "h2") as ElementType;
   return (
-    <Tag
-      className={cn(
-        "font-sans font-semibold tracking-tight text-fg",
-        sizeClasses[size],
-        className,
-      )}
-      {...props}
-    />
+    <Tag className={cn("font-sans font-semibold tracking-tight text-fg", sizeClasses[size], className)} {...props} />
   );
 }

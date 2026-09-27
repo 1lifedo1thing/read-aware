@@ -53,9 +53,7 @@ const collections: Collection[] = [
   { id: "c2", name: "To read", createdAt: "2026-02-03T10:00:00.000Z" },
 ];
 
-const inCollection = books.map((entry, i) =>
-  i < 3 ? { ...entry, collectionId: "c1" } : entry,
-);
+const inCollection = books.map((entry, i) => (i < 3 ? { ...entry, collectionId: "c1" } : entry));
 
 /**
  * The library page: the shelf itself, collections as peers among the books, and

@@ -54,11 +54,7 @@ function groupLabel(book: LibraryBook, group: ShelfGroup, t: TFunction<"shelf">)
  * groupings yield labeled sections. Books are sorted before grouping, so order
  * is preserved within each section.
  */
-export function deriveShelfView(
-  books: LibraryBook[],
-  view: ShelfView,
-  t: TFunction<"shelf">,
-): ShelfSection[] {
+export function deriveShelfView(books: LibraryBook[], view: ShelfView, t: TFunction<"shelf">): ShelfSection[] {
   const sorted = [...books].sort(withStarredFirst(comparator(view.sort)));
 
   if (view.group === "none") {
@@ -66,12 +62,10 @@ export function deriveShelfView(
   }
 
   if (view.group === "status") {
-    return STATUS_ORDER
-      .map((key) => ({
-        label: statusLabel(key, t),
-        books: sorted.filter((book) => book.readingStatus === key),
-      }))
-      .filter((section) => section.books.length > 0);
+    return STATUS_ORDER.map((key) => ({
+      label: statusLabel(key, t),
+      books: sorted.filter((book) => book.readingStatus === key),
+    })).filter((section) => section.books.length > 0);
   }
 
   // author / format: bucket in sorted order, then order the groups alphabetically.

@@ -6,10 +6,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
-import {
-  fauxAssistantMessage,
-  type FauxProviderRegistration,
-} from "@earendil-works/pi-ai/providers/faux";
+import { fauxAssistantMessage, type FauxProviderRegistration } from "@earendil-works/pi-ai/providers/faux";
 import type { Id } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import { createInMemoryDeps } from "../testing/fixtures";

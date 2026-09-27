@@ -51,10 +51,7 @@ export const UNDERLINE_STROKE: Record<Highlight["color"], string> = {
  * under the text reads as a quiet hand-drawn underline rather than a solid bar.
  * Runs in the app's document context (where the overlay SVG lives).
  */
-function drawUnderline(
-  rects: Iterable<DOMRect>,
-  options: { color?: string } = {},
-): SVGGElement {
+function drawUnderline(rects: Iterable<DOMRect>, options: { color?: string } = {}): SVGGElement {
   const { color = UNDERLINE_STROKE.yellow } = options;
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("fill", "none");
@@ -78,10 +75,7 @@ function drawUnderline(
 }
 
 /** A noted passage's marker: a dashed underline, quietly set apart from marks. */
-function drawNote(
-  rects: Iterable<DOMRect>,
-  options: { color?: string } = {},
-): SVGGElement {
+function drawNote(rects: Iterable<DOMRect>, options: { color?: string } = {}): SVGGElement {
   const { color = NOTE_STROKE } = options;
   const group = document.createElementNS(SVG_NS, "g");
   group.setAttribute("fill", "none");
@@ -142,11 +136,7 @@ export function navigatorLineBox(
  * fill rule — overlapping line boxes merge instead of XOR-ing back to filled
  * (which fill-rule="evenodd" would do).
  */
-function drawNavigatorVeil(
-  rects: DOMRect[],
-  color: string,
-  writingMode: string,
-): SVGPathElement {
+function drawNavigatorVeil(rects: DOMRect[], color: string, writingMode: string): SVGPathElement {
   let d = `M ${-VEIL_EXTENT} ${-VEIL_EXTENT} H ${VEIL_EXTENT} V ${VEIL_EXTENT} H ${-VEIL_EXTENT} Z`;
   for (const rect of rects) {
     const { x, y, width, height } = navigatorLineBox(rect, 2, writingMode);
@@ -199,8 +189,8 @@ function toFoliateAnnotation(highlight: Highlight): FoliateAnnotation | null {
   if (!highlight.cfiRange) return null;
   const isUnderline = highlight.style === "underline";
   const color = isUnderline
-    ? UNDERLINE_STROKE[highlight.color] ?? UNDERLINE_STROKE.yellow
-    : HIGHLIGHT_FILL[highlight.color] ?? HIGHLIGHT_FILL.yellow;
+    ? (UNDERLINE_STROKE[highlight.color] ?? UNDERLINE_STROKE.yellow)
+    : (HIGHLIGHT_FILL[highlight.color] ?? HIGHLIGHT_FILL.yellow);
   return {
     value: highlight.cfiRange,
     color,
@@ -236,11 +226,9 @@ export function removeHighlight(view: FoliateView, cfiRange: string): void {
 /** Draw one note's dashed marker (no-op if its CFI is not in a loaded section). */
 export function applyNote(view: FoliateView, note: Note): void {
   if (!note.cfiRange) return;
-  void view
-    .addAnnotation({ value: note.cfiRange, color: NOTE_STROKE, id: note.id, style: "note" })
-    .catch(() => {
-      // CFI may not resolve in the current layout — foliate ignores it.
-    });
+  void view.addAnnotation({ value: note.cfiRange, color: NOTE_STROKE, id: note.id, style: "note" }).catch(() => {
+    // CFI may not resolve in the current layout — foliate ignores it.
+  });
 }
 
 /**
@@ -250,9 +238,7 @@ export function applyNote(view: FoliateView, note: Note): void {
  * menu.)
  */
 export function applyNotes(view: FoliateView, notes: Note[], highlights: Highlight[]): void {
-  const highlighted = new Set(
-    highlights.map((highlight) => highlight.cfiRange).filter(Boolean),
-  );
+  const highlighted = new Set(highlights.map((highlight) => highlight.cfiRange).filter(Boolean));
   for (const note of notes) {
     if (!note.cfiRange || highlighted.has(note.cfiRange)) continue;
     applyNote(view, note);
@@ -286,22 +272,33 @@ const sameMark = (a: FoliateAnnotation | undefined, b: FoliateAnnotation) =>
  *  marks alone. Each engine paint resolves a CFI and redraws, so a book with
  *  many marks must not repaint them all for one new highlight; documents that
  *  load later receive every mark through overlay recreation instead. */
-export async function reconcileAnnotationMarks(view: Pick<FoliateView, "addAnnotation" | "deleteAnnotation">,
-  previous: Array<Highlight | Note>, next: Array<Highlight | Note>, signal: AbortSignal,
-  report: (error: unknown) => void): Promise<void> {
-  const drawn = marksFor(previous), desired = marksFor(next);
-  for (const value of new Set(previous.map(item => item.cfiRange).filter((value): value is string => !!value))) {
+export async function reconcileAnnotationMarks(
+  view: Pick<FoliateView, "addAnnotation" | "deleteAnnotation">,
+  previous: Array<Highlight | Note>,
+  next: Array<Highlight | Note>,
+  signal: AbortSignal,
+  report: (error: unknown) => void,
+): Promise<void> {
+  const drawn = marksFor(previous),
+    desired = marksFor(next);
+  for (const value of new Set(previous.map((item) => item.cfiRange).filter((value): value is string => !!value))) {
     if (signal.aborted) return;
     if (!desired.has(value)) {
-      try { await view.deleteAnnotation({ value }); }
-      catch (error) { if (!signal.aborted) report(error); }
+      try {
+        await view.deleteAnnotation({ value });
+      } catch (error) {
+        if (!signal.aborted) report(error);
+      }
     }
   }
   for (const mark of desired.values()) {
     if (signal.aborted) return;
     if (sameMark(drawn.get(mark.value), mark)) continue;
-    try { await view.addAnnotation(mark); }
-    catch (error) { if (!signal.aborted) report(error); }
+    try {
+      await view.addAnnotation(mark);
+    } catch (error) {
+      if (!signal.aborted) report(error);
+    }
   }
 }
 
@@ -311,11 +308,7 @@ export async function reconcileAnnotationMarks(view: Pick<FoliateView, "addAnnot
  * everything else. Rendered through the same overlayer as marks, so it follows
  * the text through page turns, scrolling, and re-layout for free.
  */
-export function applyNavigatorHighlight(
-  view: FoliateView,
-  cfiRange: string,
-  veilColor?: string,
-): void {
+export function applyNavigatorHighlight(view: FoliateView, cfiRange: string, veilColor?: string): void {
   void view
     .addAnnotation({
       value: cfiRange,
@@ -329,11 +322,9 @@ export function applyNavigatorHighlight(
 }
 
 export function removeNavigatorHighlight(view: FoliateView, cfiRange: string): void {
-  void view
-    .deleteAnnotation({ value: cfiRange, overlayKey: navigatorOverlayKey(cfiRange) })
-    .catch(() => {
-      // Ignore removal errors (e.g. section not currently rendered).
-    });
+  void view.deleteAnnotation({ value: cfiRange, overlayKey: navigatorOverlayKey(cfiRange) }).catch(() => {
+    // Ignore removal errors (e.g. section not currently rendered).
+  });
 }
 
 /**
@@ -356,13 +347,8 @@ export async function registerHighlightDrawing(view: FoliateView): Promise<void>
             ? drawNavigatorTarget
             : highlight;
     const container = detail.range.commonAncestorContainer;
-    const element =
-      container.nodeType === Node.ELEMENT_NODE
-        ? (container as Element)
-        : container.parentElement;
-    const writingMode = element
-      ? detail.doc.defaultView?.getComputedStyle(element).writingMode
-      : undefined;
+    const element = container.nodeType === Node.ELEMENT_NODE ? (container as Element) : container.parentElement;
+    const writingMode = element ? detail.doc.defaultView?.getComputedStyle(element).writingMode : undefined;
     detail.draw(drawFn, { color: detail.annotation.color, writingMode });
   });
 }

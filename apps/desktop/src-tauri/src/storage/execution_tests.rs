@@ -54,37 +54,94 @@ fn worker_panic_returns_a_stable_failure_without_panic_payload() {
 /// takes no lock that is ever held across I/O, or must touch main-thread-only
 /// OS state; everything else is async and names its executor.
 const SYNC_COMMANDS: &[(&str, &str)] = &[
-    ("app_exit_confirm", "flips two atomics and requests the exit"),
+    (
+        "app_exit_confirm",
+        "flips two atomics and requests the exit",
+    ),
     ("window_input_revision", "reads two atomics"),
-    ("external_open_take", "drains an in-memory queue; its lock never spans I/O"),
-    ("external_open_is_current", "compares an in-memory epoch; its lock never spans I/O"),
-    ("diagnostics_log_dir", "computes a path; no filesystem access"),
-    ("app_store_storefront", "iOS: a StoreKit property read, kept on the main thread"),
-    ("set_status_bar_hidden", "iOS: the ObjC bridge hops to the main queue itself"),
+    (
+        "external_open_take",
+        "drains an in-memory queue; its lock never spans I/O",
+    ),
+    (
+        "external_open_is_current",
+        "compares an in-memory epoch; its lock never spans I/O",
+    ),
+    (
+        "diagnostics_log_dir",
+        "computes a path; no filesystem access",
+    ),
+    (
+        "app_store_storefront",
+        "iOS: a StoreKit property read, kept on the main thread",
+    ),
+    (
+        "set_status_bar_hidden",
+        "iOS: the ObjC bridge hops to the main queue itself",
+    ),
 ];
 
 /// Async commands that only await non-blocking futures — HTTP clients,
 /// async mutexes, pooled helpers — and so need no executor of their own.
 const ASYNC_ONLY: &[(&str, &str)] = &[
-    ("desktop_update_check", "the updater's manifest fetch is an async HTTP future"),
-    ("desktop_update_install", "download and install are async updater futures"),
-    ("android_update_check", "async HTTP; JNI round trips go through on_main_thread"),
-    ("android_update_install", "async HTTP; JNI round trips go through on_main_thread"),
-    ("local_api_status", "awaits an async mutex and pooled secret reads"),
-    ("local_api_attach", "awaits an async mutex, pooled secret reads and the async server"),
-    ("local_api_set_enabled", "awaits an async mutex, pooled secret I/O and the async server"),
-    ("local_api_token", "awaits an async mutex and pooled secret reads"),
-    ("local_api_rotate_token", "awaits an async mutex, pooled secret I/O and the async server"),
+    (
+        "desktop_update_check",
+        "the updater's manifest fetch is an async HTTP future",
+    ),
+    (
+        "desktop_update_install",
+        "download and install are async updater futures",
+    ),
+    (
+        "android_update_check",
+        "async HTTP; JNI round trips go through on_main_thread",
+    ),
+    (
+        "android_update_install",
+        "async HTTP; JNI round trips go through on_main_thread",
+    ),
+    (
+        "local_api_status",
+        "awaits an async mutex and pooled secret reads",
+    ),
+    (
+        "local_api_attach",
+        "awaits an async mutex, pooled secret reads and the async server",
+    ),
+    (
+        "local_api_set_enabled",
+        "awaits an async mutex, pooled secret I/O and the async server",
+    ),
+    (
+        "local_api_token",
+        "awaits an async mutex and pooled secret reads",
+    ),
+    (
+        "local_api_rotate_token",
+        "awaits an async mutex, pooled secret I/O and the async server",
+    ),
     ("local_api_complete", "hands a response to an async channel"),
-    ("export_choose_target", "awaits the dialog plugin's callback; the dialog runs off the runtime"),
-    ("backup_export_choose_destination", "awaits the dialog plugin's callback; the dialog runs off the runtime"),
+    (
+        "export_choose_target",
+        "awaits the dialog plugin's callback; the dialog runs off the runtime",
+    ),
+    (
+        "backup_export_choose_destination",
+        "awaits the dialog plugin's callback; the dialog runs off the runtime",
+    ),
 ];
 
 /// Async commands that briefly take a std mutex on plain in-memory state that
 /// no holder ever keeps across I/O or an await, so waiting on it is bounded.
 const IN_MEMORY_LOCKS: &[(&str, &str)] = &[
-    ("local_api_attach", "resets the bridge's pending-request map"),
-    ("local_api_complete", "removes one sender from the bridge's pending-request map"),
+    (
+        "local_api_attach",
+        "resets the bridge's pending-request map",
+    ),
+    (
+        "local_api_complete",
+        "removes one sender from the bridge's pending-request map",
+    ),
 ];
 
 #[derive(Default)]
@@ -98,11 +155,18 @@ struct ExecutionBoundary {
 impl<'ast> Visit<'ast> for ExecutionBoundary {
     fn visit_expr_call(&mut self, node: &'ast ExprCall) {
         let callee = match &*node.func {
-            Expr::Path(path) => path.path.segments.last().map(|segment| segment.ident.to_string()),
+            Expr::Path(path) => path
+                .path
+                .segments
+                .last()
+                .map(|segment| segment.ident.to_string()),
             _ => None,
         };
         // Enum/struct constructors (`Ok(..)`, `Some(..)`) are values, not work.
-        if !callee.as_deref().is_some_and(|name| name.starts_with(char::is_uppercase)) {
+        if !callee
+            .as_deref()
+            .is_some_and(|name| name.starts_with(char::is_uppercase))
+        {
             self.work += 1;
         }
         let pooled = matches!(callee.as_deref(), Some("blocking" | "spawn_blocking"));
@@ -233,7 +297,9 @@ fn every_command_keeps_blocking_work_off_ui_dispatch() {
     }
     for (name, _) in IN_MEMORY_LOCKS {
         if !used.contains(&format!("lock:{name}")) {
-            violations.push(format!("{name} no longer needs its in-memory lock exception"));
+            violations.push(format!(
+                "{name} no longer needs its in-memory lock exception"
+            ));
         }
     }
     assert!(violations.is_empty(), "{}", violations.join("\n"));

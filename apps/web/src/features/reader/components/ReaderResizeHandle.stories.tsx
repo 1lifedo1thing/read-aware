@@ -63,14 +63,9 @@ export const Draggable: Story = {
     return (
       <div className="flex h-64 w-[32rem]">
         <div className="flex-1 bg-fill p-4 text-sm text-fg-muted">book</div>
-        <div
-          className="relative shrink-0 border-l border-border bg-surface p-4 text-sm text-fg"
-          style={{ width }}
-        >
+        <div className="relative shrink-0 border-l border-border bg-surface p-4 text-sm text-fg" style={{ width }}>
           <span className="block tabular-nums">{Math.round(width)}px</span>
-          <span className="mt-1 block text-xs tabular-nums text-fg-subtle">
-            committed: {Math.round(committed)}px
-          </span>
+          <span className="mt-1 block text-xs tabular-nums text-fg-subtle">committed: {Math.round(committed)}px</span>
           <ReaderResizeHandle
             {...args}
             edge="left"

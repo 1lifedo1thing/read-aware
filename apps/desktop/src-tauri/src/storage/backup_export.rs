@@ -198,7 +198,9 @@ fn write(
         }
         io.publish(
             target,
-            Box::new(|out| backup_archive::encrypt_archive(&snapshot, password, out, || lease.check())),
+            Box::new(|out| {
+                backup_archive::encrypt_archive(&snapshot, password, out, || lease.check())
+            }),
         )
     })();
     drop(snapshot); // Retain admission until private files are actually released.
@@ -237,7 +239,8 @@ pub async fn backup_export_cancel(
     let tasks = app.state::<BackupTasks>().inner().clone();
     let owner = window.label().to_owned();
     super::blocking("backup_export_cancel", move || {
-        app.state::<SaveTargets>().release_session(&owner, &task_id)?;
+        app.state::<SaveTargets>()
+            .release_session(&owner, &task_id)?;
         tasks.cancel(&owner, Some(&task_id))
     })
     .await

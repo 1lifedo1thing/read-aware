@@ -71,11 +71,7 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_HIDDEN_CODE_POINT = /[\p{Cc}\p{Default_Ignorable_Code_Point}]/u;
 
 function isEmailIdentity(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    EMAIL_SHAPE.test(value) &&
-    !EMAIL_HIDDEN_CODE_POINT.test(value)
-  );
+  return typeof value === "string" && EMAIL_SHAPE.test(value) && !EMAIL_HIDDEN_CODE_POINT.test(value);
 }
 
 function isKeyMaterial(value: unknown): value is SyncKeyMaterial {
@@ -148,9 +144,7 @@ export async function verifySignInToken(
  */
 export type KeyMaterialStore = {
   load(): Promise<SyncKeyMaterial | null>;
-  publish(
-    keys: SyncKeyMaterial,
-  ): Promise<{ outcome: "set" } | { outcome: "conflict"; keys: SyncKeyMaterial | null }>;
+  publish(keys: SyncKeyMaterial): Promise<{ outcome: "set" } | { outcome: "conflict"; keys: SyncKeyMaterial | null }>;
 };
 
 /**

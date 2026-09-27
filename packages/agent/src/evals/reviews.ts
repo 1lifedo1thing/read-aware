@@ -133,22 +133,29 @@ export function normalizeHumanReviewInput(value: unknown): Omit<HumanReview, "up
   let findings: ReviewFinding[] | undefined;
   if (value.findings !== undefined) {
     if (!Array.isArray(value.findings)) throw new Error("review findings must be an array");
-    findings = value.findings.map(entry => {
-      if (!isRecord(entry) || !["product", "assertion", "fixture", "judge", "environment"].includes(String(entry.attribution))
-        || !Array.isArray(entry.evidence) || entry.evidence.length === 0 || !entry.evidence.every(e => typeof e === "string" && e.trim())
-        || typeof entry.explanation !== "string" || !entry.explanation.trim()) throw new Error("each finding needs attribution, evidence references and an explanation");
-      return { attribution: entry.attribution as ReviewFinding["attribution"], evidence: entry.evidence as string[], explanation: entry.explanation };
+    findings = value.findings.map((entry) => {
+      if (
+        !isRecord(entry) ||
+        !["product", "assertion", "fixture", "judge", "environment"].includes(String(entry.attribution)) ||
+        !Array.isArray(entry.evidence) ||
+        entry.evidence.length === 0 ||
+        !entry.evidence.every((e) => typeof e === "string" && e.trim()) ||
+        typeof entry.explanation !== "string" ||
+        !entry.explanation.trim()
+      )
+        throw new Error("each finding needs attribution, evidence references and an explanation");
+      return {
+        attribution: entry.attribution as ReviewFinding["attribution"],
+        evidence: entry.evidence as string[],
+        explanation: entry.explanation,
+      };
     });
   }
   return {
     targetId: value.targetId.trim(),
     ...(findings === undefined ? {} : { findings }),
     ...(score === undefined ? {} : { score }),
-    ...(verdict === undefined
-      ? score === undefined
-        ? {}
-        : { verdict: verdictForScore(score) }
-      : { verdict }),
+    ...(verdict === undefined ? (score === undefined ? {} : { verdict: verdictForScore(score) }) : { verdict }),
     dimensions,
     flags: [...new Set(rawFlags)] as ReviewFlag[],
     notes,
@@ -162,7 +169,6 @@ export function reviewMean(review: HumanReview | undefined): number | undefined 
   if (scores.length === 0) return undefined;
   return scores.reduce((sum, score) => sum + score, 0) / scores.length;
 }
-
 
 /** Semantic quality needs primary review; opted-in deterministic actions use state checks. */
 export interface ReviewableRun {
@@ -190,7 +196,7 @@ export function hasExecutionError(record: ReviewableRun): boolean {
   const stage = isRecord(record.error) ? record.error.stage : undefined;
   // A scoring failure (including a judge timeout) does not erase a completed
   // answer. Keep its diagnostic error visible, and let primary review decide.
-  const completed = record.hasCompletedOutput ?? (record.output !== undefined);
+  const completed = record.hasCompletedOutput ?? record.output !== undefined;
   return !(completed && (stage === "scoring" || stage === "timeout"));
 }
 export function qualityVerdict(record: ReviewableRun, reviews: Record<string, HumanReview> = {}): QualityVerdict {
@@ -199,7 +205,11 @@ export function qualityVerdict(record: ReviewableRun, reviews: Record<string, Hu
   if (isRecord(record.input) && record.input.evaluation === "programmatic") {
     // Opt-in alone is insufficient: a completed observation and actual state
     // checks are mandatory. Tool names/keywords cannot certify a write.
-    if (!(record.hasCompletedOutput ?? record.output !== undefined) || !record.assessment?.checks.some(check => check.category === "state")) return "pending";
+    if (
+      !(record.hasCompletedOutput ?? record.output !== undefined) ||
+      !record.assessment?.checks.some((check) => check.category === "state")
+    )
+      return "pending";
     if (!record.assessment.passed) return "fail";
     return review?.notes?.trim() && review.verdict ? review.verdict : "pass";
   }
@@ -218,18 +228,25 @@ export function qualitySummaryText(summary: QualitySummary): string {
   return `${summary.pass}/${summary.total} accepted; ${summary.partial} partial, ${summary.fail} fail, ${summary.pending} pending review, ${summary.error} errors`;
 }
 
-
 export function manualReviewRecords(sessions: ManualReviewSession[]): ReviewableRun[] {
-  return sessions.flatMap(session => session.turns.map(turn => ({ id: turn.id, status: "completed", reviewTargetId: `manual:${turn.id}` })));
+  return sessions.flatMap((session) =>
+    session.turns.map((turn) => ({ id: turn.id, status: "completed", reviewTargetId: `manual:${turn.id}` })),
+  );
 }
 export function plannedRunsComplete(
   plan: { scenarios: Array<{ id: string }>; variants: Array<{ id: string }>; repetitions: number },
   records: Array<{ scenarioId: string; variantId: string; repetition: number }>,
 ): boolean {
   const expected = new Set<string>();
-  for (const scenario of plan.scenarios) for (const variant of plan.variants)
-    for (let repetition = 1; repetition <= plan.repetitions; repetition++)
-      expected.add(JSON.stringify([scenario.id, variant.id, repetition]));
-  const actual = records.map(r => JSON.stringify([r.scenarioId, r.variantId, r.repetition]));
-  return expected.size > 0 && actual.length === expected.size && new Set(actual).size === expected.size && actual.every(key => expected.has(key));
+  for (const scenario of plan.scenarios)
+    for (const variant of plan.variants)
+      for (let repetition = 1; repetition <= plan.repetitions; repetition++)
+        expected.add(JSON.stringify([scenario.id, variant.id, repetition]));
+  const actual = records.map((r) => JSON.stringify([r.scenarioId, r.variantId, r.repetition]));
+  return (
+    expected.size > 0 &&
+    actual.length === expected.size &&
+    new Set(actual).size === expected.size &&
+    actual.every((key) => expected.has(key))
+  );
 }

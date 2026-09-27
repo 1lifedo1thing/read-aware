@@ -13,11 +13,7 @@ import {
 } from "@read-aware/agent";
 import { getSecret } from "../../../platform/secret-store";
 import { relayBaseUrl } from "../../../platform/sync/sync-scheduler";
-import {
-  DEFAULT_MODELS,
-  DEFAULT_THINKING_LEVEL,
-  type AIConfig,
-} from "../lib/ai-config";
+import { DEFAULT_MODELS, DEFAULT_THINKING_LEVEL, type AIConfig } from "../lib/ai-config";
 
 export function accountFromConfig(config: AIConfig): {
   account: LlmAccount;
@@ -51,18 +47,14 @@ export function accountFromConfig(config: AIConfig): {
   const smart = config.model || DEFAULT_MODELS[config.provider];
   // The simple setup path uses one model for both roles. A distinct Fast model
   // only exists when the user explicitly chooses that advanced override.
-  const hasSeparateFastModel = Boolean(
-    config.fastModel && config.fastModel !== smart,
-  );
+  const hasSeparateFastModel = Boolean(config.fastModel && config.fastModel !== smart);
   const fast = hasSeparateFastModel ? config.fastModel! : smart;
   const smartThinking = config.thinkingLevel ?? DEFAULT_THINKING_LEVEL;
 
   const models: RoleModels = { smart, fast };
   const thinking: RoleThinking = {
     smart: smartThinking,
-    fast: hasSeparateFastModel
-      ? config.fastThinkingLevel ?? DEFAULT_THINKING_LEVEL
-      : smartThinking,
+    fast: hasSeparateFastModel ? (config.fastThinkingLevel ?? DEFAULT_THINKING_LEVEL) : smartThinking,
   };
   return { account, models, thinking };
 }

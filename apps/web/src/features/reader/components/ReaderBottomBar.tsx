@@ -88,12 +88,14 @@ export function ReaderBottomBar<K extends string>({
         <div className="min-h-0 overflow-hidden">
           {content && (
             <div
-              style={{
-                paddingLeft: "var(--ra-safe-left)",
-                paddingRight: "var(--ra-safe-right)",
-                // What pinned headers inside a panel paint over scrolling rows with.
-                "--ra-panel-surface": "var(--color-fill)",
-              } as CSSProperties}
+              style={
+                {
+                  paddingLeft: "var(--ra-safe-left)",
+                  paddingRight: "var(--ra-safe-right)",
+                  // What pinned headers inside a panel paint over scrolling rows with.
+                  "--ra-panel-surface": "var(--color-fill)",
+                } as CSSProperties
+              }
               className="flex max-h-[min(56dvh,30rem)] flex-col border-b border-border/70"
             >
               <span aria-hidden="true" className="mx-auto mt-2 block h-1 w-9 shrink-0 rounded-full bg-border-strong" />

@@ -369,7 +369,10 @@ pub async fn plugins_stage_files(
                     base64::engine::general_purpose::STANDARD
                         .decode(&file.content)
                         .map_err(|e| {
-                            invalid_package(format!("invalid base64 payload for {}: {e}", file.path))
+                            invalid_package(format!(
+                                "invalid base64 payload for {}: {e}",
+                                file.path
+                            ))
                         })?
                 } else {
                     file.content.clone().into_bytes()
@@ -387,7 +390,10 @@ pub async fn plugins_stage_files(
     .await
 }
 
-pub(crate) fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginEntry, CommandError> {
+pub(crate) fn commit_candidate_at(
+    plugins: &Path,
+    token: &str,
+) -> Result<PluginEntry, CommandError> {
     let (candidate_path, candidate) = candidate_at(plugins, token)?;
     let active_path = plugins.join(&candidate.id);
     let rollback_root = rollback_dir(plugins);
@@ -419,7 +425,10 @@ pub(crate) fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginE
                 log::error!("previous plugin version restore deferred to next launch: {restore}");
             }
         }
-        return Err(CommandError::context("could not switch to plugin candidate", error));
+        return Err(CommandError::context(
+            "could not switch to plugin candidate",
+            error,
+        ));
     }
     Ok(PluginEntry {
         id: candidate.id,
@@ -445,7 +454,10 @@ pub async fn plugins_commit_candidate(
         let db = app.state::<crate::storage::Db>();
         let conn = db.0.lock()?;
         let journal = crate::storage::read_plugin_update(&conn, &update_id)?.ok_or_else(|| {
-            CommandError::new(CODE_PLUGIN_CANDIDATE_STALE, "plugin update baseline is missing")
+            CommandError::new(
+                CODE_PLUGIN_CANDIDATE_STALE,
+                "plugin update baseline is missing",
+            )
         })?;
         if journal.phase != "prepared"
             || journal.plugin_id != candidate.id
@@ -517,8 +529,14 @@ fn rollback_plugin_at(plugins: &Path, id: &str) -> Result<PluginEntry, CommandEr
 }
 
 #[tauri::command]
-pub async fn plugins_rollback(app: tauri::AppHandle, id: String) -> Result<PluginEntry, CommandError> {
-    blocking("plugins_rollback", move || rollback_plugin_at(&plugins_dir(&app)?, &id)).await
+pub async fn plugins_rollback(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<PluginEntry, CommandError> {
+    blocking("plugins_rollback", move || {
+        rollback_plugin_at(&plugins_dir(&app)?, &id)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -721,7 +739,9 @@ fn zip_manifest(path: &Path) -> Result<(String, String), CommandError> {
         }
         if name.ends_with("/manifest.json") && name.matches('/').count() == 1 {
             if found.is_some() {
-                return Err(invalid_package("the zip contains more than one plugin folder"));
+                return Err(invalid_package(
+                    "the zip contains more than one plugin folder",
+                ));
             }
             found = Some(name);
         }
@@ -882,8 +902,14 @@ mod tests {
     fn plugin_assets_resolve_only_inside_the_requested_plugin() {
         let (_temp, plugins, root, token) = asset_fixture();
         assert_eq!(serve("alpha/main.js", &root, &plugins).unwrap(), "// 1.0.0");
-        assert_eq!(serve("alpha/lib/chunk.js", &root, &plugins).unwrap(), "// chunk");
-        assert_eq!(serve("beta/secret.js", &root, &plugins).unwrap(), "// beta only");
+        assert_eq!(
+            serve("alpha/lib/chunk.js", &root, &plugins).unwrap(),
+            "// chunk"
+        );
+        assert_eq!(
+            serve("beta/secret.js", &root, &plugins).unwrap(),
+            "// beta only"
+        );
         // A bundled id shadows a user-dir copy.
         assert_eq!(serve("gamma/main.js", &root, &plugins).unwrap(), "// 1.0.0");
         // The candidate namespace serves the staged tree by token.
@@ -924,13 +950,19 @@ mod tests {
     #[test]
     fn plugin_asset_symlinks_cannot_leave_their_plugin() {
         let (_temp, plugins, root, _) = asset_fixture();
-        std::os::unix::fs::symlink(plugins.join("beta/secret.js"), plugins.join("alpha/escape.js"))
-            .unwrap();
+        std::os::unix::fs::symlink(
+            plugins.join("beta/secret.js"),
+            plugins.join("alpha/escape.js"),
+        )
+        .unwrap();
         std::os::unix::fs::symlink(plugins.join("alpha/lib"), plugins.join("alpha/linked"))
             .unwrap();
         assert_eq!(serve("alpha/escape.js", &root, &plugins), None);
         // A link that stays inside the plugin still resolves.
-        assert_eq!(serve("alpha/linked/chunk.js", &root, &plugins).unwrap(), "// chunk");
+        assert_eq!(
+            serve("alpha/linked/chunk.js", &root, &plugins).unwrap(),
+            "// chunk"
+        );
     }
 
     #[test]

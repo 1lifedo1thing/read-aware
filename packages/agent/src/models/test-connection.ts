@@ -27,9 +27,7 @@ export async function testLlmConnection(
   const resolveModel = createModelResolver(account, { smart: modelId, fast: modelId }, registry);
   const complete = createCompleteFn(registry, account, undefined, options.fetch);
   const message = await complete(resolveModel("smart"), {
-    messages: [
-      { role: "user", content: 'Reply with the single word "ok".', timestamp: Date.now() },
-    ],
+    messages: [{ role: "user", content: 'Reply with the single word "ok".', timestamp: Date.now() }],
   });
   // completeSimple 不 reject：失败 resolve 成 stopReason "error"/"aborted" 的消息
   if (message.stopReason === "error" || message.stopReason === "aborted") {

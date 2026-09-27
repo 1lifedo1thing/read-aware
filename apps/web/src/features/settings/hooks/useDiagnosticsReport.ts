@@ -5,7 +5,12 @@ import { useToast } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { createLogger } from "../../../platform/logger";
 import { hostDiagnosticsFlows } from "../../../services/diagnostics";
-import { assembleDiagnosticsBundle, exportDiagnosticsBundle, sendDiagnosticsReport, type DiagnosticsBundle } from "../lib/diagnostics";
+import {
+  assembleDiagnosticsBundle,
+  exportDiagnosticsBundle,
+  sendDiagnosticsReport,
+  type DiagnosticsBundle,
+} from "../lib/diagnostics";
 
 type Report =
   | { action: DiagnosticsReportAction; step: "assembling" }
@@ -19,16 +24,24 @@ export function useDiagnosticsReport() {
   const { t } = useTranslation("settings");
   const { toast } = useToast();
   const [report, setReport] = useState<Report | null>(null);
-  const current = useRef<Report | null>(null), generation = useRef(0);
+  const current = useRef<Report | null>(null),
+    generation = useRef(0);
   const publish = (value: Report | null, origin: DomainActor = "user") => {
     const next = value ? stampEventCause(value, origin) : null;
-    current.current = next; setReport(next);
+    current.current = next;
+    setReport(next);
   };
-  const reset = () => { generation.current++; publish(null); };
+  const reset = () => {
+    generation.current++;
+    publish(null);
+  };
   const failure = (error: unknown, action: DiagnosticsReportAction) => {
     log.error(`diagnostics ${action} failed`, error);
-    toast({ variant: "destructive", title: t("about.diagnostics.noticeError"),
-      description: t(action === "export" ? "about.diagnostics.exportError" : "about.diagnostics.reportError") });
+    toast({
+      variant: "destructive",
+      title: t("about.diagnostics.noticeError"),
+      description: t(action === "export" ? "about.diagnostics.exportError" : "about.diagnostics.reportError"),
+    });
   };
   const open = (action: DiagnosticsReportAction, signal?: AbortSignal, origin: DomainActor = "user") => {
     origin = causalActor(origin);
@@ -42,43 +55,79 @@ export function useDiagnosticsReport() {
         if (ticket !== generation.current || signal?.aborted) return;
         publish({ action, step: "preview", bundle }, origin);
       } catch (error) {
-        if (ticket !== generation.current) { log.warn("Abandoned diagnostics assembly failed", error); return; }
-        hostDiagnosticsFlows.reject(action, error); reset(); failure(error, action);
+        if (ticket !== generation.current) {
+          log.warn("Abandoned diagnostics assembly failed", error);
+          return;
+        }
+        hostDiagnosticsFlows.reject(action, error);
+        reset();
+        failure(error, action);
       }
     })();
   };
-  const latest = useRef({ open, reset }); latest.current = { open, reset };
+  const latest = useRef({ open, reset });
+  latest.current = { open, reset };
   useLayoutEffect(() => {
-    const off = hostDiagnosticsFlows.bind({ open: (request, signal) => latest.current.open(request.action, signal, actorFromEvent(request)), close: () => latest.current.reset() });
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- generation is a counter, not a node: cleanup bumps the live value
-    return () => { generation.current++; off(); };
+    const off = hostDiagnosticsFlows.bind({
+      open: (request, signal) => latest.current.open(request.action, signal, actorFromEvent(request)),
+      close: () => latest.current.reset(),
+    });
+    return () => {
+      // oxlint-disable-next-line react-hooks/exhaustive-deps -- generation is a counter, not a node: cleanup bumps the live value
+      generation.current++;
+      off();
+    };
   }, []);
 
   const close = () => {
     const value = current.current;
     if (!value || value.step === "working") return;
-    hostDiagnosticsFlows.dismiss(value.action); reset();
+    hostDiagnosticsFlows.dismiss(value.action);
+    reset();
   };
   const confirm = async () => {
     const value = current.current;
     if (!value || value.step !== "preview") return;
-    const ticket = generation.current, origin = causalActor("user");
+    const ticket = generation.current,
+      origin = causalActor("user");
     publish({ ...value, step: "working" }, origin);
     try {
-      const result = await hostDiagnosticsFlows.run<boolean | string>(value.action, () => value.action === "export"
-        ? exportDiagnosticsBundle(value.bundle) : sendDiagnosticsReport(value.bundle), false, origin);
+      const result = await hostDiagnosticsFlows.run<boolean | string>(
+        value.action,
+        () => (value.action === "export" ? exportDiagnosticsBundle(value.bundle) : sendDiagnosticsReport(value.bundle)),
+        false,
+        origin,
+      );
       if (ticket !== generation.current) return;
       if (value.action === "send") publish({ action: "send", step: "sent", reportId: result as string }, origin);
       else {
         reset();
-        if (result === true) toast({ variant: "success", title: t("about.diagnostics.noticeDone"), description: t("about.diagnostics.exportSuccess") });
+        if (result === true)
+          toast({
+            variant: "success",
+            title: t("about.diagnostics.noticeDone"),
+            description: t("about.diagnostics.exportSuccess"),
+          });
       }
     } catch (error) {
-      if (ticket !== generation.current) { log.warn("Abandoned diagnostic action failed", error); return; }
-      publish({ ...value, step: "preview" }, origin); failure(error, value.action);
+      if (ticket !== generation.current) {
+        log.warn("Abandoned diagnostic action failed", error);
+        return;
+      }
+      publish({ ...value, step: "preview" }, origin);
+      failure(error, value.action);
     }
   };
-  return { report, close, confirm, open: (action: DiagnosticsReportAction) => {
-    try { open(action); } catch (error) { failure(error, action); }
-  } };
+  return {
+    report,
+    close,
+    confirm,
+    open: (action: DiagnosticsReportAction) => {
+      try {
+        open(action);
+      } catch (error) {
+        failure(error, action);
+      }
+    },
+  };
 }

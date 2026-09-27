@@ -28,24 +28,17 @@ function assertDesktop(what: string): never | void {
 }
 
 /** Filter + newest-first sort applied to the SQLite result set. */
-function filterAndSortAnnotations(
-  annotations: Annotation[],
-  filters?: AnnotationFilters,
-): Annotation[] {
+function filterAndSortAnnotations(annotations: Annotation[], filters?: AnnotationFilters): Annotation[] {
   let result = annotations;
   if (filters?.bookId) result = result.filter((a) => a.bookId === filters.bookId);
   if (filters?.type) result = result.filter((a) => a.type === filters.type);
   if (filters?.searchQuery) {
     const query = filters.searchQuery.toLowerCase();
     result = result.filter(
-      (a) =>
-        a.text.toLowerCase().includes(query) ||
-        ("content" in a && a.content?.toLowerCase().includes(query)),
+      (a) => a.text.toLowerCase().includes(query) || ("content" in a && a.content?.toLowerCase().includes(query)),
     );
   }
-  return [...result].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+  return [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 // Generic annotation operations.
@@ -59,7 +52,9 @@ export async function getAnnotation(id: string): Promise<Annotation | null> {
   return (await invoke<Annotation | null>("annotation_get", { id })) ?? null;
 }
 
-export async function pageAnnotations(input?: AnnotationPageQuery): Promise<{ items: Annotation[]; nextCursor: string | null; consistency: "live" }> {
+export async function pageAnnotations(
+  input?: AnnotationPageQuery,
+): Promise<{ items: Annotation[]; nextCursor: string | null; consistency: "live" }> {
   const query = normalizeAnnotationPageQuery(input);
   assertDesktop("Paging annotations");
   return invoke("annotations_page", { input: query });
@@ -107,20 +102,23 @@ export async function createHighlight(
   source?: CreationSource,
 ): Promise<Highlight> {
   const highlightId = crypto.randomUUID();
-  await commitCreation({
-    type: "highlight.created",
-    payload: {
-      highlightId,
-      bookId,
-      range: source?.range,
-      anchor: cfiRange ?? undefined,
-      chapterHref: chapterHref ?? undefined,
-      text,
-      color,
-      style,
+  await commitCreation(
+    {
+      type: "highlight.created",
+      payload: {
+        highlightId,
+        bookId,
+        range: source?.range,
+        anchor: cfiRange ?? undefined,
+        chapterHref: chapterHref ?? undefined,
+        text,
+        color,
+        style,
+      },
+      origin,
     },
-    origin,
-  }, source);
+    source,
+  );
   return requireStored(highlightId) as Promise<Highlight>;
 }
 
@@ -140,19 +138,22 @@ export async function createNote(
   source?: CreationSource,
 ): Promise<Note> {
   const noteId = crypto.randomUUID();
-  await commitCreation({
-    type: "note.created",
-    payload: {
-      noteId,
-      bookId,
-      range: source?.range,
-      anchor: cfiRange ?? undefined,
-      chapterHref: chapterHref ?? undefined,
-      quotedText: text || undefined,
-      body: content,
+  await commitCreation(
+    {
+      type: "note.created",
+      payload: {
+        noteId,
+        bookId,
+        range: source?.range,
+        anchor: cfiRange ?? undefined,
+        chapterHref: chapterHref ?? undefined,
+        quotedText: text || undefined,
+        body: content,
+      },
+      origin,
     },
-    origin,
-  }, source);
+    source,
+  );
   return requireStored(noteId) as Promise<Note>;
 }
 

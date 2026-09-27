@@ -16,14 +16,7 @@ export type SettingsSection =
 /** Values that can cross the generic settings domain boundary. */
 export type SettingValue = string | number | boolean | null | string[];
 
-export type SettingKind =
-  | "boolean"
-  | "enum"
-  | "string"
-  | "integer"
-  | "number"
-  | "id-list"
-  | "key-chord";
+export type SettingKind = "boolean" | "enum" | "string" | "integer" | "number" | "id-list" | "key-chord";
 
 export interface SettingOption {
   value: SettingValue;
@@ -33,10 +26,7 @@ export interface SettingOption {
   polarity?: "light" | "dark";
 }
 
-export type SettingsTarget =
-  | { kind: "global" }
-  | { kind: "all-books" }
-  | { kind: "book"; bookId: string };
+export type SettingsTarget = { kind: "global" } | { kind: "all-books" } | { kind: "book"; bookId: string };
 
 export type SettingsQueryTarget = Exclude<SettingsTarget, { kind: "all-books" }>;
 
@@ -132,10 +122,8 @@ export type SettingsObservationCause = {
   /** Null for legacy writes, remote origin unknown, catalog changes, or coalesced actors. */
   origin: EventOrigin | null;
 };
-export type SettingsObservation = SettingsObservationCause & (
-  | { status: "ready"; snapshot: SettingsSnapshot }
-  | { status: "error"; revision: number; code: string }
-);
+export type SettingsObservation = SettingsObservationCause &
+  ({ status: "ready"; snapshot: SettingsSnapshot } | { status: "error"; revision: number; code: string });
 
 export interface SettingChange {
   path: string;

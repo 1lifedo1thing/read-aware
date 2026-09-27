@@ -21,9 +21,7 @@ const entry: DictionaryEntrySnapshot = {
       partOfSpeech: "noun",
       definition:
         "A crested passerine bird with silky brown plumage and *waxy* red tips on the secondary wing feathers.",
-      examples: [
-        "I was the shadow of the waxwing slain by the false azure in the windowpane.",
-      ],
+      examples: ["I was the shadow of the waxwing slain by the false azure in the windowpane."],
     },
     {
       partOfSpeech: "noun",
@@ -71,10 +69,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: (args) => (
     <Stack gap="md">
-      <DictionaryEntryHeading
-        headword={args.entry.headword}
-        pronunciation={args.entry.pronunciation}
-      />
+      <DictionaryEntryHeading headword={args.entry.headword} pronunciation={args.entry.pronunciation} />
       <DictionaryEntryBody {...args} />
     </Stack>
   ),

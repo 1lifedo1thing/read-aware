@@ -35,44 +35,36 @@ function surfaceForTitle(seed: string) {
   return SURFACES[hash % SURFACES.length];
 }
 
-export function BookCoverPlaceholder({
-  title,
-  author,
-  format,
-  className,
-  compact = false,
-}: BookCoverPlaceholderProps) {
+export function BookCoverPlaceholder({ title, author, format, className, compact = false }: BookCoverPlaceholderProps) {
   const { t } = useTranslation("shelf");
   const surface = surfaceForTitle(title || "Untitled");
 
   // List rows already show the title beside their 44px thumbnail.
-  if (compact) return (
-    <div role="img" aria-label={t("book.cover", { title })}
-      className={cn("flex h-full w-full flex-col items-center justify-center gap-1 overflow-hidden p-1", surface.bg, surface.title, className)}>
-      <BookOpen size={20} aria-hidden="true" />
-      {format && <span className="max-w-full truncate font-sans text-[9px] font-medium uppercase">{format}</span>}
-    </div>
-  );
+  if (compact)
+    return (
+      <div
+        role="img"
+        aria-label={t("book.cover", { title })}
+        className={cn(
+          "flex h-full w-full flex-col items-center justify-center gap-1 overflow-hidden p-1",
+          surface.bg,
+          surface.title,
+          className,
+        )}
+      >
+        <BookOpen size={20} aria-hidden="true" />
+        {format && <span className="max-w-full truncate font-sans text-[9px] font-medium uppercase">{format}</span>}
+      </div>
+    );
 
   return (
     <div
       role="img"
       aria-label={t("book.cover", { title })}
-      className={cn(
-        "flex h-full w-full select-none flex-col justify-between p-4",
-        surface.bg,
-        className,
-      )}
+      className={cn("flex h-full w-full select-none flex-col justify-between p-4", surface.bg, className)}
     >
       {format && (
-        <span
-          className={cn(
-            "font-sans text-[10px] font-medium uppercase tracking-wide",
-            surface.meta,
-          )}
-        >
-          {format}
-        </span>
+        <span className={cn("font-sans text-[10px] font-medium uppercase tracking-wide", surface.meta)}>{format}</span>
       )}
 
       <div className="flex min-h-0 flex-1 items-center">
@@ -92,14 +84,7 @@ export function BookCoverPlaceholder({
       {author && (
         <div className="space-y-2">
           <div className={cn("h-px w-8", surface.rule)} />
-          <span
-            className={cn(
-              "line-clamp-2 block font-sans text-[11px] leading-tight",
-              surface.meta,
-            )}
-          >
-            {author}
-          </span>
+          <span className={cn("line-clamp-2 block font-sans text-[11px] leading-tight", surface.meta)}>{author}</span>
         </div>
       )}
     </div>

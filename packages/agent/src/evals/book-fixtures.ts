@@ -138,9 +138,7 @@ function createRealBook(spec: RealBookSpec): RealBookFixture {
     hasDigests: () => existsSync(digestsFile),
     digestsSeed: (throughChapterIndex) => ({
       [bookId]: digests().filter(
-        (digest) =>
-          digest.chapterIndex >= spec.firstContentChapter &&
-          digest.chapterIndex < throughChapterIndex,
+        (digest) => digest.chapterIndex >= spec.firstContentChapter && digest.chapterIndex < throughChapterIndex,
       ),
     }),
     seed: (progressPercent, status = "reading") => ({
@@ -180,8 +178,7 @@ function createRealBook(spec: RealBookSpec): RealBookFixture {
       const body = chapter.text.replace(/^[^\n]*\n+/, "");
       // 文种感知取句：CJK 书按句号类断句（20–80 字），拉丁文书按 ". " 断句
       // （60–180 字符，且句首大写——避开缩写误断的碎片）。
-      const cjkRatio =
-        (body.slice(0, 2000).match(/[一-鿿]/g)?.length ?? 0) / Math.min(body.length, 2000);
+      const cjkRatio = (body.slice(0, 2000).match(/[一-鿿]/g)?.length ?? 0) / Math.min(body.length, 2000);
       const sentence =
         cjkRatio > 0.2
           ? body
@@ -191,13 +188,7 @@ function createRealBook(spec: RealBookSpec): RealBookFixture {
           : body
               .split(/(?<=[.!?])\s+/)
               .map((part) => part.trim())
-              .find(
-                (part) =>
-                  part.length >= 60 &&
-                  part.length <= 180 &&
-                  !part.includes("\n") &&
-                  /^[A-Z“"]/.test(part),
-              );
+              .find((part) => part.length >= 60 && part.length <= 180 && !part.includes("\n") && /^[A-Z“"]/.test(part));
       return sentence ?? body.slice(0, 60).replace(/\n+/g, "");
     },
     chapterViewport: (chapterIndex, chars = 320) => {

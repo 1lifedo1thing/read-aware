@@ -67,8 +67,7 @@ test("spoiler capability is absent without host grant and in global scope", () =
 
   state.spoilerPermissionGranted = true;
   expect(
-    affectedTools({ kind: "global", threadId: "global" }, deps, state)
-      .every((tool) => !exposesSpoilerArgument(tool)),
+    affectedTools({ kind: "global", threadId: "global" }, deps, state).every((tool) => !exposesSpoilerArgument(tool)),
   ).toBe(true);
 });
 
@@ -104,8 +103,8 @@ test("a forged confirmSpoiler remains rejected when the schema is withheld", asy
   if (!readChapter) throw new Error("read_chapter was not registered");
   expect(exposesSpoilerArgument(readChapter)).toBe(false);
 
-  await expect(
-    readChapter.execute("forged", { chapterIndex: 1, confirmSpoiler: true }),
-  ).rejects.toThrow("reader has not explicitly granted spoiler permission");
+  await expect(readChapter.execute("forged", { chapterIndex: 1, confirmSpoiler: true })).rejects.toThrow(
+    "reader has not explicitly granted spoiler permission",
+  );
   expect(state.spoilerPermissionDenied).toBe(true);
 });

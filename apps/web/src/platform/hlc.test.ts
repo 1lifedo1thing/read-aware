@@ -32,10 +32,9 @@ describe("hybrid logical clock", () => {
     for (let i = 1; i < stamps.length; i += 1) {
       const before = stamps[i - 1];
       const after = stamps[i];
-      expect(
-        after.wallMs > before.wallMs ||
-          (after.wallMs === before.wallMs && after.counter > before.counter),
-      ).toBe(true);
+      expect(after.wallMs > before.wallMs || (after.wallMs === before.wallMs && after.counter > before.counter)).toBe(
+        true,
+      );
     }
   });
 
@@ -76,10 +75,9 @@ describe("hybrid logical clock", () => {
     expect(first.wallMs).toBe(5_000);
     expect(first.counter).toBeGreaterThan(2);
     const second = clock.next("d");
-    expect(
-      second.wallMs > first.wallMs ||
-        (second.wallMs === first.wallMs && second.counter > first.counter),
-    ).toBe(true);
+    expect(second.wallMs > first.wallMs || (second.wallMs === first.wallMs && second.counter > first.counter)).toBe(
+      true,
+    );
   });
 
   test("observing an older stamp is a no-op", () => {
@@ -100,10 +98,9 @@ describe("hybrid logical clock", () => {
     for (let i = 1; i < order.length; i += 1) {
       const before = order[i - 1];
       const after = order[i];
-      expect(
-        after.wallMs > before.wallMs ||
-          (after.wallMs === before.wallMs && after.counter > before.counter),
-      ).toBe(true);
+      expect(after.wallMs > before.wallMs || (after.wallMs === before.wallMs && after.counter > before.counter)).toBe(
+        true,
+      );
     }
     // The merged (2000, 7) sits between the first and second local stamps.
     expect(order[1].counter).toBeGreaterThan(7);

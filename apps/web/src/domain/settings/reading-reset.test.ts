@@ -9,7 +9,8 @@ import { readerOverridesAtom, readerPreferencesAtom } from "../../state/ui";
 
 const storage = new Map<string, string>();
 installFileGlobals({ localStorage: memoryStorage(storage) });
-const store = getDefaultStore(), cleanups: Array<() => void> = [];
+const store = getDefaultStore(),
+  cleanups: Array<() => void> = [];
 beforeEach(() => {
   store.set(readerPreferencesAtom, { ...DEFAULT_READER_PREFERENCES, fontSize: "large" });
   store.set(readerOverridesAtom, {
@@ -17,15 +18,20 @@ beforeEach(() => {
     dormant: { scope: "global", settings: { ...DEFAULT_READER_PREFERENCES, fontSize: "x-large" } },
   });
 });
-afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup(); });
+afterEach(() => {
+  for (const cleanup of cleanups.splice(0)) cleanup();
+});
 
 test("reading provenance reports active and remembered overrides without leaking it through discovery", async () => {
   const domain = createSettingsDomain("agent");
   for (const [bookId, source, override, value] of [
-    ["active", "book", "active", "xx-large"], ["dormant", "global", "inactive", "large"], ["missing", "global", "absent", "large"],
+    ["active", "book", "active", "xx-large"],
+    ["dormant", "global", "inactive", "large"],
+    ["missing", "global", "absent", "large"],
   ] as const) {
     expect(await domain.queries.read("reading.fontSize", { kind: "book", bookId })).toMatchObject({
-      value, reading: { source, override, defaultValue: DEFAULT_READER_PREFERENCES.fontSize },
+      value,
+      reading: { source, override, defaultValue: DEFAULT_READER_PREFERENCES.fontSize },
     });
   }
   const restricted = createSettingsDomain("plugin:discover", { discover: ["reading.fontSize"] });
@@ -36,11 +42,13 @@ test("reading provenance reports active and remembered overrides without leaking
 
 test("inherit deletes the whole saved override and follows subsequent global changes", async () => {
   const domain = createSettingsDomain("plugin:reader", { write: ["reading.*"] });
-  const events: unknown[] = []; cleanups.push(domain.events.subscribe(event => events.push(event)));
+  const events: unknown[] = [];
+  cleanups.push(domain.events.subscribe((event) => events.push(event)));
   const reset = await domain.commands.resetReading({ action: "inherit", target: { kind: "book", bookId: "active" } });
   expect(store.get(readerOverridesAtom).active).toBeUndefined();
-  expect(reset.settings.settings.find(entry => entry.path === "reading.fontSize")).toMatchObject({
-    value: "large", reading: { source: "global", override: "absent" },
+  expect(reset.settings.settings.find((entry) => entry.path === "reading.fontSize")).toMatchObject({
+    value: "large",
+    reading: { source: "global", override: "absent" },
   });
   expect(events[0]).toMatchObject({ origin: "plugin:reader" });
   await domain.commands.update([{ path: "reading.fontSize", target: { kind: "global" }, value: "xxx-large" }]);
@@ -61,16 +69,23 @@ test("defaults and inheritance preserve their distinct global, book and all-book
   expect(store.get(readerOverridesAtom)).toEqual({});
   await domain.commands.resetReading({ action: "defaults", target: { kind: "all-books" } });
   expect(store.get(readerPreferencesAtom)).toEqual(DEFAULT_READER_PREFERENCES);
-  expect((await domain.commands.resetReading({ action: "defaults", target: { kind: "all-books" } })).changed).toEqual([]);
+  expect((await domain.commands.resetReading({ action: "defaults", target: { kind: "all-books" } })).changed).toEqual(
+    [],
+  );
 });
 
 test("partial grants, invalid input, cancellation and failed persistence cannot reset live state", async () => {
-  const domain = createSettingsDomain("agent"), partial = createSettingsDomain("plugin:font", { write: ["reading.fontSize"] });
+  const domain = createSettingsDomain("agent"),
+    partial = createSettingsDomain("plugin:font", { write: ["reading.fontSize"] });
   const request = { action: "inherit" as const, target: { kind: "all-books" as const } };
   await expect(partial.commands.resetReading(request)).rejects.toMatchObject({ code: "memory/forbidden" });
-  await expect(domain.commands.resetReading({ action: "inherit", target: { kind: "global" } } as never)).rejects.toMatchObject({ code: "ui/invalid-target" });
+  await expect(
+    domain.commands.resetReading({ action: "inherit", target: { kind: "global" } } as never),
+  ).rejects.toMatchObject({ code: "ui/invalid-target" });
   await expect(domain.commands.resetReading(request, AbortSignal.abort())).rejects.toBeDefined();
-  const commit = spyOn(persistence, "commitSettingsDraft").mockRejectedValue(new AppError("db/locked", "private failure"));
+  const commit = spyOn(persistence, "commitSettingsDraft").mockRejectedValue(
+    new AppError("db/locked", "private failure"),
+  );
   cleanups.push(() => commit.mockRestore());
   await expect(domain.commands.resetReading(request)).rejects.toMatchObject({ code: "db/locked" });
   expect(store.get(readerOverridesAtom).active?.settings.fontSize).toBe("xx-large");

@@ -12,22 +12,12 @@
 import { Archive } from "libarchive.js";
 import { AppError } from "@read-aware/core";
 import { escapeHtml } from "./section-document";
-import type { FoliateBook } from './foliate-engine';
+import type { FoliateBook } from "./foliate-engine";
 
 /** Served as a static asset, like the reading engine — see its `VENDOR.md`. */
 const WORKER_URL = "/libarchive/worker-bundle.js";
 
-const IMAGE_EXTENSIONS = [
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".bmp",
-  ".webp",
-  ".svg",
-  ".jxl",
-  ".avif",
-];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".jxl", ".avif"];
 
 let initialized = false;
 

@@ -12,19 +12,28 @@ export class PluginRpcPending {
   private readonly pending = new Map<number, Pending>();
   private closed: Error | undefined;
 
-  constructor(private readonly timeoutMs = 120_000, private readonly limit = 256) {}
+  constructor(
+    private readonly timeoutMs = 120_000,
+    private readonly limit = 256,
+  ) {}
 
-  get size(): number { return this.pending.size; }
+  get size(): number {
+    return this.pending.size;
+  }
 
-  has(id: number): boolean { return this.pending.has(id); }
+  has(id: number): boolean {
+    return this.pending.has(id);
+  }
 
   call(
     send: (id: number) => void,
     options: { signal?: AbortSignal; cancel?: (id: number) => void; drainCancellation?: boolean } = {},
   ): Promise<unknown> {
     if (this.closed) return Promise.reject(this.closed);
-    if (options.signal?.aborted) return Promise.reject(options.signal.reason ?? new AppError("plugin/cancelled", "Plugin call cancelled"));
-    if (this.pending.size >= this.limit) return Promise.reject(new AppError("plugin/busy", "Too many pending plugin calls"));
+    if (options.signal?.aborted)
+      return Promise.reject(options.signal.reason ?? new AppError("plugin/cancelled", "Plugin call cancelled"));
+    if (this.pending.size >= this.limit)
+      return Promise.reject(new AppError("plugin/busy", "Too many pending plugin calls"));
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       let sent = false;
@@ -42,10 +51,18 @@ export class PluginRpcPending {
         if (options.drainCancellation && sent && this.has(id)) notifyCancel();
         else cancel(options.signal?.reason ?? new AppError("plugin/cancelled", "Plugin call cancelled"));
       };
-      const timeout = setTimeout(() => cancel(new AppError("plugin/timeout", "Plugin call timed out", { retryable: !options.drainCancellation })), this.timeoutMs);
+      const timeout = setTimeout(
+        () =>
+          cancel(new AppError("plugin/timeout", "Plugin call timed out", { retryable: !options.drainCancellation })),
+        this.timeoutMs,
+      );
       this.pending.set(id, {
-        resolve, reject,
-        cleanup: () => { clearTimeout(timeout); options.signal?.removeEventListener("abort", onAbort); },
+        resolve,
+        reject,
+        cleanup: () => {
+          clearTimeout(timeout);
+          options.signal?.removeEventListener("abort", onAbort);
+        },
       });
       options.signal?.addEventListener("abort", onAbort, { once: true });
       try {
@@ -62,7 +79,8 @@ export class PluginRpcPending {
     if (!pending) return false;
     this.pending.delete(id);
     pending.cleanup();
-    if (ok) pending.resolve(value); else pending.reject(value);
+    if (ok) pending.resolve(value);
+    else pending.reject(value);
     return true;
   }
 

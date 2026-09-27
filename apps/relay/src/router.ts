@@ -219,9 +219,7 @@ function isKeyMaterial(v: unknown): v is SyncKeyMaterial {
   if (!isString(k.kdfSalt) || !isString(k.keyCheck)) return false;
   if (typeof k.kdfParams !== "object" || k.kdfParams === null) return false;
   const p = k.kdfParams as Record<string, unknown>;
-  return (
-    p.algo === "argon2id" && isFiniteNumber(p.t) && isFiniteNumber(p.m) && isFiniteNumber(p.p)
-  );
+  return p.algo === "argon2id" && isFiniteNumber(p.t) && isFiniteNumber(p.m) && isFiniteNumber(p.p);
 }
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -244,15 +242,8 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
   const MINUTE = 60_000;
   const HOUR = 60 * MINUTE;
   /** Count a hit; false when the subject is over its cap for this window. */
-  const allow = (
-    bucket: string,
-    subjectHash: string,
-    windowMs: number,
-    max: number,
-  ): Promise<boolean> =>
-    ports.rateLimits
-      .hit(bucket, subjectHash, windowStartMs(ports.now(), windowMs))
-      .then((count) => count <= max);
+  const allow = (bucket: string, subjectHash: string, windowMs: number, max: number): Promise<boolean> =>
+    ports.rateLimits.hit(bucket, subjectHash, windowStartMs(ports.now(), windowMs)).then((count) => count <= max);
   const ipThrottled = (req: Request, bucket: string, windowMs: number, max: number) =>
     clientIpHash(req).then((ip) => allow(bucket, ip, windowMs, max));
 
@@ -265,11 +256,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
   async function handleReport(req: Request): Promise<Response> {
     const raw = await req.text();
     if (raw.length > config.maxReportBytes) {
-      return failure(
-        413,
-        `report exceeds ${config.maxReportBytes} bytes`,
-        "relay/report-too-large",
-      );
+      return failure(413, `report exceeds ${config.maxReportBytes} bytes`, "relay/report-too-large");
     }
     let body: unknown;
     try {
@@ -316,8 +303,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
   /** The account's quota numbers, expiry already applied. Enforcement is
    * write-time only — pulls and reads never consult this. */
-  const quotasOf = (account: Account) =>
-    quotasForTier(resolveTier(account, ports.now()), config);
+  const quotasOf = (account: Account) => quotasForTier(resolveTier(account, ports.now()), config);
 
   async function authenticate(req: Request): Promise<Account | null> {
     const header = req.headers.get("authorization") ?? "";
@@ -329,10 +315,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
   async function handleAuthRequest(req: Request): Promise<Response> {
     const body = await readJson(req);
-    const email =
-      typeof body === "object" && body !== null
-        ? (body as Record<string, unknown>).email
-        : undefined;
+    const email = typeof body === "object" && body !== null ? (body as Record<string, unknown>).email : undefined;
     if (!isString(email) || !EMAIL_SHAPE.test(email)) {
       return failure(400, "a valid email is required");
     }
@@ -350,28 +333,16 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     // above still bounds even local hammering.
     if (
       !config.echoMagicToken &&
-      !(await allow(
-        "auth-mail",
-        await tokenHash(normalized),
-        15 * MINUTE,
-        config.authMailPerEmailPer15Min,
-      ))
+      !(await allow("auth-mail", await tokenHash(normalized), 15 * MINUTE, config.authMailPerEmailPer15Min))
     ) {
       return failure(429, "too many sign-in emails requested for this address; try again later");
     }
     const token = randomToken();
-    await accounts.putMagicToken(
-      await tokenHash(token),
-      normalized,
-      ports.now() + config.magicTokenTtlMs,
-      nowIso(),
-    );
+    await accounts.putMagicToken(await tokenHash(token), normalized, ports.now() + config.magicTokenTtlMs, nowIso());
     if (config.echoMagicToken) return json(200, { ok: true, devToken: token });
     if (!ports.magicLink) return failure(501, "magic-link delivery is not configured");
     const lang = resolveLang(
-      isString((body as Record<string, unknown>).lang)
-        ? ((body as Record<string, unknown>).lang as string)
-        : null,
+      isString((body as Record<string, unknown>).lang) ? ((body as Record<string, unknown>).lang as string) : null,
     );
     await ports.magicLink.send(normalized, token, lang);
     return json(200, { ok: true });
@@ -472,11 +443,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     if (expiresAtMs !== undefined && expiresAtMs !== null && !isFiniteNumber(expiresAtMs)) {
       return failure(400, "expiresAtMs must be a millisecond timestamp or null");
     }
-    const updated = await accounts.setTierByEmail(
-      email.trim().toLowerCase(),
-      tier,
-      expiresAtMs ?? null,
-    );
+    const updated = await accounts.setTierByEmail(email.trim().toLowerCase(), tier, expiresAtMs ?? null);
     if (!updated) return failure(404, "no account with that email");
     return json(200, {
       accountId: updated.id,
@@ -488,10 +455,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
   async function handleAuthVerify(req: Request): Promise<Response> {
     const body = await readJson(req);
-    const token =
-      typeof body === "object" && body !== null
-        ? (body as Record<string, unknown>).token
-        : undefined;
+    const token = typeof body === "object" && body !== null ? (body as Record<string, unknown>).token : undefined;
     if (!isString(token) || token.length === 0) return failure(400, "token is required");
     const email = await accounts.consumeMagicToken(await tokenHash(token), ports.now());
     if (!email) return failure(401, "invalid or expired token");
@@ -507,10 +471,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
   async function handlePushEvents(account: Account, req: Request): Promise<Response> {
     const body = await readJson(req);
-    const events =
-      typeof body === "object" && body !== null
-        ? (body as Record<string, unknown>).events
-        : undefined;
+    const events = typeof body === "object" && body !== null ? (body as Record<string, unknown>).events : undefined;
     if (!Array.isArray(events)) return failure(400, "events array is required");
     if (events.length > config.maxBatch) {
       return failure(413, `batch exceeds ${config.maxBatch} events`, "relay/batch-too-large");
@@ -518,11 +479,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     for (const ev of events) {
       if (!isSealedEvent(ev)) return failure(400, "malformed sealed event");
       if (JSON.stringify(ev).length > config.maxEventBytes) {
-        return failure(
-          413,
-          `event exceeds ${config.maxEventBytes} bytes`,
-          "relay/event-too-large",
-        );
+        return failure(413, `event exceeds ${config.maxEventBytes} bytes`, "relay/event-too-large");
       }
     }
     const quota = quotasOf(account).maxAccountEvents;
@@ -559,10 +516,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     } catch {
       return failure(400, "invalid JSON body");
     }
-    const ids =
-      typeof body === "object" && body !== null
-        ? (body as Record<string, unknown>).ids
-        : undefined;
+    const ids = typeof body === "object" && body !== null ? (body as Record<string, unknown>).ids : undefined;
     if (!Array.isArray(ids)) return failure(400, "ids array is required");
     if (ids.length > config.maxHaveIds) {
       return failure(413, `batch exceeds ${config.maxHaveIds} ids`, "relay/batch-too-large");
@@ -637,8 +591,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     if (previous && previous.blobKey !== meta.blobKey) {
       // Reclaim the superseded file's quota; the row already points at the new one.
       const freed =
-        (await blobs.delete(account.id, previous.blobKey)) +
-        (await sweepParts(account.id, previous.blobKey, 0));
+        (await blobs.delete(account.id, previous.blobKey)) + (await sweepParts(account.id, previous.blobKey, 0));
       if (freed > 0) await accounts.adjustBlobBytes(account.id, -freed);
     }
     return json(200, { snapshot: meta });
@@ -728,9 +681,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     supersedes?: { key: string; from: number },
   ): Promise<{ admitted: true; bytesUsed: number } | { admitted: false }> {
     const previous = (await blobs.head(accountId, storageKey)) ?? 0;
-    const superseded = supersedes
-      ? await partBytes(accountId, supersedes.key, supersedes.from)
-      : 0;
+    const superseded = supersedes ? await partBytes(accountId, supersedes.key, supersedes.from) : 0;
     const grow = Math.max(0, bytes.length - previous);
     const shrink = Math.max(0, previous - bytes.length);
 
@@ -750,19 +701,13 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
       if (grow > 0) {
         await accounts.adjustBlobBytes(accountId, -grow).catch((rollbackError: unknown) => {
           // The ledger keeps the reservation: an over-charge, never lost data.
-          console.error(
-            "[relay] could not release a failed blob write's reservation",
-            rollbackError,
-          );
+          console.error("[relay] could not release a failed blob write's reservation", rollbackError);
         });
       }
       throw error;
     }
 
-    const swept =
-      supersedes && superseded > 0
-        ? await sweepParts(accountId, supersedes.key, supersedes.from)
-        : 0;
+    const swept = supersedes && superseded > 0 ? await sweepParts(accountId, supersedes.key, supersedes.from) : 0;
     if (shrink + swept > 0) used = await accounts.adjustBlobBytes(accountId, -(shrink + swept));
     if (used === null) {
       // A same-size overwrite moved no ledger bytes; report the standing total.
@@ -826,18 +771,9 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
       const bytes = new Uint8Array(await req.arrayBuffer());
       if (bytes.length === 0) return failure(400, "empty blob part");
       if (bytes.length > MAX_PART_BYTES) {
-        return failure(
-          413,
-          `blob part exceeds ${MAX_PART_BYTES} bytes`,
-          "relay/blob-part-too-large",
-        );
+        return failure(413, `blob part exceeds ${MAX_PART_BYTES} bytes`, "relay/blob-part-too-large");
       }
-      const written = await putAccounted(
-        account.id,
-        partKey(key, part),
-        bytes,
-        quotasOf(account).maxAccountBlobBytes,
-      );
+      const written = await putAccounted(account.id, partKey(key, part), bytes, quotasOf(account).maxAccountBlobBytes);
       if (!written.admitted) {
         return failure(413, "account blob quota exceeded", "relay/blob-quota-exceeded");
       }
@@ -885,8 +821,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     }
 
     if (req.method === "DELETE") {
-      const freed =
-        (await blobs.delete(account.id, key)) + (await sweepParts(account.id, key, 0));
+      const freed = (await blobs.delete(account.id, key)) + (await sweepParts(account.id, key, 0));
       if (freed > 0) await accounts.adjustBlobBytes(account.id, -freed);
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
@@ -897,9 +832,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
   /** The landing's locale prefixes; anything unrecognized lands on English. */
   const localePrefix = (locale: unknown): string =>
-    typeof locale === "string" && ["zh", "zh-hant", "ja", "fr", "de", "ru", "es"].includes(locale)
-      ? `/${locale}`
-      : "";
+    typeof locale === "string" && ["zh", "zh-hant", "ja", "fr", "de", "ru", "es"].includes(locale) ? `/${locale}` : "";
 
   const stripeFailure = (error: unknown): Response => {
     if (error instanceof StripeError) {
@@ -936,10 +869,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     let account: Account | null = null;
     let appInitiated = false;
     if (isString(ticket) && ticket.length > 0) {
-      const accountId = await accounts.ticketAccount(
-        await tokenHash(`billing:${ticket}`),
-        ports.now(),
-      );
+      const accountId = await accounts.ticketAccount(await tokenHash(`billing:${ticket}`), ports.now());
       if (!accountId) return failure(401, "invalid or expired upgrade ticket");
       account = await accounts.get(accountId);
       if (!account) return failure(401, "the upgrade account no longer exists");
@@ -953,12 +883,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     // account counter instead of becoming a fourth, unmetered identity.
     if (
       account &&
-      !(await allow(
-        "checkout-account",
-        await tokenHash(account.id),
-        HOUR,
-        config.checkoutPerAccountPerHour,
-      ))
+      !(await allow("checkout-account", await tokenHash(account.id), HOUR, config.checkoutPerAccountPerHour))
     ) {
       return failure(429, "too many checkout attempts for this account; try again later");
     }
@@ -991,11 +916,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     if (!billing) return failure(501, "billing is not configured");
     if (!account.stripeCustomerId) return failure(404, "no billing profile for this account");
     try {
-      const { url } = await createPortalSession(
-        billing,
-        account.stripeCustomerId,
-        `${config.webAppOrigin}/pricing`,
-      );
+      const { url } = await createPortalSession(billing, account.stripeCustomerId, `${config.webAppOrigin}/pricing`);
       return json(200, { url });
     } catch (error) {
       return stripeFailure(error);
@@ -1045,11 +966,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
     const raw = await req.text();
     if (raw.length > config.maxAiRequestBytes) {
-      return failure(
-        413,
-        `request exceeds ${config.maxAiRequestBytes} bytes`,
-        "relay/ai-request-too-large",
-      );
+      return failure(413, `request exceeds ${config.maxAiRequestBytes} bytes`, "relay/ai-request-too-large");
     }
     let parsed: unknown;
     try {
@@ -1164,9 +1081,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     // that ticket — consumed atomically on connect, worthless afterwards.
     if (req.method === "GET" && path === "/v1/events/watch") {
       const ticket = url.searchParams.get("ticket") ?? "";
-      const accountId = ticket
-        ? await accounts.consumeWatchTicket(await tokenHash(ticket), ports.now())
-        : null;
+      const accountId = ticket ? await accounts.consumeWatchTicket(await tokenHash(ticket), ports.now()) : null;
       if (!accountId) return failure(401, "a valid watch ticket is required");
       const mailbox = ports.mailboxFor(accountId);
       if (!mailbox.watch) return failure(501, "watch is not supported by this deployment");
@@ -1192,9 +1107,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
         tier,
         tierExpiresAtMs: account.tierExpiresAtMs,
         eventsUsed: await ports.mailboxFor(account.id).count(),
-        aiCreditsUsed: creditsFromMicroUsd(
-          await ports.aiUsage.usedMicroUsd(account.id, monthKey(ports.now())),
-        ),
+        aiCreditsUsed: creditsFromMicroUsd(await ports.aiUsage.usedMicroUsd(account.id, monthKey(ports.now()))),
         hasBilling: account.stripeCustomerId !== null,
         limits: quotasForTier(tier, config),
       });
@@ -1247,11 +1160,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
       // redeem as a billing ticket or vice versa. 15 minutes: the buyer may
       // read the plans before clicking Subscribe.
       const ticket = randomToken();
-      await accounts.putWatchTicket(
-        await tokenHash(`billing:${ticket}`),
-        account.id,
-        ports.now() + 15 * 60_000,
-      );
+      await accounts.putWatchTicket(await tokenHash(`billing:${ticket}`), account.id, ports.now() + 15 * 60_000);
       return json(200, { ticket });
     }
     if (req.method === "GET" && path === "/v1/ai/models") {

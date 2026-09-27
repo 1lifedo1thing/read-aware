@@ -27,12 +27,7 @@ export function sanitizeSectionHtml(html: string): string {
     .replace(/(href|src)\s*=\s*(["']?)\s*javascript:[^"'\s>]*\2/gi, "");
 }
 
-export function wrapSectionHtml(
-  html: string,
-  title: string | undefined,
-  language: string,
-  extraStyle = "",
-): string {
+export function wrapSectionHtml(html: string, title: string | undefined, language: string, extraStyle = ""): string {
   const lang = /^[A-Za-z-]{2,35}$/.test(language) ? language : "en";
   // The document-level CSP is the hard guarantee: with no script-src and
   // default-src 'none', no script executes in the section iframe even if the

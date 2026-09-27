@@ -81,10 +81,7 @@ const RESTART_MIN_DELTA = 24;
 // Opposite-direction deltas below this are jitter, not a reversal.
 const REVERSE_MIN_DELTA = 4;
 
-export function createWheelGesture({
-  threshold,
-  quietMs = DEFAULT_QUIET_MS,
-}: WheelGestureOptions): WheelGesture {
+export function createWheelGesture({ threshold, quietMs = DEFAULT_QUIET_MS }: WheelGestureOptions): WheelGesture {
   // What the wheel stream is currently doing, per the host's phase edges;
   // null until the first edge arrives = heuristic mode.
   let stream: "drag" | "momentum" | "idle" | null = null;
@@ -135,11 +132,7 @@ export function createWheelGesture({
     return direction;
   };
 
-  const feedPhased = (
-    delta: number,
-    direction: WheelGestureStep,
-    magnitude: number,
-  ): WheelGestureStep => {
+  const feedPhased = (delta: number, direction: WheelGestureStep, magnitude: number): WheelGestureStep => {
     if (stream === "momentum") {
       // Coasting after release. It may still complete a light swipe that
       // hadn't reached the threshold, but once fired the gesture is spent —
@@ -167,11 +160,7 @@ export function createWheelGesture({
     return accumulate(delta, direction);
   };
 
-  const feedHeuristic = (
-    delta: number,
-    direction: WheelGestureStep,
-    magnitude: number,
-  ): WheelGestureStep => {
+  const feedHeuristic = (delta: number, direction: WheelGestureStep, magnitude: number): WheelGestureStep => {
     if (firedDirection !== 0) {
       const reversed = direction !== firedDirection && magnitude >= REVERSE_MIN_DELTA;
       peak = Math.max(peak, magnitude);
@@ -208,9 +197,7 @@ export function createWheelGesture({
     const magnitude = Math.abs(delta);
     if (magnitude === 0) return 0;
     const direction: WheelGestureStep = delta > 0 ? 1 : -1;
-    return stream === null
-      ? feedHeuristic(delta, direction, magnitude)
-      : feedPhased(delta, direction, magnitude);
+    return stream === null ? feedHeuristic(delta, direction, magnitude) : feedPhased(delta, direction, magnitude);
   };
 
   return { feed, notifyPhase, reset };

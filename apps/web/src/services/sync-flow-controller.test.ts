@@ -5,32 +5,74 @@ import { actorCause, causalActor, eventCause, type DomainActor } from "../platfo
 import { SyncFlowController } from "./sync-flow-controller";
 
 function fixture() {
-  let epoch = 1, closed = 0;
+  let epoch = 1,
+    closed = 0;
   const opened: HostSyncFlowRequest[] = [];
   let navigation: DomainActor | undefined;
-  const controller = new SyncFlowController(async (signal, origin) => { signal?.throwIfAborted(); navigation = origin; }, () => epoch);
-  const unbind = controller.bind({ open: input => { opened.push(input); }, close: () => { closed++; } });
-  return { controller, opened, unbind, navigation: () => navigation, closed: () => closed, change: () => { epoch++; } };
+  const controller = new SyncFlowController(
+    async (signal, origin) => {
+      signal?.throwIfAborted();
+      navigation = origin;
+    },
+    () => epoch,
+  );
+  const unbind = controller.bind({
+    open: (input) => {
+      opened.push(input);
+    },
+    close: () => {
+      closed++;
+    },
+  });
+  return {
+    controller,
+    opened,
+    unbind,
+    navigation: () => navigation,
+    closed: () => closed,
+    change: () => {
+      epoch++;
+    },
+  };
 }
 
 test("each directed flow waits for the native action, with no fabricated purchase receipt", async () => {
   const f = fixture();
   for (const action of ["connect", "disconnect", "delete-account", "upgrade", "billing"] as const) {
     const source = causalActor("agent");
-    const request = f.controller.request({ action, ...(action === "connect" ? { transportRef: "plugin:backend" } : {}) }, undefined, source);
-    let done = false; void request.then(() => { done = true; });
+    const request = f.controller.request(
+      { action, ...(action === "connect" ? { transportRef: "plugin:backend" } : {}) },
+      undefined,
+      source,
+    );
+    let done = false;
+    void request.then(() => {
+      done = true;
+    });
     await Bun.sleep(0);
-    expect(f.opened.at(-1)?.action).toBe(action); expect(done).toBe(false);
+    expect(f.opened.at(-1)?.action).toBe(action);
+    expect(done).toBe(false);
     expect(actorCause(f.navigation())).toEqual(actorCause(source));
     expect(eventCause(f.opened.at(-1)!)).toEqual(actorCause(source));
     const automatic = action === "billing" || action === "upgrade";
     let accepted: DomainActor | undefined;
-    await f.controller.run(action, async (_signal, origin) => { accepted = origin; return { secret: "never returned" }; }, false, automatic ? source : undefined);
+    await f.controller.run(
+      action,
+      async (_signal, origin) => {
+        accepted = origin;
+        return { secret: "never returned" };
+      },
+      false,
+      automatic ? source : undefined,
+    );
     const receipt = await request;
     expect(eventCause(receipt)).toEqual(actorCause(accepted));
     if (automatic) expect(actorCause(accepted)).toEqual(actorCause(source));
     else expect(actorCause(accepted)).not.toEqual(actorCause(source));
-    expect(receipt).toEqual({ action, status: action === "billing" || action === "upgrade" ? "external-opened" : "completed" });
+    expect(receipt).toEqual({
+      action,
+      status: action === "billing" || action === "upgrade" ? "external-opened" : "completed",
+    });
   }
   f.unbind();
 });
@@ -38,68 +80,132 @@ test("each directed flow waits for the native action, with no fabricated purchas
 test("dismiss, unmount and caller abort do not execute unconfirmed operations", async () => {
   const f = fixture();
   expect(f.controller.requestConditions()).toContainEqual(expect.objectContaining({ reason: "host-flow-ready" }));
-  const dismissed = f.controller.request({ action: "delete-account" }); await Bun.sleep(0);
-  expect(f.controller.requestConditions()).toContainEqual(expect.objectContaining({ reason: "host-flow-active", state: "unavailable" }));
+  const dismissed = f.controller.request({ action: "delete-account" });
+  await Bun.sleep(0);
+  expect(f.controller.requestConditions()).toContainEqual(
+    expect.objectContaining({ reason: "host-flow-active", state: "unavailable" }),
+  );
   f.controller.dismiss("connect");
   await expect(f.controller.request({ action: "connect" })).rejects.toMatchObject({ code: "ui/unavailable" });
   f.controller.dismiss("delete-account");
   expect(await dismissed).toEqual({ action: "delete-account", status: "cancelled" });
   const abort = new AbortController();
-  const cancelled = f.controller.request({ action: "disconnect" }, abort.signal); await Bun.sleep(0);
-  abort.abort(Error("retired")); await expect(cancelled).rejects.toThrow("retired"); expect(f.closed()).toBe(1);
-  const removed = f.controller.request({ action: "connect" }); await Bun.sleep(0); f.unbind();
+  const cancelled = f.controller.request({ action: "disconnect" }, abort.signal);
+  await Bun.sleep(0);
+  abort.abort(Error("retired"));
+  await expect(cancelled).rejects.toThrow("retired");
+  expect(f.closed()).toBe(1);
+  const removed = f.controller.request({ action: "connect" });
+  await Bun.sleep(0);
+  f.unbind();
   expect((await removed).status).toBe("cancelled");
   await expect(f.controller.request({ action: "connect" })).rejects.toMatchObject({ code: "ui/unavailable" });
 });
 
 test("confirmed work holds the slot through cancellation and only settles after its source", async () => {
-  const f = fixture(), abort = new AbortController();
-  const request = f.controller.request({ action: "delete-account" }, abort.signal); await Bun.sleep(0);
+  const f = fixture(),
+    abort = new AbortController();
+  const request = f.controller.request({ action: "delete-account" }, abort.signal);
+  await Bun.sleep(0);
   let finish!: () => void;
-  const work = f.controller.run("delete-account", () => new Promise<void>(resolve => { finish = resolve; }));
-  abort.abort(Error("stop waiting")); f.unbind();
+  const work = f.controller.run(
+    "delete-account",
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  abort.abort(Error("stop waiting"));
+  f.unbind();
   expect(f.controller.requestConditions()).toContainEqual(expect.objectContaining({ reason: "host-flow-active" }));
   await expect(f.controller.request({ action: "connect" })).rejects.toMatchObject({ code: "ui/unavailable" });
   await expect(f.controller.run("delete-account", async () => {})).rejects.toMatchObject({ code: "ui/unavailable" });
   expect(f.closed()).toBe(0);
-  finish(); await work;
-  await expect(request).rejects.toThrow("stop waiting"); expect(f.closed()).toBe(1);
+  finish();
+  await work;
+  await expect(request).rejects.toThrow("stop waiting");
+  expect(f.closed()).toBe(1);
 });
 
 test("connect can retry in the same host dialog; other failures reject rather than report success", async () => {
   const f = fixture();
-  const request = f.controller.request({ action: "connect" }); await Bun.sleep(0);
-  await expect(f.controller.run("connect", async () => { throw Error("wrong passphrase"); }, true)).rejects.toThrow();
+  const request = f.controller.request({ action: "connect" });
+  await Bun.sleep(0);
+  await expect(
+    f.controller.run(
+      "connect",
+      async () => {
+        throw Error("wrong passphrase");
+      },
+      true,
+    ),
+  ).rejects.toThrow();
   await expect(f.controller.request({ action: "disconnect" })).rejects.toMatchObject({ code: "ui/unavailable" });
-  await f.controller.run("connect", async () => {}); expect((await request).status).toBe("completed");
-  const failed = f.controller.request({ action: "disconnect" }); await Bun.sleep(0);
-  const failure = failed.catch(error => error);
-  await expect(f.controller.run("disconnect", async () => { throw Error("write failed"); })).rejects.toThrow("write failed");
-  expect(await failure).toMatchObject({ message: "write failed" }); f.unbind();
+  await f.controller.run("connect", async () => {});
+  expect((await request).status).toBe("completed");
+  const failed = f.controller.request({ action: "disconnect" });
+  await Bun.sleep(0);
+  const failure = failed.catch((error) => error);
+  await expect(
+    f.controller.run("disconnect", async () => {
+      throw Error("write failed");
+    }),
+  ).rejects.toThrow("write failed");
+  expect(await failure).toMatchObject({ message: "write failed" });
+  f.unbind();
 });
 
 test("invalid inputs and pre-cancellation do not open UI; account replacement invalidates confirmation", async () => {
   const f = fixture();
-  for (const input of [null, { action: "unknown" }, { action: "billing", transportRef: "backend" }, { action: "connect", transportRef: "" }]) {
+  for (const input of [
+    null,
+    { action: "unknown" },
+    { action: "billing", transportRef: "backend" },
+    { action: "connect", transportRef: "" },
+  ]) {
     await expect(f.controller.request(input as never)).rejects.toMatchObject({ code: "ui/invalid-target" });
   }
-  await expect(f.controller.request({ action: "connect" }, AbortSignal.abort(Error("cancelled")))).rejects.toThrow("cancelled");
+  await expect(f.controller.request({ action: "connect" }, AbortSignal.abort(Error("cancelled")))).rejects.toThrow(
+    "cancelled",
+  );
   expect(f.opened).toHaveLength(0);
-  const stale = f.controller.request({ action: "delete-account" }); await Bun.sleep(0); f.change();
+  const stale = f.controller.request({ action: "delete-account" });
+  await Bun.sleep(0);
+  f.change();
   let writes = 0;
-  await expect(f.controller.run("delete-account", async () => { writes++; })).rejects.toMatchObject({ code: "ui/superseded" });
-  await expect(stale).rejects.toMatchObject({ code: "ui/superseded" }); expect(writes).toBe(0); f.unbind();
+  await expect(
+    f.controller.run("delete-account", async () => {
+      writes++;
+    }),
+  ).rejects.toMatchObject({ code: "ui/superseded" });
+  await expect(stale).rejects.toMatchObject({ code: "ui/superseded" });
+  expect(writes).toBe(0);
+  f.unbind();
 });
 
 test("sync flow account admission permits reconnect but rejects stale backends and unavailable account actions", () => {
   const disconnected = { accountConnected: false, backend: null, state: "disabled" } as const;
   const connected = { accountConnected: true, backend: "relay", state: "idle" } as const;
-  const inspect = (request: HostSyncFlowRequest, state = connected, busy = false, purchase = true) => syncFlowConditions(request, state, busy, [], purchase);
-  expect(syncFlowConditions({ action: "connect" }, disconnected, false, [], true).some(item => item.state === "unavailable")).toBe(false);
+  const inspect = (request: HostSyncFlowRequest, state = connected, busy = false, purchase = true) =>
+    syncFlowConditions(request, state, busy, [], purchase);
+  expect(
+    syncFlowConditions({ action: "connect" }, disconnected, false, [], true).some(
+      (item) => item.state === "unavailable",
+    ),
+  ).toBe(false);
   expect(inspect({ action: "connect" })[0]?.reason).toBe("sync-disconnect-before-connect");
-  expect(syncFlowConditions({ action: "connect" }, { ...connected, state: "unauthenticated" }, false, [], true).some(item => item.state === "unavailable")).toBe(false);
-  expect(syncFlowConditions({ action: "connect", transportRef: "retired" }, disconnected, false, [], true)[0]?.reason).toBe("sync-transport-unregistered");
+  expect(
+    syncFlowConditions({ action: "connect" }, { ...connected, state: "unauthenticated" }, false, [], true).some(
+      (item) => item.state === "unavailable",
+    ),
+  ).toBe(false);
+  expect(
+    syncFlowConditions({ action: "connect", transportRef: "retired" }, disconnected, false, [], true)[0]?.reason,
+  ).toBe("sync-transport-unregistered");
   expect(inspect({ action: "disconnect" }, connected, true)[0]?.reason).toBe("sync-connection-busy");
   expect(inspect({ action: "billing" }, connected, false, false)[0]?.reason).toBe("sync-purchase-unavailable");
-  expect(syncFlowConditions({ action: "delete-account" }, { ...connected, backend: "transport" }, false, [], true)[0]?.reason).toBe("sync-flow-account-unavailable");
+  expect(
+    syncFlowConditions({ action: "delete-account" }, { ...connected, backend: "transport" }, false, [], true)[0]
+      ?.reason,
+  ).toBe("sync-flow-account-unavailable");
 });

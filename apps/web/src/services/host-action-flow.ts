@@ -5,9 +5,14 @@ type Request = { action: string };
 type Receipt<R extends Request, S extends string> = { action: R["action"]; status: S | "cancelled" };
 type Surface<R extends Request> = { open(request: R, signal?: AbortSignal): void; close(): void };
 type Pending<R extends Request, S extends string> = {
-  origin: DomainActor; request: R; surface: Surface<R>; started: boolean; epoch: unknown;
+  origin: DomainActor;
+  request: R;
+  surface: Surface<R>;
+  started: boolean;
+  epoch: unknown;
   signal?: AbortSignal;
-  resolve(receipt: Receipt<R, S>): void; reject(error: unknown): void;
+  resolve(receipt: Receipt<R, S>): void;
+  reject(error: unknown): void;
   cleanup(): void;
 };
 
@@ -18,24 +23,33 @@ export class HostActionFlow<R extends Request, S extends string> {
   private pending?: Pending<R, S>;
   private requesting = false;
   private running = false;
-  constructor(private config: {
-    /** Bring the owning settings surface on screen. The normalized request
-     *  rides along so a flow whose dialogs live on different sections (the
-     *  relay's Data & Sync group vs. a plugin transport's own settings page)
-     *  can pick the section per request. */
-    navigate(signal?: AbortSignal, origin?: DomainActor, request?: R): Promise<unknown>;
-    normalize(input: R): R;
-    completion(action: R["action"], value: unknown): S | "cancelled";
-    epoch?(): unknown;
-  }) {}
+  constructor(
+    private config: {
+      /** Bring the owning settings surface on screen. The normalized request
+       *  rides along so a flow whose dialogs live on different sections (the
+       *  relay's Data & Sync group vs. a plugin transport's own settings page)
+       *  can pick the section per request. */
+      navigate(signal?: AbortSignal, origin?: DomainActor, request?: R): Promise<unknown>;
+      normalize(input: R): R;
+      completion(action: R["action"], value: unknown): S | "cancelled";
+      epoch?(): unknown;
+    },
+  ) {}
 
-  private get occupied(): boolean { return this.requesting || !!this.pending || this.running; }
+  private get occupied(): boolean {
+    return this.requesting || !!this.pending || this.running;
+  }
 
   requestConditions(confirmationRequired = true): OperationCondition[] {
-    if (this.occupied) return [{ kind: "capacity", state: "unavailable", reason: "host-flow-active", errorCode: "ui/unavailable" }];
-    return [{ kind: "capacity", state: "satisfied", reason: "host-flow-ready" },
+    if (this.occupied)
+      return [{ kind: "capacity", state: "unavailable", reason: "host-flow-active", errorCode: "ui/unavailable" }];
+    return [
+      { kind: "capacity", state: "satisfied", reason: "host-flow-ready" },
       { kind: "provider", state: "unknown", reason: "host-flow-controls-not-checked" },
-      ...(confirmationRequired ? [{ kind: "input" as const, state: "unknown" as const, reason: "host-flow-user-confirmation-required" }] : [])];
+      ...(confirmationRequired
+        ? [{ kind: "input" as const, state: "unknown" as const, reason: "host-flow-user-confirmation-required" }]
+        : []),
+    ];
   }
 
   bind(surface: Surface<R>): () => void {
@@ -67,14 +81,28 @@ export class HostActionFlow<R extends Request, S extends string> {
           this.settle(pending, "cancelled");
           surface.close();
         };
-        const pending: Pending<R, S> = { origin, request, surface, signal, started: false, epoch: this.config.epoch?.(), resolve, reject,
-          cleanup: () => signal?.removeEventListener("abort", abort) };
+        const pending: Pending<R, S> = {
+          origin,
+          request,
+          surface,
+          signal,
+          started: false,
+          epoch: this.config.epoch?.(),
+          resolve,
+          reject,
+          cleanup: () => signal?.removeEventListener("abort", abort),
+        };
         this.pending = pending;
         signal?.addEventListener("abort", abort, { once: true });
-        try { surface.open(request, signal); }
-        catch (error) { this.fail(pending, error); }
+        try {
+          surface.open(request, signal);
+        } catch (error) {
+          this.fail(pending, error);
+        }
       });
-    } finally { this.requesting = false; }
+    } finally {
+      this.requesting = false;
+    }
   }
 
   dismiss(action: R["action"], origin: DomainActor = "user"): void {
@@ -89,10 +117,16 @@ export class HostActionFlow<R extends Request, S extends string> {
   }
 
   /** Used by the existing native UI command callbacks, not exported to actors. */
-  async run<T>(action: R["action"], operation: (signal?: AbortSignal, origin?: DomainActor) => Promise<T>, retryInDialog = false, origin: DomainActor = "user"): Promise<T> {
+  async run<T>(
+    action: R["action"],
+    operation: (signal?: AbortSignal, origin?: DomainActor) => Promise<T>,
+    retryInDialog = false,
+    origin: DomainActor = "user",
+  ): Promise<T> {
     if (this.running) throw new AppError("ui/unavailable", "Host action is already running");
     const pending = this.pending;
-    if (pending && pending.request.action !== action) throw new AppError("ui/unavailable", "Another host dialog owns this request");
+    if (pending && pending.request.action !== action)
+      throw new AppError("ui/unavailable", "Another host dialog owns this request");
     pending?.signal?.throwIfAborted();
     if (pending && pending.epoch !== this.config.epoch?.()) {
       const error = new AppError("ui/superseded", "Host state changed before confirmation");
@@ -100,7 +134,10 @@ export class HostActionFlow<R extends Request, S extends string> {
       throw error;
     }
     origin = causalActor(origin);
-    if (pending) { pending.started = true; pending.origin = origin; }
+    if (pending) {
+      pending.started = true;
+      pending.origin = origin;
+    }
     this.running = true;
     try {
       const result = await operation(pending?.signal, origin);
@@ -121,12 +158,15 @@ export class HostActionFlow<R extends Request, S extends string> {
 
   private settle(pending: Pending<R, S>, status: S | "cancelled", origin: DomainActor = pending.origin): void {
     if (this.pending !== pending) return;
-    this.pending = undefined; pending.cleanup();
+    this.pending = undefined;
+    pending.cleanup();
     if (pending.signal?.aborted) pending.reject(pending.signal.reason);
     else pending.resolve(stampEventCause({ action: pending.request.action, status }, origin));
   }
   private fail(pending: Pending<R, S>, error: unknown): void {
     if (this.pending !== pending) return;
-    this.pending = undefined; pending.cleanup(); pending.reject(error);
+    this.pending = undefined;
+    pending.cleanup();
+    pending.reject(error);
   }
 }

@@ -13,8 +13,7 @@ const CHAPTER_TEXT =
   "Victor is found dead in a locked study. Mara notices the brass clock stopped at nine minutes past two, wet footprints leading nowhere, and an unopened letter on the desk. The housekeeper insists every door was bolted from inside.";
 const STOPPED_CLOCK_SENTENCE =
   "Mara notices the brass clock stopped at nine minutes past two, wet footprints leading nowhere, and an unopened letter on the desk.";
-const HOUSEKEEPER_NOTE =
-  "the bolted doors make the housekeeper the only person who could stage this.";
+const HOUSEKEEPER_NOTE = "the bolted doors make the housekeeper the only person who could stage this.";
 
 const seed = () => ({
   books: [
@@ -54,9 +53,7 @@ function observeAnnotations({ stores }: SetupContext) {
 }
 
 function stateAnnotations(observation: AgentEvalObservation): Array<Record<string, unknown>> {
-  return Array.isArray(observation.state)
-    ? (observation.state as Array<Record<string, unknown>>)
-    : [];
+  return Array.isArray(observation.state) ? (observation.state as Array<Record<string, unknown>>) : [];
 }
 
 function highlightVerbatimAssessment(observation: AgentEvalObservation): EvalAssessment {

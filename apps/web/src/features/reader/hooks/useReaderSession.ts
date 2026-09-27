@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeError, useTranslation } from "../../../i18n";
 import { useLocalAtom } from "@read-aware/ui/state";
-import {
-  markLibraryBookOpened,
-  resolveStoredBookFile,
-  type BookFileMissingReason,
-} from "../../library/lib/library-db";
+import { markLibraryBookOpened, resolveStoredBookFile, type BookFileMissingReason } from "../../library/lib/library-db";
 import { readingTraces } from "../lib/reading-trace-runtime";
 import type { ReadingTrace } from "../lib/reading-trace";
 import { createLogger } from "../../../platform/logger";
 import type { DomainActor } from "../../../platform/domain-actor";
 import { createProgressPatch, getReadingStatus } from "../../library/lib/library-progress";
-import type {
-  BookFormat,
-  BookProgress,
-  LibraryBook,
-  ReaderProgress,
-} from "../../library/lib/library-types";
+import type { BookFormat, BookProgress, LibraryBook, ReaderProgress } from "../../library/lib/library-types";
 import type { LoadedBook, TocEntry } from "../lib/reader-types";
 import { getVirtualBookBinding } from "../../plugins/lib/virtual-books";
 import { AppError } from "@read-aware/core";
@@ -24,9 +15,7 @@ import { readingRuntime } from "../../../domain/reading-runtime";
 import { hostSync } from "../../../services/sync";
 import { useReaderControls } from "./useReaderControls";
 
-type ReaderSource =
-  | { format: BookFormat; data: LoadedBook }
-  | null;
+type ReaderSource = { format: BookFormat; data: LoadedBook } | null;
 
 /**
  * Why the reader couldn't open. `file-missing` keeps the CAUSE, because the
@@ -65,9 +54,13 @@ export function useReaderSession({
   // keeps the shelf over a reader that will never paint a page until its
   // fallback timeout, and the error surface appears seconds late.
   const [failedSessionId, setFailedSessionId] = useState<string | null>(null);
-  useEffect(() => readingRuntime.observe(state => {
-    if (state.status === "error" && state.sessionId) setFailedSessionId(state.sessionId);
-  }), []);
+  useEffect(
+    () =>
+      readingRuntime.observe((state) => {
+        if (state.status === "error" && state.sessionId) setFailedSessionId(state.sessionId);
+      }),
+    [],
+  );
   const { controls, visible: shellVisible, origin: overlayOrigin, setVisible: setShellVisible } = useReaderControls();
   const controlsBinding = useRef<(() => void) | undefined>(undefined);
   useEffect(() => () => controlsBinding.current?.(), []);
@@ -117,110 +110,120 @@ export function useReaderSession({
   // part of the `book.sessionRecorded` event minted when the session closes
   // — see useReadingTimeTracker / reading-session-policy.ts. The optimistic
   // patch keeps the shelf and header current meanwhile.
-  const noteProgress = useCallback((bookId: string, progress: BookProgress) => {
-    if (!progress || !trace?.accepting || trace.bookId !== bookId) return;
-    const progressPercent = Math.max(0, Math.min(100, Math.round(progress.progressPercent)));
-    trace.position(
-      {
-        locator: progress.cfi ?? progress.href ?? "",
-        chapterHref: progress.href ?? undefined,
-        currentLocation: progress.currentLocation,
-        totalLocations: progress.totalLocations,
-        progressPercent,
-        status: getReadingStatus(progressPercent),
-      },
-      Date.now(),
-    );
-  }, [trace]);
+  const noteProgress = useCallback(
+    (bookId: string, progress: BookProgress) => {
+      if (!progress || !trace?.accepting || trace.bookId !== bookId) return;
+      const progressPercent = Math.max(0, Math.min(100, Math.round(progress.progressPercent)));
+      trace.position(
+        {
+          locator: progress.cfi ?? progress.href ?? "",
+          chapterHref: progress.href ?? undefined,
+          currentLocation: progress.currentLocation,
+          totalLocations: progress.totalLocations,
+          progressPercent,
+          status: getReadingStatus(progressPercent),
+        },
+        Date.now(),
+      );
+    },
+    [trace],
+  );
 
-  const applyReaderProgress = useCallback((bookId: string, progress: BookProgress) => {
-    if (!trace?.accepting || trace.bookId !== bookId) return;
-    applyOptimisticProgress(bookId, progress);
-    setSelectedBook((currentBook) => (
-      currentBook?.id === bookId
-        ? createProgressPatch(currentBook, progress)
-        : currentBook
-    ));
-    noteProgress(bookId, progress);
-  }, [applyOptimisticProgress, noteProgress, trace]);
+  const applyReaderProgress = useCallback(
+    (bookId: string, progress: BookProgress) => {
+      if (!trace?.accepting || trace.bookId !== bookId) return;
+      applyOptimisticProgress(bookId, progress);
+      setSelectedBook((currentBook) =>
+        currentBook?.id === bookId ? createProgressPatch(currentBook, progress) : currentBook,
+      );
+      noteProgress(bookId, progress);
+    },
+    [applyOptimisticProgress, noteProgress, trace],
+  );
 
-  const openReader = useCallback((book: LibraryBook, navigationIntent?: number, options?: { resetPosition: true }) => {
-    const sessionId = readingRuntime.begin(book.id, navigationIntent, "user");
-    const openingActor = readingRuntime.openingActor(sessionId);
-    const nextTrace = readingTraces.begin(sessionId, book.id);
-    traceRef.current = nextTrace;
-    setTrace(nextTrace);
-    controlsBinding.current?.();
-    controlsBinding.current = readingRuntime.bindControls(sessionId, controls);
-    const requestId = readerLoadRequestIdRef.current + 1;
-    readerLoadRequestIdRef.current = requestId;
+  const openReader = useCallback(
+    (book: LibraryBook, navigationIntent?: number, options?: { resetPosition: true }) => {
+      const sessionId = readingRuntime.begin(book.id, navigationIntent, "user");
+      const openingActor = readingRuntime.openingActor(sessionId);
+      const nextTrace = readingTraces.begin(sessionId, book.id);
+      traceRef.current = nextTrace;
+      setTrace(nextTrace);
+      controlsBinding.current?.();
+      controlsBinding.current = readingRuntime.bindControls(sessionId, controls);
+      const requestId = readerLoadRequestIdRef.current + 1;
+      readerLoadRequestIdRef.current = requestId;
 
-    setSelectedBook(book);
-    setShellVisible(false, openingActor);
-    resetReaderState();
-    setIsReaderLoading(true);
+      setSelectedBook(book);
+      setShellVisible(false, openingActor);
+      resetReaderState();
+      setIsReaderLoading(true);
 
-    void (async () => {
-      try {
-        if (book.format === "virtual") {
-          const binding = getVirtualBookBinding(book.id);
-          if (!binding) {
-            throw new Error("This book's plugin content source is not available.");
+      void (async () => {
+        try {
+          if (book.format === "virtual") {
+            const binding = getVirtualBookBinding(book.id);
+            if (!binding) {
+              throw new Error("This book's plugin content source is not available.");
+            }
+            if (readerLoadRequestIdRef.current !== requestId) return;
+            setReaderSource({
+              format: book.format,
+              data: {
+                fileName: book.title,
+                format: book.format,
+                virtual: binding,
+                resetPosition: options?.resetPosition,
+              },
+            });
+            setIsReaderLoading(false);
+          } else {
+            const resolved = await resolveStoredBookFile(book);
+            if (readerLoadRequestIdRef.current !== requestId) return;
+            if (resolved.status === "missing") {
+              readingRuntime.fail(sessionId, new AppError("fs/not-found", `Book source missing: ${resolved.reason}`));
+              setReaderLoadError({ kind: "file-missing", reason: resolved.reason });
+              setIsReaderLoading(false);
+              return;
+            }
+
+            setReaderSource({
+              format: book.format,
+              data: {
+                fileName: book.fileName,
+                format: book.format,
+                file: resolved.file,
+                resetPosition: options?.resetPosition,
+              },
+            });
+            setIsReaderLoading(false);
           }
+
+          void markLibraryBookOpened(book.id, openingActor)
+            .then((nextBook) => {
+              if (!nextBook) return;
+
+              setSelectedBook((currentBook) => (currentBook?.id === nextBook.id ? nextBook : currentBook));
+              replaceBookInState(nextBook);
+            })
+            .catch((error) => {
+              reportError(error);
+            });
+        } catch (error) {
           if (readerLoadRequestIdRef.current !== requestId) return;
-          setReaderSource({
-            format: book.format,
-            data: { fileName: book.title, format: book.format, virtual: binding, resetPosition: options?.resetPosition },
+          log.error("opening book failed", error);
+          readingRuntime.fail(sessionId, error);
+          const failure = describeError(error, { fallback: t("shelf:errors.generic") });
+          setReaderLoadError({
+            kind: "generic",
+            message: failure.body,
+            retryable: failure.retryable,
           });
           setIsReaderLoading(false);
-        } else {
-        const resolved = await resolveStoredBookFile(book);
-        if (readerLoadRequestIdRef.current !== requestId) return;
-        if (resolved.status === "missing") {
-          readingRuntime.fail(sessionId, new AppError("fs/not-found", `Book source missing: ${resolved.reason}`));
-          setReaderLoadError({ kind: "file-missing", reason: resolved.reason });
-          setIsReaderLoading(false);
-          return;
         }
-
-        setReaderSource({
-          format: book.format,
-          data: {
-            fileName: book.fileName,
-            format: book.format,
-            file: resolved.file,
-            resetPosition: options?.resetPosition,
-          },
-        });
-        setIsReaderLoading(false);
-        }
-
-        void markLibraryBookOpened(book.id, openingActor)
-          .then((nextBook) => {
-            if (!nextBook) return;
-
-            setSelectedBook((currentBook) => (
-              currentBook?.id === nextBook.id ? nextBook : currentBook
-            ));
-            replaceBookInState(nextBook);
-          })
-          .catch((error) => {
-            reportError(error);
-          });
-      } catch (error) {
-        if (readerLoadRequestIdRef.current !== requestId) return;
-        log.error("opening book failed", error);
-        readingRuntime.fail(sessionId, error);
-        const failure = describeError(error, { fallback: t("shelf:errors.generic") });
-        setReaderLoadError({
-          kind: "generic",
-          message: failure.body,
-          retryable: failure.retryable,
-        });
-        setIsReaderLoading(false);
-      }
-    })();
-  }, [controls, replaceBookInState, reportError, resetReaderState, setShellVisible, t]);
+      })();
+    },
+    [controls, replaceBookInState, reportError, resetReaderState, setShellVisible, t],
+  );
 
   const closeReader = useCallback(async () => {
     const closing = traceRef.current;
@@ -255,61 +258,80 @@ export function useReaderSession({
     void hostSync.openSettings(undefined, "user").catch(reportError);
   }, [reportError]);
 
-  const hideShell = useCallback((origin: DomainActor = "user") => {
-    setShellVisible(false, origin);
-  }, [setShellVisible]);
+  const hideShell = useCallback(
+    (origin: DomainActor = "user") => {
+      setShellVisible(false, origin);
+    },
+    [setShellVisible],
+  );
 
-  const handleReaderPageChange = useCallback((current: number, total: number) => {
-    setReaderPage({ current, total });
-  }, [setReaderPage]);
+  const handleReaderPageChange = useCallback(
+    (current: number, total: number) => {
+      setReaderPage({ current, total });
+    },
+    [setReaderPage],
+  );
 
-  const handleEpubProgressChange = useCallback((progress: ReaderProgress) => {
-    setReaderPage({
-      current: progress.currentLocation,
-      total: progress.totalLocations,
-    });
+  const handleEpubProgressChange = useCallback(
+    (progress: ReaderProgress) => {
+      setReaderPage({
+        current: progress.currentLocation,
+        total: progress.totalLocations,
+      });
 
-    if (!selectedBook) return;
-    applyReaderProgress(selectedBook.id, progress);
-  }, [applyReaderProgress, selectedBook, setReaderPage]);
+      if (!selectedBook) return;
+      applyReaderProgress(selectedBook.id, progress);
+    },
+    [applyReaderProgress, selectedBook, setReaderPage],
+  );
 
-  const handleReaderFractionChange = useCallback((fraction: number) => {
-    setReaderFraction(fraction);
-  }, [setReaderFraction]);
+  const handleReaderFractionChange = useCallback(
+    (fraction: number) => {
+      setReaderFraction(fraction);
+    },
+    [setReaderFraction],
+  );
 
   // Scrubbing the header's progress bar. The shell deliberately stays open —
   // the user is working the header, and may well scrub again.
-  const handleSeek = useCallback((fraction: number) => {
-    setFractionNavigationRequest((previous) => ({
-      fraction,
-      requestId: (previous?.requestId ?? 0) + 1,
-    }));
-  }, [setFractionNavigationRequest]);
+  const handleSeek = useCallback(
+    (fraction: number) => {
+      setFractionNavigationRequest((previous) => ({
+        fraction,
+        requestId: (previous?.requestId ?? 0) + 1,
+      }));
+    },
+    [setFractionNavigationRequest],
+  );
 
-  const handleChapterSelect = useCallback((href: string) => {
-    setChapterNavigationRequest((previous) => ({
-      href,
-      requestId: (previous?.requestId ?? 0) + 1,
-    }));
-    setShellVisible(false);
-  }, [setChapterNavigationRequest, setShellVisible]);
+  const handleChapterSelect = useCallback(
+    (href: string) => {
+      setChapterNavigationRequest((previous) => ({
+        href,
+        requestId: (previous?.requestId ?? 0) + 1,
+      }));
+      setShellVisible(false);
+    },
+    [setChapterNavigationRequest, setShellVisible],
+  );
 
-  const handleAnnotationSelect = useCallback((cfiRange: string) => {
-    setAnnotationNavigationRequest((previous) => ({
-      cfiRange,
-      requestId: (previous?.requestId ?? 0) + 1,
-    }));
-    setShellVisible(false);
-  }, [setAnnotationNavigationRequest, setShellVisible]);
+  const handleAnnotationSelect = useCallback(
+    (cfiRange: string) => {
+      setAnnotationNavigationRequest((previous) => ({
+        cfiRange,
+        requestId: (previous?.requestId ?? 0) + 1,
+      }));
+      setShellVisible(false);
+    },
+    [setAnnotationNavigationRequest, setShellVisible],
+  );
 
   const overlayVisible = shellVisible;
   const selectedEpubProgress = selectedBook?.progress ?? null;
   // The engine's fraction once it has relocated; before that, the position the
   // book was left at (so the bar opens where reading stopped).
-  const readerProgress = readerFraction
-    ?? (selectedBook?.progressPercent
-      ? selectedBook.progressPercent / 100
-      : undefined);
+  const readerProgress =
+    readerFraction ?? (selectedBook?.progressPercent ? selectedBook.progressPercent / 100 : undefined);
 
   return {
     selectedBook,

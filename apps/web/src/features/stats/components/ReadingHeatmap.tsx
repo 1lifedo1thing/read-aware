@@ -106,11 +106,7 @@ export function ReadingHeatmap({ daily, now, cell = 10, className }: ReadingHeat
       <div className="mt-3 flex items-center justify-end gap-1.5">
         <Caption className="text-fg-subtle">{t("heatmap.less")}</Caption>
         {([0, 1, 2, 3, 4] as HeatmapLevel[]).map((level) => (
-          <div
-            key={level}
-            className={cn("rounded-[2px]", LEVEL_CLASS[level])}
-            style={{ width: cell, height: cell }}
-          />
+          <div key={level} className={cn("rounded-[2px]", LEVEL_CLASS[level])} style={{ width: cell, height: cell }} />
         ))}
         <Caption className="text-fg-subtle">{t("heatmap.more")}</Caption>
       </div>

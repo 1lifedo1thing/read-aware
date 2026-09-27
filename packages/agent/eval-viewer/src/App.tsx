@@ -34,12 +34,16 @@ export function App() {
   }, [route]);
 
   useEffect(() => {
-    fetchCatalog().then(setCatalog).catch((cause) => setError(String(cause)));
+    fetchCatalog()
+      .then(setCatalog)
+      .catch((cause) => setError(String(cause)));
     return subscribeRunEvents(() => setTick((value) => value + 1));
   }, []);
 
   useEffect(() => {
-    fetchRuns().then(setRuns).catch((cause) => setError(String(cause)));
+    fetchRuns()
+      .then(setRuns)
+      .catch((cause) => setError(String(cause)));
   }, [tick]);
 
   const suiteMatch = route.match(/^\/suites\/([^/]+)$/);
@@ -56,13 +60,13 @@ export function App() {
         </div>
         <a
           className={`flex items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-[13px] whitespace-nowrap transition-colors hover:bg-[var(--surface)] hover:text-[var(--fg)] ${
-            route === "/"
-              ? "bg-[var(--accent-bg)] text-[var(--accent)]"
-              : "text-[var(--muted)]"
+            route === "/" ? "bg-[var(--accent-bg)] text-[var(--accent)]" : "text-[var(--muted)]"
           }`}
           href="#/"
         >
-          <span className={`w-[30px] shrink-0 font-mono text-[11px] max-md:hidden ${route === "/" ? "text-[var(--accent)]" : "text-[var(--subtle)]"}`}>
+          <span
+            className={`w-[30px] shrink-0 font-mono text-[11px] max-md:hidden ${route === "/" ? "text-[var(--accent)]" : "text-[var(--subtle)]"}`}
+          >
             ◎
           </span>{" "}
           总览
@@ -78,14 +82,14 @@ export function App() {
                 <a
                   key={suite.id}
                   className={`flex items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-[13px] whitespace-nowrap transition-colors hover:bg-[var(--surface)] hover:text-[var(--fg)] ${
-                    activeSuite === suite.id
-                      ? "bg-[var(--accent-bg)] text-[var(--accent)]"
-                      : "text-[var(--muted)]"
+                    activeSuite === suite.id ? "bg-[var(--accent-bg)] text-[var(--accent)]" : "text-[var(--muted)]"
                   }`}
                   href={`#/suites/${suite.id}`}
                   title={suite.id}
                 >
-                  <span className={`w-[30px] shrink-0 font-mono text-[11px] ${activeSuite === suite.id ? "text-[var(--accent)]" : "text-[var(--subtle)]"}`}>
+                  <span
+                    className={`w-[30px] shrink-0 font-mono text-[11px] ${activeSuite === suite.id ? "text-[var(--accent)]" : "text-[var(--subtle)]"}`}
+                  >
                     {suite.code}
                   </span>
                   <span>{suite.displayName}</span>

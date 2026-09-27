@@ -31,8 +31,12 @@ function SizeStepper(args: ComponentProps<typeof Stepper>) {
 /** Plus / minus through an ordered range; each end disables its button. */
 export const Default: Story = {
   args: {
-    label: "Font Size", valueText: "Medium", onDecrement: () => {}, onIncrement: () => {},
-    decrementLabel: "Smaller text", incrementLabel: "Larger text",
+    label: "Font Size",
+    valueText: "Medium",
+    onDecrement: () => {},
+    onIncrement: () => {},
+    decrementLabel: "Smaller text",
+    incrementLabel: "Larger text",
   },
   render: (args) => <SizeStepper {...args} />,
 };
@@ -42,8 +46,16 @@ export const TextSize: Story = {
   ...Default,
   args: {
     ...Default.args,
-    decrementIcon: <span aria-hidden="true" className="font-serif text-[13px] leading-none">A</span>,
-    incrementIcon: <span aria-hidden="true" className="font-serif text-[20px] leading-none">A</span>,
+    decrementIcon: (
+      <span aria-hidden="true" className="font-serif text-[13px] leading-none">
+        A
+      </span>
+    ),
+    incrementIcon: (
+      <span aria-hidden="true" className="font-serif text-[20px] leading-none">
+        A
+      </span>
+    ),
   },
 };
 

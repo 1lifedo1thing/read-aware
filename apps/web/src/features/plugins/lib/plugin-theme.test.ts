@@ -103,13 +103,18 @@ describe("validateThemeContributions", () => {
 
   test("accepts the heavier reader typography presets", () => {
     for (const fontWeight of ["semibold", "extra-bold", "black"] as const) {
-      const [theme] = validateThemeContributions([{
-        ...VALID_THEME,
-        reader: {
-          ...VALID_THEME.reader,
-          typography: { ...VALID_THEME.reader.typography, fontWeight },
-        },
-      }], fontIds);
+      const [theme] = validateThemeContributions(
+        [
+          {
+            ...VALID_THEME,
+            reader: {
+              ...VALID_THEME.reader,
+              typography: { ...VALID_THEME.reader.typography, fontWeight },
+            },
+          },
+        ],
+        fontIds,
+      );
       expect(theme.reader?.typography?.fontWeight).toBe(fontWeight);
     }
   });
@@ -123,20 +128,14 @@ describe("validateThemeContributions", () => {
   });
 
   test("rejects unknown app tokens", () => {
-    expect(() =>
-      validateThemeContributions(
-        [{ ...VALID_THEME, app: { accent: "#ff0000" } }],
-        fontIds,
-      ),
-    ).toThrow(/unknown app token/);
+    expect(() => validateThemeContributions([{ ...VALID_THEME, app: { accent: "#ff0000" } }], fontIds)).toThrow(
+      /unknown app token/,
+    );
   });
 
   test("rejects invalid colors", () => {
     expect(() =>
-      validateThemeContributions(
-        [{ ...VALID_THEME, app: { paper: "url(https://evil)" } }],
-        fontIds,
-      ),
+      validateThemeContributions([{ ...VALID_THEME, app: { paper: "url(https://evil)" } }], fontIds),
     ).toThrow(/not a valid color/);
   });
 
@@ -145,24 +144,19 @@ describe("validateThemeContributions", () => {
       palette: Record<string, string>;
     };
     delete reader.palette.muted;
-    expect(() =>
-      validateThemeContributions([{ ...VALID_THEME, reader }], fontIds),
-    ).toThrow(/"muted" is not a valid color/);
+    expect(() => validateThemeContributions([{ ...VALID_THEME, reader }], fontIds)).toThrow(
+      /"muted" is not a valid color/,
+    );
   });
 
   test("rejects typography referencing an undeclared font", () => {
-    expect(() =>
-      validateThemeContributions([VALID_THEME], new Set<string>()),
-    ).toThrow(/fontFamily/);
+    expect(() => validateThemeContributions([VALID_THEME], new Set<string>())).toThrow(/fontFamily/);
   });
 
   test("rejects a theme with neither part", () => {
-    expect(() =>
-      validateThemeContributions(
-        [{ id: "empty", name: "Empty", polarity: "light" }],
-        fontIds,
-      ),
-    ).toThrow(/app part, a reader part/);
+    expect(() => validateThemeContributions([{ id: "empty", name: "Empty", polarity: "light" }], fontIds)).toThrow(
+      /app part, a reader part/,
+    );
   });
 });
 
@@ -175,24 +169,18 @@ describe("validateFontContributions", () => {
 
   test("rejects traversal and non-font paths", () => {
     for (const path of ["../outside.woff2", "/abs.woff2", "assets/.hidden.woff2", "assets/x.js", "a\\b.woff2"]) {
-      expect(() =>
-        validateFontContributions([{ ...VALID_FONT, files: [{ path }] }]),
-      ).toThrow(/file paths/);
+      expect(() => validateFontContributions([{ ...VALID_FONT, files: [{ path }] }])).toThrow(/file paths/);
     }
   });
 
   test("rejects invalid unicode ranges", () => {
     expect(() =>
-      validateFontContributions([
-        { ...VALID_FONT, files: [{ path: "a.woff2", unicodeRange: "U+00;evil" }] },
-      ]),
+      validateFontContributions([{ ...VALID_FONT, files: [{ path: "a.woff2", unicodeRange: "U+00;evil" }] }]),
     ).toThrow(/unicode-range/);
   });
 
   test("strips family characters that could escape the declaration", () => {
-    const [font] = validateFontContributions([
-      { ...VALID_FONT, family: 'Ga"ramond;{}' },
-    ]);
+    const [font] = validateFontContributions([{ ...VALID_FONT, family: 'Ga"ramond;{}' }]);
     expect(font.family).toBe("Garamond");
   });
 });
@@ -213,9 +201,7 @@ describe("manifest gate", () => {
   });
 
   test("passes with the permission declared", () => {
-    const manifest = parseManifestJson(
-      JSON.stringify({ ...base, permissions: ["ui:themes"] }),
-    );
+    const manifest = parseManifestJson(JSON.stringify({ ...base, permissions: ["ui:themes"] }));
     expect(manifest.themes?.[0].id).toBe("nocturne");
     expect(manifest.fonts?.[0].id).toBe("garamond");
   });

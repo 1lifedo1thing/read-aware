@@ -13,7 +13,11 @@ const ACCEPTANCE_IDS: &[&str] = &[
 
 pub(crate) fn validate(config: &tauri::Config, local_dev: bool) -> Result<(), &'static str> {
     let identifier = config.identifier.as_str();
-    let dev_name = config.product_name.as_deref().unwrap_or("").starts_with("ReadAware Dev");
+    let dev_name = config
+        .product_name
+        .as_deref()
+        .unwrap_or("")
+        .starts_with("ReadAware Dev");
     let dev_id = identifier == "com.readaware.app.dev" || identifier == "com.readaware.app.dev2";
     if dev_name != dev_id {
         return Err("ReadAware Dev must use an isolated development bundle identifier");
@@ -33,7 +37,11 @@ mod tests {
     use super::*;
 
     fn config(identifier: &str, name: &str) -> tauri::Config {
-        tauri::Config { identifier: identifier.into(), product_name: Some(name.into()), ..Default::default() }
+        tauri::Config {
+            identifier: identifier.into(),
+            product_name: Some(name.into()),
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -42,15 +50,43 @@ mod tests {
         assert!(validate(&config(PRODUCTION_ID, "ReadAware Dev"), true).is_err());
         assert!(validate(&config("com.readaware.app.dev", "ReadAware"), true).is_err());
         assert!(validate(&config("com.readaware.app.dev", "ReadAware Dev"), true).is_ok());
-        assert!(validate(&config("com.readaware.app.capability-e2e", "ReadAware Capability Tests"), true).is_ok());
-        assert!(validate(&config("com.readaware.app.progress-acceptance-20260920", "ReadAware Progress Acceptance"), true).is_ok());
-        assert!(validate(&config("com.readaware.app.progress-acceptance-20260920", "ReadAware Dev Progress Acceptance"), true).is_err());
-        assert!(validate(&config("com.readaware.app.anything-else", "ReadAware"), true).is_err());
+        assert!(validate(
+            &config(
+                "com.readaware.app.capability-e2e",
+                "ReadAware Capability Tests"
+            ),
+            true
+        )
+        .is_ok());
+        assert!(validate(
+            &config(
+                "com.readaware.app.progress-acceptance-20260920",
+                "ReadAware Progress Acceptance"
+            ),
+            true
+        )
+        .is_ok());
+        assert!(validate(
+            &config(
+                "com.readaware.app.progress-acceptance-20260920",
+                "ReadAware Dev Progress Acceptance"
+            ),
+            true
+        )
+        .is_err());
+        assert!(validate(
+            &config("com.readaware.app.anything-else", "ReadAware"),
+            true
+        )
+        .is_err());
     }
 
     #[test]
     fn release_builds_preserve_identity_and_only_production_can_update() {
-        for (id, name) in [(PRODUCTION_ID, "ReadAware"), ("com.readaware.app.dev", "ReadAware Dev")] {
+        for (id, name) in [
+            (PRODUCTION_ID, "ReadAware"),
+            ("com.readaware.app.dev", "ReadAware Dev"),
+        ] {
             assert!(validate(&config(id, name), false).is_ok());
         }
         assert!(can_update(PRODUCTION_ID));

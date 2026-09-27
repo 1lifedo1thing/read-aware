@@ -120,9 +120,11 @@ impl ExternalOpenQueue {
 }
 
 pub fn is_book_path(path: &Path) -> bool {
-    if path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
-        name.to_ascii_lowercase().ends_with(".fb2.zip")
-    }) {
+    if path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.to_ascii_lowercase().ends_with(".fb2.zip"))
+    {
         return true;
     }
     path.extension()
@@ -387,9 +389,17 @@ mod tests {
             std::fs::write(dir.path().join(name), b"fixture").unwrap();
         }
         let collected = collect_book_paths(
-            ["Book.FB2.ZIP", "ordinary.zip", "Book.fb2.zip.bak"], Some(dir.path()),
+            ["Book.FB2.ZIP", "ordinary.zip", "Book.fb2.zip.bak"],
+            Some(dir.path()),
         );
-        assert_eq!(collected, vec![dir.path().join("Book.FB2.ZIP").to_string_lossy().into_owned()]);
+        assert_eq!(
+            collected,
+            vec![dir
+                .path()
+                .join("Book.FB2.ZIP")
+                .to_string_lossy()
+                .into_owned()]
+        );
         assert!(!is_book_path(Path::new("directory.fb2.zip/ordinary.zip")));
     }
 }

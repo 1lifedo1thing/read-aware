@@ -18,7 +18,12 @@
  */
 import { errorCode, type ReadingStatus } from "@read-aware/core";
 import type { CommitReport } from "./domain-events";
-import { broadcastDomainEventDrafts, mintEventRows, mintEventRowsAfterCurrentFrontier, type DomainEventDraft } from "./domain-events";
+import {
+  broadcastDomainEventDrafts,
+  mintEventRows,
+  mintEventRowsAfterCurrentFrontier,
+  type DomainEventDraft,
+} from "./domain-events";
 import { isTauri } from "./environment";
 import { invoke } from "./ipc";
 import { createLogger } from "./logger";
@@ -123,9 +128,7 @@ function draftFor(bucket: ReadingSessionBucket): DomainEventDraft {
       endedAt: bucket.lastAt,
       localDay: bucket.localDay,
       localHour: bucket.localHour,
-      ...(bucket.progress
-        ? { progress: { ...bucket.progress, observedAt: bucket.positionAt ?? bucket.lastAt } }
-        : {}),
+      ...(bucket.progress ? { progress: { ...bucket.progress, observedAt: bucket.positionAt ?? bucket.lastAt } } : {}),
     },
   };
 }
@@ -136,9 +139,7 @@ function draftFor(bucket: ReadingSessionBucket): DomainEventDraft {
  * accrued or a position observed after the bucket was read stays open for
  * the next close.
  */
-export async function flushReadingSessions(
-  buckets: ReadingSessionBucket[],
-): Promise<CommitReport> {
+export async function flushReadingSessions(buckets: ReadingSessionBucket[]): Promise<CommitReport> {
   const worth = buckets.filter((b) => b.ms > 0 || b.progress !== null);
   if (!isTauri() || worth.length === 0) return { appended: 0, applied: 0 };
   return durableWrites.run(async () => {
@@ -178,8 +179,9 @@ export async function closeReadingSessionsForBackup(): Promise<number> {
     for (let attempt = 0; ; attempt++) {
       const buckets = await listPendingReadingSessions();
       if (buckets.length === 0) return 0;
-      const drafts: DomainEventDraft[] = buckets.filter(b => b.ms > 0 || b.progress !== null)
-        .map(bucket => ({ ...draftFor(bucket), origin: "system" }));
+      const drafts: DomainEventDraft[] = buckets
+        .filter((b) => b.ms > 0 || b.progress !== null)
+        .map((bucket) => ({ ...draftFor(bucket), origin: "system" }));
       const events = await mintEventRowsAfterCurrentFrontier(drafts);
       try {
         const closed = await invoke<DomainEventDraft[]>("backup_close_reading_sessions", { events });

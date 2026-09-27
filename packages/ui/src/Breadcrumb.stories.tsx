@@ -21,20 +21,13 @@ export const Default: Story = {
 
 export const TwoLevels: Story = {
   args: {
-    items: [
-      { label: "Settings", onClick: () => {} },
-      { label: "Typography" },
-    ],
+    items: [{ label: "Settings", onClick: () => {} }, { label: "Typography" }],
   },
 };
 
 export const CustomSeparator: Story = {
   args: {
-    items: [
-      { label: "Home", onClick: () => {} },
-      { label: "Library", onClick: () => {} },
-      { label: "Chapter 3" },
-    ],
+    items: [{ label: "Home", onClick: () => {} }, { label: "Library", onClick: () => {} }, { label: "Chapter 3" }],
     separator: ">",
   },
 };

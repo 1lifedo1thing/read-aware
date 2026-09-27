@@ -37,22 +37,13 @@ test("source categories strip all free-form referrer and campaign data", () => {
     ["https://secret.example/user/email", "other"],
     ["", "direct"],
   ];
-  for (const [referrer, source] of referrers)
-    expect(sourceFrom(url(), referrer)).toBe(source);
-  expect(
-    sourceFrom(url("/?utm_source=chatgpt.com&utm_campaign=secret"), ""),
-  ).toBe("chatgpt");
+  for (const [referrer, source] of referrers) expect(sourceFrom(url(), referrer)).toBe(source);
+  expect(sourceFrom(url("/?utm_source=chatgpt.com&utm_campaign=secret"), "")).toBe("chatgpt");
   expect(sourceFrom(url("/?utm_source=someone@example.com"), "")).toBe("other");
 });
 
 test("locale redirects and internal navigation preserve attribution without counting another entry", () => {
-  const first = resolveAttribution(
-    null,
-    url("/?utm_source=chatgpt.com"),
-    "",
-    pages,
-    100,
-  );
+  const first = resolveAttribution(null, url("/?utm_source=chatgpt.com"), "", pages, 100);
   expect(first.fresh).toBe(true);
   const redirected = resolveAttribution(
     first.attribution,
@@ -71,52 +62,28 @@ test("locale redirects and internal navigation preserve attribution without coun
   );
   expect(internal.fresh).toBe(false);
   expect(internal.attribution.landing).toBe("/");
-  const expired = resolveAttribution(
-    first.attribution,
-    url("/zh/"),
-    "",
-    pages,
-    SESSION_MS + 101,
-  );
+  const expired = resolveAttribution(first.attribution, url("/zh/"), "", pages, SESSION_MS + 101);
   expect(expired.fresh).toBe(true);
   expect(expired.attribution.source).toBe("direct");
-  expect(
-    resolveAttribution(
-      { ...first.attribution, landing: "/private/email" },
-      url(),
-      "",
-      pages,
-      200,
-    ).fresh,
-  ).toBe(true);
+  expect(resolveAttribution({ ...first.attribution, landing: "/private/email" }, url(), "", pages, 200).fresh).toBe(
+    true,
+  );
 });
 
 test("opt-outs, previews and secret-bearing pages never enable either analytics script", () => {
   expect(analyticsAllowed(url(), null, false)).toBe(true);
-  for (const path of [
-    "/sync/login/",
-    "/pricing/#upgrade=ticket",
-    "/?email=private",
-    "/?token=private",
-  ]) {
+  for (const path of ["/sync/login/", "/pricing/#upgrade=ticket", "/?email=private", "/?token=private"]) {
     expect(analyticsAllowed(url(path), null, false)).toBe(false);
   }
-  expect(analyticsAllowed(new URL("http://localhost:4175/"), null, false)).toBe(
-    false,
-  );
-  expect(
-    analyticsAllowed(new URL("https://preview.workers.dev/"), null, false),
-  ).toBe(false);
+  expect(analyticsAllowed(new URL("http://localhost:4175/"), null, false)).toBe(false);
+  expect(analyticsAllowed(new URL("https://preview.workers.dev/"), null, false)).toBe(false);
   expect(analyticsAllowed(url(), "1", false)).toBe(false);
   expect(analyticsAllowed(url(), null, true)).toBe(false);
 });
 
 test("event schema permits only known public paths, source categories and official assets", () => {
   expect(validateEvent(entry, pages)).toBe(true);
-  for (const asset of DOWNLOAD_ASSETS)
-    expect(validateEvent({ ...download, asset: asset.asset }, pages)).toBe(
-      true,
-    );
+  for (const asset of DOWNLOAD_ASSETS) expect(validateEvent({ ...download, asset: asset.asset }, pages)).toBe(true);
   for (const invalid of [
     null,
     [],
@@ -149,10 +116,7 @@ function harness() {
       },
     },
   };
-  const request = (
-    body: unknown = entry,
-    headers: Record<string, string> = {},
-  ) =>
+  const request = (body: unknown = entry, headers: Record<string, string> = {}) =>
     new Request(url("/api/site-events"), {
       method: "POST",
       headers: {
@@ -175,66 +139,27 @@ describe("Worker endpoint", () => {
     expect(points).toEqual([
       {
         indexes: ["chatgpt"],
-        blobs: [
-          "v1",
-          "download",
-          "chatgpt",
-          "/",
-          "/",
-          "android",
-          download.asset,
-          "v0.5.4",
-        ],
+        blobs: ["v1", "download", "chatgpt", "/", "/", "android", download.asset, "v0.5.4"],
         doubles: [1],
       },
     ]);
-    expect(
-      await (await worker.fetch(new Request(url("/zh/")), env)).text(),
-    ).toBe("asset");
+    expect(await (await worker.fetch(new Request(url("/zh/")), env)).text()).toBe("asset");
   });
   test("rejects cross-origin, GET, malformed and oversized input without writes", async () => {
     const { env, points, request } = harness();
-    expect(
-      (
-        await worker.fetch(
-          request(entry, { origin: "https://evil.example" }),
-          env,
-        )
-      ).status,
-    ).toBe(403);
-    expect(
-      (await worker.fetch(new Request(url("/api/site-events")), env)).status,
-    ).toBe(405);
-    expect(
-      (
-        await worker.fetch(
-          request(entry, { "content-type": "text/plain" }),
-          env,
-        )
-      ).status,
-    ).toBe(415);
-    expect(
-      (await worker.fetch(request({ ...entry, secret: "x".repeat(2000) }), env))
-        .status,
-    ).toBe(400);
-    expect(
-      (await worker.fetch(request({ ...entry, page: "/not-a-page/" }), env))
-        .status,
-    ).toBe(400);
+    expect((await worker.fetch(request(entry, { origin: "https://evil.example" }), env)).status).toBe(403);
+    expect((await worker.fetch(new Request(url("/api/site-events")), env)).status).toBe(405);
+    expect((await worker.fetch(request(entry, { "content-type": "text/plain" }), env)).status).toBe(415);
+    expect((await worker.fetch(request({ ...entry, secret: "x".repeat(2000) }), env)).status).toBe(400);
+    expect((await worker.fetch(request({ ...entry, page: "/not-a-page/" }), env)).status).toBe(400);
     const malformed = request();
-    expect(
-      (await worker.fetch(new Request(malformed, { method: "POST", body: "{" }), env)).status,
-    ).toBe(400);
+    expect((await worker.fetch(new Request(malformed, { method: "POST", body: "{" }), env)).status).toBe(400);
     expect(points).toEqual([]);
   });
   test("honors privacy headers and handles missing bindings without exposing errors", async () => {
     const { env, points, request } = harness();
-    expect((await worker.fetch(request(entry, { dnt: "1" }), env)).status).toBe(
-      204,
-    );
-    expect(
-      (await worker.fetch(request(entry, { "sec-gpc": "1" }), env)).status,
-    ).toBe(204);
+    expect((await worker.fetch(request(entry, { dnt: "1" }), env)).status).toBe(204);
+    expect((await worker.fetch(request(entry, { "sec-gpc": "1" }), env)).status).toBe(204);
     expect(points).toEqual([]);
     env.SITE_ANALYTICS.writeDataPoint = () => {
       throw new Error("private detail");

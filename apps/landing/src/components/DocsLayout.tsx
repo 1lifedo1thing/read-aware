@@ -9,8 +9,7 @@ import { SiteHeader } from "./SiteHeader";
 export function DocsLayout({ locale }: { locale: DocsLocale }) {
   useDocumentLang(locale);
   const explorer = useRouterState({
-    select: (state) =>
-      /\/docs\/plugins\/capabilities\/?$/.test(state.location.pathname),
+    select: (state) => /\/docs\/plugins\/capabilities\/?$/.test(state.location.pathname),
   });
 
   return (

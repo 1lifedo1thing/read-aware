@@ -126,7 +126,11 @@ export function Select({
     const maxHeight = Math.max(96, Math.min(menuCap, placeBelow ? spaceBelow : spaceAbove));
     const offset = placeBelow ? rect.bottom + gap : window.innerHeight - rect.top + gap;
     setPosition({
-      left: rect.left, width: rect.width, maxHeight, placeBelow, offset,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      placeBelow,
+      offset,
       fontFamily: getComputedStyle(button).fontFamily,
     });
   }, [setPosition]);
@@ -181,8 +185,7 @@ export function Select({
     }
   }
 
-  const activeDescendant =
-    open && activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined;
+  const activeDescendant = open && activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined;
 
   return (
     <div ref={containerRef} className={cn("flex flex-col gap-1.5", className)}>
@@ -214,9 +217,7 @@ export function Select({
           aria-label={label === undefined ? ariaLabel : undefined}
           aria-activedescendant={activeDescendant}
           aria-invalid={hasError || undefined}
-          aria-describedby={
-            hasError ? `${id}-error` : helperText ? `${id}-helper` : undefined
-          }
+          aria-describedby={hasError ? `${id}-error` : helperText ? `${id}-helper` : undefined}
           disabled={disabled}
           onClick={() => {
             if (disabled) return;
@@ -229,18 +230,11 @@ export function Select({
             isPlaceholder ? "text-fg-subtle" : "text-fg",
             disabled && "cursor-not-allowed opacity-50",
             variant === "underline" &&
-              cn(
-                "border-b pb-2",
-                hasError
-                  ? "border-red-400 focus:border-red-600"
-                  : "border-border focus:border-fg",
-              ),
+              cn("border-b pb-2", hasError ? "border-red-400 focus:border-red-600" : "border-border focus:border-fg"),
             variant === "outlined" &&
               cn(
                 "border px-3 py-2",
-                hasError
-                  ? "border-red-400 focus:border-red-600"
-                  : "border-border focus:border-fg",
+                hasError ? "border-red-400 focus:border-red-600" : "border-border focus:border-fg",
               ),
           )}
         >
@@ -248,10 +242,7 @@ export function Select({
           <CaretDown
             size={16}
             weight="bold"
-            className={cn(
-              "ml-2 shrink-0 text-fg-subtle transition-transform",
-              open && "rotate-180",
-            )}
+            className={cn("ml-2 shrink-0 text-fg-subtle transition-transform", open && "rotate-180")}
           />
         </button>
 
@@ -267,28 +258,18 @@ export function Select({
               style={{
                 position: "fixed",
                 fontFamily: position.fontFamily,
-                ...(position.placeBelow
-                  ? { top: position.offset }
-                  : { bottom: position.offset }),
+                ...(position.placeBelow ? { top: position.offset } : { bottom: position.offset }),
                 left: position.left,
                 width: position.width,
                 zIndex: 80,
               }}
-              className={cn(
-                "ra-motion-overlay-pop",
-                position.placeBelow ? "origin-top" : "origin-bottom",
-              )}
+              className={cn("ra-motion-overlay-pop", position.placeBelow ? "origin-top" : "origin-bottom")}
             >
               <ScrollArea
                 style={{ maxHeight: position.maxHeight }}
                 className="w-full rounded-md border border-border bg-[var(--ra-main-surface-color)] p-1"
               >
-                <ul
-                  ref={listboxRef}
-                  id={`${id}-listbox`}
-                  role="listbox"
-                  aria-labelledby={`${id}-label`}
-                >
+                <ul ref={listboxRef} id={`${id}-listbox`} role="listbox" aria-labelledby={`${id}-label`}>
                   {options.map((opt, i) => (
                     <li
                       key={opt.value}
@@ -300,9 +281,7 @@ export function Select({
                       className={cn(
                         "cursor-pointer rounded-md px-2.5 py-1.5 text-sm transition-colors",
                         i === activeIndex && "bg-fill",
-                        opt.value === currentValue
-                          ? "font-medium text-fg"
-                          : "text-fg-muted",
+                        opt.value === currentValue ? "font-medium text-fg" : "text-fg-muted",
                       )}
                     >
                       {opt.label}

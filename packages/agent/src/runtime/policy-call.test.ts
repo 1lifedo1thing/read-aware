@@ -15,7 +15,8 @@ test("revocation after wait starts wins over fulfillment in the same tick", asyn
   const state = memoryPolicyState();
   const call = policyCall(state.policy, () => Error("denied"));
   const result = call.wait(Promise.resolve("forbidden"));
-  state.set(false); state.set(true);
+  state.set(false);
+  state.set(true);
   await expect(result).rejects.toThrow("denied");
   call.dispose();
 });

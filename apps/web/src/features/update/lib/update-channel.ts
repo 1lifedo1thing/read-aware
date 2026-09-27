@@ -30,7 +30,9 @@ export function getUpdateChannel(): UpdateChannel {
 }
 
 export function subscribeUpdateChannel(onChange: (origin: DomainActor) => void): () => void {
-  return onLocalKVChange((key, _value, origin) => { if (key === CHANNEL_KV_KEY) onChange(origin); });
+  return onLocalKVChange((key, _value, origin) => {
+    if (key === CHANNEL_KV_KEY) onChange(origin);
+  });
 }
 
 export function setUpdateChannel(channel: UpdateChannel): void {

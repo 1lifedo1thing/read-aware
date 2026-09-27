@@ -19,9 +19,7 @@ function formatDay(key: string | null): string | undefined {
 export function Achievements({ facts, books }: AchievementsProps) {
   const { t } = useTranslation("stats");
   const nextMs = nextTimeMilestone(facts.totalMs);
-  const mostRead = facts.mostReadBookId
-    ? books.find((b) => b.id === facts.mostReadBookId)
-    : undefined;
+  const mostRead = facts.mostReadBookId ? books.find((b) => b.id === facts.mostReadBookId) : undefined;
 
   return (
     <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
@@ -29,19 +27,13 @@ export function Achievements({ facts, books }: AchievementsProps) {
         label={t("achievements.totalReading")}
         value={formatReadingDuration(facts.totalMs)}
         hint={
-          nextMs
-            ? t("achievements.next", { duration: formatReadingDuration(nextMs) })
-            : t("achievements.allPassed")
+          nextMs ? t("achievements.next", { duration: formatReadingDuration(nextMs) }) : t("achievements.allPassed")
         }
       />
       <StatTile
         label={t("achievements.longestStreak")}
         value={t("days.compact", { count: facts.longestStreak })}
-        hint={
-          facts.currentStreak > 0
-            ? t("achievements.current", { count: facts.currentStreak })
-            : undefined
-        }
+        hint={facts.currentStreak > 0 ? t("achievements.current", { count: facts.currentStreak }) : undefined}
       />
       <StatTile
         label={t("achievements.bestDay")}

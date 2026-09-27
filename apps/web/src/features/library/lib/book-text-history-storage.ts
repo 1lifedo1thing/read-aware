@@ -8,18 +8,26 @@ import { BookTextTaskHistory, type TextHistoryStorage } from "./book-text-task-h
 
 /** Hidden host collection joins plugin snapshot/rollback/full backup/uninstall.
  * Host Agent/user ledgers remain local KV metadata; no business-event replay. */
-export function createTextTaskHistory(origin: DomainActor, trackCleanup?: (work: Promise<void>) => void): BookTextTaskHistory {
+export function createTextTaskHistory(
+  origin: DomainActor,
+  trackCleanup?: (work: Promise<void>) => void,
+): BookTextTaskHistory {
   const pluginId = actorOrigin(origin).startsWith("plugin:") ? actorOrigin(origin).slice(7) : null;
   const key = `read-aware-text-task-history:${actorOrigin(origin)}`;
-  const storage: TextHistoryStorage = pluginId ? {
-    read: async () => (await pluginDocsGet(pluginId, "_host_text_history", "recent"))?.json ?? null,
-    write: value => pluginDocsPut(pluginId, "_host_text_history", "recent", value),
-    run: withPluginRuntimeDataWrite,
-  } : {
-    read: () => afterLocalKVWrites(() => localKV.getItem(key)),
-    write: value => localKV.setItemAsync(key, value),
-    run: runDomainWrite,
-  };
+  const storage: TextHistoryStorage = pluginId
+    ? {
+        read: async () => (await pluginDocsGet(pluginId, "_host_text_history", "recent"))?.json ?? null,
+        write: (value) => pluginDocsPut(pluginId, "_host_text_history", "recent", value),
+        run: withPluginRuntimeDataWrite,
+      }
+    : {
+        read: () => afterLocalKVWrites(() => localKV.getItem(key)),
+        write: (value) => localKV.setItemAsync(key, value),
+        run: runDomainWrite,
+      };
   // The history owns each write's outcome; tracking only lets shutdown wait for it.
-  return new BookTextTaskHistory(key, storage, work => { void durableWrites.track(work); trackCleanup?.(work); });
+  return new BookTextTaskHistory(key, storage, (work) => {
+    void durableWrites.track(work);
+    trackCleanup?.(work);
+  });
 }

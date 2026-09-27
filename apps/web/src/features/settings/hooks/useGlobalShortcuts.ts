@@ -49,12 +49,7 @@ export function useGlobalShortcuts({
         return;
       }
       // After the rebindable chords, so a user override onto mod+digit wins.
-      if (
-        shortcut === undefined &&
-        (event.metaKey || event.ctrlKey) &&
-        !event.altKey &&
-        !event.shiftKey
-      ) {
+      if (shortcut === undefined && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
         const digit = DIGIT_CODE_RE.exec(event.code);
         if (digit && onSelectPrimaryDestination(Number(digit[1]) - 1)) {
           event.preventDefault();
@@ -63,10 +58,5 @@ export function useGlobalShortcuts({
     }
 
     return subscribeToAppKeyDown(handleKeyDown);
-  }, [
-    onOpenSearch,
-    onOpenSettings,
-    onNewConversation,
-    onSelectPrimaryDestination,
-  ]);
+  }, [onOpenSearch, onOpenSettings, onNewConversation, onSelectPrimaryDestination]);
 }

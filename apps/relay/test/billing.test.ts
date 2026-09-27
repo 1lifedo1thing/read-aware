@@ -131,20 +131,13 @@ function relayWithStripe(
     secretKey: "sk_test_fake",
     webhookSecret: WHSEC,
     portalConfigurationId:
-      options.portalConfigurationId === null
-        ? undefined
-        : (options.portalConfigurationId ?? "bpc_readaware"),
+      options.portalConfigurationId === null ? undefined : (options.portalConfigurationId ?? "bpc_readaware"),
     fetch: stripe.fetchFn,
   };
   // relayOrigin is CONFIG, never req.url — wrangler dev rewrites the request
   // host to the production route domain, which is exactly the bug this guards.
   return {
-    ...makeRelay(
-      { relayOrigin: "https://relay.test", ...options.config },
-      {},
-      {},
-      ports,
-    ),
+    ...makeRelay({ relayOrigin: "https://relay.test", ...options.config }, {}, {}, ports),
     stripe,
   };
 }
@@ -154,13 +147,9 @@ const encoder = new TextEncoder();
 /** Stripe's signing scheme, reproduced for the tests: HMAC over `t.payload`. */
 async function signedHeader(payload: string, nowMs: number, secret = WHSEC): Promise<string> {
   const t = Math.floor(nowMs / 1000);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`${t}.${payload}`)));
   const hex = [...mac].map((b) => b.toString(16).padStart(2, "0")).join("");
   return `t=${t},v1=${hex}`;
@@ -324,9 +313,7 @@ describe("checkout", () => {
     const created = stripe.calls.find((c) => c.url.includes("/v1/checkout/sessions"))!;
     expect(created.form?.get("client_reference_id")).toBe(accountId);
     expect(created.form?.get("customer_email")).toBe("reader@example.com");
-    expect(created.form?.get("success_url")).toBe(
-      "https://relay.test/v1/billing/return?lang=zh-Hans",
-    );
+    expect(created.form?.get("success_url")).toBe("https://relay.test/v1/billing/return?lang=zh-Hans");
     // A cancel keeps the ticket in the URL, so the retry stays bound.
     expect(created.form?.get("cancel_url")).toContain(`#upgrade=${ticket}`);
   });
@@ -334,9 +321,7 @@ describe("checkout", () => {
   test("a billing ticket survives a first redemption (cancel-then-retry)", async () => {
     const { handle, stripe } = relayWithStripe();
     const { session } = await login(handle, "reader@example.com");
-    const { ticket } = (await (
-      await handle(post("/v1/billing/ticket", {}, session))
-    ).json()) as { ticket: string };
+    const { ticket } = (await (await handle(post("/v1/billing/ticket", {}, session))).json()) as { ticket: string };
     expect((await handle(post("/v1/billing/checkout", { plan: "pro", ticket }))).status).toBe(200);
     expect((await handle(post("/v1/billing/checkout", { plan: "pro", ticket }))).status).toBe(200);
     const bound = stripe.calls.filter(
@@ -372,9 +357,7 @@ describe("the webhook fence", () => {
 
   test("an unsigned request is refused", async () => {
     const { handle } = relayWithStripe();
-    const res = await handle(
-      new Request("https://relay.test/v1/billing/webhook", { method: "POST", body: "{}" }),
-    );
+    const res = await handle(new Request("https://relay.test/v1/billing/webhook", { method: "POST", body: "{}" }));
     expect(res.status).toBe(400);
   });
 });
@@ -575,10 +558,7 @@ describe("fulfillment", () => {
 
   test("events for customers we never linked are acknowledged and ignored", async () => {
     const { handle } = relayWithStripe();
-    const res = await webhook(
-      handle,
-      subscriptionEvent("customer.subscription.updated", { customer: "cus_stranger" }),
-    );
+    const res = await webhook(handle, subscriptionEvent("customer.subscription.updated", { customer: "cus_stranger" }));
     expect(res.status).toBe(200);
   });
 });
@@ -639,12 +619,8 @@ describe("checkout throttles", () => {
     expect((await handle(checkout({ plan: "pro" }))).status).toBe(200);
 
     const { session } = await login(handle, "reader@example.com");
-    expect((await handle(checkout({ plan: "pro" }, { session, ip: "203.0.113.10" }))).status).toBe(
-      429,
-    );
-    expect((await handle(checkout({ plan: "pro" }, { session, ip: "203.0.113.11" }))).status).toBe(
-      200,
-    );
+    expect((await handle(checkout({ plan: "pro" }, { session, ip: "203.0.113.10" }))).status).toBe(429);
+    expect((await handle(checkout({ plan: "pro" }, { session, ip: "203.0.113.11" }))).status).toBe(200);
 
     // The blocked bearer call never reached Stripe.
     expect(stripe.calls.filter((c) => c.url.includes("/v1/checkout/sessions")).length).toBe(3);
@@ -655,18 +631,12 @@ describe("checkout throttles", () => {
       config: { checkoutPerIpPerHour: 10, checkoutPerAccountPerHour: 2 },
     });
     const { session } = await login(handle, "reader@example.com");
-    expect((await handle(checkout({ plan: "pro" }, { session, ip: "203.0.113.20" }))).status).toBe(
-      200,
-    );
+    expect((await handle(checkout({ plan: "pro" }, { session, ip: "203.0.113.20" }))).status).toBe(200);
 
     const minted = await handle(post("/v1/billing/ticket", {}, session));
     const { ticket } = (await minted.json()) as { ticket: string };
-    expect((await handle(checkout({ plan: "pro", ticket }, { ip: "203.0.113.21" }))).status).toBe(
-      200,
-    );
-    expect((await handle(checkout({ plan: "pro", ticket }, { ip: "203.0.113.22" }))).status).toBe(
-      429,
-    );
+    expect((await handle(checkout({ plan: "pro", ticket }, { ip: "203.0.113.21" }))).status).toBe(200);
+    expect((await handle(checkout({ plan: "pro", ticket }, { ip: "203.0.113.22" }))).status).toBe(429);
 
     expect(stripe.calls.filter((c) => c.url.includes("/v1/checkout/sessions")).length).toBe(2);
   });
@@ -693,9 +663,7 @@ describe("account deletion", () => {
 
     expect((await handle(del("/v1/account", session))).status).toBe(204);
 
-    const cancels = stripe.calls.filter(
-      (c) => c.method === "DELETE" && c.url.includes("/v1/subscriptions/"),
-    );
+    const cancels = stripe.calls.filter((c) => c.method === "DELETE" && c.url.includes("/v1/subscriptions/"));
     expect(cancels.map((c) => c.url.split("/").pop())).toEqual(["sub_readaware"]);
     // The session died with the account.
     expect((await handle(get("/v1/account", session))).status).toBe(401);

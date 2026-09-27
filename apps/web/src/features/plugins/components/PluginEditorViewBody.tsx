@@ -34,7 +34,9 @@ function stateFor(view: EditorSource): EditorState {
 
 function firstFieldError(result: Awaited<ReturnType<PluginResultRunner>>): string | undefined {
   if (!result?.fieldErrors) return undefined;
-  return Object.values(result.fieldErrors).find((value): value is string => typeof value === "string" && value.length > 0);
+  return Object.values(result.fieldErrors).find(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
 }
 
 function reconcileSource(current: EditorState, view: EditorSource): EditorState {
@@ -75,7 +77,7 @@ export function PluginEditorViewBody({ view, busy, onResult }: PluginEditorViewB
     // Discard locally before invoking the optional navigation callback. A
     // callback is navigation only; it never receives the draft or revision.
     setState(stateFor(view));
-    void onResult(() => view.onCancel ? view.onCancel() : ({ close: true }));
+    void onResult(() => (view.onCancel ? view.onCancel() : { close: true }));
   };
 
   const save = () => {
@@ -98,18 +100,23 @@ export function PluginEditorViewBody({ view, busy, onResult }: PluginEditorViewB
         // in that case; only a completed callback result (including void) may
         // clear it.
         if (result === null) return;
-        setState((current) => reconcileSource({
-          ...current,
-          // If the user kept typing while the request was in flight, only the
-          // submitted snapshot becomes clean; the newer input stays dirty.
-          baseValue: submittedDraft,
-          baseRevision: submittedRevision,
-          stale: false,
-          // The new source can arrive before or after this promise settles.
-          // Match the accepted value before adopting its new CAS revision.
-          awaitingRevision: true,
-          error: undefined,
-        }, latestView.current));
+        setState((current) =>
+          reconcileSource(
+            {
+              ...current,
+              // If the user kept typing while the request was in flight, only the
+              // submitted snapshot becomes clean; the newer input stays dirty.
+              baseValue: submittedDraft,
+              baseRevision: submittedRevision,
+              stale: false,
+              // The new source can arrive before or after this promise settles.
+              // Match the accepted value before adopting its new CAS revision.
+              awaitingRevision: true,
+              error: undefined,
+            },
+            latestView.current,
+          ),
+        );
       })
       // The host runner normally converts callback failures into a visible
       // failure toast and a null result. Keep direct runners safe as well.
@@ -123,7 +130,14 @@ export function PluginEditorViewBody({ view, busy, onResult }: PluginEditorViewB
   };
 
   return (
-    <Stack as="form" gap="sm" onSubmit={(event) => { event.preventDefault(); save(); }}>
+    <Stack
+      as="form"
+      gap="sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        save();
+      }}
+    >
       <TextArea
         label={contributionText(view.label)}
         variant="outlined"

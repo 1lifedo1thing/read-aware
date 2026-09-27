@@ -54,7 +54,11 @@ export const NoAuthor: Story = {
 
 export const ListThumbnail: Story = {
   args: { title: "The Structure of Scientific Revolutions", author: "Thomas S. Kuhn", format: "azw3", compact: true },
-  render: args => <div className="h-16 w-11 overflow-hidden rounded-sm"><BookCoverPlaceholder {...args} /></div>,
+  render: (args) => (
+    <div className="h-16 w-11 overflow-hidden rounded-sm">
+      <BookCoverPlaceholder {...args} />
+    </div>
+  ),
 };
 
 /** The surface tone is derived deterministically from the title, so a shelf of

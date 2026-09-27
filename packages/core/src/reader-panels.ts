@@ -7,7 +7,12 @@ export const MIN_READER_PANEL_WIDTH = 240;
 export const MAX_READER_PANEL_WIDTH = 640;
 
 export function assertReaderPanelWidth(panel: ResizableReaderPanel, width: number): void {
-  if (!["toc", "chat"].includes(panel) || !Number.isInteger(width) || width < MIN_READER_PANEL_WIDTH || width > MAX_READER_PANEL_WIDTH) {
+  if (
+    !["toc", "chat"].includes(panel) ||
+    !Number.isInteger(width) ||
+    width < MIN_READER_PANEL_WIDTH ||
+    width > MAX_READER_PANEL_WIDTH
+  ) {
     throw new AppError("reader/invalid-target", "Panel width must be an integer from 240 to 640 CSS pixels");
   }
 }

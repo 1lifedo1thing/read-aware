@@ -17,11 +17,7 @@ import { contentTypographyAtom, readerPreferencesAtom } from "../../../state/ui"
 import { pluginFontsAtom } from "../../plugins/state/plugin-store";
 import { findRegisteredByRef } from "../../plugins/lib/plugin-theme";
 import { isPluginFont, type ReaderFontFamily } from "../lib/reader-settings";
-import {
-  activeContentFont,
-  applyContentTypography,
-  resolveContentTypography,
-} from "../lib/content-typography";
+import { activeContentFont, applyContentTypography, resolveContentTypography } from "../lib/content-typography";
 import { useCuratedFontFace } from "./useCuratedFontFace";
 import { usePluginFontFace } from "./usePluginFonts";
 
@@ -37,13 +33,9 @@ export function useContentTypography(): void {
   useCuratedFontFace(font ?? NO_FONT);
   usePluginFontFace(font ?? NO_FONT);
 
-  const pluginFont =
-    font && isPluginFont(font) ? findRegisteredByRef(font, pluginFonts) : null;
+  const pluginFont = font && isPluginFont(font) ? findRegisteredByRef(font, pluginFonts) : null;
 
   useEffect(() => {
-    applyContentTypography(
-      document.documentElement,
-      resolveContentTypography(settings, reader, pluginFont),
-    );
+    applyContentTypography(document.documentElement, resolveContentTypography(settings, reader, pluginFont));
   }, [settings, reader, pluginFont]);
 }

@@ -66,41 +66,69 @@ export default {
 };`;
 
 async function isolated() {
-  if (!(await appDataDir()).replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw Error("Isolated capability-e2e required");
+  if (!(await appDataDir()).replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e"))
+    throw Error("Isolated capability-e2e required");
 }
 export async function preparePluginDataProbe() {
   await isolated();
   const existing = await snapshotPluginData(id);
-  if ((await listPluginEntries()).some(entry => entry.id === id) || Object.keys(existing.kv).length || existing.documents.length || existing.schema) throw Error("Owned plugin namespace must be empty");
+  if (
+    (await listPluginEntries()).some((entry) => entry.id === id) ||
+    Object.keys(existing.kv).length ||
+    existing.documents.length ||
+    existing.schema
+  )
+    throw Error("Owned plugin namespace must be empty");
   return installPluginDataProbe("initial");
 }
 export async function installPluginDataProbe(mode: "initial" | "fail" | "success") {
   await isolated();
-  const manifest = {id,name:"Data transaction validation",version:mode === "initial" ? "1.0.0" : "2.0.0",schemaVersion:mode === "initial" ? 1 : 2,
-    main:"main.js",description:mode,permissions:[],requires:{services:{storage:"^2.5.0"}}};
+  const manifest = {
+    id,
+    name: "Data transaction validation",
+    version: mode === "initial" ? "1.0.0" : "2.0.0",
+    schemaVersion: mode === "initial" ? 1 : 2,
+    main: "main.js",
+    description: mode,
+    permissions: [],
+    requires: { services: { storage: "^2.5.0" } },
+  };
   try {
-    const installed = await installPluginFiles(id,[{path:"manifest.json",content:JSON.stringify(manifest)},{path:"main.js",content:source}]);
-    return {status:"installed",version:installed.manifest.version};
+    const installed = await installPluginFiles(id, [
+      { path: "manifest.json", content: JSON.stringify(manifest) },
+      { path: "main.js", content: source },
+    ]);
+    return { status: "installed", version: installed.manifest.version };
   } catch (error) {
-    return {status:"error",message:error instanceof Error ? error.message : String(error)};
+    return { status: "error", message: error instanceof Error ? error.message : String(error) };
   }
 }
-export async function pluginDataCommand(action: "seed" | "observe" | "documents" | "inspect" | "stopObservation" | "removeSecret") {
+export async function pluginDataCommand(
+  action: "seed" | "observe" | "documents" | "inspect" | "stopObservation" | "removeSecret",
+) {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id && command.id === action);
+  const command = getDefaultStore()
+    .get(pluginCommandsAtom)
+    .find((command) => command.pluginId === id && command.id === action);
   if (!command) throw Error("Plugin data command missing");
   return parseProbeToast((await command.run())!.toast!);
 }
 export async function pluginDataDisk() {
   await isolated();
-  const entry = (await listPluginEntries()).find(entry => entry.id === id);
-  return {installedVersion:entry ? JSON.parse(entry.manifest).version as string : null, snapshot:await snapshotPluginData(id),contributions:inspectContributions(id).length};
+  const entry = (await listPluginEntries()).find((entry) => entry.id === id);
+  return {
+    installedVersion: entry ? (JSON.parse(entry.manifest).version as string) : null,
+    snapshot: await snapshotPluginData(id),
+    contributions: inspectContributions(id).length,
+  };
 }
 export async function cleanupPluginDataProbe() {
-  await isolated(); await uninstallPlugin(id);
+  await isolated();
+  await uninstallPlugin(id);
   const afterUninstall = await pluginDataDisk();
-  await deletePluginSecret(id,"probe");
-  for (const key of Object.keys(localKV.entries(`read-aware-plugin.${id}.`))) await localKV.removeItemAsync(`read-aware-plugin.${id}.${key}`);
-  await localKV.removeItemAsync(PLUGIN_SCHEMA_KEY_PREFIX+id);
-  return {afterUninstall,afterCleanup:await pluginDataDisk()};
+  await deletePluginSecret(id, "probe");
+  for (const key of Object.keys(localKV.entries(`read-aware-plugin.${id}.`)))
+    await localKV.removeItemAsync(`read-aware-plugin.${id}.${key}`);
+  await localKV.removeItemAsync(PLUGIN_SCHEMA_KEY_PREFIX + id);
+  return { afterUninstall, afterCleanup: await pluginDataDisk() };
 }

@@ -21,10 +21,7 @@ export const HOLD_MENU_HIT_PADDING_PX = 4;
 export type HoldMenuPoint = { x: number; y: number };
 export type HoldMenuRect = { left: number; top: number; width: number; height: number };
 
-export type HoldMenuRelease =
-  | { kind: "run"; index: number }
-  | { kind: "stay" }
-  | { kind: "close" };
+export type HoldMenuRelease = { kind: "run"; index: number } | { kind: "stay" } | { kind: "close" };
 
 /** What lifting the finger means, given where it rests and how far it went. */
 export function resolveHoldRelease(input: {
@@ -38,12 +35,20 @@ export function resolveHoldRelease(input: {
 
 /** The action under a point, or null. Later actions win an overlap, matching
  *  paint order. */
-export function holdMenuItemAt(point: HoldMenuPoint, rects: readonly HoldMenuRect[],
-  padding = HOLD_MENU_HIT_PADDING_PX): number | null {
+export function holdMenuItemAt(
+  point: HoldMenuPoint,
+  rects: readonly HoldMenuRect[],
+  padding = HOLD_MENU_HIT_PADDING_PX,
+): number | null {
   for (let index = rects.length - 1; index >= 0; index--) {
     const rect = rects[index]!;
-    if (point.x >= rect.left - padding && point.x <= rect.left + rect.width + padding
-      && point.y >= rect.top - padding && point.y <= rect.top + rect.height + padding) return index;
+    if (
+      point.x >= rect.left - padding &&
+      point.x <= rect.left + rect.width + padding &&
+      point.y >= rect.top - padding &&
+      point.y <= rect.top + rect.height + padding
+    )
+      return index;
   }
   return null;
 }

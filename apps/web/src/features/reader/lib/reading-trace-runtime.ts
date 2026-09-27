@@ -1,4 +1,10 @@
-import { accrueReadingSession, noteReadingPosition, listPendingReadingSessions, flushReadingSessions, closeReadingSessionsForBackup } from "../../../platform/reading-session";
+import {
+  accrueReadingSession,
+  noteReadingPosition,
+  listPendingReadingSessions,
+  flushReadingSessions,
+  closeReadingSessionsForBackup,
+} from "../../../platform/reading-session";
 import { createLogger } from "../../../platform/logger";
 import { ReadingTraceCoordinator } from "./reading-trace";
 
@@ -8,7 +14,7 @@ export const readingTraces = new ReadingTraceCoordinator({
   position: noteReadingPosition,
   pending: listPendingReadingSessions,
   flush: flushReadingSessions,
-  report: error => log.error("reading trace persistence failed; close must not claim durability", error),
+  report: (error) => log.error("reading trace persistence failed; close must not claim durability", error),
 });
 
 /** Close portable facts on their owning device and keep this reader's later

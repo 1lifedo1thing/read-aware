@@ -9,7 +9,9 @@ export function registerPersistenceShutdownOwners(coordinator: ShutdownCoordinat
   const disposers = [
     coordinator.register("local-kv", "persist", () => flushLocalKV()),
     coordinator.register("credentials", "persist", () => flushSecretWrites()),
-    coordinator.register("domain-events", "receipts", signal => durableWrites.settle(signal)),
+    coordinator.register("domain-events", "receipts", (signal) => durableWrites.settle(signal)),
   ];
-  return () => { for (const dispose of disposers) dispose(); };
+  return () => {
+    for (const dispose of disposers) dispose();
+  };
 }

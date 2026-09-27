@@ -1,7 +1,4 @@
-import type {
-  PluginReaderTextSegment,
-  PluginReaderTextSegmentInput,
-} from "@read-aware/plugin-types";
+import type { PluginReaderTextSegment, PluginReaderTextSegmentInput } from "@read-aware/plugin-types";
 
 // Minimal Intl.Segmenter surface: the workspace's ES2020 lib predates its
 // typings, while every shipping WKWebView/Chromium runtime supports it.
@@ -50,11 +47,7 @@ function trimmedSpan(text: string): PluginReaderTextSegment[] {
  * source wrap cannot split a visual sentence; offsets still map to the host's
  * original text exactly.
  */
-export function segmentTextUnits({
-  text,
-  language,
-  unitId,
-}: PluginReaderTextSegmentInput): PluginReaderTextSegment[] {
+export function segmentTextUnits({ text, language, unitId }: PluginReaderTextSegmentInput): PluginReaderTextSegment[] {
   if (unitId === "paragraph") return trimmedSpan(text);
   if (unitId !== "sentence") return [];
 
@@ -79,11 +72,63 @@ export function segmentTextUnits({
 // that "I said no." or "plan b." keep their sentence end; `etc.` is left
 // out on purpose because it closes sentences all the time.
 const NON_TERMINAL_ABBREVIATIONS = new Set([
-  "Mr", "Mrs", "Ms", "Mx", "Dr", "Prof", "Sr", "Jr", "St", "Mt", "Ft",
-  "Rev", "Fr", "Gen", "Col", "Maj", "Capt", "Lt", "Sgt", "Cpl", "Pvt", "Hon", "Pres", "Gov", "Sen", "Rep",
-  "Messrs", "Mme", "Mlle", "Msgr",
-  "vs", "cf", "viz", "e.g", "i.e", "ca", "approx", "No", "Nos", "Fig", "Figs", "Vol", "Vols", "Ch", "Chap", "Sec",
-  "p", "pp", "ed", "eds", "op", "loc", "Inc", "Ltd", "Co", "Corp", "Bros",
+  "Mr",
+  "Mrs",
+  "Ms",
+  "Mx",
+  "Dr",
+  "Prof",
+  "Sr",
+  "Jr",
+  "St",
+  "Mt",
+  "Ft",
+  "Rev",
+  "Fr",
+  "Gen",
+  "Col",
+  "Maj",
+  "Capt",
+  "Lt",
+  "Sgt",
+  "Cpl",
+  "Pvt",
+  "Hon",
+  "Pres",
+  "Gov",
+  "Sen",
+  "Rep",
+  "Messrs",
+  "Mme",
+  "Mlle",
+  "Msgr",
+  "vs",
+  "cf",
+  "viz",
+  "e.g",
+  "i.e",
+  "ca",
+  "approx",
+  "No",
+  "Nos",
+  "Fig",
+  "Figs",
+  "Vol",
+  "Vols",
+  "Ch",
+  "Chap",
+  "Sec",
+  "p",
+  "pp",
+  "ed",
+  "eds",
+  "op",
+  "loc",
+  "Inc",
+  "Ltd",
+  "Co",
+  "Corp",
+  "Bros",
 ]);
 // The last word of a segment when it ends in a period: "Mr." / "e.g." / "J.".
 const ABBREVIATION_TAIL = /(?:^|[\s([\u201C\u2018])([A-Za-z](?:\.[A-Za-z])?|[A-Za-z][a-z]{0,5})\.$/;
@@ -120,7 +165,8 @@ function endsWithAbbreviation(segment: string): boolean {
 
 // Unambiguous opening quotes and brackets (curly and CJK forms). ASCII
 // quotes are left alone: they open and close alike.
-const OPENING_MARKS = /[\u201c\u2018\u300c\u300e\u301d\u3008\u300a\u3010\u3014\u3016\u3018\u301a\uff08\uff3b\uff5b\uff5f\ufe41\ufe43]/u;
+const OPENING_MARKS =
+  /[\u201c\u2018\u300c\u300e\u301d\u3008\u300a\u3010\u3014\u3016\u3018\u301a\uff08\uff3b\uff5b\uff5f\ufe41\ufe43]/u;
 
 /**
  * UAX #29 attaches an opening quote that follows a terminator to the sentence

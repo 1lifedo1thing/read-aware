@@ -66,10 +66,9 @@ export function buildPresentTools(deps: RuntimeDeps, turnState?: PresentTurnStat
     description:
       "Show the reader books from their shelf as visual cards inside your reply. Use it whenever your answer lists, recommends, or discusses shelf books — including \"what's on my shelf\", where you present the whole shelf in one call. Get ids from a fresh list_books call in this conversation (ids remembered from earlier go stale). The cards render at the point of the call, between your paragraphs — keep prose mentions brief; don't repeat the list as text. Call it at most once per reply with every book batched in; a book already presented this reply is dropped automatically (skippedRepeat).",
     parameters: Type.Object({
-      bookIds: Type.Array(
-        Type.String({ description: "Book id, as returned by list_books / get_book_overview" }),
-        { minItems: 1 },
-      ),
+      bookIds: Type.Array(Type.String({ description: "Book id, as returned by list_books / get_book_overview" }), {
+        minItems: 1,
+      }),
     }),
     execute: async (_id, params) => {
       const { bookIds } = params as { bookIds: string[] };

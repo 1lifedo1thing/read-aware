@@ -13,20 +13,33 @@ test("sandbox worker build output has the native policy namespace", () => {
 
 test("product builds fail rather than silently omit or duplicate worker protection", async () => {
   for (const count of [0, 2]) {
-    await expect(build({
-      configFile: false,
-      logLevel: "silent",
-      plugins: [{
-        name: "policy-build-fixture",
-        resolveId(id) { if (id === "virtual:policy-test") return id; },
-        load(id) { if (id === "virtual:policy-test") return "export const value = 1;"; },
-        buildStart() {
-          for (let i = 0; i < count; i++) this.emitFile({ type: "asset",
-            fileName: `${policy.productionAssetPrefix.slice(1)}test-${i}.js`, source: "/* fixture */" });
-        },
-      }, pluginSandboxPolicy()],
-      build: { write: false, rollupOptions: { input: "virtual:policy-test" } },
-    })).rejects.toThrow("Expected exactly one plugin sandbox worker");
+    await expect(
+      build({
+        configFile: false,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "policy-build-fixture",
+            resolveId(id) {
+              if (id === "virtual:policy-test") return id;
+            },
+            load(id) {
+              if (id === "virtual:policy-test") return "export const value = 1;";
+            },
+            buildStart() {
+              for (let i = 0; i < count; i++)
+                this.emitFile({
+                  type: "asset",
+                  fileName: `${policy.productionAssetPrefix.slice(1)}test-${i}.js`,
+                  source: "/* fixture */",
+                });
+            },
+          },
+          pluginSandboxPolicy(),
+        ],
+        build: { write: false, rollupOptions: { input: "virtual:policy-test" } },
+      }),
+    ).rejects.toThrow("Expected exactly one plugin sandbox worker");
   }
 });
 

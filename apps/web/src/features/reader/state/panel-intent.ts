@@ -20,11 +20,11 @@ export const readerPanelIntentAtom = atom<ReaderPanelIntent | null>(null);
 
 // Surface acknowledgements survive a reader remount without consuming the
 // independent ChatPanel attachment consumer's request.
-export const readerPanelAcknowledgementsAtom = atom<{ panel: string | null; ask: string | null }>({ panel: null, ask: null });
+export const readerPanelAcknowledgementsAtom = atom<{ panel: string | null; ask: string | null }>({
+  panel: null,
+  ask: null,
+});
 
-export function createReaderPanelIntent(
-  bookId: string,
-  panel: ReaderPanelKind,
-): ReaderPanelIntent {
+export function createReaderPanelIntent(bookId: string, panel: ReaderPanelKind): ReaderPanelIntent {
   return stampEventCause({ id: crypto.randomUUID(), bookId, panel }, causalActor("user"));
 }

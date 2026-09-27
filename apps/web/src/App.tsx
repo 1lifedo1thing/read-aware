@@ -1,10 +1,4 @@
-import {
-  Suspense,
-  lazy,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ScrollArea, Spinner } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
@@ -36,10 +30,7 @@ import { useSyncLoginDeepLink } from "./features/settings/hooks/useSyncLoginDeep
 import { usePluginCommandShortcuts } from "./features/plugins/hooks/usePluginCommandShortcuts";
 import { useSurfaceHandoff } from "./hooks/useSurfaceHandoff";
 import { startSyncScheduler } from "./platform/sync/sync-scheduler";
-import {
-  BACK_REQUEST_EVENT,
-  sendAppToBackground,
-} from "./platform/back-navigation";
+import { BACK_REQUEST_EVENT, sendAppToBackground } from "./platform/back-navigation";
 import { CommandPalette } from "./features/command/components/CommandPalette";
 import { FeatureErrorBoundary } from "./components/FeatureErrorBoundary";
 import type { CommandContext } from "./features/command/lib/build-commands";
@@ -120,27 +111,24 @@ function App() {
     // No-ops until an account is connected (Data & Sync); off the boot path.
     const stopSync = startSyncScheduler();
     // Off the boot path: a quiet daily look at the marketplace for updates.
-    const updateCheck = window.setTimeout(
-      () => void checkPluginUpdates(),
-      10_000,
-    );
+    const updateCheck = window.setTimeout(() => void checkPluginUpdates(), 10_000);
     // Keep the agent package out of the boot chunk; maintenance itself waits for
     // an idle slot and no-ops until AI is configured.
     let disposed = false;
     let stopAgentMaintenance: (() => void) | undefined;
     let stopModelCatalog: (() => void) | undefined;
-    void import("./features/ai/lib/model-catalog").then(({ startModelCatalogRefresh }) => {
-      if (!disposed) stopModelCatalog = startModelCatalogRefresh();
-    }).catch((error) => {
-      createLogger("model-catalog").error("Initialization failed", error);
-    });
+    void import("./features/ai/lib/model-catalog")
+      .then(({ startModelCatalogRefresh }) => {
+        if (!disposed) stopModelCatalog = startModelCatalogRefresh();
+      })
+      .catch((error) => {
+        createLogger("model-catalog").error("Initialization failed", error);
+      });
     const maintenanceStart = window.setTimeout(() => {
-      void import("./features/ai/agent/maintenance").then(
-        ({ startAgentMaintenance }) => {
-          if (disposed) return;
-          stopAgentMaintenance = startAgentMaintenance();
-        },
-      );
+      void import("./features/ai/agent/maintenance").then(({ startAgentMaintenance }) => {
+        if (disposed) return;
+        stopAgentMaintenance = startAgentMaintenance();
+      });
     }, 15_000);
     return () => {
       disposed = true;
@@ -161,8 +149,7 @@ function App() {
 
   const [activeTopNav, setActiveTopNav] = useAtom(activeTopNavAtom);
   const setActiveGlobalThreadId = useSetAtom(activeGlobalThreadAtom);
-  const [activeCollectionId, setActiveCollectionId] =
-    useAtom(activeCollectionAtom);
+  const [activeCollectionId, setActiveCollectionId] = useAtom(activeCollectionAtom);
   const shelfView = useAtomValue(shelfViewAtom);
   const shelfSelecting = useAtomValue(shelfSelectionAtom).active;
   const setShelfSelection = useSetAtom(shelfSelectionAtom);
@@ -177,19 +164,13 @@ function App() {
   // Shelf ⇄ reader surface handoff: opaque-incoming / fading-outgoing, with
   // the open-direction fade deferred until the reader has rendered and the
   // main thread can animate again. See useSurfaceHandoff for the rules.
-  const { shelfHandoff, readerExiting, openBook, closeBook } =
-    useSurfaceHandoff(reader);
+  const { shelfHandoff, readerExiting, openBook, closeBook } = useSurfaceHandoff(reader);
 
   const createGlobalConversation = useCallback(() => {
     setActiveGlobalThreadId(newGlobalThreadId());
     setActiveTopNav("agent");
     if (reader.selectedBook) void closeBook();
-  }, [
-    closeBook,
-    reader.selectedBook,
-    setActiveGlobalThreadId,
-    setActiveTopNav,
-  ]);
+  }, [closeBook, reader.selectedBook, setActiveGlobalThreadId, setActiveTopNav]);
 
   const primaryDestinations = usePrimaryDestinations();
   const selectPrimaryDestination = useCallback(
@@ -225,9 +206,7 @@ function App() {
   // jump the clicked book to the front mid-handoff. Snapshot the books at
   // click time and render the held shelf from the snapshot; the live order
   // returns once the handoff ends (so closing shows the final order at once).
-  const [heldShelfBooks, setHeldShelfBooks] = useState<LibraryBook[] | null>(
-    null,
-  );
+  const [heldShelfBooks, setHeldShelfBooks] = useState<LibraryBook[] | null>(null);
   const handleOpenBook = useCallback(
     (book: LibraryBook, navigationIntent?: number) => {
       openBook(book, navigationIntent);
@@ -236,11 +215,26 @@ function App() {
     [library.books, openBook],
   );
   useReadingRuntimeShell(handleOpenBook, closeBook);
-  const workspaceToken = useWorkspaceShell(!!reader.selectedBook, library.books, library.collections, library.libraryReady);
-  useStartupBook({ startView: generalSettings.startView, ready: library.libraryReady && pluginsReady,
-    idle: !reader.selectedBook && activeTopNav === "shelf" && !activeCollectionId
-      && !settingsOpen && !searchModalOpen && !shelfSelecting,
-    books: library.books, openBook: handleOpenBook, reportError: library.reportError });
+  const workspaceToken = useWorkspaceShell(
+    !!reader.selectedBook,
+    library.books,
+    library.collections,
+    library.libraryReady,
+  );
+  useStartupBook({
+    startView: generalSettings.startView,
+    ready: library.libraryReady && pluginsReady,
+    idle:
+      !reader.selectedBook &&
+      activeTopNav === "shelf" &&
+      !activeCollectionId &&
+      !settingsOpen &&
+      !searchModalOpen &&
+      !shelfSelecting,
+    books: library.books,
+    openBook: handleOpenBook,
+    reportError: library.reportError,
+  });
   useEffect(() => {
     if (shelfHandoff === "idle") setHeldShelfBooks(null);
   }, [shelfHandoff]);
@@ -252,15 +246,10 @@ function App() {
   });
 
   // Chat book cards → open the reader (the cards dispatch via an atom).
-  useOpenBookRequestHandler(
-    library.books,
-    handleOpenBook,
-    reader.selectedBook?.id ?? null,
-  );
+  useOpenBookRequestHandler(library.books, handleOpenBook, reader.selectedBook?.id ?? null);
 
   // Spinner feedback on the clicked cover while the shelf holds.
-  const openingBookId =
-    shelfHandoff !== "idle" ? (reader.selectedBook?.id ?? null) : null;
+  const openingBookId = shelfHandoff !== "idle" ? (reader.selectedBook?.id ?? null) : null;
 
   // Esc backs out one pushed view at a time — a standalone Context/Stats surface
   // to the shelf, or an open collection back to the full shelf. Skipped while
@@ -352,31 +341,18 @@ function App() {
   );
 
   const pluginCommandItems = usePluginCommandItems(
-    useCallback(
-      (key: string) => openAppSurface(`plugin:${key}`),
-      [openAppSurface],
-    ),
+    useCallback((key: string) => openAppSurface(`plugin:${key}`), [openAppSurface]),
   );
 
   const handleCommandOpenBook = useCallback(
     (book: LibraryBook) => {
-      if (
-        reader.selectedBook &&
-        !readerExiting &&
-        shelfHandoff === "idle"
-      ) {
+      if (reader.selectedBook && !readerExiting && shelfHandoff === "idle") {
         if (reader.selectedBook.id !== book.id) openReader(book);
         return;
       }
       handleOpenBook(book);
     },
-    [
-      handleOpenBook,
-      openReader,
-      reader.selectedBook,
-      readerExiting,
-      shelfHandoff,
-    ],
+    [handleOpenBook, openReader, reader.selectedBook, readerExiting, shelfHandoff],
   );
 
   // OS-level entry points into the import pipeline: file associations
@@ -418,12 +394,7 @@ function App() {
       {reader.selectedBook && (
         // While closing, the reader becomes a fixed overlay dissolving over
         // the (opaque) shelf that has already remounted underneath.
-        <div
-          className={cn(
-            readerExiting &&
-              "ra-motion-surface-exit pointer-events-none fixed inset-0 z-40",
-          )}
-        >
+        <div className={cn(readerExiting && "ra-motion-surface-exit pointer-events-none fixed inset-0 z-40")}>
           {/* Fallback shows only if warmup hasn't fetched the chunk yet (rare):
             a quiet paper surface, matching the reader's own pre-render state. */}
           <FeatureErrorBoundary surface="reader" resetKey={reader.selectedBook.id}>
@@ -472,12 +443,8 @@ function App() {
         <main
           className={cn(
             "flex h-dvh flex-col bg-[var(--ra-main-surface-color)] text-fg",
-            reader.selectedBook &&
-              shelfHandoff !== "idle" &&
-              "pointer-events-none fixed inset-0 z-40",
-            reader.selectedBook &&
-              shelfHandoff === "fading" &&
-              "ra-motion-surface-exit",
+            reader.selectedBook && shelfHandoff !== "idle" && "pointer-events-none fixed inset-0 z-40",
+            reader.selectedBook && shelfHandoff === "fading" && "ra-motion-surface-exit",
           )}
         >
           <AppHeader
@@ -488,36 +455,32 @@ function App() {
             onOpenSearch={() => setSearchModalOpen(true)}
             onTopNavChange={setActiveTopNav}
             leadingStatus={<UpdateIndicator />}
-            viewControl={
-              activeTopNav === "shelf" ? <ShelfManagementMenu /> : undefined
-            }
-            actions={
-              activeTopNav === "agent" ? agentHeaderActions : undefined
-            }
+            viewControl={activeTopNav === "shelf" ? <ShelfManagementMenu /> : undefined}
+            actions={activeTopNav === "agent" ? agentHeaderActions : undefined}
           />
 
           <ScrollArea className="h-full min-h-0 flex-1">
             {activeTopNav === "shelf" ? (
               <FeatureErrorBoundary surface="library" resetKey={activeTopNav}>
-              <LibraryWorkspace
-                isReady={library.libraryReady}
-                books={heldShelfBooks ?? library.books}
-                pendingBooks={heldShelfBooks ? [] : library.pendingBooks}
-                collections={library.collections}
-                openingBookId={openingBookId}
-                importingCount={library.importingCount}
-                onImport={library.openImportPicker}
-                onOpenBook={handleOpenBook}
-                onRemoveBook={library.handleRemoveBook}
-                onToggleStar={library.handleToggleStar}
-                onUpdateBookMetadata={library.handleUpdateBookMetadata}
-                onBulkRemove={library.handleRemoveMany}
-                onCreateCollection={library.handleCreateCollection}
-                onRenameCollection={library.handleRenameCollection}
-                onDeleteCollection={library.handleDeleteCollection}
-                onSetBooksCollection={library.handleSetBooksCollection}
-              />
-              {library.libraryReady && <WorkspaceCommit surface="shelf" token={workspaceToken} />}
+                <LibraryWorkspace
+                  isReady={library.libraryReady}
+                  books={heldShelfBooks ?? library.books}
+                  pendingBooks={heldShelfBooks ? [] : library.pendingBooks}
+                  collections={library.collections}
+                  openingBookId={openingBookId}
+                  importingCount={library.importingCount}
+                  onImport={library.openImportPicker}
+                  onOpenBook={handleOpenBook}
+                  onRemoveBook={library.handleRemoveBook}
+                  onToggleStar={library.handleToggleStar}
+                  onUpdateBookMetadata={library.handleUpdateBookMetadata}
+                  onBulkRemove={library.handleRemoveMany}
+                  onCreateCollection={library.handleCreateCollection}
+                  onRenameCollection={library.handleRenameCollection}
+                  onDeleteCollection={library.handleDeleteCollection}
+                  onSetBooksCollection={library.handleSetBooksCollection}
+                />
+                {library.libraryReady && <WorkspaceCommit surface="shelf" token={workspaceToken} />}
               </FeatureErrorBoundary>
             ) : activeTopNav === "agent" ? (
               <FeatureErrorBoundary surface="agent" resetKey={activeTopNav}>
@@ -529,19 +492,13 @@ function App() {
             ) : activeTopNav === "stats" ? (
               <FeatureErrorBoundary surface="stats" resetKey={activeTopNav}>
                 <Suspense fallback={<SurfaceFallback />}>
-                  <StatsWorkspace
-                    books={library.books}
-                    onOpenBook={handleOpenBook}
-                  />
+                  <StatsWorkspace books={library.books} onOpenBook={handleOpenBook} />
                   <WorkspaceCommit surface="stats" token={workspaceToken} />
                 </Suspense>
               </FeatureErrorBoundary>
             ) : (
               <FeatureErrorBoundary surface="plugin-page" resetKey={activeTopNav}>
-                <PluginPageHost
-                  navKey={activeTopNav}
-                  onExit={() => setActiveTopNav("shelf")}
-                />
+                <PluginPageHost navKey={activeTopNav} onExit={() => setActiveTopNav("shelf")} />
               </FeatureErrorBoundary>
             )}
           </ScrollArea>
@@ -558,11 +515,7 @@ function App() {
 
       {settingsMounted && (
         <Suspense fallback={null}>
-          <SettingsDialog
-            open={settingsOpen}
-            workspaceToken={workspaceToken}
-            onClose={() => setSettingsOpen(false)}
-          />
+          <SettingsDialog open={settingsOpen} workspaceToken={workspaceToken} onClose={() => setSettingsOpen(false)} />
         </Suspense>
       )}
 

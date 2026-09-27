@@ -2,11 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Caption, Dialog, InlineError } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import type { PluginBookAccess } from "../lib/plugin-types";
-import {
-  isValidPluginBookAccess,
-  type PluginBookOption,
-  PluginBookAccessSelector,
-} from "./PluginBookAccessSelector";
+import { isValidPluginBookAccess, type PluginBookOption, PluginBookAccessSelector } from "./PluginBookAccessSelector";
 
 type PluginBookAccessSource = "legacy-domain" | "user";
 
@@ -80,33 +76,17 @@ export function PluginBookAccessDialog({
     >
       {open && (
         <div className="flex flex-col gap-4">
-          <Caption className="leading-5 text-fg-muted">
-            {t("settings.bookAccess.editDescription")}
-          </Caption>
+          <Caption className="leading-5 text-fg-muted">{t("settings.bookAccess.editDescription")}</Caption>
           {source === "legacy-domain" && (
-            <Caption className="leading-5 text-fg-muted">
-              {t("settings.bookAccess.legacy")}
-            </Caption>
+            <Caption className="leading-5 text-fg-muted">{t("settings.bookAccess.legacy")}</Caption>
           )}
-          <PluginBookAccessSelector
-            value={draft}
-            books={books}
-            disabled={busy}
-            onChange={setDraft}
-          />
-          {failed && (
-            <InlineError>{t("settings.bookAccess.updateFailed")}</InlineError>
-          )}
+          <PluginBookAccessSelector value={draft} books={books} disabled={busy} onChange={setDraft} />
+          {failed && <InlineError>{t("settings.bookAccess.updateFailed")}</InlineError>}
           <div className="flex justify-end gap-2 pt-1">
             <Button size="sm" variant="ghost" disabled={busy} onClick={close}>
               {t("settings.bookAccess.cancel")}
             </Button>
-            <Button
-              size="sm"
-              disabled={busy || !valid}
-              aria-busy={busy}
-              onClick={() => void submit()}
-            >
+            <Button size="sm" disabled={busy || !valid} aria-busy={busy} onClick={() => void submit()}>
               {busy ? t("settings.bookAccess.saving") : t("settings.bookAccess.save")}
             </Button>
           </div>

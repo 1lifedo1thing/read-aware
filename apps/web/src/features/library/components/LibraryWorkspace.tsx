@@ -65,14 +65,11 @@ export function LibraryWorkspace({
   const bookDragActive = useShelfBookDrag();
   // A drop on "new collection" / "remove" hands its book ids to a confirming
   // dialog; the pending drop lives here until the dialog resolves it.
-  const [dragAction, setDragAction] = useState<
-    { kind: "new-collection" | "remove"; ids: string[] } | null
-  >(null);
+  const [dragAction, setDragAction] = useState<{ kind: "new-collection" | "remove"; ids: string[] } | null>(null);
 
   // A selected card drags the whole selection; anything else drags itself.
   const dragIdsFor = useCallback(
-    (book: LibraryBook) =>
-      active && selectedIds.has(book.id) && ids.length > 0 ? ids : [book.id],
+    (book: LibraryBook) => (active && selectedIds.has(book.id) && ids.length > 0 ? ids : [book.id]),
     [active, selectedIds, ids],
   );
 
@@ -111,21 +108,13 @@ export function LibraryWorkspace({
   }, [books.length, pendingBooks.length]);
 
   const visiblePendingBooks = useMemo(
-    () => books.length === 0 || showPendingBooks ? pendingBooks : [],
+    () => (books.length === 0 || showPendingBooks ? pendingBooks : []),
     [books.length, pendingBooks, showPendingBooks],
   );
-  const pendingBookIds = useMemo(
-    () => new Set(visiblePendingBooks.map((book) => book.id)),
-    [visiblePendingBooks],
-  );
-  const shelfBooks = useMemo(
-    () => [...books, ...visiblePendingBooks],
-    [books, visiblePendingBooks],
-  );
+  const pendingBookIds = useMemo(() => new Set(visiblePendingBooks.map((book) => book.id)), [visiblePendingBooks]);
+  const shelfBooks = useMemo(() => [...books, ...visiblePendingBooks], [books, visiblePendingBooks]);
 
-  const activeCollection = activeCollectionId
-    ? collections.find((c) => c.id === activeCollectionId) ?? null
-    : null;
+  const activeCollection = activeCollectionId ? (collections.find((c) => c.id === activeCollectionId) ?? null) : null;
 
   // Pop back to the top level if the open collection was deleted.
   useEffect(() => {
@@ -173,9 +162,7 @@ export function LibraryWorkspace({
     });
   }, [activeCollectionId, books, collections]);
 
-  const collectionCount = activeCollection
-    ? books.filter((b) => b.collectionId === activeCollection.id).length
-    : 0;
+  const collectionCount = activeCollection ? books.filter((b) => b.collectionId === activeCollection.id).length : 0;
 
   return (
     <div
@@ -227,11 +214,11 @@ export function LibraryWorkspace({
           <EmptyState
             icon={<Books className="size-12 text-fg-subtle" weight="thin" />}
             title={t("workspace.emptyTitle")}
-            action={(
+            action={
               <Button size="sm" onClick={onImport}>
                 {t("actions.import")}
               </Button>
-            )}
+            }
           />
         </div>
       ) : (
@@ -263,9 +250,7 @@ export function LibraryWorkspace({
               pendingBookIds={pendingBookIds}
               openingBookId={openingBookId}
               getDragIds={dragIdsFor}
-              onDropBooksOnCollection={(collectionId, droppedIds) =>
-                assignDraggedBooks(droppedIds, collectionId)
-              }
+              onDropBooksOnCollection={(collectionId, droppedIds) => assignDraggedBooks(droppedIds, collectionId)}
               onOpenCollection={(id) => setActiveCollectionId(id)}
               selecting={active}
               selectedIds={selectedIds}
@@ -281,11 +266,7 @@ export function LibraryWorkspace({
 
       {bookDragActive && (
         <ShelfDragDock
-          collections={
-            activeCollection
-              ? collections.filter((c) => c.id !== activeCollection.id)
-              : collections
-          }
+          collections={activeCollection ? collections.filter((c) => c.id !== activeCollection.id) : collections}
           inCollection={Boolean(activeCollection)}
           onAssign={assignDraggedBooks}
           onNewCollection={(droppedIds) => setDragAction({ kind: "new-collection", ids: droppedIds })}

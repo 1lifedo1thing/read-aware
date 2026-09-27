@@ -44,8 +44,12 @@ describe("frame → root mapping", () => {
     );
     expect(mapping.scale).toBe(0.5);
     expect(framePointToRoot({ x: 50, y: 30 }, mapping)).toEqual({ x: 25, y: 75 });
-    expect(frameRectToRoot({ left: 100, top: 200, width: 60, height: 20 }, mapping))
-      .toEqual({ left: 50, top: 160, width: 30, height: 10 });
+    expect(frameRectToRoot({ left: 100, top: 200, width: 60, height: 20 }, mapping)).toEqual({
+      left: 50,
+      top: 160,
+      width: 30,
+      height: 10,
+    });
   });
 
   test("point anchors and rect anchors agree on a scaled frame", () => {
@@ -66,8 +70,12 @@ describe("frame → root mapping", () => {
 
 describe("clipping to the reader root", () => {
   test("keeps the visible part of a rect that straddles an edge", () => {
-    expect(clipRectToRoot({ left: -10, top: 880, width: 50, height: 40 }, root))
-      .toEqual({ left: 0, top: 880, width: 40, height: 20 });
+    expect(clipRectToRoot({ left: -10, top: 880, width: 50, height: 40 }, root)).toEqual({
+      left: 0,
+      top: 880,
+      width: 40,
+      height: 20,
+    });
   });
 
   test("drops a rect wholly outside the root", () => {
@@ -80,8 +88,12 @@ describe("clipping to the reader root", () => {
       { clientWidth: 800, ...box({ left: 20, top: 40, width: 400, height: 600 }) },
       box(root),
     );
-    expect(visibleFrameRectInRoot({ left: 780, top: 0, width: 40, height: 20 }, mapping))
-      .toEqual({ left: 390, top: 0, width: 10, height: 10 });
+    expect(visibleFrameRectInRoot({ left: 780, top: 0, width: 40, height: 20 }, mapping)).toEqual({
+      left: 390,
+      top: 0,
+      width: 10,
+      height: 10,
+    });
     expect(visibleFrameRectInRoot({ left: 900, top: 0, width: 40, height: 20 }, mapping)).toBeNull();
   });
 

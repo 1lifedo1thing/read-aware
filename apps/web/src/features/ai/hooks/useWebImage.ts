@@ -16,38 +16,63 @@ export function useWebImage(url: string, thumbnailUrl = url, load = cachedWebIma
     const controller = new AbortController();
     let objectUrl: string | undefined;
     setState({ source: url });
-    void load(thumbnailUrl, controller.signal).catch(error => {
-      if (controller.signal.aborted || thumbnailUrl === url) throw error;
-      return load(url, controller.signal);
-    }).then(blob => {
-      if (controller.signal.aborted) return;
-      objectUrl = URL.createObjectURL(blob);
-      setState({ source: url, url: objectUrl });
-    }).catch(error => {
-      if (controller.signal.aborted) return;
-      log.warn("Could not load retrieved image", error);
-      setState({ source: url, failed: true });
-    });
-    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    void load(thumbnailUrl, controller.signal)
+      .catch((error) => {
+        if (controller.signal.aborted || thumbnailUrl === url) throw error;
+        return load(url, controller.signal);
+      })
+      .then((blob) => {
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setState({ source: url, url: objectUrl });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        log.warn("Could not load retrieved image", error);
+        setState({ source: url, failed: true });
+      });
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [url, thumbnailUrl, load]);
   useEffect(() => {
     if (openedSource !== url || thumbnailUrl === url) return;
     const controller = new AbortController();
     let objectUrl: string | undefined;
-    void load(url, controller.signal).then(async blob => {
-      if (controller.signal.aborted) return;
-      objectUrl = URL.createObjectURL(blob);
-      // Keep the preview visible if the original's bytes cannot be decoded.
-      const image = new Image(); image.src = objectUrl;
-      await image.decode();
-      if (!controller.signal.aborted) setOriginal({ source: url, url: objectUrl });
-    }).catch(error => {
-      if (!controller.signal.aborted) log.warn("Original image unavailable; retaining preview", error);
-    });
-    return () => { controller.abort(); setOriginal(null); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    void load(url, controller.signal)
+      .then(async (blob) => {
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        // Keep the preview visible if the original's bytes cannot be decoded.
+        const image = new Image();
+        image.src = objectUrl;
+        await image.decode();
+        if (!controller.signal.aborted) setOriginal({ source: url, url: objectUrl });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) log.warn("Original image unavailable; retaining preview", error);
+      });
+    return () => {
+      controller.abort();
+      setOriginal(null);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [openedSource, url, thumbnailUrl, load]);
-  return { ...(state.source === url ? state : { source: url }),
-    triggerRef, openViewer: () => setOpenedSource(url), closeViewer,
-    viewerUrl: openedSource === url && state.source === url && !state.failed ? (original?.source === url ? original.url : state.url) : undefined,
-    failedImage: () => { log.warn("Retrieved image could not be decoded"); setState({ source: url, failed: true }); } };
+  return {
+    ...(state.source === url ? state : { source: url }),
+    triggerRef,
+    openViewer: () => setOpenedSource(url),
+    closeViewer,
+    viewerUrl:
+      openedSource === url && state.source === url && !state.failed
+        ? original?.source === url
+          ? original.url
+          : state.url
+        : undefined,
+    failedImage: () => {
+      log.warn("Retrieved image could not be decoded");
+      setState({ source: url, failed: true });
+    },
+  };
 }

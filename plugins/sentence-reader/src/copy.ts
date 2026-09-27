@@ -1,8 +1,4 @@
-import type {
-  PluginLocalizedText,
-  PluginReaderModeCopy,
-  PluginReaderTextUnit,
-} from "@read-aware/plugin-types";
+import type { PluginLocalizedText, PluginReaderModeCopy, PluginReaderTextUnit } from "@read-aware/plugin-types";
 
 type UnitCopy = {
   label: string;
@@ -60,8 +56,7 @@ const COPY = {
     moreActions: "更多操作",
     collapseActions: "收起操作",
     menuLabel: "逐句导航",
-    shortcutDescription:
-      "逐句/逐段阅读开启时可用；选中文本的快捷键也会作用于当前句子或段落。",
+    shortcutDescription: "逐句/逐段阅读开启时可用；选中文本的快捷键也会作用于当前句子或段落。",
     volumeKeys: "用音量键逐句移动",
     sentence: { label: "逐句", previous: "上一句", next: "下一句" },
     paragraph: { label: "逐段", previous: "上一段", next: "下一段", toggle: "逐段模式" },
@@ -75,8 +70,7 @@ const COPY = {
     moreActions: "更多操作",
     collapseActions: "收起操作",
     menuLabel: "逐句導覽",
-    shortcutDescription:
-      "逐句/逐段閱讀開啟時可用；選取文字的快捷鍵也會作用於目前句子或段落。",
+    shortcutDescription: "逐句/逐段閱讀開啟時可用；選取文字的快捷鍵也會作用於目前句子或段落。",
     volumeKeys: "用音量鍵逐句移動",
     sentence: { label: "逐句", previous: "上一句", next: "下一句" },
     paragraph: { label: "逐段", previous: "上一段", next: "下一段", toggle: "逐段模式" },

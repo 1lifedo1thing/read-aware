@@ -14,9 +14,15 @@ export const Weighted: Story = {
   args: {
     children: (
       <>
-        <Columns.Item weight={2}><Metric label="Reading time" value="18h 24m" /></Columns.Item>
-        <Columns.Item><Metric label="Books" value="12" /></Columns.Item>
-        <Columns.Item><Metric label="Notes" value="47" /></Columns.Item>
+        <Columns.Item weight={2}>
+          <Metric label="Reading time" value="18h 24m" />
+        </Columns.Item>
+        <Columns.Item>
+          <Metric label="Books" value="12" />
+        </Columns.Item>
+        <Columns.Item>
+          <Metric label="Notes" value="47" />
+        </Columns.Item>
       </>
     ),
   },

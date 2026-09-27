@@ -94,10 +94,7 @@ export interface ExtractMemoriesInput {
 }
 
 export function extractMemories(input: ExtractMemoriesInput): Promise<ExtractionResult> {
-  return runExtraction(
-    input,
-    `READER: ${input.userText}\n\nASSISTANT: ${input.assistantText}`,
-  );
+  return runExtraction(input, `READER: ${input.userText}\n\nASSISTANT: ${input.assistantText}`);
 }
 
 export interface ExtractFromTranscriptInput {
@@ -115,9 +112,7 @@ export interface ExtractFromTranscriptInput {
  * 与逐轮提炼共享全部规则（≤3 条候选、命中已有记忆报 reinforced）——
  * 重复领养因此近似幂等：再跑一遍多是强化而非重复写入。
  */
-export function extractMemoriesFromTranscript(
-  input: ExtractFromTranscriptInput,
-): Promise<ExtractionResult> {
+export function extractMemoriesFromTranscript(input: ExtractFromTranscriptInput): Promise<ExtractionResult> {
   return runExtraction(input, input.transcript);
 }
 
@@ -127,17 +122,24 @@ async function runExtraction(
 ): Promise<ExtractionResult> {
   let message: AssistantMessage;
   try {
-    if (content.length > 64000 || input.existing.length > 100) { input.log?.warn("memory extraction input exceeds its budget"); return EMPTY; }
-    message = await boundedMemoryComplete(input.complete)(input.model, {
-      systemPrompt: buildExtractionPrompt(input.scope, input.existing),
-      messages: [
-        {
-          role: "user",
-          content,
-          timestamp: Date.now(),
-        },
-      ],
-    }, { maxTokens: 1024 });
+    if (content.length > 64000 || input.existing.length > 100) {
+      input.log?.warn("memory extraction input exceeds its budget");
+      return EMPTY;
+    }
+    message = await boundedMemoryComplete(input.complete)(
+      input.model,
+      {
+        systemPrompt: buildExtractionPrompt(input.scope, input.existing),
+        messages: [
+          {
+            role: "user",
+            content,
+            timestamp: Date.now(),
+          },
+        ],
+      },
+      { maxTokens: 1024 },
+    );
   } catch (error) {
     // Degrading to "nothing extracted" is the right behavior, but the failure
     // must leave a trace — a silently dead extraction pipeline looks exactly
@@ -146,10 +148,16 @@ async function runExtraction(
     return EMPTY;
   }
 
-  if (message.stopReason !== "stop") { input.log?.warn("memory extraction did not complete", { stopReason: message.stopReason }); return EMPTY; }
+  if (message.stopReason !== "stop") {
+    input.log?.warn("memory extraction did not complete", { stopReason: message.stopReason });
+    return EMPTY;
+  }
   let output = 0;
   for (const block of message.content) if (block.type === "text") output += block.text.length;
-  if (output > 16000) { input.log?.warn("memory extraction output exceeds its budget"); return EMPTY; }
+  if (output > 16000) {
+    input.log?.warn("memory extraction output exceeds its budget");
+    return EMPTY;
+  }
   const parsed = parseJson(extractText(message));
   if (!parsed || typeof parsed !== "object") {
     input.log?.warn("memory extraction output was not parseable JSON");
@@ -166,7 +174,7 @@ async function runExtraction(
     : [];
 
   const canonical = (value: string) => value.trim().replace(/\s+/gu, " ").toLowerCase();
-  const known = new Map(input.existing.map(memory => [canonical(memory.content), memory.id]));
+  const known = new Map(input.existing.map((memory) => [canonical(memory.content), memory.id]));
   const seen = new Set<string>();
   const newMemories: MemoryCandidate[] = [];
   if (Array.isArray(rawNew)) {
@@ -177,9 +185,14 @@ async function runExtraction(
       if (!memoryScope) continue;
       if (typeof kind !== "string" || !KINDS.includes(kind)) continue;
       if (typeof content !== "string" || !content.trim() || content.length > 16000) continue;
-      const key = canonical(content), existingId = known.get(key);
-      if (existingId) { if (!reinforcedIds.includes(existingId)) reinforcedIds.push(existingId); continue; }
-      if (seen.has(key)) continue; seen.add(key);
+      const key = canonical(content),
+        existingId = known.get(key);
+      if (existingId) {
+        if (!reinforcedIds.includes(existingId)) reinforcedIds.push(existingId);
+        continue;
+      }
+      if (seen.has(key)) continue;
+      seen.add(key);
       newMemories.push({ scope: memoryScope, kind: kind as MemoryKind, content: content.trim() });
     }
   }

@@ -21,20 +21,31 @@ export function useReadingTimeTracker(bookId: string | null, active: boolean) {
     const commit = () => {
       if (!trace.accepting) return;
       const now = Date.now();
-      const delta = tickDelta({ now, lastTickAt, lastActivityAt, active: true,
-        foreground: document.visibilityState === "visible" && document.hasFocus() });
+      const delta = tickDelta({
+        now,
+        lastTickAt,
+        lastActivityAt,
+        active: true,
+        foreground: document.visibilityState === "visible" && document.hasFocus(),
+      });
       lastTickAt = now;
       if (!pauseClosed && pausedLongEnough(now, lastActivityAt)) {
         pauseClosed = true;
         trace.pause();
       }
       if (delta <= 0) return;
-      setStats(previous => addReadingTime(previous, trace.bookId, delta, now));
+      setStats((previous) => addReadingTime(previous, trace.bookId, delta, now));
       trace.accrue(delta, now);
     };
-    const onActivity = () => { lastActivityAt = Date.now(); pauseClosed = false; };
+    const onActivity = () => {
+      lastActivityAt = Date.now();
+      pauseClosed = false;
+    };
     const onResume = () => {
-      if (document.visibilityState === "hidden") { commit(); trace.pause(); }
+      if (document.visibilityState === "hidden") {
+        commit();
+        trace.pause();
+      }
       lastTickAt = Date.now();
       onActivity();
     };

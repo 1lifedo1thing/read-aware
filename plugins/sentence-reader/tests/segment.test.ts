@@ -2,8 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { segmentTextUnits } from "../src/segment";
 
 function pieces(text: string, language = "en") {
-  return segmentTextUnits({ text, language, unitId: "sentence" })
-    .map(({ start, end }) => text.slice(start, end));
+  return segmentTextUnits({ text, language, unitId: "sentence" }).map(({ start, end }) => text.slice(start, end));
 }
 
 describe("Sentence Reader segmentation", () => {
@@ -14,10 +13,7 @@ describe("Sentence Reader segmentation", () => {
 
   test("does not turn hard source line wraps into sentence boundaries", () => {
     const text = "A hard\nwrapped sentence. Next sentence.";
-    expect(pieces(text)).toEqual([
-      "A hard\nwrapped sentence.",
-      "Next sentence.",
-    ]);
+    expect(pieces(text)).toEqual(["A hard\nwrapped sentence.", "Next sentence."]);
   });
 
   test("uses locale-aware CJK sentence boundaries", () => {
@@ -53,7 +49,7 @@ describe("Sentence Reader dialogue quotes", () => {
     expect(parts[0]).toBe("He paused.");
     expect(parts[1]!.startsWith("“Well,”")).toBe(true);
     expect(parts[parts.length - 1]!.startsWith("（注）")).toBe(true);
-    expect(parts.some(part => /[“（]$/.test(part))).toBe(false);
+    expect(parts.some((part) => /[“（]$/.test(part))).toBe(false);
   });
 
   test("a segment that is only an opening mark is left alone", () => {

@@ -57,8 +57,14 @@ pub(crate) fn reader(app: &tauri::AppHandle, id: &str) -> Result<File, CommandEr
 fn lease(entries: &mut HashMap<String, Entry>, id: &str) -> Result<File, CommandError> {
     prune(entries);
     let entry = entries.get_mut(id).ok_or_else(missing)?;
-    if entry.context_revision.is_some() { return Err(invalid("Context resources cannot be consumed as generic native files")); }
-    if !entry.ready { return Err(invalid("Seal the resource before importing")); }
+    if entry.context_revision.is_some() {
+        return Err(invalid(
+            "Context resources cannot be consumed as generic native files",
+        ));
+    }
+    if !entry.ready {
+        return Err(invalid("Seal the resource before importing"));
+    }
     entry.file.seek(SeekFrom::Start(0))?;
     Ok(entry.file.try_clone()?)
 }
@@ -171,11 +177,14 @@ fn save(
         return Err(invalid("Seal the resource before exporting"));
     }
     let source = &mut entry.file;
-    io.publish(target, Box::new(|out| {
-        source.seek(SeekFrom::Start(0))?;
-        std::io::copy(source, out)?;
-        Ok(())
-    }))
+    io.publish(
+        target,
+        Box::new(|out| {
+            source.seek(SeekFrom::Start(0))?;
+            std::io::copy(source, out)?;
+            Ok(())
+        }),
+    )
 }
 
 #[tauri::command]
@@ -246,26 +255,47 @@ pub struct CoverResourceInfo {
 }
 
 #[tauri::command]
-pub async fn resource_open_cover(app: tauri::AppHandle, book_id: String) -> Result<Option<CoverResourceInfo>, CommandError> {
+pub async fn resource_open_cover(
+    app: tauri::AppHandle,
+    book_id: String,
+) -> Result<Option<CoverResourceInfo>, CommandError> {
     crate::storage::blocking("resource_open_cover", move || {
         let (file, mime_type) = {
             use rusqlite::OptionalExtension;
             let db = app.state::<crate::storage::Db>();
             let conn = db.0.lock()?;
-            let cover: Option<(String, Option<String>)> = conn.query_row(
-                "SELECT cover_status, cover_blob_key FROM books WHERE id=?1", [&book_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            ).optional()?;
-            let (status, key) = cover.ok_or_else(|| CommandError::new("reader/book-not-found", "Book no longer exists"))?;
-            let Some(key) = key.filter(|_| status == "ready") else { return Ok(None); };
+            let cover: Option<(String, Option<String>)> = conn
+                .query_row(
+                    "SELECT cover_status, cover_blob_key FROM books WHERE id=?1",
+                    [&book_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .optional()?;
+            let (status, key) = cover.ok_or_else(|| {
+                CommandError::new("reader/book-not-found", "Book no longer exists")
+            })?;
+            let Some(key) = key.filter(|_| status == "ready") else {
+                return Ok(None);
+            };
             let data = app.state::<crate::storage::DataDir>();
-            let Some((path, info)) = crate::storage::get_blob_record_inner(&conn, &data.0, &key)? else { return Ok(None); };
-            (File::open(path)?, info.mime_type.unwrap_or_else(|| "application/octet-stream".into()))
+            let Some((path, info)) = crate::storage::get_blob_record_inner(&conn, &data.0, &key)?
+            else {
+                return Ok(None);
+            };
+            (
+                File::open(path)?,
+                info.mime_type
+                    .unwrap_or_else(|| "application/octet-stream".into()),
+            )
         };
         let resources = app.state::<ResourceFiles>();
         let mut entries = resources.0.lock()?;
-        Ok(Some(CoverResourceInfo { resource: insert(&mut entries, Some(file))?, mime_type }))
-    }).await
+        Ok(Some(CoverResourceInfo {
+            resource: insert(&mut entries, Some(file))?,
+            mime_type,
+        }))
+    })
+    .await
 }
 #[tauri::command]
 pub async fn resource_append(
@@ -309,14 +339,19 @@ pub async fn resource_commit(app: tauri::AppHandle, id: String) -> Result<(), Co
     .await
 }
 #[tauri::command]
-pub async fn resource_commit_context(app: tauri::AppHandle, id: String, expected_read_revision: String) -> Result<(), CommandError> {
+pub async fn resource_commit_context(
+    app: tauri::AppHandle,
+    id: String,
+    expected_read_revision: String,
+) -> Result<(), CommandError> {
     crate::storage::blocking("resource_commit_context", move || {
         let resources = app.state::<ResourceFiles>();
         let mut entries = resources.0.lock()?;
         let db = app.state::<crate::storage::Db>();
         let mut conn = db.0.lock()?;
         context::seal(&mut conn, &mut entries, &id, &expected_read_revision)
-    }).await
+    })
+    .await
 }
 #[tauri::command]
 pub async fn resource_read(
@@ -328,8 +363,10 @@ pub async fn resource_read(
     crate::storage::blocking("resource_read", move || {
         let resources = app.state::<ResourceFiles>();
         let mut entries = resources.0.lock()?;
-        context::admit(&app, &mut entries, &id, |entries| read(entries, &id, offset, length))
-            .map(tauri::ipc::Response::new)
+        context::admit(&app, &mut entries, &id, |entries| {
+            read(entries, &id, offset, length)
+        })
+        .map(tauri::ipc::Response::new)
     })
     .await
 }
@@ -345,7 +382,9 @@ pub async fn resource_save(
         let target = app.state::<SaveTargets>().redeem(&token, Instant::now())?;
         let resources = app.state::<ResourceFiles>();
         let mut entries = resources.0.lock()?;
-        context::admit(&app, &mut entries, &id, |entries| save(entries, &id, &app, target))
+        context::admit(&app, &mut entries, &id, |entries| {
+            save(entries, &id, &app, target)
+        })
     })
     .await
 }
@@ -371,7 +410,8 @@ mod tests {
         entries.get_mut(&info.id).unwrap().ready = true;
         let mut file = lease(&mut entries, &info.id).unwrap();
         entries.remove(&info.id);
-        let mut bytes = Vec::new(); file.read_to_end(&mut bytes).unwrap();
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).unwrap();
         assert_eq!(bytes, b"import me");
         assert!(lease(&mut entries, &info.id).is_err());
     }
@@ -389,9 +429,21 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("output.txt");
         std::fs::write(&path, "previous").unwrap();
-        save(&mut entries, &info.id, &LocalFiles, FilePath::Path(path.clone())).unwrap();
+        save(
+            &mut entries,
+            &info.id,
+            &LocalFiles,
+            FilePath::Path(path.clone()),
+        )
+        .unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"hello");
-        assert!(save(&mut entries, &info.id, &LocalFiles, FilePath::Path(dir.path().join("missing/output"))).is_err());
+        assert!(save(
+            &mut entries,
+            &info.id,
+            &LocalFiles,
+            FilePath::Path(dir.path().join("missing/output"))
+        )
+        .is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"hello");
     }
     #[test]
@@ -409,33 +461,73 @@ mod tests {
 }
 
 #[tauri::command]
-pub async fn resource_store_plugin_asset(app: tauri::AppHandle, plugin_id: String, key: String,
-    expected_revision: Option<String>, id: String, name: String, mime_type: String,
+pub async fn resource_store_plugin_asset(
+    app: tauri::AppHandle,
+    plugin_id: String,
+    key: String,
+    expected_revision: Option<String>,
+    id: String,
+    name: String,
+    mime_type: String,
 ) -> Result<crate::storage::plugin_assets::PluginAssetReceipt, CommandError> {
     crate::storage::blocking("resource_store_plugin_asset", move || {
         // Clone the sealed input before locking SQLite, keeping the resource/DB
         // lock order separate from opens. Context exports cannot be persisted.
         let source = reader(&app, &id)?;
-        let db = app.state::<crate::storage::Db>(); let mut conn = db.0.lock()?;
+        let db = app.state::<crate::storage::Db>();
+        let mut conn = db.0.lock()?;
         let dir = app.state::<crate::storage::DataDir>();
-        let input = crate::storage::plugin_assets::AssetInput { filename: &name, mime: &mime_type, source };
-        crate::storage::plugin_assets::store_inner(&mut conn, &dir.0, &plugin_id, &key,
-            expected_revision.as_deref(), input)
-    }).await
+        let input = crate::storage::plugin_assets::AssetInput {
+            filename: &name,
+            mime: &mime_type,
+            source,
+        };
+        crate::storage::plugin_assets::store_inner(
+            &mut conn,
+            &dir.0,
+            &plugin_id,
+            &key,
+            expected_revision.as_deref(),
+            input,
+        )
+    })
+    .await
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AssetResourceInfo { #[serde(flatten)] resource: ResourceInfo, name: String, mime_type: String }
+pub struct AssetResourceInfo {
+    #[serde(flatten)]
+    resource: ResourceInfo,
+    name: String,
+    mime_type: String,
+}
 #[tauri::command]
-pub async fn resource_open_plugin_asset(app: tauri::AppHandle, plugin_id: String, key: String, expected_revision: String,
+pub async fn resource_open_plugin_asset(
+    app: tauri::AppHandle,
+    plugin_id: String,
+    key: String,
+    expected_revision: String,
 ) -> Result<AssetResourceInfo, CommandError> {
     crate::storage::blocking("resource_open_plugin_asset", move || {
         let (file, asset) = {
-            let db = app.state::<crate::storage::Db>(); let conn = db.0.lock()?;
+            let db = app.state::<crate::storage::Db>();
+            let conn = db.0.lock()?;
             let dir = app.state::<crate::storage::DataDir>();
-            crate::storage::plugin_assets::open_inner(&conn, &dir.0, &plugin_id, &key, &expected_revision)?
+            crate::storage::plugin_assets::open_inner(
+                &conn,
+                &dir.0,
+                &plugin_id,
+                &key,
+                &expected_revision,
+            )?
         };
-        let resources = app.state::<ResourceFiles>(); let mut entries = resources.0.lock()?;
-        Ok(AssetResourceInfo { resource: insert(&mut entries, Some(file))?, name: asset.name, mime_type: asset.mime_type })
-    }).await
+        let resources = app.state::<ResourceFiles>();
+        let mut entries = resources.0.lock()?;
+        Ok(AssetResourceInfo {
+            resource: insert(&mut entries, Some(file))?,
+            name: asset.name,
+            mime_type: asset.mime_type,
+        })
+    })
+    .await
 }

@@ -1,7 +1,19 @@
 import type { DomainActor } from "../platform/domain-actor";
-import { AppError, assertContextBundleGrants, contextBundleSelector, normalizeContextBundleHistoryQuery, normalizeContextBundleReadQuery,
-  type ContextBundle, type ContextBundleCaptureReceipt, type ContextBundleHistoryPage, type ContextBundleHistoryQuery, type ContextBundleReadQuery,
-  type ContextBundleSelector, type DomainGrants, type ResourceRef } from "@read-aware/core";
+import {
+  AppError,
+  assertContextBundleGrants,
+  contextBundleSelector,
+  normalizeContextBundleHistoryQuery,
+  normalizeContextBundleReadQuery,
+  type ContextBundle,
+  type ContextBundleCaptureReceipt,
+  type ContextBundleHistoryPage,
+  type ContextBundleHistoryQuery,
+  type ContextBundleReadQuery,
+  type ContextBundleSelector,
+  type DomainGrants,
+  type ResourceRef,
+} from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { createLogger } from "../platform/logger";
 import { initializeUserProfile } from "./user-profile";
@@ -27,13 +39,21 @@ export type ContextBundleAccess = {
   capture(selector: ContextBundleSelector, signal?: AbortSignal): Promise<ContextBundleCaptureReceipt>;
   history(query: ContextBundleHistoryQuery, signal?: AbortSignal): Promise<ContextBundleHistoryPage>;
   read(query: ContextBundleReadQuery, signal?: AbortSignal): Promise<ContextBundle | null>;
-  export(query: ContextBundleReadQuery, owner: ResourceOwner, signal?: AbortSignal, objectAccess?: ResourceAccess): Promise<ResourceRef>;
+  export(
+    query: ContextBundleReadQuery,
+    owner: ResourceOwner,
+    signal?: AbortSignal,
+    objectAccess?: ResourceAccess,
+  ): Promise<ResourceRef>;
 };
 
 /** The public actor gate: recipe/scope selection, domain grants, current spoiler authority and a revocable export lease. */
 export function createContextBundleAccess(host: Host, actor: ContextBundleActor): ContextBundleAccess {
   const combine = (signal?: AbortSignal) => {
-    const combined = actor.lifetime && signal ? AbortSignal.any([actor.lifetime, signal]) : actor.lifetime ?? signal ?? new AbortController().signal;
+    const combined =
+      actor.lifetime && signal
+        ? AbortSignal.any([actor.lifetime, signal])
+        : (actor.lifetime ?? signal ?? new AbortController().signal);
     combined.throwIfAborted();
     return combined;
   };
@@ -47,12 +67,26 @@ export function createContextBundleAccess(host: Host, actor: ContextBundleActor)
     async capture(input, caller) {
       const selector = contextBundleSelector(input);
       assertContextBundleGrants(actor.grants, selector, "write");
-      const signal = combine(caller), origin = actor.origin;
-      const result = selector.kind === "user_profile_context" ? await host.producer.captureProfile(origin, signal)
-        : selector.kind === "reading_intent_context" ? await host.producer.captureIntent(selector.scope.kind === "book" ? { kind: "book", id: selector.scope.id } : { kind: "user" }, origin, signal)
-        : selector.kind === "book_memory_context" ? await host.producer.captureBook(selector.scope.kind === "book" ? selector.scope.id : "", origin, signal)
-        : await host.producer.captureConversation(selector.scope.kind === "book" ? { kind: "book", id: selector.scope.id }
-          : { kind: "global", id: selector.scope.kind === "conversation" ? selector.scope.id : "" }, origin, signal);
+      const signal = combine(caller),
+        origin = actor.origin;
+      const result =
+        selector.kind === "user_profile_context"
+          ? await host.producer.captureProfile(origin, signal)
+          : selector.kind === "reading_intent_context"
+            ? await host.producer.captureIntent(
+                selector.scope.kind === "book" ? { kind: "book", id: selector.scope.id } : { kind: "user" },
+                origin,
+                signal,
+              )
+            : selector.kind === "book_memory_context"
+              ? await host.producer.captureBook(selector.scope.kind === "book" ? selector.scope.id : "", origin, signal)
+              : await host.producer.captureConversation(
+                  selector.scope.kind === "book"
+                    ? { kind: "book", id: selector.scope.id }
+                    : { kind: "global", id: selector.scope.kind === "conversation" ? selector.scope.id : "" },
+                  origin,
+                  signal,
+                );
       return { bundle: result.bundle, changed: result.receipt.changed, persistence: result.receipt.persistence };
     },
     async history(input, caller) {
@@ -68,12 +102,18 @@ export function createContextBundleAccess(host: Host, actor: ContextBundleActor)
     async export(input, owner, caller, objectAccess) {
       let released = false;
       let cleanup = () => objectAccess?.dispose();
-      const release = () => { if (!released) { released = true; cleanup(); } };
+      const release = () => {
+        if (!released) {
+          released = true;
+          cleanup();
+        }
+      };
       try {
         const query = normalizeContextBundleReadQuery(input);
         assertContextBundleGrants(actor.grants, query, "read");
         const signal = combine(objectAccess ? AbortSignal.any([combine(caller), objectAccess.signal]) : caller);
-        if (objectAccess && !objectAccess.isAllowed()) throw new AppError("plugin/object-access-denied", "Context scope is no longer authorized");
+        if (objectAccess && !objectAccess.isAllowed())
+          throw new AppError("plugin/object-access-denied", "Context scope is no longer authorized");
         await host.initialize();
         signal.throwIfAborted();
         // The proof is captured before the archive read; native sealing rejects any source commit in between.
@@ -81,16 +121,26 @@ export function createContextBundleAccess(host: Host, actor: ContextBundleActor)
         signal.throwIfAborted();
         const bundle = await readable(query, signal);
         if (bundle === null) throw new AppError("fs/not-found", "Context bundle version is not retained");
-        const revoke = new AbortController(), lifetime = actor.lifetime;
+        const revoke = new AbortController(),
+          lifetime = actor.lifetime;
         const retire = () => revoke.abort(lifetime?.reason ?? new AppError("ui/superseded", "Actor retired"));
-        const stopObserving = bundle.content.scope.kind === "book" && bundle.content.kind === "book_memory_context"
-          ? host.books.observePosition(bundle.content.scope.id, error => revoke.abort(error)) : () => {};
+        const stopObserving =
+          bundle.content.scope.kind === "book" && bundle.content.kind === "book_memory_context"
+            ? host.books.observePosition(bundle.content.scope.id, (error) => revoke.abort(error))
+            : () => {};
         lifetime?.addEventListener("abort", retire, { once: true });
         if (lifetime?.aborted) retire();
-        cleanup = () => { lifetime?.removeEventListener("abort", retire); stopObserving(); objectAccess?.dispose(); };
-        const access: ContextResourceAccess = { sourceRevision,
+        cleanup = () => {
+          lifetime?.removeEventListener("abort", retire);
+          stopObserving();
+          objectAccess?.dispose();
+        };
+        const access: ContextResourceAccess = {
+          sourceRevision,
           signal: objectAccess ? AbortSignal.any([revoke.signal, objectAccess.signal]) : revoke.signal,
-          isAllowed: () => !revoke.signal.aborted && (!objectAccess || objectAccess.isAllowed()), dispose: release };
+          isAllowed: () => !revoke.signal.aborted && (!objectAccess || objectAccess.isAllowed()),
+          dispose: release,
+        };
         const ref = await host.exportBundle(owner, bundle, access, signal);
         if (signal.aborted) {
           // The consumer is gone; a handle nobody holds must not wait for its expiry.
@@ -98,14 +148,24 @@ export function createContextBundleAccess(host: Host, actor: ContextBundleActor)
           throw signal.reason;
         }
         return ref;
-      } catch (error) { release(); throw error; }
+      } catch (error) {
+        release();
+        throw error;
+      }
     },
   };
 }
 
 const log = createLogger("context-bundle-access");
-const host: Host = { producer: contextBundles, archive: contextBundleHistory, books: bookContextSources, invoke,
-  initialize: initializeUserProfile, exportBundle: exportContextBundle, report: error => log.warn("Context export cleanup failed", error) };
+const host: Host = {
+  producer: contextBundles,
+  archive: contextBundleHistory,
+  books: bookContextSources,
+  invoke,
+  initialize: initializeUserProfile,
+  exportBundle: exportContextBundle,
+  report: (error) => log.warn("Context export cleanup failed", error),
+};
 export function contextBundleAccess(actor: ContextBundleActor): ContextBundleAccess {
   return createContextBundleAccess(host, actor);
 }

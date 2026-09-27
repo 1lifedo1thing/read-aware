@@ -9,7 +9,9 @@ import { afterAll } from "bun:test";
  * at the top level of a test file: bun registers the `afterAll` hook on that file's scope.
  */
 export function installFileGlobals(values: Record<string, unknown>): void {
-  const previous = Object.keys(values).map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const);
+  const previous = Object.keys(values).map(
+    (name) => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const,
+  );
   for (const [name, value] of Object.entries(values)) {
     Object.defineProperty(globalThis, name, { configurable: true, writable: true, value });
   }
@@ -22,14 +24,24 @@ export function installFileGlobals(values: Record<string, unknown>): void {
 }
 
 /** A `Storage`-shaped map for suites that exercise the local KV mirror without a DOM. */
-export function memoryStorage(entries = new Map<string, string>()): Storage & { readonly entries: Map<string, string> } {
+export function memoryStorage(
+  entries = new Map<string, string>(),
+): Storage & { readonly entries: Map<string, string> } {
   return {
     entries,
     getItem: (key: string) => entries.get(key) ?? null,
-    setItem: (key: string, value: string) => { entries.set(key, String(value)); },
-    removeItem: (key: string) => { entries.delete(key); },
-    clear: () => { entries.clear(); },
+    setItem: (key: string, value: string) => {
+      entries.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      entries.delete(key);
+    },
+    clear: () => {
+      entries.clear();
+    },
     key: (index: number) => [...entries.keys()][index] ?? null,
-    get length() { return entries.size; },
+    get length() {
+      return entries.size;
+    },
   };
 }

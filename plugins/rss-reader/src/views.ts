@@ -6,12 +6,7 @@ import { storageCopy, storageView } from "./storage-view";
  * as a detail view: provenance in metadata, commands as detail actions, and
  * the articles as the content. All copy resolves against the live app locale.
  */
-import type {
-  PluginDetailView,
-  PluginFormView,
-  PluginListItem,
-  PluginListView,
-} from "@read-aware/plugin-types";
+import type { PluginDetailView, PluginFormView, PluginListItem, PluginListView } from "@read-aware/plugin-types";
 import { isHttpFeedUrl } from "./feed";
 import { openFeed, refreshFeed, subscribe, unsubscribeFeed } from "./feed-library";
 import { feedUrlsFromOpml } from "./opml";
@@ -24,11 +19,7 @@ import { refreshAllFeeds } from "./refresh";
 import { refreshScheduleView } from "./schedule-view";
 import { scheduleCopy } from "./schedule-strings";
 
-function formatWhen(
-  ctx: RssPluginContext,
-  iso: string | undefined,
-  style: "date" | "dateTime",
-): string | undefined {
+function formatWhen(ctx: RssPluginContext, iso: string | undefined, style: "date" | "dateTime"): string | undefined {
   if (!iso) return undefined;
   const value = new Date(iso);
   if (Number.isNaN(value.getTime())) return undefined;
@@ -87,7 +78,7 @@ export function importOpmlView(ctx: RssPluginContext, initialText = ""): PluginF
         label: "OPML",
         value: initialText,
         rows: 8,
-        placeholder: "<opml version=\"2.0\">…",
+        placeholder: '<opml version="2.0">…',
         helperText: tr(ctx.locale, "opmlHelper"),
       },
     ],
@@ -108,39 +99,94 @@ export function importOpmlView(ctx: RssPluginContext, initialText = ""): PluginF
 
 function opmlResultView(ctx: RssPluginContext, text: string, result: OpmlImportResult): PluginDetailView {
   return {
-    kind: "detail", title: tr(ctx.locale, "importOpml"),
+    kind: "detail",
+    title: tr(ctx.locale, "importOpml"),
     content: [
-      { kind: "text", text: tr(ctx.locale, "importSummary", { added: result.added, existing: result.existing, failed: result.failed,
-        from: result.offset + 1, to: result.offset + result.items.length, total: result.total }) },
-      { kind: "list", items: result.items.map(item => ({
-        id: item.url, title: item.url,
-        subtitle: tr(ctx.locale, item.status === "added" ? "importAdded" : item.status === "existing" ? "alreadySubscribed" : "importFailed"),
-        onSelect: () => ({ view: { kind: "detail", title: item.url, content: item.status === "failed"
-          ? [{ kind: "error", code: item.errorCode }]
-          : [{ kind: "text", text: item.title }, ...(item.contentPending ? [{ kind: "text" as const, text: tr(ctx.locale, "pendingPublication") }] : [])] } }),
-      })) },
+      {
+        kind: "text",
+        text: tr(ctx.locale, "importSummary", {
+          added: result.added,
+          existing: result.existing,
+          failed: result.failed,
+          from: result.offset + 1,
+          to: result.offset + result.items.length,
+          total: result.total,
+        }),
+      },
+      {
+        kind: "list",
+        items: result.items.map((item) => ({
+          id: item.url,
+          title: item.url,
+          subtitle: tr(
+            ctx.locale,
+            item.status === "added" ? "importAdded" : item.status === "existing" ? "alreadySubscribed" : "importFailed",
+          ),
+          onSelect: () => ({
+            view: {
+              kind: "detail",
+              title: item.url,
+              content:
+                item.status === "failed"
+                  ? [{ kind: "error", code: item.errorCode }]
+                  : [
+                      { kind: "text", text: item.title },
+                      ...(item.contentPending
+                        ? [{ kind: "text" as const, text: tr(ctx.locale, "pendingPublication") }]
+                        : []),
+                    ],
+            },
+          }),
+        })),
+      },
     ],
     actions: [
-      ...(result.nextOffset !== null ? [{ id: "next", icon: "arrow-right", label: tr(ctx.locale, "importNext"),
-        run: async () => ({ view: opmlResultView(ctx, text, await importOpml(ctx, text, result.nextOffset!)), navigation: "replace" as const }),
-      }] : []),
-      { id: "done", icon: "list", label: tr(ctx.locale, "subscriptions"), run: async () => ({ view: await rssPageView(ctx), navigation: "reset" }) },
+      ...(result.nextOffset !== null
+        ? [
+            {
+              id: "next",
+              icon: "arrow-right",
+              label: tr(ctx.locale, "importNext"),
+              run: async () => ({
+                view: opmlResultView(ctx, text, await importOpml(ctx, text, result.nextOffset!)),
+                navigation: "replace" as const,
+              }),
+            },
+          ]
+        : []),
+      {
+        id: "done",
+        icon: "list",
+        label: tr(ctx.locale, "subscriptions"),
+        run: async () => ({ view: await rssPageView(ctx), navigation: "reset" }),
+      },
     ],
   };
 }
 
-export function feedDetailView(
-  ctx: RssPluginContext,
-  feed: FeedSubscription,
-): PluginDetailView {
-  if (feed.removalId) return {
-    kind: "detail", title: feed.title,
-    content: [{ kind: "text", text: tr(ctx.locale, "pendingRemoval") }],
-    actions: [{ id: "remove", label: tr(ctx.locale, "finishRemoval"), icon: "trash", variant: "danger", run: async () => {
-      await unsubscribeFeed(ctx, feed.url, feed.bookId);
-      return { toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }), view: await rssPageView(ctx), navigation: "reset" };
-    } }],
-  };
+export function feedDetailView(ctx: RssPluginContext, feed: FeedSubscription): PluginDetailView {
+  if (feed.removalId)
+    return {
+      kind: "detail",
+      title: feed.title,
+      content: [{ kind: "text", text: tr(ctx.locale, "pendingRemoval") }],
+      actions: [
+        {
+          id: "remove",
+          label: tr(ctx.locale, "finishRemoval"),
+          icon: "trash",
+          variant: "danger",
+          run: async () => {
+            await unsubscribeFeed(ctx, feed.url, feed.bookId);
+            return {
+              toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }),
+              view: await rssPageView(ctx),
+              navigation: "reset",
+            };
+          },
+        },
+      ],
+    };
   const articleItems: PluginListItem[] = feed.articles.map((article) => ({
     id: article.id,
     title: article.title,
@@ -230,7 +276,10 @@ export async function rssPageView(ctx: RssPluginContext): Promise<PluginListView
     // Find a feed by what it published; the host caps keywords at 40.
     keywords: feed.articles.slice(0, 40).map((article) => article.title),
     accessories: [
-      { kind: "tag", text: feed.removalId ? tr(ctx.locale, "finishRemoval") : articlesTag(ctx.locale, feed.articles.length) },
+      {
+        kind: "tag",
+        text: feed.removalId ? tr(ctx.locale, "finishRemoval") : articlesTag(ctx.locale, feed.articles.length),
+      },
       ...(formatWhen(ctx, feed.lastFetched, "date")
         ? [{ kind: "text" as const, text: formatWhen(ctx, feed.lastFetched, "date")! }]
         : []),
@@ -251,8 +300,18 @@ export async function rssPageView(ctx: RssPluginContext): Promise<PluginListView
         icon: "plus",
         run: () => ({ view: addFeedView(ctx) }),
       },
-      { id: "storage", label: storageCopy(ctx.locale)[0]!, icon: "database", run: async () => ({ view: await storageView(ctx) }) },
-      { id: "schedule", label: scheduleCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await refreshScheduleView(ctx) }) },
+      {
+        id: "storage",
+        label: storageCopy(ctx.locale)[0]!,
+        icon: "database",
+        run: async () => ({ view: await storageView(ctx) }),
+      },
+      {
+        id: "schedule",
+        label: scheduleCopy(ctx.locale).title,
+        icon: "clock",
+        run: async () => ({ view: await refreshScheduleView(ctx) }),
+      },
       {
         id: "import",
         label: tr(ctx.locale, "importOpml"),
@@ -260,7 +319,9 @@ export async function rssPageView(ctx: RssPluginContext): Promise<PluginListView
         run: () => ({ view: importOpmlView(ctx) }),
       },
       {
-        id: "import-file", label: tr(ctx.locale, "chooseOpmlFile"), icon: "file",
+        id: "import-file",
+        label: tr(ctx.locale, "chooseOpmlFile"),
+        icon: "file",
         run: async () => {
           const text = await pickOpmlText(ctx);
           return text === null ? undefined : { view: importOpmlView(ctx, text) };

@@ -82,14 +82,8 @@ export type DomainEvent =
   // validated manifest. Chunks alone never change a projection. The native
   // projector accepts only versioned, typed rows from its domain-table allowlist;
   // device identity, the local credential vault and chat presentation stay local.
-  | DomainEventEnvelope<
-      "backup.restoreChunk",
-      { restoreId: Id; index: number; data: string }
-    >
-  | DomainEventEnvelope<
-      "backup.restored",
-      { restoreId: Id; format: 1; chunks: number; sha256: string }
-    >
+  | DomainEventEnvelope<"backup.restoreChunk", { restoreId: Id; index: number; data: string }>
+  | DomainEventEnvelope<"backup.restored", { restoreId: Id; format: 1; chunks: number; sha256: string }>
   // --- Books -------------------------------------------------------------
   | DomainEventEnvelope<
       "book.imported",
@@ -109,14 +103,8 @@ export type DomainEvent =
         sourceSha256?: string;
       }
     >
-  | DomainEventEnvelope<
-      "book.metadataEdited",
-      { bookId: Id; title?: string; author?: string }
-    >
-  | DomainEventEnvelope<
-      "book.coverExtracted",
-      { bookId: Id; status: CoverStatus; coverBlobKey?: string }
-    >
+  | DomainEventEnvelope<"book.metadataEdited", { bookId: Id; title?: string; author?: string }>
+  | DomainEventEnvelope<"book.coverExtracted", { bookId: Id; status: CoverStatus; coverBlobKey?: string }>
   /**
    * 章节读毕提炼（book_memory 投影的原料）：读者读完一章后，后台管线从
    * 该章文本提炼出的摘要与人物名录。像 coverExtracted 一样，这是"记录一个
@@ -161,7 +149,13 @@ export type DomainEvent =
    */
   | DomainEventEnvelope<
       "book.narrativityClassified",
-      { bookId: Id; narrativity: "narrative" | "expository"; spoilerSensitive?: boolean; model?: string; onlyIfUnclassified?: true }
+      {
+        bookId: Id;
+        narrativity: "narrative" | "expository";
+        spoilerSensitive?: boolean;
+        model?: string;
+        onlyIfUnclassified?: true;
+      }
     >
   /**
    * Two book records turned out to be the same content (matching source
@@ -188,14 +182,8 @@ export type DomainEvent =
   | DomainEventEnvelope<"collection.created", { collectionId: Id; name: string }>
   | DomainEventEnvelope<"collection.renamed", { collectionId: Id; name: string }>
   | DomainEventEnvelope<"collection.removed", { collectionId: Id }>
-  | DomainEventEnvelope<
-      "book.addedToCollection",
-      { bookId: Id; collectionId: Id }
-    >
-  | DomainEventEnvelope<
-      "book.removedFromCollection",
-      { bookId: Id; collectionId: Id }
-    >
+  | DomainEventEnvelope<"book.addedToCollection", { bookId: Id; collectionId: Id }>
+  | DomainEventEnvelope<"book.removedFromCollection", { bookId: Id; collectionId: Id }>
   // --- Reading facts (book aggregate; the shelf domain's stats face) ------
   // Renamed from `reading.progressed` / `reading.timeRecorded` when the
   // reading domain folded into shelf (schema migration 11 rewrote the log).
@@ -280,10 +268,7 @@ export type DomainEvent =
         style?: HighlightStyle;
       }
     >
-  | DomainEventEnvelope<
-      "highlight.recolored",
-      { highlightId: Id; color: HighlightColor; style?: HighlightStyle }
-    >
+  | DomainEventEnvelope<"highlight.recolored", { highlightId: Id; color: HighlightColor; style?: HighlightStyle }>
   | DomainEventEnvelope<"highlight.removed", { highlightId: Id }>
   | DomainEventEnvelope<
       "note.created",
@@ -305,10 +290,7 @@ export type DomainEvent =
    * selection or reading position (docs/architecture/agent-architecture.md). Written by
    * the agent runtime, not the user.
    */
-  | DomainEventEnvelope<
-      "ask.recorded",
-      { askId: Id; bookId: Id; anchor?: string; chapterHref?: string; text: string }
-    >
+  | DomainEventEnvelope<"ask.recorded", { askId: Id; bookId: Id; anchor?: string; chapterHref?: string; text: string }>
   | DomainEventEnvelope<"ask.removed", { askId: Id }>
   // --- AI conversation (book threads + user-created global threads) ------
   | DomainEventEnvelope<
@@ -325,23 +307,23 @@ export type DomainEvent =
         seq: number;
         content: string;
         model?: string;
-        attachments?: Array<{
-          attachmentId: Id;
-          kind?: "selection";
-          text: string;
-          anchor?: string;
-          chapterHref?: string;
-        } | { attachmentId: Id; kind: "image"; cacheKey: string; name: string }>;
+        attachments?: Array<
+          | {
+              attachmentId: Id;
+              kind?: "selection";
+              text: string;
+              anchor?: string;
+              chapterHref?: string;
+            }
+          | { attachmentId: Id; kind: "image"; cacheKey: string; name: string }
+        >;
       }
     >
   /**
    * A message left the transcript (retry/regenerate truncation). Without it,
    * replaying `aiMessage.appended` would resurrect truncated turns.
    */
-  | DomainEventEnvelope<
-      "aiMessage.removed",
-      { messageId: Id; conversationId: Id }
-    >
+  | DomainEventEnvelope<"aiMessage.removed", { messageId: Id; conversationId: Id }>
   | DomainEventEnvelope<"aiConversation.cleared", { conversationId: Id }>
   // --- Profile + memory ------------------------------------------------
   | DomainEventEnvelope<"context.bundlePublished", import("./context-bundle").ContextBundle>
@@ -350,10 +332,7 @@ export type DomainEvent =
       "profile.updated",
       { displayName?: string | null; summary?: string | null; traits?: Record<string, unknown> }
     >
-  | DomainEventEnvelope<
-      "entity.resolved",
-      { entityId: Id; kind: string; canonicalName: string; aliases?: string[] }
-    >
+  | DomainEventEnvelope<"entity.resolved", { entityId: Id; kind: string; canonicalName: string; aliases?: string[] }>
   | DomainEventEnvelope<"entity.merged", { keepId: Id; mergedId: Id }>
   | DomainEventEnvelope<
       "memory.promoted",
@@ -396,14 +375,8 @@ export type DomainEvent =
       /** `bySupersedingId` optional: a supersession may have no single winner. */
       { memoryId: Id; bySupersedingId?: Id }
     >
-  | DomainEventEnvelope<
-      "memory.feedback",
-      { memoryId: Id; signal: MemoryFeedbackSignal; note?: string }
-    >
-  | DomainEventEnvelope<
-      "memory.forgotten",
-      { memoryId: Id; reason: "decay" | "user" }
-    >
+  | DomainEventEnvelope<"memory.feedback", { memoryId: Id; signal: MemoryFeedbackSignal; note?: string }>
+  | DomainEventEnvelope<"memory.forgotten", { memoryId: Id; reason: "decay" | "user" }>
   // --- Roaming preferences ------------------------------------------------
   /**
    * A device-roaming preference changed. `key` is the preference namespace
@@ -414,9 +387,6 @@ export type DomainEvent =
    * device-local config (OS integration, shortcuts, secrets) never appears
    * here.
    */
-  | DomainEventEnvelope<
-      "preference.changed",
-      { key: string; value: unknown }
-    >;
+  | DomainEventEnvelope<"preference.changed", { key: string; value: unknown }>;
 
 export type DomainEventType = DomainEvent["type"];

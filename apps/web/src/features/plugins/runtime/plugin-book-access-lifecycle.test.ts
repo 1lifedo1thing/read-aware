@@ -4,20 +4,32 @@ import type { SandboxedPlugin } from "./plugin-worker-host";
 if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
   const disk = new Map<string, string>();
   const accessKey = "read-aware-plugins-book-access";
-  let holdGrant = false, failGrant = false;
+  let holdGrant = false,
+    failGrant = false;
   let releaseGrant: (() => void) | undefined;
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { addEventListener() {}, removeEventListener() {}, __TAURI_INTERNALS__: {
-    invoke: async (command: string, args: any) => {
-      if (command === "set_kv") {
-        if (args.key === accessKey && holdGrant) await new Promise<void>(resolve => { releaseGrant = resolve; });
-        if (args.key === accessKey && failGrant) throw { code: "db/locked", message: "Injected grant write failure" };
-        disk.set(args.key, args.value);
-      }
-      if (command === "delete_kv") disk.delete(args.key);
-      if (command === "desktop_startup_enabled") return false;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      addEventListener() {},
+      removeEventListener() {},
+      __TAURI_INTERNALS__: {
+        invoke: async (command: string, args: any) => {
+          if (command === "set_kv") {
+            if (args.key === accessKey && holdGrant)
+              await new Promise<void>((resolve) => {
+                releaseGrant = resolve;
+              });
+            if (args.key === accessKey && failGrant)
+              throw { code: "db/locked", message: "Injected grant write failure" };
+            disk.set(args.key, args.value);
+          }
+          if (command === "delete_kv") disk.delete(args.key);
+          if (command === "desktop_startup_enabled") return false;
+        },
+      },
     },
-  } } });
+  });
   const worker = await import("./plugin-worker-host");
   const { getDefaultStore } = await import("jotai");
   const { localKV } = await import("../../../platform/local-store");
@@ -30,12 +42,20 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     const id = "book-grant-proof";
     const manifest = { id, name: "Book grant proof", version: "1.0.0", schemaVersion: 1, requires: {} };
     const starts: unknown[] = [];
-    let holdStop = true, releaseStop!: () => void;
+    let holdStop = true,
+      releaseStop!: () => void;
     spyOn(worker, "startPluginWorker").mockImplementation(async (_manifest, _version, _disposables, options) => {
       starts.push(options?.bookAccess);
       return {
-        hasMigration: false, checkHealth: async () => {}, promote: () => {},
-        terminate: async () => { if (holdStop) await new Promise<void>(resolve => { releaseStop = resolve; }); },
+        hasMigration: false,
+        checkHealth: async () => {},
+        promote: () => {},
+        terminate: async () => {
+          if (holdStop)
+            await new Promise<void>((resolve) => {
+              releaseStop = resolve;
+            });
+        },
       } as unknown as SandboxedPlugin;
     });
     await localKV.setItemAsync(`read-aware-plugin-host.schema.${id}`, "1");
@@ -50,17 +70,23 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     expect(getPluginBookAccess(id).grant).toEqual({ mode: "all" });
     expect(starts).toHaveLength(1);
     await expect(host.setPluginEnabled(id, true)).rejects.toMatchObject({ code: "plugin/data-busy" });
-    holdStop = false; releaseStop(); await tick();
+    holdStop = false;
+    releaseStop();
+    await tick();
     expect(releaseGrant).toBeDefined();
     expect(starts).toHaveLength(1);
     expect(getDefaultStore().get(installedPluginsAtom)[0]?.bookAccess).toBeUndefined();
-    holdGrant = false; releaseGrant!(); await change;
+    holdGrant = false;
+    releaseGrant!();
+    await change;
     expect(eventCause(getDefaultStore().get(installedPluginsAtom))).toBe(actorCause(origin));
     expect(starts).toEqual([{ mode: "all" }, { mode: "book", bookId: "A" }]);
     expect(JSON.parse(disk.get(accessKey)!)[id]).toEqual({ mode: "book", bookId: "A" });
 
     failGrant = true;
-    await expect(host.updatePluginBookAccess(id, { mode: "book", bookId: "B" })).rejects.toMatchObject({ code: "db/locked" });
+    await expect(host.updatePluginBookAccess(id, { mode: "book", bookId: "B" })).rejects.toMatchObject({
+      code: "db/locked",
+    });
     expect(starts).toHaveLength(2);
     expect(getPluginBookAccess(id).grant).toEqual({ mode: "book", bookId: "A" });
     expect(getDefaultStore().get(installedPluginsAtom)[0]?.error).toBeTruthy();
@@ -72,7 +98,8 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     const afterDisable = host.updatePluginBookAccess(id, { mode: "current" });
     await tick();
     expect(getPluginBookAccess(id).grant).toEqual({ mode: "book", bookId: "A" });
-    holdStop = false; releaseStop();
+    holdStop = false;
+    releaseStop();
     await Promise.all([disabling, afterDisable]);
     expect(getPluginBookAccess(id).grant).toEqual({ mode: "current" });
     expect(starts).toHaveLength(3);
@@ -84,15 +111,22 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     let starts = 0;
     spyOn(worker, "startPluginWorker").mockImplementation(async () => {
       starts++;
-      return { hasMigration: false, checkHealth: async () => {}, promote: () => {},
-        terminate: async () => { throw new Error("Termination was not confirmed"); },
+      return {
+        hasMigration: false,
+        checkHealth: async () => {},
+        promote: () => {},
+        terminate: async () => {
+          throw new Error("Termination was not confirmed");
+        },
       } as unknown as SandboxedPlugin;
     });
     await localKV.setItemAsync(`read-aware-plugin-host.schema.${id}`, "1");
     getDefaultStore().set(installedPluginsAtom, [{ manifest, enabled: false }]);
     await host.setPluginEnabled(id, true);
     for (let attempt = 0; attempt < 2; attempt++) {
-      await expect(host.updatePluginBookAccess(id, { mode: "book", bookId: "A" })).rejects.toThrow("Termination was not confirmed");
+      await expect(host.updatePluginBookAccess(id, { mode: "book", bookId: "A" })).rejects.toThrow(
+        "Termination was not confirmed",
+      );
     }
     await host.setPluginEnabled(id, true);
     expect(starts).toBe(1);
@@ -113,11 +147,12 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     await localKV.setItemAsync(accessKey, "[]");
     expect(() => getPluginBookAccess("absent")).toThrow();
   });
-
 } else {
   test("isolated plugin book grant lifecycle", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
-      env: { ...process.env, PLUGIN_BOOK_ACCESS_LIFECYCLE: "1" }, stdout: "ignore", stderr: "pipe",
+      env: { ...process.env, PLUGIN_BOOK_ACCESS_LIFECYCLE: "1" },
+      stdout: "ignore",
+      stderr: "pipe",
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);

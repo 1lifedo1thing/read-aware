@@ -1,4 +1,10 @@
-import { actorCause, assertReactionAllowed, causalActor, eventCause, reactionActor } from "../../../platform/domain-actor";
+import {
+  actorCause,
+  assertReactionAllowed,
+  causalActor,
+  eventCause,
+  reactionActor,
+} from "../../../platform/domain-actor";
 import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 import { onAppEvent } from "../../../platform/app-events";
 import { beforeEach, describe, expect, test } from "bun:test";
@@ -7,10 +13,7 @@ import type { PluginManifest } from "./plugin-types";
 const storage = new Map<string, string>();
 installFileGlobals({ localStorage: memoryStorage(storage) });
 
-import {
-  buildPluginSettingsView,
-  readPluginSettingsValues, writePluginSettingsValues,
-} from "./plugin-settings";
+import { buildPluginSettingsView, readPluginSettingsValues, writePluginSettingsValues } from "./plugin-settings";
 import { parseManifestJson } from "./manifest";
 
 const manifest: PluginManifest = {
@@ -87,10 +90,7 @@ describe("time settings fields", () => {
   });
 
   test("the form prefills from the stored time, not the declared default", () => {
-    storage.set(
-      "read-aware-plugin.time-test.settings",
-      JSON.stringify({ start: "21:30" }),
-    );
+    storage.set("read-aware-plugin.time-test.settings", JSON.stringify({ start: "21:30" }));
     const view = buildPluginSettingsView(parseManifestJson(JSON.stringify(base)));
     expect(view?.fields[0]).toMatchObject({ value: "21:30" });
   });
@@ -181,15 +181,11 @@ describe("capability requirements manifest", () => {
   });
 
   test("rejects unknown capability ids and invalid ranges", () => {
+    expect(() => parseManifestJson(JSON.stringify({ ...base, requires: { domains: { shelf: "^1.0.0" } } }))).toThrow(
+      /unknown capability/,
+    );
     expect(() =>
-      parseManifestJson(
-        JSON.stringify({ ...base, requires: { domains: { shelf: "^1.0.0" } } }),
-      ),
-    ).toThrow(/unknown capability/);
-    expect(() =>
-      parseManifestJson(
-        JSON.stringify({ ...base, requires: { services: { storage: "tomorrow" } } }),
-      ),
+      parseManifestJson(JSON.stringify({ ...base, requires: { services: { storage: "tomorrow" } } })),
     ).toThrow(/semver range/);
   });
 });
@@ -215,7 +211,9 @@ describe("plugin data schema manifest", () => {
 test("coalesced settings invalidation retains reaction ancestry for Worker and provider refresh", async () => {
   await Promise.resolve();
   const events: object[] = [];
-  const off = onAppEvent("plugin-storage-changed", event => { if (event.pluginId === manifest.id) events.push(event); });
+  const off = onAppEvent("plugin-storage-changed", (event) => {
+    if (event.pluginId === manifest.id) events.push(event);
+  });
   const rule = "rule:settings-test:refresh";
   const first = reactionActor("plugin:settings-test", rule, actorCause(causalActor("user"))!);
   const second = reactionActor("plugin:settings-test", rule, actorCause(causalActor("user"))!);
@@ -226,7 +224,11 @@ test("coalesced settings invalidation retains reaction ancestry for Worker and p
     ]);
     await Promise.resolve();
     expect(events).toHaveLength(1);
-    expect(() => assertReactionAllowed(eventCause(events[0]!), rule)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+    expect(() => assertReactionAllowed(eventCause(events[0]!), rule)).toThrow(
+      expect.objectContaining({ code: "plugin/event-cycle" }),
+    );
     expect(readPluginSettingsValues(manifest.id)).toEqual({ enabled: false });
-  } finally { off(); }
+  } finally {
+    off();
+  }
 });

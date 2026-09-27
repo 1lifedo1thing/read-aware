@@ -51,8 +51,7 @@ function makeDeps() {
 }
 
 /** 提炼调用的空实现：永远返回"无候选"。 */
-const noopComplete = async () =>
-  fauxAssistantMessage('{"new": [], "reinforced": []}');
+const noopComplete = async () => fauxAssistantMessage('{"new": [], "reinforced": []}');
 
 function makeThread(deps: RuntimeDeps, model: Model<Api>, maxWindowTurns?: number) {
   return new AgentThread({
@@ -88,13 +87,25 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const { deps, turns } = makeDeps();
     const image = { bookId: "b1", contentVersion: "v1", sectionIndex: 0, index: 0 };
-    deps.bookText.readImageInput = async () => ({ status: "ready", image: { image, alt: "" }, input: { mimeType: "image/png", data: "AQID" } });
+    deps.bookText.readImageInput = async () => ({
+      status: "ready",
+      image: { image, alt: "" },
+      input: { mimeType: "image/png", data: "AQID" },
+    });
     const contexts: string[] = [];
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "read_book_image" })], { stopReason: "toolUse" }),
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "read_book_image" })], {
+        stopReason: "toolUse",
+      }),
       fauxAssistantMessage([fauxToolCall("read_book_image", { image })], { stopReason: "toolUse" }),
-      context => { contexts.push(JSON.stringify(context)); return fauxAssistantMessage("Visible diagram."); },
-      context => { contexts.push(JSON.stringify(context)); return fauxAssistantMessage("Next answer."); },
+      (context) => {
+        contexts.push(JSON.stringify(context));
+        return fauxAssistantMessage("Visible diagram.");
+      },
+      (context) => {
+        contexts.push(JSON.stringify(context));
+        return fauxAssistantMessage("Next answer.");
+      },
     ]);
     const thread = makeThread(deps, { ...model, input: ["text", "image"] });
     try {
@@ -104,44 +115,92 @@ describe("AgentThread", () => {
       expect(contexts[0]).toContain('"data":"AQID"');
       expect(contexts[1]).not.toContain('"data":"AQID"');
       expect(JSON.stringify(turns.get("book:b1"))).not.toContain("AQID");
-    } finally { thread.dispose(); await thread.flushBackgroundWork(); }
+    } finally {
+      thread.dispose();
+      await thread.flushBackgroundWork();
+    }
   });
 
   test("web image candidates and display limits reset between turns on the same thread", async () => {
     const { faux, model } = makeFaux();
     const { deps } = makeDeps();
-    const image = { url: "https://images.example.org/diagram.png", sourceUrl: "https://museum.example.org/roof", title: "Roof" };
-    deps.web = { configured: () => true,
-      search: async input => ({ provider: "fixture", query: input.query, sources: [], images: [image], retrievedAt: "2026-09-20" }),
-      fetch: async () => { throw new Error("unused"); },
+    const image = {
+      url: "https://images.example.org/diagram.png",
+      sourceUrl: "https://museum.example.org/roof",
+      title: "Roof",
     };
-    const search = () => fauxAssistantMessage([fauxToolCall("web_search", { query: "roof", includeImages: true })], { stopReason: "toolUse" });
-    const show = () => fauxAssistantMessage([fauxToolCall("present_web_images", { images: [{ id: "web-image-1", caption: "Roof diagram" }] })], { stopReason: "toolUse" });
-    faux.setResponses([search(), show(), fauxAssistantMessage("First."),
-      show(), fauxAssistantMessage("Stale candidate skipped."),
-      search(), show(), show(), fauxAssistantMessage("Fresh retrieval.")]);
+    deps.web = {
+      configured: () => true,
+      search: async (input) => ({
+        provider: "fixture",
+        query: input.query,
+        sources: [],
+        images: [image],
+        retrievedAt: "2026-09-20",
+      }),
+      fetch: async () => {
+        throw new Error("unused");
+      },
+    };
+    const search = () =>
+      fauxAssistantMessage([fauxToolCall("web_search", { query: "roof", includeImages: true })], {
+        stopReason: "toolUse",
+      });
+    const show = () =>
+      fauxAssistantMessage(
+        [fauxToolCall("present_web_images", { images: [{ id: "web-image-1", caption: "Roof diagram" }] })],
+        { stopReason: "toolUse" },
+      );
+    faux.setResponses([
+      search(),
+      show(),
+      fauxAssistantMessage("First."),
+      show(),
+      fauxAssistantMessage("Stale candidate skipped."),
+      search(),
+      show(),
+      show(),
+      fauxAssistantMessage("Fresh retrieval."),
+    ]);
     const thread = makeThread(deps, model);
     try {
-      const count = (chunks: ThreadChunk[]) => chunks.filter(c => c.type === "reference" && c.reference.kind === "web-images").length;
+      const count = (chunks: ThreadChunk[]) =>
+        chunks.filter((c) => c.type === "reference" && c.reference.kind === "web-images").length;
       expect(count(await collect(thread.sendTurn({ text: "Find a roof diagram." })))).toBe(1);
       expect(count(await collect(thread.sendTurn({ text: "Use an old ID without retrieval." })))).toBe(0);
       expect(count(await collect(thread.sendTurn({ text: "Find the image again." })))).toBe(1);
-    } finally { thread.dispose(); await thread.flushBackgroundWork(); }
+    } finally {
+      thread.dispose();
+      await thread.flushBackgroundWork();
+    }
   });
 
   test("chapter-memory failure is logged and omitted, with a fresh session recovering the projection", async () => {
     const { faux, model } = makeFaux();
-    const prompts: string[] = [], warnings: string[] = [];
-    faux.setResponses([0, 1].map(() => (context: Context) => {
-      prompts.push(context.systemPrompt ?? ""); return fauxAssistantMessage("Ready.");
-    }));
-    const { deps } = createInMemoryDeps({ books: [{ id: "b1" as Id, title: "Projection test", status: "finished", narrativity: "narrative" }] });
+    const prompts: string[] = [],
+      warnings: string[] = [];
+    faux.setResponses(
+      [0, 1].map(() => (context: Context) => {
+        prompts.push(context.systemPrompt ?? "");
+        return fauxAssistantMessage("Ready.");
+      }),
+    );
+    const { deps } = createInMemoryDeps({
+      books: [{ id: "b1" as Id, title: "Projection test", status: "finished", narrativity: "narrative" }],
+    });
     let unavailable = true;
     deps.bookMemory.listDigests = async () => {
       if (unavailable) throw new Error("PRIVATE corrupt projection");
-      return [{ chapterIndex: 0, summary: "Recovered digest evidence", characters: [], relations: [], digestVersion: 2 }];
+      return [
+        { chapterIndex: 0, summary: "Recovered digest evidence", characters: [], relations: [], digestVersion: 2 },
+      ];
     };
-    deps.log = { warn: message => { warnings.push(message); }, error: () => {} };
+    deps.log = {
+      warn: (message) => {
+        warnings.push(message);
+      },
+      error: () => {},
+    };
     const thread = makeThread(deps, model);
     try {
       await collect(thread.sendTurn({ text: "Hello" }));
@@ -152,7 +211,10 @@ describe("AgentThread", () => {
       unavailable = false;
       await collect(thread.sendTurn({ text: "Hello again", reset: true }));
       expect(prompts[1]).toContain("Recovered digest evidence");
-    } finally { thread.dispose(); await thread.flushBackgroundWork(); }
+    } finally {
+      thread.dispose();
+      await thread.flushBackgroundWork();
+    }
   });
 
   test("streams text and tool steps; the host records both turns", async () => {
@@ -166,14 +228,15 @@ describe("AgentThread", () => {
 
     const chunks = await collect(hostTurn(turns, thread, { text: "我划了什么重点？" }));
 
-    const text = chunks.filter((c) => c.type === "text").map((c) => c.text).join("");
+    const text = chunks
+      .filter((c) => c.type === "text")
+      .map((c) => c.text)
+      .join("");
     expect(text).toBe("You highlighted two passages.");
-    expect(
-      chunks.some((c) => c.type === "tool-step" && c.phase === "start" && c.tool === "get_annotations"),
-    ).toBe(true);
-    const toolEnd = chunks.find(
-      (c) => c.type === "tool-step" && c.phase === "end" && c.isError === false,
+    expect(chunks.some((c) => c.type === "tool-step" && c.phase === "start" && c.tool === "get_annotations")).toBe(
+      true,
     );
+    const toolEnd = chunks.find((c) => c.type === "tool-step" && c.phase === "end" && c.isError === false);
     expect(toolEnd).toBeDefined();
     expect(toolEnd?.type === "tool-step" && toolEnd.output).toContain("barter myth");
 
@@ -284,9 +347,7 @@ describe("AgentThread", () => {
       },
     ]);
     const { deps, stores } = createInMemoryDeps({ books: BOOKS });
-    deps.extraContext = async () => [
-      { source: "Dictionary (dictionary/vocabulary)", content: "saved term context" },
-    ];
+    deps.extraContext = async () => [{ source: "Dictionary (dictionary/vocabulary)", content: "saved term context" }];
     deps.extraMemoryCandidates = async () => [
       { scope: "book:b1", kind: "insight", content: "A durable plugin insight." },
     ];
@@ -309,44 +370,71 @@ describe("AgentThread", () => {
   test("extension context receives the turn cancellation signal before inference", async () => {
     const { faux, model } = makeFaux();
     let inferred = false;
-    faux.setResponses([() => { inferred = true; return fauxAssistantMessage("Unexpected"); }]);
+    faux.setResponses([
+      () => {
+        inferred = true;
+        return fauxAssistantMessage("Unexpected");
+      },
+    ]);
     const { deps } = createInMemoryDeps({ books: BOOKS });
     let entered!: () => void, finish!: () => void;
-    const started = new Promise<void>(resolve => { entered = resolve; });
-    const source = new Promise<void>(resolve => { finish = resolve; });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const source = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
     let observed: AbortSignal | undefined;
-    deps.extraContext = async request => {
+    deps.extraContext = async (request) => {
       observed = request.signal;
-      entered(); await source;
+      entered();
+      await source;
       return [{ source: "Plugin", content: "Late context" }];
     };
     const controller = new AbortController();
     const thread = makeThread(deps, model);
-    const result = collect(thread.sendTurn({ text: "Question", signal: controller.signal })).catch(error => error);
+    const result = collect(thread.sendTurn({ text: "Question", signal: controller.signal })).catch((error) => error);
     await started;
     expect(observed).toBeInstanceOf(AbortSignal);
     expect(observed!.aborted).toBe(false);
     controller.abort(new Error("Turn cancelled"));
     expect(observed!.aborted).toBe(true);
-    finish(); await result;
+    finish();
+    await result;
     expect(inferred).toBe(false);
   });
 
   test("memory opt-out keeps chat and ask history but skips legacy adoption, extraction, candidates and insights", async () => {
     const { faux, model } = makeFaux();
     faux.setResponses([fauxAssistantMessage("Still answering.")]);
-    const state = memoryPolicyState(); state.set(false);
-    const { deps, stores } = createInMemoryDeps({ books: BOOKS.map(book => ({ ...book, narrativity: "expository", spoilerSensitive: false })), turns: { "book:b1": [
-      { role: "user", content: "Legacy request", createdAt: "2026-01-01T00:00:00Z" },
-      { role: "assistant", content: "Legacy answer", createdAt: "2026-01-01T00:00:01Z" },
-    ] } });
+    const state = memoryPolicyState();
+    state.set(false);
+    const { deps, stores } = createInMemoryDeps({
+      books: BOOKS.map((book) => ({ ...book, narrativity: "expository", spoilerSensitive: false })),
+      turns: {
+        "book:b1": [
+          { role: "user", content: "Legacy request", createdAt: "2026-01-01T00:00:00Z" },
+          { role: "assistant", content: "Legacy answer", createdAt: "2026-01-01T00:00:01Z" },
+        ],
+      },
+    });
     deps.memoryPolicy = state.policy;
-    let modelCalls = 0, candidateCalls = 0;
-    deps.extraMemoryCandidates = async () => { candidateCalls++; return []; };
+    let modelCalls = 0,
+      candidateCalls = 0;
+    deps.extraMemoryCandidates = async () => {
+      candidateCalls++;
+      return [];
+    };
     const thread = new AgentThread({
-      scope: { kind: "book", bookId: "b1" as Id }, deps, resolveModel: () => model,
-      getApiKey: () => "test", streamFn: streamSimple,
-      completeFn: async () => { modelCalls++; return fauxAssistantMessage("must not execute"); },
+      scope: { kind: "book", bookId: "b1" as Id },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test",
+      streamFn: streamSimple,
+      completeFn: async () => {
+        modelCalls++;
+        return fauxAssistantMessage("must not execute");
+      },
     });
     await collect(hostTurn(stores.turns, thread, { text: "New question" }));
     await thread.flushBackgroundWork();
@@ -354,7 +442,9 @@ describe("AgentThread", () => {
     expect(stores.asks).toHaveLength(1);
     expect(stores.insights.size).toBe(0);
     expect(stores.memories).toHaveLength(0);
-    expect(modelCalls).toBe(0); expect(candidateCalls).toBe(0); expect(state.count()).toBe(0);
+    expect(modelCalls).toBe(0);
+    expect(candidateCalls).toBe(0);
+    expect(state.count()).toBe(0);
   });
 
   test("memory revocation drops in-flight plugin candidates and queued pipelines without reviving on re-enable", async () => {
@@ -363,12 +453,21 @@ describe("AgentThread", () => {
     const state = memoryPolicyState();
     const { deps, stores } = createInMemoryDeps({ books: BOOKS, insights: { "book:b1": "existing" } });
     deps.memoryPolicy = state.policy;
-    let entered!: () => void, release!: () => void, candidateCalls = 0;
-    const waiting = new Promise<void>(resolve => { entered = resolve; });
-    const delayed = new Promise<void>(resolve => { release = resolve; });
+    let entered!: () => void,
+      release!: () => void,
+      candidateCalls = 0;
+    const waiting = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const delayed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     deps.extraMemoryCandidates = async () => {
       candidateCalls++;
-      if (candidateCalls === 1) { entered(); await delayed; }
+      if (candidateCalls === 1) {
+        entered();
+        await delayed;
+      }
       return [{ scope: "book:b1", kind: "insight", content: candidateCalls === 1 ? "old candidate" : "new candidate" }];
     };
     const thread = makeThread(deps, model);
@@ -376,7 +475,8 @@ describe("AgentThread", () => {
     await waiting;
     await collect(thread.sendTurn({ text: "Queued second" }));
     expect(state.count()).toBe(2);
-    state.set(false); state.set(true);
+    state.set(false);
+    state.set(true);
     await thread.flushBackgroundWork();
     release();
     await Promise.resolve();
@@ -386,7 +486,7 @@ describe("AgentThread", () => {
     expect(state.count()).toBe(0);
     await collect(thread.sendTurn({ text: "Fresh third" }));
     await thread.flushBackgroundWork();
-    expect(stores.memories.map(memory => memory.content)).toEqual(["new candidate"]);
+    expect(stores.memories.map((memory) => memory.content)).toEqual(["new candidate"]);
     expect(candidateCalls).toBe(2);
     expect(state.count()).toBe(0);
   });
@@ -515,8 +615,14 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
     faux.setResponses([
-      (context) => { contexts.push(context); return fauxAssistantMessage("a1"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a2");
+      },
     ]);
     const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
@@ -551,17 +657,30 @@ describe("AgentThread", () => {
     expect(JSON.stringify(latestMessage)).toContain("SECOND VIEWPORT");
     expect(JSON.stringify(latestMessage)).toContain("approximately 80%");
     // Cursor text is transient model context, not part of the durable transcript.
-    expect(turns.get("book:b1")?.filter((turn) => turn.role === "user").map((turn) => turn.content))
-      .toEqual(["q1", "q2"]);
+    expect(
+      turns
+        .get("book:b1")
+        ?.filter((turn) => turn.role === "user")
+        .map((turn) => turn.content),
+    ).toEqual(["q1", "q2"]);
   });
 
   test("profile changes refresh the next turn in the same chapter without waiting for a crossing", async () => {
     const { faux, model } = makeFaux();
     const prompts: (string | undefined)[] = [];
     faux.setResponses([
-      (context) => { prompts.push(context.systemPrompt); return fauxAssistantMessage("a1"); },
-      (context) => { prompts.push(context.systemPrompt); return fauxAssistantMessage("a2"); },
-      (context) => { prompts.push(context.systemPrompt); return fauxAssistantMessage("a3"); },
+      (context) => {
+        prompts.push(context.systemPrompt);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        prompts.push(context.systemPrompt);
+        return fauxAssistantMessage("a2");
+      },
+      (context) => {
+        prompts.push(context.systemPrompt);
+        return fauxAssistantMessage("a3");
+      },
     ]);
     const { deps } = createInMemoryDeps({
       books: BOOKS,
@@ -576,7 +695,10 @@ describe("AgentThread", () => {
     const thread = makeThread(deps, model);
 
     await collect(thread.sendTurn({ text: "q1", readingCursor: { chapter: "ch1.xhtml" } }));
-    await deps.profile.updateProfile({ summary: "NEW PROFILE", expectedRevision: (await deps.profile.readProfile()).revision });
+    await deps.profile.updateProfile({
+      summary: "NEW PROFILE",
+      expectedRevision: (await deps.profile.readProfile()).revision,
+    });
     await collect(thread.sendTurn({ text: "q2", readingCursor: { chapter: "ch1.xhtml" } }));
     expect(prompts[1]).toContain("NEW PROFILE");
     expect(prompts[1]).not.toContain("old profile");
@@ -590,9 +712,18 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
     faux.setResponses([
-      (context) => { contexts.push(context); return fauxAssistantMessage("a1"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a3"); },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a2");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a3");
+      },
     ]);
     const { deps } = makeDeps();
     const thread = makeThread(deps, model);
@@ -609,10 +740,22 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
     faux.setResponses([
-      (context) => { contexts.push(context); return fauxAssistantMessage("a1"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a3"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a4"); },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a2");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a3");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a4");
+      },
     ]);
     const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
@@ -631,9 +774,18 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
     faux.setResponses([
-      (context) => { contexts.push(context); return fauxAssistantMessage("a1"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a3"); },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a2");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a3");
+      },
     ]);
     const { deps } = makeDeps();
     const thread = makeThread(deps, model);
@@ -649,9 +801,18 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
     faux.setResponses([
-      (context) => { contexts.push(context); return fauxAssistantMessage("a1"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a3"); },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a2");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a3");
+      },
     ]);
     const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
@@ -698,10 +859,7 @@ describe("AgentThread", () => {
 
   test("a reasoning-only completion is surfaced as one retryable provider error", async () => {
     const { faux, model } = makeFaux();
-    faux.setResponses([
-      fauxAssistantMessage(""),
-      fauxAssistantMessage("recovered"),
-    ]);
+    faux.setResponses([fauxAssistantMessage(""), fauxAssistantMessage("recovered")]);
     const { deps, turns } = makeDeps();
     const thread = new AgentThread({
       scope: { kind: "global", threadId: "empty-response" },
@@ -757,23 +915,30 @@ describe("AgentThread", () => {
 
     const chunks = await collect(thread.sendTurn({ text: "展示这本书" }));
 
-    expect(chunks).toContainEqual(expect.objectContaining({
-      type: "reference",
-      reference: expect.objectContaining({ kind: "books" }),
-    }));
+    expect(chunks).toContainEqual(
+      expect.objectContaining({
+        type: "reference",
+        reference: expect.objectContaining({ kind: "books" }),
+      }),
+    );
     expect(chunks.filter((chunk) => chunk.type === "text" && chunk.text.length > 0)).toHaveLength(0);
   });
 
   test("a completed structured interaction remains a visible delivery when prose is empty", async () => {
     const { faux, model } = makeFaux();
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("ask_user", {
-        question: "继续吗？",
-        options: [
-          { id: "yes", label: "继续" },
-          { id: "no", label: "停止" },
+      fauxAssistantMessage(
+        [
+          fauxToolCall("ask_user", {
+            question: "继续吗？",
+            options: [
+              { id: "yes", label: "继续" },
+              { id: "no", label: "停止" },
+            ],
+          }),
         ],
-      })], { stopReason: "toolUse" }),
+        { stopReason: "toolUse" },
+      ),
       fauxAssistantMessage(""),
     ]);
     const { deps } = createInMemoryDeps({ books: BOOKS });
@@ -788,11 +953,13 @@ describe("AgentThread", () => {
 
     const chunks = await collect(thread.sendTurn({ text: "帮我选择下一步" }));
 
-    expect(chunks).toContainEqual(expect.objectContaining({
-      type: "interaction",
-      phase: "response",
-      answer: { optionId: "yes", text: "继续" },
-    }));
+    expect(chunks).toContainEqual(
+      expect.objectContaining({
+        type: "interaction",
+        phase: "response",
+        answer: { optionId: "yes", text: "继续" },
+      }),
+    );
     expect(chunks.filter((chunk) => chunk.type === "text" && chunk.text.length > 0)).toHaveLength(0);
   });
 
@@ -800,8 +967,14 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
     faux.setResponses([
-      (context) => { contexts.push(context); return fauxAssistantMessage("a1"); },
-      (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a1");
+      },
+      (context) => {
+        contexts.push(context);
+        return fauxAssistantMessage("a2");
+      },
     ]);
     const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
@@ -856,7 +1029,12 @@ describe("AgentThread", () => {
   test("the host turn id separates this turn from an identical earlier question (global hydration)", async () => {
     const { faux, model } = makeFaux();
     let captured: Context | undefined;
-    faux.setResponses([(context) => { captured = context; return fauxAssistantMessage("ok"); }]);
+    faux.setResponses([
+      (context) => {
+        captured = context;
+        return fauxAssistantMessage("ok");
+      },
+    ]);
     const { deps, turns } = makeDeps();
     // The earlier ask failed (its error stub never loads) and the reader asked again.
     turns.set("global:t2", [
@@ -864,8 +1042,12 @@ describe("AgentThread", () => {
       { id: "u2", role: "user", content: "same q", createdAt: "2026-06-02T00:00:00Z" },
     ]);
     const thread = new AgentThread({
-      scope: { kind: "global", threadId: "t2" }, deps, resolveModel: () => model,
-      getApiKey: () => "test-key", completeFn: noopComplete, streamFn: streamSimple,
+      scope: { kind: "global", threadId: "t2" },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
+      completeFn: noopComplete,
+      streamFn: streamSimple,
     });
 
     await collect(thread.sendTurn({ text: "same q", turnId: "u2" }));

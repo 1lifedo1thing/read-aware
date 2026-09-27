@@ -38,7 +38,11 @@ export const WithAction: Story = {
     variant: "destructive",
     title: "Sync failed",
     children: "Your changes could not be saved.",
-    action: <Button variant="link" size="sm">Retry</Button>,
+    action: (
+      <Button variant="link" size="sm">
+        Retry
+      </Button>
+    ),
   },
 };
 

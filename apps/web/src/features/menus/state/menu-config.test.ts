@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  clampPrimaryNavVisible,
-  CORE_MENU_DEFAULTS,
-  resolveSurfaceLayout,
-} from "./menu-config";
+import { clampPrimaryNavVisible, CORE_MENU_DEFAULTS, resolveSurfaceLayout } from "./menu-config";
 
 describe("shelf menu placement", () => {
   test("drops the former context item now that Agent is primary navigation", () => {
@@ -31,10 +27,12 @@ describe("primary navigation guards", () => {
   });
 
   test("stats stays out of the switcher for configs that predate primaryNav", () => {
-    const layout = resolveSurfaceLayout(
-      { visible: [...CORE_MENU_DEFAULTS.primaryNav], overflow: ["core:stats"] },
-      ["core:library", "core:agent", "core:stats", "plugin:reader:feed"],
-    );
+    const layout = resolveSurfaceLayout({ visible: [...CORE_MENU_DEFAULTS.primaryNav], overflow: ["core:stats"] }, [
+      "core:library",
+      "core:agent",
+      "core:stats",
+      "plugin:reader:feed",
+    ]);
     expect(layout.visible).toEqual(["core:library", "core:agent"]);
     expect(layout.overflow).toEqual(["core:stats", "plugin:reader:feed"]);
   });
@@ -85,10 +83,10 @@ describe("phone reader toolbar", () => {
   });
 
   test("keeps notes where the user tucked it and sends new plugin actions to overflow", () => {
-    const layout = resolveSurfaceLayout(
-      { visible: ["core:toc", "core:chat"], overflow: ["core:notes"] },
-      [...CORE_MENU_DEFAULTS.readerToolbar, "plugin:tts:speak"],
-    );
+    const layout = resolveSurfaceLayout({ visible: ["core:toc", "core:chat"], overflow: ["core:notes"] }, [
+      ...CORE_MENU_DEFAULTS.readerToolbar,
+      "plugin:tts:speak",
+    ]);
     expect(layout.visible).toEqual(["core:toc", "core:chat", "core:navigator", "core:appearance"]);
     expect(layout.overflow).toEqual(["core:notes", "plugin:tts:speak"]);
   });

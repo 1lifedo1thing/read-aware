@@ -6,125 +6,221 @@ const at = (cfi: string, bookId = "book"): ReadingLocation => ({ bookId, content
 
 test("reload replaces the same-book source, drops old locators and waits for new readiness", async () => {
   const f = fixture();
-  let nextId = "", attach!: () => void;
-  const off = f.runtime.bindShell({ open: (bookId, intent, options) => {
-    expect(bookId).toBe("book"); expect(options).toEqual({ resetPosition: true });
-    nextId = f.runtime.begin(bookId, intent);
-    attach = () => f.runtime.attach(nextId, {
-      navigate: async () => { throw Error("Old locators must not be replayed"); },
-      step: async direction => { expect(direction).toBe("start"); return { bookId, contentVersion: "new", fraction: 0 }; },
-    }, { bookId, contentVersion: "new", fraction: 0.3 });
-  }, close: () => f.runtime.closed() });
+  let nextId = "",
+    attach!: () => void;
+  const off = f.runtime.bindShell({
+    open: (bookId, intent, options) => {
+      expect(bookId).toBe("book");
+      expect(options).toEqual({ resetPosition: true });
+      nextId = f.runtime.begin(bookId, intent);
+      attach = () =>
+        f.runtime.attach(
+          nextId,
+          {
+            navigate: async () => {
+              throw Error("Old locators must not be replayed");
+            },
+            step: async (direction) => {
+              expect(direction).toBe("start");
+              return { bookId, contentVersion: "new", fraction: 0 };
+            },
+          },
+          { bookId, contentVersion: "new", fraction: 0.3 },
+        );
+    },
+    close: () => f.runtime.closed(),
+  });
   try {
     let completed = false;
-    const pending = f.runtime.reload(undefined, { sessionId: f.id }).then(value => { completed = true; return value; });
+    const pending = f.runtime.reload(undefined, { sessionId: f.id }).then((value) => {
+      completed = true;
+      return value;
+    });
     await Promise.resolve();
-    expect(nextId).not.toBe(f.id); expect(completed).toBe(false); expect(f.runtime.snapshot().status).toBe("loading");
+    expect(nextId).not.toBe(f.id);
+    expect(completed).toBe(false);
+    expect(f.runtime.snapshot().status).toBe("loading");
     attach();
-    expect(await pending).toEqual({ status: "completed", sessionId: nextId, location: { bookId: "book", contentVersion: "new", fraction: 0 } });
-    f.detach(); expect(f.runtime.snapshot().status).toBe("ready");
+    expect(await pending).toEqual({
+      status: "completed",
+      sessionId: nextId,
+      location: { bookId: "book", contentVersion: "new", fraction: 0 },
+    });
+    f.detach();
+    expect(f.runtime.snapshot().status).toBe("ready");
     await expect(f.runtime.reload(undefined, { sessionId: f.id })).rejects.toMatchObject({ code: "reader/superseded" });
-  } finally { off(); f.runtime.closed(); }
+  } finally {
+    off();
+    f.runtime.closed();
+  }
 });
 
 test("cancelled reload cannot reopen after a late shell lookup", async () => {
   const f = fixture();
   const abort = new AbortController();
   let release!: () => void;
-  const ready = new Promise<void>(resolve => { release = resolve; });
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   let late: unknown;
-  const off = f.runtime.bindShell({ open: async (bookId, intent) => {
-    await ready;
-    try { f.runtime.begin(bookId, intent); } catch (error) { late = error; throw error; }
-  }, close: () => f.runtime.closed() });
+  const off = f.runtime.bindShell({
+    open: async (bookId, intent) => {
+      await ready;
+      try {
+        f.runtime.begin(bookId, intent);
+      } catch (error) {
+        late = error;
+        throw error;
+      }
+    },
+    close: () => f.runtime.closed(),
+  });
   try {
-    const pending = f.runtime.reload(abort.signal).catch(error => error);
-    abort.abort(new AppError("plugin/cancelled", "Retired")); release();
+    const pending = f.runtime.reload(abort.signal).catch((error) => error);
+    abort.abort(new AppError("plugin/cancelled", "Retired"));
+    release();
     expect(await pending).toMatchObject({ code: "plugin/cancelled" });
     await Promise.resolve();
     expect(late).toMatchObject({ code: "reader/superseded" });
     expect(f.runtime.snapshot().sessionId).toBe(f.id);
-  } finally { off(); f.detach(); f.runtime.closed(); }
+  } finally {
+    off();
+    f.detach();
+    f.runtime.closed();
+  }
 });
 
 test("pagination snapshots copy engine state, update after commands and clear at lifecycle boundaries", async () => {
   const runtime = new ReadingSessionController();
   expect(runtime.snapshot().pagination).toBeNull();
-  const metrics = { layout: "reflowable" as const, flow: "paginated" as const, section: { index: 0, count: 2 }, screen: { index: 0, count: 4 } };
-  const engine: ReadingEngineAdapter = { pagination: () => metrics,
-    navigate: async () => { metrics.screen.index = 2; return at("moved"); },
-    step: async () => { metrics.screen.index++; return at("step"); } };
-  const id = runtime.begin("book"); expect(runtime.snapshot().pagination).toBeNull();
+  const metrics = {
+    layout: "reflowable" as const,
+    flow: "paginated" as const,
+    section: { index: 0, count: 2 },
+    screen: { index: 0, count: 4 },
+  };
+  const engine: ReadingEngineAdapter = {
+    pagination: () => metrics,
+    navigate: async () => {
+      metrics.screen.index = 2;
+      return at("moved");
+    },
+    step: async () => {
+      metrics.screen.index++;
+      return at("step");
+    },
+  };
+  const id = runtime.begin("book");
+  expect(runtime.snapshot().pagination).toBeNull();
   const detach = runtime.attach(id, engine, at("start"));
   try {
     metrics.screen.count = 5;
     expect(runtime.snapshot().pagination?.screen?.count).toBe(4);
-    const copy = runtime.snapshot(); copy.pagination!.screen!.index = 99;
+    const copy = runtime.snapshot();
+    copy.pagination!.screen!.index = 99;
     expect(runtime.snapshot().pagination?.screen?.index).toBe(0);
     await runtime.navigate({ cfi: "moved" });
     expect(runtime.snapshot().pagination?.screen).toEqual({ index: 2, count: 5 });
-    await runtime.step("next"); expect(runtime.snapshot().pagination?.screen?.index).toBe(3);
-    runtime.fail(id, Error("render failed")); expect(runtime.snapshot().pagination).toBeNull();
-    runtime.relocate(id, at("late"), "", engine); expect(runtime.snapshot().pagination).toBeNull();
-    runtime.begin("other"); expect(runtime.snapshot().pagination).toBeNull();
-    runtime.relocate(id, at("stale"), "", engine); expect(runtime.snapshot().bookId).toBe("other");
-    runtime.closed(); expect(runtime.snapshot().pagination).toBeNull();
-  } finally { detach(); runtime.closed(); }
+    await runtime.step("next");
+    expect(runtime.snapshot().pagination?.screen?.index).toBe(3);
+    runtime.fail(id, Error("render failed"));
+    expect(runtime.snapshot().pagination).toBeNull();
+    runtime.relocate(id, at("late"), "", engine);
+    expect(runtime.snapshot().pagination).toBeNull();
+    runtime.begin("other");
+    expect(runtime.snapshot().pagination).toBeNull();
+    runtime.relocate(id, at("stale"), "", engine);
+    expect(runtime.snapshot().bookId).toBe("other");
+    runtime.closed();
+    expect(runtime.snapshot().pagination).toBeNull();
+  } finally {
+    detach();
+    runtime.closed();
+  }
 });
 
 test("source section and boundary jumps preserve version, guards and history unlike page steps", async () => {
-  const f = fixture(); let target: unknown;
-  f.engine.navigate = async input => { target = input; return at(input.cfi ?? `section-${input.sectionIndex}`); };
+  const f = fixture();
+  let target: unknown;
+  f.engine.navigate = async (input) => {
+    target = input;
+    return at(input.cfi ?? `section-${input.sectionIndex}`);
+  };
   try {
-    for (const input of [{ sectionIndex: -1, contentVersion: "sha256:fixture" }, { sectionIndex: 0.5, contentVersion: "sha256:fixture" },
-      { sectionIndex: 0 }, { sectionIndex: 0, contentVersion: "sha256:fixture", fraction: 0.5 }]) {
+    for (const input of [
+      { sectionIndex: -1, contentVersion: "sha256:fixture" },
+      { sectionIndex: 0.5, contentVersion: "sha256:fixture" },
+      { sectionIndex: 0 },
+      { sectionIndex: 0, contentVersion: "sha256:fixture", fraction: 0.5 },
+    ]) {
       await expect(f.runtime.navigate(input)).rejects.toMatchObject({ code: "reader/invalid-target" });
     }
-    await expect(f.runtime.navigate({ sectionIndex: 0, contentVersion: "old" })).rejects.toMatchObject({ code: "reader/stale-location" });
+    await expect(f.runtime.navigate({ sectionIndex: 0, contentVersion: "old" })).rejects.toMatchObject({
+      code: "reader/stale-location",
+    });
     expect(target).toBeUndefined();
-    await f.runtime.step("next"); expect(f.runtime.snapshot().history.canGoBack).toBe(false);
+    await f.runtime.step("next");
+    expect(f.runtime.snapshot().history.canGoBack).toBe(false);
     await f.runtime.step("next-section", undefined, { sessionId: f.id });
     expect(f.runtime.snapshot().history.canGoBack).toBe(true);
     expect((await f.runtime.back()).location.cfi).toBe("next");
     await f.runtime.navigate({ sectionIndex: 0, contentVersion: "sha256:fixture" });
     expect(target).toMatchObject({ sectionIndex: 0, bookId: "book" });
     expect(f.runtime.snapshot().history.canGoForward).toBe(false);
-    await expect(f.runtime.step("end", undefined, { sessionId: "old" })).rejects.toMatchObject({ code: "reader/superseded" });
+    await expect(f.runtime.step("end", undefined, { sessionId: "old" })).rejects.toMatchObject({
+      code: "reader/superseded",
+    });
     expect((await f.runtime.step("end")).location.cfi).toBe("end");
     expect((await f.runtime.back()).location.cfi).toBe("section-0");
     for (const action of ["next-chapter", "previous-chapter"] as const) {
       expect((await f.runtime.step(action, undefined, { sessionId: f.id })).location.cfi).toBe(action);
       expect((await f.runtime.back()).location.cfi).toBe("section-0");
     }
-  } finally { f.detach(); }
+  } finally {
+    f.detach();
+  }
 });
 
 test("cancelled or closed pending shell lookups cannot begin a late reading session", async () => {
   for (const cancel of ["abort", "close"] as const) {
-    const runtime = new ReadingSessionController(() => {}, 1000), abort = new AbortController();
+    const runtime = new ReadingSessionController(() => {}, 1000),
+      abort = new AbortController();
     let release!: () => void, lateCode: string | undefined;
-    const hold = new Promise<void>(resolve => { release = resolve; });
-    runtime.bindShell({ open: async (bookId, intent) => {
-      await hold;
-      try { runtime.begin(bookId, intent); } catch (error) { lateCode = (error as AppError).code; throw error; }
-    }, close: () => {} });
-    const pending = runtime.navigate({ bookId: "late-book" }, abort.signal).catch(error => error);
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    runtime.bindShell({
+      open: async (bookId, intent) => {
+        await hold;
+        try {
+          runtime.begin(bookId, intent);
+        } catch (error) {
+          lateCode = (error as AppError).code;
+          throw error;
+        }
+      },
+      close: () => {},
+    });
+    const pending = runtime.navigate({ bookId: "late-book" }, abort.signal).catch((error) => error);
     if (cancel === "abort") abort.abort(new AppError("plugin/cancelled", "retired"));
     else await runtime.close();
-    release(); await pending; await new Promise(resolve => setTimeout(resolve, 0));
-    expect(lateCode).toBe("reader/superseded"); expect(runtime.snapshot().sessionId).toBeNull();
+    release();
+    await pending;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(lateCode).toBe("reader/superseded");
+    expect(runtime.snapshot().sessionId).toBeNull();
   }
 });
 function fixture(deadline = 1000) {
   const errors: unknown[] = [];
-  const runtime = new ReadingSessionController(error => errors.push(error), deadline);
+  const runtime = new ReadingSessionController((error) => errors.push(error), deadline);
   const id = runtime.begin("book");
   const engine: ReadingEngineAdapter = {
-    navigate: async target => {
+    navigate: async (target) => {
       if (target.cfi === "missing") throw new AppError("reader/target-not-found", "Missing location");
       return at(target.cfi ?? "fraction");
     },
-    step: async direction => at(direction),
+    step: async (direction) => at(direction),
   };
   const detach = runtime.attach(id, engine, at("start"));
   return { runtime, id, engine, detach, errors };
@@ -132,10 +228,17 @@ function fixture(deadline = 1000) {
 
 test("selection snapshots isolate copies and clear on navigation, detach, failure and session replacement", () => {
   const f = fixture();
-  const selected = { id: "selection", text: "needle", textLength: 6,
-    range: { bookId: "book", contentVersion: "sha256:fixture", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:6)" } };
+  const selected = {
+    id: "selection",
+    text: "needle",
+    textLength: 6,
+    range: { bookId: "book", contentVersion: "sha256:fixture", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:6)" },
+  };
   const observed: Array<string | null> = [];
-  const off = f.runtime.observe(snapshot => { observed.push(snapshot.selection?.text ?? null); if (snapshot.selection) snapshot.selection.text = "mutated"; });
+  const off = f.runtime.observe((snapshot) => {
+    observed.push(snapshot.selection?.text ?? null);
+    if (snapshot.selection) snapshot.selection.text = "mutated";
+  });
   f.runtime.selectionChanged(f.id, selected);
   selected.text = "changed later";
   expect(f.runtime.snapshot().selection?.text).toBe("needle");
@@ -145,47 +248,74 @@ test("selection snapshots isolate copies and clear on navigation, detach, failur
   expect(f.runtime.snapshot().selection?.text).toBe("needle");
   f.runtime.relocate(f.id, at("next"), "next page");
   expect(f.runtime.snapshot().selection).toBeNull();
-  f.runtime.selectionChanged(f.id, selected); f.detach();
+  f.runtime.selectionChanged(f.id, selected);
+  f.detach();
   expect(f.runtime.snapshot().selection).toBeNull();
   f.runtime.selectionChanged(f.id, selected);
   expect(f.runtime.snapshot().selection).toBeNull();
   f.runtime.attach(f.id, f.engine, at("start"));
-  f.runtime.selectionChanged(f.id, selected); f.runtime.fail(f.id, Error("failed"));
+  f.runtime.selectionChanged(f.id, selected);
+  f.runtime.fail(f.id, Error("failed"));
   expect(f.runtime.snapshot().selection).toBeNull();
-  const next = f.runtime.begin("book"); f.runtime.attach(next, f.engine, at("start"));
+  const next = f.runtime.begin("book");
+  f.runtime.attach(next, f.engine, at("start"));
   f.runtime.selectionChanged(f.id, selected);
   expect(f.runtime.snapshot().selection).toBeNull();
-  f.runtime.selectionChanged(next, selected); f.runtime.closed();
+  f.runtime.selectionChanged(next, selected);
+  f.runtime.closed();
   expect(f.runtime.snapshot().selection).toBeNull();
-  expect(observed).toContain("needle"); off();
+  expect(observed).toContain("needle");
+  off();
 });
 
 test("snapshot plus subscription starts at the current revision and isolates failing observers", async () => {
-  const f = fixture(); const seen: number[] = [];
-  const off = f.runtime.observe(state => { seen.push(state.revision); state.location!.cfi = "mutated"; });
-  f.runtime.observe(async () => { throw new Error("observer failed"); });
+  const f = fixture();
+  const seen: number[] = [];
+  const off = f.runtime.observe((state) => {
+    seen.push(state.revision);
+    state.location!.cfi = "mutated";
+  });
+  f.runtime.observe(async () => {
+    throw new Error("observer failed");
+  });
   await Promise.resolve();
-  expect(f.errors).toHaveLength(1); expect(f.runtime.snapshot().location?.cfi).toBe("start");
-  f.runtime.relocate(f.id, at("page"), "visible"); expect(seen).toHaveLength(2);
-  expect(seen[1]).toBeGreaterThan(seen[0]); off();
-  f.runtime.relocate("stale-id", at("stale"), "stale"); expect(f.runtime.snapshot().visibleText).toBe("visible");
+  expect(f.errors).toHaveLength(1);
+  expect(f.runtime.snapshot().location?.cfi).toBe("start");
+  f.runtime.relocate(f.id, at("page"), "visible");
+  expect(seen).toHaveLength(2);
+  expect(seen[1]).toBeGreaterThan(seen[0]);
+  off();
+  f.runtime.relocate("stale-id", at("stale"), "stale");
+  expect(f.runtime.snapshot().visibleText).toBe("visible");
 });
 
 test("completion waits for the renderer and failures never create a history entry", async () => {
-  const f = fixture(); let finish!: (location: ReadingLocation) => void;
-  f.engine.navigate = () => new Promise(resolve => { finish = resolve; });
+  const f = fixture();
+  let finish!: (location: ReadingLocation) => void;
+  f.engine.navigate = () =>
+    new Promise((resolve) => {
+      finish = resolve;
+    });
   let completed = false;
-  const pending = f.runtime.navigate({ cfi: "target" }).then(result => { completed = true; return result; });
-  await new Promise(resolve => setTimeout(resolve, 0)); expect(completed).toBe(false);
-  finish(at("actual")); expect((await pending).location.cfi).toBe("actual");
-  f.engine.navigate = async () => { throw new Error("engine failed"); };
+  const pending = f.runtime.navigate({ cfi: "target" }).then((result) => {
+    completed = true;
+    return result;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(completed).toBe(false);
+  finish(at("actual"));
+  expect((await pending).location.cfi).toBe("actual");
+  f.engine.navigate = async () => {
+    throw new Error("engine failed");
+  };
   await expect(f.runtime.navigate({ cfi: "missing" })).rejects.toThrow("engine failed");
   expect(f.runtime.snapshot().location?.cfi).toBe("actual");
 });
 
 test("back and forward traverse without branching; a new jump discards forward history", async () => {
   const { runtime } = fixture();
-  await runtime.navigate({ cfi: "middle" }); await runtime.navigate({ cfi: "end" });
+  await runtime.navigate({ cfi: "middle" });
+  await runtime.navigate({ cfi: "end" });
   expect((await runtime.back()).location.cfi).toBe("middle");
   expect((await runtime.back()).location.cfi).toBe("start");
   expect((await runtime.forward()).location.cfi).toBe("middle");
@@ -195,84 +325,147 @@ test("back and forward traverse without branching; a new jump discards forward h
 });
 
 test("a stale content version and out-of-range fraction fail before engine movement", async () => {
-  const f = fixture(); let moved = false; f.engine.navigate = async () => { moved = true; return at("bad"); };
-  await expect(f.runtime.navigate({ contentVersion: "old", cfi: "somewhere" })).rejects.toMatchObject({ code: "reader/stale-location" });
+  const f = fixture();
+  let moved = false;
+  f.engine.navigate = async () => {
+    moved = true;
+    return at("bad");
+  };
+  await expect(f.runtime.navigate({ contentVersion: "old", cfi: "somewhere" })).rejects.toMatchObject({
+    code: "reader/stale-location",
+  });
   await expect(f.runtime.navigate({ fraction: 1.1 })).rejects.toMatchObject({ code: "reader/invalid-target" });
   expect(moved).toBe(false);
 });
 
 test("malformed text quotes cannot move the engine before validation", async () => {
-  const f = fixture(); let moved = false;
-  f.engine.navigate = async () => { moved = true; return at("bad"); };
+  const f = fixture();
+  let moved = false;
+  f.engine.navigate = async () => {
+    moved = true;
+    return at("bad");
+  };
   for (const target of [
     { cfi: "page", textQuote: { exact: "needle" } },
     { contentVersion: "sha256:fixture", textQuote: { exact: "needle" } },
     { cfi: "page", contentVersion: "sha256:fixture", textQuote: { exact: " " } },
     { cfi: "page", contentVersion: "sha256:fixture", textQuote: { exact: "needle", prefix: "x".repeat(8193) } },
-  ]) await expect(f.runtime.navigate(target)).rejects.toMatchObject({ code: "reader/invalid-target" });
+  ])
+    await expect(f.runtime.navigate(target)).rejects.toMatchObject({ code: "reader/invalid-target" });
   expect(moved).toBe(false);
 });
 
 test("closing and a newer user open invalidate late results and stale engine cleanup", async () => {
-  const f = fixture(); let finish!: (location: ReadingLocation) => void;
-  f.engine.navigate = () => new Promise(resolve => { finish = resolve; });
-  const old = f.runtime.navigate({ cfi: "old" }).catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const f = fixture();
+  let finish!: (location: ReadingLocation) => void;
+  f.engine.navigate = () =>
+    new Promise((resolve) => {
+      finish = resolve;
+    });
+  const old = f.runtime.navigate({ cfi: "old" }).catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   const nextId = f.runtime.begin("next");
-  f.runtime.attach(nextId, { navigate: async () => at("next", "next"), step: async () => at("next", "next") }, at("next", "next"));
-  f.detach(); finish(at("old"));
+  f.runtime.attach(
+    nextId,
+    { navigate: async () => at("next", "next"), step: async () => at("next", "next") },
+    at("next", "next"),
+  );
+  f.detach();
+  finish(at("old"));
   expect(await old).toMatchObject({ code: "reader/superseded" });
   expect(f.runtime.snapshot()).toMatchObject({ bookId: "next", status: "ready" });
-  f.runtime.closed(); expect(f.runtime.snapshot().status).toBe("idle");
+  f.runtime.closed();
+  expect(f.runtime.snapshot().status).toBe("idle");
 });
 
 test("opening waits for readiness and propagates load failure rather than opened:true", async () => {
   const runtime = new ReadingSessionController();
-  runtime.bindShell({ open: (bookId, intent) => { const id = runtime.begin(bookId, intent); runtime.fail(id, new AppError("fs/not-found", "Source missing")); }, close: () => runtime.closed() });
+  runtime.bindShell({
+    open: (bookId, intent) => {
+      const id = runtime.begin(bookId, intent);
+      runtime.fail(id, new AppError("fs/not-found", "Source missing"));
+    },
+    close: () => runtime.closed(),
+  });
   await expect(runtime.navigate({ bookId: "missing" })).rejects.toMatchObject({ code: "fs/not-found" });
   expect(runtime.snapshot().history.canGoBack).toBe(false);
 });
 
 test("cancellation settles promptly and a late renderer completion cannot publish success", async () => {
-  const f = fixture(); let finish!: (location: ReadingLocation) => void;
-  f.engine.navigate = () => new Promise(resolve => { finish = resolve; });
+  const f = fixture();
+  let finish!: (location: ReadingLocation) => void;
+  f.engine.navigate = () =>
+    new Promise((resolve) => {
+      finish = resolve;
+    });
   const abort = new AbortController();
-  const pending = f.runtime.navigate({ cfi: "late" }, abort.signal).catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0)); abort.abort(new Error("cancelled"));
+  const pending = f.runtime.navigate({ cfi: "late" }, abort.signal).catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  abort.abort(new Error("cancelled"));
   expect(await pending).toMatchObject({ message: "cancelled" });
-  finish(at("late")); await new Promise(resolve => setTimeout(resolve, 0));
+  finish(at("late"));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(f.runtime.snapshot().location?.cfi).toBe("start");
 });
 
 test("a deadline cannot later mutate history or strand readiness subscriptions", async () => {
-  const f = fixture(5); let finish!: (location: ReadingLocation) => void;
-  f.engine.navigate = () => new Promise(resolve => { finish = resolve; });
-  expect(await f.runtime.navigate({ cfi: "late" }).catch(error => error)).toMatchObject({ code: "reader/timeout" });
-  finish(at("late")); await new Promise(resolve => setTimeout(resolve, 0));
+  const f = fixture(5);
+  let finish!: (location: ReadingLocation) => void;
+  f.engine.navigate = () =>
+    new Promise((resolve) => {
+      finish = resolve;
+    });
+  expect(await f.runtime.navigate({ cfi: "late" }).catch((error) => error)).toMatchObject({ code: "reader/timeout" });
+  finish(at("late"));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(f.runtime.snapshot().history.canGoBack).toBe(false);
 });
 
 test("close resolves after the host actually clears its session", async () => {
-  const { runtime } = fixture(); let close!: () => void;
-  runtime.bindShell({ open() {}, close: () => { close = () => runtime.closed(); } });
+  const { runtime } = fixture();
+  let close!: () => void;
+  runtime.bindShell({
+    open() {},
+    close: () => {
+      close = () => runtime.closed();
+    },
+  });
   let completed = false;
-  const pending = runtime.close().then(() => { completed = true; });
-  await Promise.resolve(); expect(completed).toBe(false);
-  close(); await pending; expect(completed).toBe(true);
+  const pending = runtime.close().then(() => {
+    completed = true;
+  });
+  await Promise.resolve();
+  expect(completed).toBe(false);
+  close();
+  await pending;
+  expect(completed).toBe(true);
 });
 
 test("close also joins asynchronous shell retirement after idle and propagates persistence failure", async () => {
   for (const fail of [false, true]) {
     const { runtime } = fixture();
     let release!: () => void;
-    const gate = new Promise<void>(resolve => { release = resolve; });
-    runtime.bindShell({ open() {}, close: async () => {
-      runtime.closed(); await gate;
-      if (fail) throw new AppError("db/locked", "flush failed");
-    } });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    runtime.bindShell({
+      open() {},
+      close: async () => {
+        runtime.closed();
+        await gate;
+        if (fail) throw new AppError("db/locked", "flush failed");
+      },
+    });
     let done = false;
-    const close = runtime.close().then(() => { done = true; return "completed"; }, error => error);
-    await Promise.resolve(); expect(done).toBe(false);
+    const close = runtime.close().then(
+      () => {
+        done = true;
+        return "completed";
+      },
+      (error) => error,
+    );
+    await Promise.resolve();
+    expect(done).toBe(false);
     release();
     if (fail) expect(await close).toMatchObject({ code: "db/locked" });
     else expect(await close).toBe("completed");
@@ -280,25 +473,48 @@ test("close also joins asynchronous shell retirement after idle and propagates p
 });
 
 test("caller cancellation does not cancel an already accepted retirement", async () => {
-  const { runtime } = fixture(), abort = new AbortController();
-  let release!: () => void, retired = false;
-  const gate = new Promise<void>(resolve => { release = resolve; });
-  runtime.bindShell({ open() {}, close: async () => { await gate; retired = true; runtime.closed(); } });
-  const pending = runtime.close(abort.signal).catch(error => error);
+  const { runtime } = fixture(),
+    abort = new AbortController();
+  let release!: () => void,
+    retired = false;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  runtime.bindShell({
+    open() {},
+    close: async () => {
+      await gate;
+      retired = true;
+      runtime.closed();
+    },
+  });
+  const pending = runtime.close(abort.signal).catch((error) => error);
   abort.abort(new AppError("plugin/cancelled", "owner retired"));
   expect(await pending).toMatchObject({ code: "plugin/cancelled" });
-  expect(retired).toBe(false); release(); await gate; await Promise.resolve();
-  expect(retired).toBe(true); expect(runtime.snapshot().status).toBe("idle");
+  expect(retired).toBe(false);
+  release();
+  await gate;
+  await Promise.resolve();
+  expect(retired).toBe(true);
+  expect(runtime.snapshot().status).toBe("idle");
 });
 
 test("a superseding book request does not wait for the old book's readiness timeout", async () => {
   const runtime = new ReadingSessionController();
-  runtime.bindShell({ open: (bookId, intent) => {
-    const id = runtime.begin(bookId, intent);
-    if (bookId === "new") runtime.attach(id, { navigate: async () => at("new", "new"), step: async () => at("new", "new") }, at("new", "new"));
-  }, close: () => runtime.closed() });
-  const first = runtime.navigate({ bookId: "old" }).catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  runtime.bindShell({
+    open: (bookId, intent) => {
+      const id = runtime.begin(bookId, intent);
+      if (bookId === "new")
+        runtime.attach(
+          id,
+          { navigate: async () => at("new", "new"), step: async () => at("new", "new") },
+          at("new", "new"),
+        );
+    },
+    close: () => runtime.closed(),
+  });
+  const first = runtime.navigate({ bookId: "old" }).catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   const second = runtime.navigate({ bookId: "new" });
   expect(await first).toMatchObject({ code: "reader/superseded" });
   expect((await second).location.bookId).toBe("new");
@@ -307,18 +523,39 @@ test("a superseding book request does not wait for the old book's readiness time
 test("book-scoped history cannot navigate into another book", async () => {
   const { runtime } = fixture();
   const id = runtime.begin("other");
-  runtime.attach(id, { navigate: async () => at("other", "other"), step: async () => at("other", "other") }, at("other", "other"));
-  await expect(runtime.back(undefined, { bookId: "other", sessionId: id })).rejects.toMatchObject({ code: "reader/out-of-scope" });
+  runtime.attach(
+    id,
+    { navigate: async () => at("other", "other"), step: async () => at("other", "other") },
+    at("other", "other"),
+  );
+  await expect(runtime.back(undefined, { bookId: "other", sessionId: id })).rejects.toMatchObject({
+    code: "reader/out-of-scope",
+  });
   expect(runtime.snapshot().bookId).toBe("other");
   expect(runtime.snapshot().history.canGoBack).toBe(true);
 });
 
 test("stale session guards cannot close or turn a replacement reader", async () => {
   const { runtime, id } = fixture();
-  runtime.bindShell({ open() {}, close: () => { throw new Error("must not close"); } });
+  runtime.bindShell({
+    open() {},
+    close: () => {
+      throw new Error("must not close");
+    },
+  });
   const current = runtime.begin("book");
   let steps = 0;
-  runtime.attach(current, { navigate: async () => at("new"), step: async () => { steps++; return at("new"); } }, at("new"));
+  runtime.attach(
+    current,
+    {
+      navigate: async () => at("new"),
+      step: async () => {
+        steps++;
+        return at("new");
+      },
+    },
+    at("new"),
+  );
   await expect(runtime.close(undefined, { sessionId: id })).rejects.toMatchObject({ code: "reader/superseded" });
   await expect(runtime.step("next", undefined, { sessionId: id })).rejects.toMatchObject({ code: "reader/superseded" });
   expect(steps).toBe(0);
@@ -327,8 +564,17 @@ test("stale session guards cannot close or turn a replacement reader", async () 
 test("locations sharing an href but not a fraction retain distinct history entries", async () => {
   const runtime = new ReadingSessionController();
   const id = runtime.begin("book");
-  const location = (fraction: number): ReadingLocation => ({ bookId: "book", contentVersion: "v1", href: "chapter", fraction });
-  runtime.attach(id, { navigate: async target => location(target.fraction!), step: async () => location(0.5) }, location(0));
+  const location = (fraction: number): ReadingLocation => ({
+    bookId: "book",
+    contentVersion: "v1",
+    href: "chapter",
+    fraction,
+  });
+  runtime.attach(
+    id,
+    { navigate: async (target) => location(target.fraction!), step: async () => location(0.5) },
+    location(0),
+  );
   await runtime.navigate({ fraction: 0.5 });
   expect(runtime.snapshot().history.canGoBack).toBe(true);
   expect((await runtime.back()).location.fraction).toBe(0);
@@ -337,13 +583,23 @@ test("locations sharing an href but not a fraction retain distinct history entri
 test("an old renderer's pending movement cannot block a different book", async () => {
   const { runtime, engine } = fixture();
   let finish!: (location: ReadingLocation) => void;
-  engine.navigate = () => new Promise(resolve => { finish = resolve; });
-  const old = runtime.navigate({ cfi: "old" }).catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
-  runtime.bindShell({ open(bookId, intent) {
-    const id = runtime.begin(bookId, intent);
-    runtime.attach(id, { navigate: async () => at("new", bookId), step: async () => at("new", bookId) }, at("new", bookId));
-  }, close() {} });
+  engine.navigate = () =>
+    new Promise((resolve) => {
+      finish = resolve;
+    });
+  const old = runtime.navigate({ cfi: "old" }).catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  runtime.bindShell({
+    open(bookId, intent) {
+      const id = runtime.begin(bookId, intent);
+      runtime.attach(
+        id,
+        { navigate: async () => at("new", bookId), step: async () => at("new", bookId) },
+        at("new", bookId),
+      );
+    },
+    close() {},
+  });
   expect((await runtime.navigate({ bookId: "new" })).location.bookId).toBe("new");
   finish(at("old"));
   expect(await old).toMatchObject({ code: "reader/superseded" });
@@ -358,15 +614,37 @@ test("a recovered engine clears the previous load error", async () => {
   expect((await runtime.navigate({ cfi: "next" })).location.cfi).toBe("next");
 });
 
-
 test("virtual reload keeps the new engine's verified migrated position and new version", async () => {
   const f = fixture();
-  const location = { bookId: "book", contentVersion: "virtual:sha256:new", cfi: "verified-current-section", fraction: 0.8 };
-  const off = f.runtime.bindShell({ open: (bookId, intent) => {
-    const next = f.runtime.begin(bookId, intent);
-    f.runtime.attach(next, { navigate: async () => { throw Error("Do not replay old positions"); },
-      step: async () => { throw Error("Do not discard restored virtual positions"); } }, location);
-  }, close: () => f.runtime.closed() });
-  try { expect((await f.runtime.reload()).location).toEqual(location); }
-  finally { off(); f.detach(); f.runtime.closed(); }
+  const location = {
+    bookId: "book",
+    contentVersion: "virtual:sha256:new",
+    cfi: "verified-current-section",
+    fraction: 0.8,
+  };
+  const off = f.runtime.bindShell({
+    open: (bookId, intent) => {
+      const next = f.runtime.begin(bookId, intent);
+      f.runtime.attach(
+        next,
+        {
+          navigate: async () => {
+            throw Error("Do not replay old positions");
+          },
+          step: async () => {
+            throw Error("Do not discard restored virtual positions");
+          },
+        },
+        location,
+      );
+    },
+    close: () => f.runtime.closed(),
+  });
+  try {
+    expect((await f.runtime.reload()).location).toEqual(location);
+  } finally {
+    off();
+    f.detach();
+    f.runtime.closed();
+  }
 });

@@ -30,27 +30,16 @@ function SurfaceTable({ surface }: { surface: MenuSurface }) {
 
   return (
     <div>
-      <h3 className="font-serif text-lg text-fg">
-        {t(`menus.surface.${surface}` as never)}
-      </h3>
+      <h3 className="font-serif text-lg text-fg">{t(`menus.surface.${surface}` as never)}</h3>
       <div className="mt-3 flex flex-col">
         {items.map((item) => {
-          const zone = visible.includes(item.id)
-            ? "shown"
-            : overflow.includes(item.id)
-              ? "overflow"
-              : "—";
+          const zone = visible.includes(item.id) ? "shown" : overflow.includes(item.id) ? "overflow" : "—";
           return (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 border-t border-border py-2 first:border-t-0"
-            >
+            <div key={item.id} className="flex items-center gap-3 border-t border-border py-2 first:border-t-0">
               <span className="text-fg-muted">
                 <item.Icon size={16} weight="regular" aria-hidden="true" />
               </span>
-              <span className="min-w-0 flex-1 text-sm text-fg">
-                {t(`menus.items.${item.labelKey}` as never)}
-              </span>
+              <span className="min-w-0 flex-1 text-sm text-fg">{t(`menus.items.${item.labelKey}` as never)}</span>
               <code className="text-[11px] text-fg-subtle">{item.id}</code>
               <span className="w-20 text-right text-xs text-fg-subtle">{zone}</span>
             </div>

@@ -27,9 +27,7 @@ export function definitionForExport(entry: PluginDictionaryEntry): string {
   return (entry.senses ?? [])
     .map((sense) =>
       [
-        sense.partOfSpeech
-          ? `${sense.partOfSpeech}: ${sense.definition}`
-          : sense.definition,
+        sense.partOfSpeech ? `${sense.partOfSpeech}: ${sense.definition}` : sense.definition,
         ...(sense.examples ?? []).map((example) => `Example: ${example}`),
       ].join("\n"),
     )

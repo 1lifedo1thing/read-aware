@@ -8,12 +8,7 @@ type PluginSearchInputProps = {
   className?: string;
 };
 
-export function PluginSearchInput({
-  value,
-  onChange,
-  placeholder,
-  className,
-}: PluginSearchInputProps) {
+export function PluginSearchInput({ value, onChange, placeholder, className }: PluginSearchInputProps) {
   return (
     <SearchField
       label={placeholder}

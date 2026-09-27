@@ -14,7 +14,9 @@ function index(value: number | undefined, size: number, fallback: number): numbe
 export function resourceBookFile(resource: NativeResource, signal?: AbortSignal): BookFileSource {
   function slice(offset: number, size: number, type: string): BookFileSource {
     return {
-      name: resource.name, size, type,
+      name: resource.name,
+      size,
+      type,
       async arrayBuffer() {
         signal?.throwIfAborted();
         const bytes = new Uint8Array(size);
@@ -29,7 +31,8 @@ export function resourceBookFile(resource: NativeResource, signal?: AbortSignal)
         return bytes.buffer;
       },
       slice(start, end, contentType = "") {
-        const first = index(start, size, 0), last = index(end, size, size);
+        const first = index(start, size, 0),
+          last = index(end, size, size);
         return slice(offset + first, Math.max(0, last - first), contentType.toLowerCase());
       },
     };

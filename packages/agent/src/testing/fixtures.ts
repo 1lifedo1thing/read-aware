@@ -17,12 +17,7 @@ import { createProfileFixture } from "./user-profile";
 import { createEntityRegistryFixture } from "./entity-registry";
 import { createIdentityConsolidationFixture } from "./identity-consolidation";
 import { createContextBundleFixture } from "./context-bundles";
-import type {
-  BookStats,
-  CollectionSummary,
-  Id,
-  StatsOverview,
-} from "@read-aware/core";
+import type { BookStats, CollectionSummary, Id, StatsOverview } from "@read-aware/core";
 import type {
   AnnotationItem,
   BookOverview,
@@ -197,9 +192,7 @@ function defaultSettings(): AgentSettingsSnapshot {
         kind: "enum",
         value: "paginated-double",
         writable: true,
-        options: ["scroll", "paginated-single", "paginated-double"].map(
-          (value) => ({ value, label: value }),
-        ),
+        options: ["scroll", "paginated-single", "paginated-double"].map((value) => ({ value, label: value })),
         supportedTargets: ["global", "all-books", "book"],
       },
       {
@@ -231,10 +224,7 @@ function defaultSettings(): AgentSettingsSnapshot {
   };
 }
 
-function validateFixtureSetting(
-  setting: AgentSettingDescriptor,
-  value: AgentSettingValue,
-): void {
+function validateFixtureSetting(setting: AgentSettingDescriptor, value: AgentSettingValue): void {
   if (value === null && !setting.nullable) {
     throw new Error(`${setting.path} cannot be null`);
   }
@@ -248,10 +238,7 @@ function validateFixtureSetting(
   if (setting.kind === "integer" && !Number.isInteger(value)) {
     throw new Error(`${setting.path} must be an integer`);
   }
-  if (
-    setting.kind === "enum" &&
-    !setting.options?.some((option) => Object.is(option.value, value))
-  ) {
+  if (setting.kind === "enum" && !setting.options?.some((option) => Object.is(option.value, value))) {
     throw new Error(`${setting.path} has an unsupported value`);
   }
 }
@@ -263,9 +250,7 @@ function applySettingChanges(
 ): { bookSettings: InMemoryStores["bookSettings"]; settings: AgentSettingsSnapshot; changed: AgentSettingChange[] } {
   const next = structuredClone(current);
   const nextBooks = structuredClone(bookSettings);
-  const byPath = new Map(
-    next.settings.map((setting) => [setting.path, setting]),
-  );
+  const byPath = new Map(next.settings.map((setting) => [setting.path, setting]));
   const changed: AgentSettingChange[] = [];
   const seen = new Set<string>();
 
@@ -275,9 +260,7 @@ function applySettingChanges(
       throw new Error(`unknown or read-only setting: ${change.path}`);
     }
     if (!change.target && setting.supportedTargets.length > 1) {
-      throw new Error(
-        `${change.path} requires an explicit target: ${setting.supportedTargets.join(", ")}`,
-      );
+      throw new Error(`${change.path} requires an explicit target: ${setting.supportedTargets.join(", ")}`);
     }
     const target = change.target ?? { kind: "global" as const };
     if (!setting.supportedTargets.includes(target.kind)) {
@@ -288,8 +271,9 @@ function applySettingChanges(
     seen.add(key);
     validateFixtureSetting(setting, change.value);
     const currentValue = target.kind === "book" ? nextBooks[target.bookId]?.[change.path] : setting.value;
-    const changesOverrides = target.kind === "all-books" && Object.values(nextBooks)
-      .some(values => !Object.is(values[change.path] ?? setting.value, change.value));
+    const changesOverrides =
+      target.kind === "all-books" &&
+      Object.values(nextBooks).some((values) => !Object.is(values[change.path] ?? setting.value, change.value));
     if (!Object.is(currentValue, change.value) || changesOverrides) {
       if (target.kind === "book") (nextBooks[target.bookId] ??= {})[change.path] = change.value;
       else {
@@ -302,7 +286,10 @@ function applySettingChanges(
     }
   }
   next.revision += changed.length ? 1 : 0;
-  next.overrides = Object.entries(nextBooks).map(([bookId, values]) => ({ target: { kind: "book", bookId }, paths: Object.keys(values) }));
+  next.overrides = Object.entries(nextBooks).map(([bookId, values]) => ({
+    target: { kind: "book", bookId },
+    paths: Object.keys(values),
+  }));
   return { settings: next, bookSettings: nextBooks, changed };
 }
 
@@ -315,20 +302,25 @@ function querySettings(
   return {
     revision: settings.revision,
     target,
-    overrides:
-      query.section && query.section !== "reading" ? [] : settings.overrides,
-    settings: settings.settings.filter(
-      (setting) =>
-        (!query.section || setting.section === query.section) &&
-        (target.kind === "global" ||
-          setting.supportedTargets?.includes("book")),
-    ).map(setting => ({ ...setting, value: target.kind === "book" && Object.prototype.hasOwnProperty.call(books[target.bookId] ?? {}, setting.path) ? books[target.bookId]![setting.path]! : setting.value })),
+    overrides: query.section && query.section !== "reading" ? [] : settings.overrides,
+    settings: settings.settings
+      .filter(
+        (setting) =>
+          (!query.section || setting.section === query.section) &&
+          (target.kind === "global" || setting.supportedTargets?.includes("book")),
+      )
+      .map((setting) => ({
+        ...setting,
+        value:
+          target.kind === "book" && Object.prototype.hasOwnProperty.call(books[target.bookId] ?? {}, setting.path)
+            ? books[target.bookId]![setting.path]!
+            : setting.value,
+      })),
   };
 }
 
 export function seedMemory(
-  partial: Partial<MemoryRecord> &
-    Pick<MemoryRecord, "id" | "scope" | "content">,
+  partial: Partial<MemoryRecord> & Pick<MemoryRecord, "id" | "scope" | "content">,
 ): MemoryRecord {
   return {
     kind: "fact",
@@ -356,9 +348,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
     annotations,
     collections,
     bookStats,
-    turns: new Map(
-      Object.entries(structuredClone(seed.turns ?? {})).map(([key, list]) => [key, [...list]]),
-    ),
+    turns: new Map(Object.entries(structuredClone(seed.turns ?? {})).map(([key, list]) => [key, [...list]])),
     insights: new Map(Object.entries(structuredClone(seed.insights ?? {}))),
     asks: [],
     memories: structuredClone(seed.memories ?? []),
@@ -374,8 +364,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
   let memoryCounter = 0;
   let annotationCounter = annotations.length;
   let collectionCounter = collections.length;
-  const isActive = (memory: MemoryRecord) =>
-    (memory.status ?? "active") === "active";
+  const isActive = (memory: MemoryRecord) => (memory.status ?? "active") === "active";
 
   const memoryManagement = createMemoryManagementFixture(stores.memories);
   const bookClassification = createBookClassificationFixture(books);
@@ -389,163 +378,319 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       enabled: () => ["explainSelection", "defineTerm", "translate", "summarizeChapter"],
       run: async (action, bookId, signal) => {
         signal?.throwIfAborted();
-        return bookId ? { status: "context", context: { action, bookId, prompt: "Use the captured reading context." } }
+        return bookId
+          ? { status: "context", context: { action, bookId, prompt: "Use the captured reading context." } }
           : { status: "started", action, bookId: "book-1" };
       },
     },
-    downloadResource: async () => { throw new AppError("ui/unavailable", "Attach a download fixture"); },
+    downloadResource: async () => {
+      throw new AppError("ui/unavailable", "Attach a download fixture");
+    },
     resources: () => ({
       pickDirectory: async () => ({ cancelled: true, directory: null }),
       listDirectory: async () => ({ entries: [], nextCursor: null, omittedCount: 0 }),
-      openDirectoryFile: async () => { throw new AppError("ui/unavailable", "No selected directory"); },
+      openDirectoryFile: async () => {
+        throw new AppError("ui/unavailable", "No selected directory");
+      },
       releaseDirectory: async () => {},
       conditions: async () => [{ kind: "provider", state: "unknown", reason: "fixture-resource-entry" }],
       openAssociated: async () => ({ opened: false }),
-      pick: async () => ({ cancelled: true, resources: [] }), openBook: async () => null, openCover: async () => null,
-      copyImage: async () => { throw new AppError("ui/unavailable", "Attach an image clipboard fixture"); },
-      create: async () => { throw new AppError("ui/unavailable", "Attach a resource fixture"); },
-      stat: async id => ({ id, name: "fixture.txt", mimeType: "text/plain", size: 4, state: "ready", source: "picked", expiresAt: Date.now() + 60000 }),
+      pick: async () => ({ cancelled: true, resources: [] }),
+      openBook: async () => null,
+      openCover: async () => null,
+      copyImage: async () => {
+        throw new AppError("ui/unavailable", "Attach an image clipboard fixture");
+      },
+      create: async () => {
+        throw new AppError("ui/unavailable", "Attach a resource fixture");
+      },
+      stat: async (id) => ({
+        id,
+        name: "fixture.txt",
+        mimeType: "text/plain",
+        size: 4,
+        state: "ready",
+        source: "picked",
+        expiresAt: Date.now() + 60000,
+      }),
       read: async () => ({ data: new Uint8Array([116, 101, 115, 116]).buffer, nextOffset: 4, eof: true }),
-      append: async () => { throw new AppError("ui/unavailable", "Attach a resource fixture"); },
-      commit: async () => { throw new AppError("ui/unavailable", "Attach a resource fixture"); },
-      save: async () => ({ saved: false }), release: async () => {},
+      append: async () => {
+        throw new AppError("ui/unavailable", "Attach a resource fixture");
+      },
+      commit: async () => {
+        throw new AppError("ui/unavailable", "Attach a resource fixture");
+      },
+      save: async () => ({ saved: false }),
+      release: async () => {},
     }),
     schedules: {
       list: async () => ({ schedules: [], total: 0, nextOffset: null }),
-      control: async () => { throw new AppError("ui/unavailable", "Bind a schedule fixture"); },
+      control: async () => {
+        throw new AppError("ui/unavailable", "Bind a schedule fixture");
+      },
     },
     maintenance: {
       requestConnectionTest: async () => ({ action: "test", status: "cancelled" }),
-      requestBackup: async action => ({ action, status: "cancelled" }),
-      snapshot: async () => ({ supported: false, phase: "idle", channel: "stable", checkedChannel: null,
-        currentVersion: "0.5.4", availableVersion: null, progress: null, errorStage: null }),
-      checkForUpdates: async () => { throw new AppError("ui/unavailable", "Attach an updater fixture"); },
-      openSettings: async surface => ({ status: "opened", surface }),
+      requestBackup: async (action) => ({ action, status: "cancelled" }),
+      snapshot: async () => ({
+        supported: false,
+        phase: "idle",
+        channel: "stable",
+        checkedChannel: null,
+        currentVersion: "0.5.4",
+        availableVersion: null,
+        progress: null,
+        errorStage: null,
+      }),
+      checkForUpdates: async () => {
+        throw new AppError("ui/unavailable", "Attach an updater fixture");
+      },
+      openSettings: async (surface) => ({ status: "opened", surface }),
     },
     diagnostics: {
-      requestProjectionRepair: async () => { throw new AppError("ui/unavailable", "Attach a projection repair fixture"); },
-      requestReport: async () => { throw new AppError("ui/unavailable", "Attach a diagnostic report fixture"); },
-      verifyProjections: async () => { throw new AppError("ui/unavailable", "Attach a diagnostics fixture"); },
+      requestProjectionRepair: async () => {
+        throw new AppError("ui/unavailable", "Attach a projection repair fixture");
+      },
+      requestReport: async () => {
+        throw new AppError("ui/unavailable", "Attach a diagnostic report fixture");
+      },
+      verifyProjections: async () => {
+        throw new AppError("ui/unavailable", "Attach a diagnostics fixture");
+      },
     },
     sync: {
-      snapshot: async () => ({ revision: 0, supported: true, connectionBusy: false, state: "disabled", connected: false, backend: null,
-        lastSyncAt: null, lastErrorCode: null, progress: null, cycleStartBacklog: null, lastCycle: null, backfillRemaining: 0 }),
-      backlog: async () => ({ events: 0, blobs: 0 }), account: async () => null,
-      requestSync: async () => { throw new AppError("ui/unavailable", "Connect a sync fixture"); },
+      snapshot: async () => ({
+        revision: 0,
+        supported: true,
+        connectionBusy: false,
+        state: "disabled",
+        connected: false,
+        backend: null,
+        lastSyncAt: null,
+        lastErrorCode: null,
+        progress: null,
+        cycleStartBacklog: null,
+        lastCycle: null,
+        backfillRemaining: 0,
+      }),
+      backlog: async () => ({ events: 0, blobs: 0 }),
+      account: async () => null,
+      requestSync: async () => {
+        throw new AppError("ui/unavailable", "Connect a sync fixture");
+      },
       openSettings: async () => ({ status: "opened", surface: "dataSync" }),
       connectionOptions: async () => [],
-      requestFlow: async () => { throw new AppError("ui/unavailable", "Attach a sync account flow fixture"); },
+      requestFlow: async () => {
+        throw new AppError("ui/unavailable", "Attach a sync account flow fixture");
+      },
     },
     conversationControl: {
       turnRequests: async () => [],
-      requestTurn: async request => ({ id: "request-fixture", target: request.target, action: request.action, status: "pending", createdAt: 0 }),
-      cancelTurnRequest: async () => { throw new AppError("ui/invalid-target", "Attach a conversation request fixture"); },
+      requestTurn: async (request) => ({
+        id: "request-fixture",
+        target: request.target,
+        action: request.action,
+        status: "pending",
+        createdAt: 0,
+      }),
+      cancelTurnRequest: async () => {
+        throw new AppError("ui/invalid-target", "Attach a conversation request fixture");
+      },
       snapshot: async () => ({ revision: 0, selectedGlobalThreadId: "__global__", sessions: [] }),
       listThreads: async () => [],
-      createThread: async () => ({ status: "completed", target: { kind: "global", id: `thread-${crypto.randomUUID()}` }, draft: true }),
-      selectThread: async id => ({ status: "completed", target: { kind: "global", id } }),
-      stop: async target => ({ status: "completed", target }),
-      clear: async target => { stores.turns.delete(`${target.kind}:${target.id}`); return { status: "completed", target }; },
+      createThread: async () => ({
+        status: "completed",
+        target: { kind: "global", id: `thread-${crypto.randomUUID()}` },
+        draft: true,
+      }),
+      selectThread: async (id) => ({ status: "completed", target: { kind: "global", id } }),
+      stop: async (target) => ({ status: "completed", target }),
+      clear: async (target) => {
+        stores.turns.delete(`${target.kind}:${target.id}`);
+        return { status: "completed", target };
+      },
     },
     hostIO: {
       listPluginContributions: async () => ({ contributions: [], total: 0, offset: 0, nextOffset: null }),
       listPlugins: async () => ({ plugins: [], total: 0, offset: 0, nextOffset: null }),
-      writeClipboard: async () => { throw new AppError("ui/unavailable", "Attach a clipboard fixture"); },
+      writeClipboard: async () => {
+        throw new AppError("ui/unavailable", "Attach a clipboard fixture");
+      },
       exportFile: async () => false,
-      openExternal: async () => { throw new AppError("ui/unavailable", "Attach an external browser fixture"); },
+      openExternal: async () => {
+        throw new AppError("ui/unavailable", "Attach an external browser fixture");
+      },
     },
-    bookGraphTasks: new BookGraphTaskOwner(async () => { throw new AppError("ai/not-configured", "Attach a graph executor for task tests"); }, () => {}),
+    bookGraphTasks: new BookGraphTaskOwner(
+      async () => {
+        throw new AppError("ai/not-configured", "Attach a graph executor for task tests");
+      },
+      () => {},
+    ),
     bookClassification,
     memoryManagement,
     workspace: createWorkspaceFixture(),
     hostCommands: {
       list: async () => ({ version: 1, workspaceRevision: null, commands: [] }),
-      execute: async () => { throw new Error("Host commands require an attached workspace fixture"); },
+      execute: async () => {
+        throw new Error("Host commands require an attached workspace fixture");
+      },
     },
-    environment: { snapshot: async () => ({ revision: 1, runtime: "desktop", platform: "macos", locale: "en", timeZone: "UTC", utcOffsetMinutes: 0, networkHint: "unknown" }) },
-    window: { snapshot: async () => ({ supported: false, revision: 1 }),
-      control: async () => { throw new Error("Window controls require a native test adapter"); } },
+    environment: {
+      snapshot: async () => ({
+        revision: 1,
+        runtime: "desktop",
+        platform: "macos",
+        locale: "en",
+        timeZone: "UTC",
+        utcOffsetMinutes: 0,
+        networkHint: "unknown",
+      }),
+    },
+    window: {
+      snapshot: async () => ({ supported: false, revision: 1 }),
+      control: async () => {
+        throw new Error("Window controls require a native test adapter");
+      },
+    },
     library: {
       listDuplicates: async () => ({ groups: [], total: 0, nextOffset: null }),
       previewMerge: async () => null,
       resolveBookId: async () => null,
-      mergeDuplicates: async () => { throw new AppError("ui/unavailable", "Attach a merge fixture"); },
-      getEnrichment: async () => { throw new AppError("ui/unavailable", "Attach an enrichment fixture"); },
-      getContentState: async bookId => {
-        if (!books.some(book => book.id === bookId)) throw new AppError("library/book-not-found", "Book not found");
+      mergeDuplicates: async () => {
+        throw new AppError("ui/unavailable", "Attach a merge fixture");
+      },
+      getEnrichment: async () => {
+        throw new AppError("ui/unavailable", "Attach an enrichment fixture");
+      },
+      getContentState: async (bookId) => {
+        if (!books.some((book) => book.id === bookId)) throw new AppError("library/book-not-found", "Book not found");
         return { bookId, source: "file", availability: "local", sourceRevision: "fixture", contentVersion: "fixture" };
       },
-      retryEnrichment: async () => { throw new AppError("ui/unavailable", "Attach an enrichment fixture"); },
-      startImportResource: async () => { throw new AppError("ui/unavailable", "Attach an import resource fixture"); },
-      getImportTask: async () => { throw new AppError("ui/invalid-target", "Attach an import task fixture"); },
+      retryEnrichment: async () => {
+        throw new AppError("ui/unavailable", "Attach an enrichment fixture");
+      },
+      startImportResource: async () => {
+        throw new AppError("ui/unavailable", "Attach an import resource fixture");
+      },
+      getImportTask: async () => {
+        throw new AppError("ui/invalid-target", "Attach an import task fixture");
+      },
       listImportTasks: async () => [],
-      cancelImportTask: async () => { throw new AppError("ui/invalid-target", "Attach an import task fixture"); },
+      cancelImportTask: async () => {
+        throw new AppError("ui/invalid-target", "Attach an import task fixture");
+      },
       listBookFormats: async () => [],
-      inspectResource: async () => { throw new AppError("ui/unavailable", "Attach an inspection fixture"); },
-      getReadingTime: async (query = {}) => ({ bookId: query.bookId ?? null, localDay: query.localDay ?? null,
-        observedAtEpochMs: 0, settledMs: 0, pendingMs: 0, totalMs: 0, pendingBucketCount: 0, pending: [], nextCursor: null }),
-      getReadingInsights: async (query = {}) => ({ bookId: query.bookId ?? null, source: "settled", asOfDay: query.asOfDay ?? "2026-09-09",
-        period: query.period ?? "week", totalMs: 0, daysRead: 0, booksRead: 0, avgPerDayMs: 0, deltaRatio: null,
-        bars: [], weekdayMs: Array(7).fill(0), allTimeHourlyMs: Array(24).fill(0),
-        achievements: { totalMs: 0, currentStreak: 0, longestStreak: 0, bestDayMs: 0, bestDayKey: null, daysRead: 0,
-          booksRead: 0, mostReadBookId: null, mostReadBookMs: 0, nextMilestoneMs: 3_600_000 } }),
+      inspectResource: async () => {
+        throw new AppError("ui/unavailable", "Attach an inspection fixture");
+      },
+      getReadingTime: async (query = {}) => ({
+        bookId: query.bookId ?? null,
+        localDay: query.localDay ?? null,
+        observedAtEpochMs: 0,
+        settledMs: 0,
+        pendingMs: 0,
+        totalMs: 0,
+        pendingBucketCount: 0,
+        pending: [],
+        nextCursor: null,
+      }),
+      getReadingInsights: async (query = {}) => ({
+        bookId: query.bookId ?? null,
+        source: "settled",
+        asOfDay: query.asOfDay ?? "2026-09-09",
+        period: query.period ?? "week",
+        totalMs: 0,
+        daysRead: 0,
+        booksRead: 0,
+        avgPerDayMs: 0,
+        deltaRatio: null,
+        bars: [],
+        weekdayMs: Array(7).fill(0),
+        allTimeHourlyMs: Array(24).fill(0),
+        achievements: {
+          totalMs: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          bestDayMs: 0,
+          bestDayKey: null,
+          daysRead: 0,
+          booksRead: 0,
+          mostReadBookId: null,
+          mostReadBookMs: 0,
+          nextMilestoneMs: 3_600_000,
+        },
+      }),
       listBooks: async () => books,
       listBookRemovalCleanup: async () => ({ items: [], nextCursor: null }),
       getBook: async (id) => books.find((book) => book.id === id),
       listCollections: async () => collections,
       booksInCollection: async (collectionId) =>
-        books
-          .filter((book) => book.collectionId === collectionId)
-          .map((book) => book.id),
-      getBookStats: async (bookId) =>
-        bookStats.find((stats) => stats.bookId === bookId),
+        books.filter((book) => book.collectionId === collectionId).map((book) => book.id),
+      getBookStats: async (bookId) => bookStats.find((stats) => stats.bookId === bookId),
       listBookStats: async () => bookStats,
       getStatsOverview: async () =>
         seed.statsOverview ?? {
           totalMs: bookStats.reduce((total, stats) => total + stats.totalMs, 0),
           daily: {},
-          booksReading: bookStats.filter((stats) => stats.status === "reading")
-            .length,
-          booksFinished: bookStats.filter(
-            (stats) => stats.status === "finished",
-          ).length,
+          booksReading: bookStats.filter((stats) => stats.status === "reading").length,
+          booksFinished: bookStats.filter((stats) => stats.status === "finished").length,
         },
       editBookMetadata: async (bookId, patch) => {
         const book = books.find((entry) => entry.id === bookId);
-        if (!book) throw new Error(`unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`);
+        if (!book)
+          throw new Error(
+            `unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`,
+          );
         if (patch.title !== undefined) book.title = patch.title;
         if (patch.author !== undefined) book.author = patch.author;
         book.updatedAt = new Date().toISOString();
       },
       setBookStarred: async (bookId, starred) => {
         const book = books.find((entry) => entry.id === bookId);
-        if (!book) throw new Error(`unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`);
+        if (!book)
+          throw new Error(
+            `unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`,
+          );
         book.starred = starred;
       },
       setBookFinished: async (bookId, finished) => {
         const book = books.find((entry) => entry.id === bookId);
-        if (!book) throw new Error(`unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`);
+        if (!book)
+          throw new Error(
+            `unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`,
+          );
         book.status = finished ? "finished" : "reading";
       },
       classifyBookIfUnclassified: async (bookId, narrativity, _signal, spoilerSensitive) => {
         const book = books.find((entry) => entry.id === bookId);
-        if (!book) throw new Error(`unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`);
+        if (!book)
+          throw new Error(
+            `unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`,
+          );
         book.narrativity ??= narrativity;
         book.spoilerSensitive ??= spoilerSensitive;
         return book.narrativity;
       },
       removeBook: async (bookId) => {
         const index = books.findIndex((entry) => entry.id === bookId);
-        if (index < 0) throw new Error(`unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`);
+        if (index < 0)
+          throw new Error(
+            `unknown book id: ${bookId} — ids come from list_books; in a book thread just omit bookId for the current book, never guess from a title`,
+          );
         books.splice(index, 1);
       },
-      removeBooks: async bookIds => {
+      removeBooks: async (bookIds) => {
         const ids = new Set(bookIds);
         for (let i = books.length - 1; i >= 0; i--) if (ids.has(books[i].id)) books.splice(i, 1);
         return { bookIds: [...ids], committed: true, files: { status: "released" } };
       },
-      retryBookRemovalCleanup: async bookIds => ({ bookIds, files: books.some(book => bookIds.includes(book.id))
-        ? { status: "pending", errorCode: "library/book-reappeared" } : { status: "released" } }),
+      retryBookRemovalCleanup: async (bookIds) => ({
+        bookIds,
+        files: books.some((book) => bookIds.includes(book.id))
+          ? { status: "pending", errorCode: "library/book-reappeared" }
+          : { status: "released" },
+      }),
       createCollection: async (name) => {
         const collection: CollectionSummary = {
           id: `collection-${++collectionCounter}`,
@@ -556,16 +701,12 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         return collection;
       },
       renameCollection: async (collectionId, name) => {
-        const collection = collections.find(
-          (entry) => entry.id === collectionId,
-        );
+        const collection = collections.find((entry) => entry.id === collectionId);
         if (!collection) throw new Error(`unknown collection: ${collectionId}`);
         collection.name = name;
       },
       removeCollection: async (collectionId) => {
-        const index = collections.findIndex(
-          (entry) => entry.id === collectionId,
-        );
+        const index = collections.findIndex((entry) => entry.id === collectionId);
         if (index < 0) throw new Error(`unknown collection: ${collectionId}`);
         collections.splice(index, 1);
         for (const book of books) {
@@ -586,7 +727,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         return annotationMutations.apply(changes);
       },
       pageAnnotations: async (input) => annotationPageFixture(annotations, input),
-      getAnnotation: async (id) => annotations.find(annotation => annotation.id === id) ?? null,
+      getAnnotation: async (id) => annotations.find((annotation) => annotation.id === id) ?? null,
       listAnnotations: async (filter) =>
         annotations.filter(
           (a) =>
@@ -595,8 +736,14 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
             (!filter?.query || annotationText(a).includes(filter.query)),
         ),
       createHighlight: async ({ bookId, text, anchor, chapter, color, style, range }, signal) => {
-        const source = range === undefined ? undefined : await prepareMemoryAnnotationSource(
-          deps.bookText.readRange, { bookId, text, anchor, chapter, range }, signal);
+        const source =
+          range === undefined
+            ? undefined
+            : await prepareMemoryAnnotationSource(
+                deps.bookText.readRange,
+                { bookId, text, anchor, chapter, range },
+                signal,
+              );
         signal?.throwIfAborted();
         const now = new Date().toISOString();
         const highlight: AnnotationItem = {
@@ -617,8 +764,14 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         return highlight;
       },
       createNote: async ({ bookId, body, quotedText, anchor, chapter, range }, signal) => {
-        const source = range === undefined ? undefined : await prepareMemoryAnnotationSource(
-          deps.bookText.readRange, { bookId, text: quotedText ?? "", anchor, chapter, range }, signal);
+        const source =
+          range === undefined
+            ? undefined
+            : await prepareMemoryAnnotationSource(
+                deps.bookText.readRange,
+                { bookId, text: quotedText ?? "", anchor, chapter, range },
+                signal,
+              );
         signal?.throwIfAborted();
         const now = new Date().toISOString();
         const note: AnnotationItem = {
@@ -641,8 +794,9 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         stores.asks.push(input);
       },
     },
-    reader: createMemoryReader(books[0]?.id, stores.readerRequests, async bookId =>
-      stores.chapters.has(bookId) ? (await bookNavigation.getNavigationToc(bookId)).contentVersion : "fixture"),
+    reader: createMemoryReader(books[0]?.id, stores.readerRequests, async (bookId) =>
+      stores.chapters.has(bookId) ? (await bookNavigation.getNavigationToc(bookId)).contentVersion : "fixture",
+    ),
     interactions: {
       request: async (request) => {
         stores.interactions.push(request);
@@ -663,8 +817,12 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         const pool: Array<TurnRecord & { threadKey: string }> = [];
         for (const [key, list] of stores.turns) {
           if (threadKey && key !== threadKey) continue;
-          for (const turn of list) pool.push({ ...turn, threadKey: key,
-            attachments: includeAttachments === false ? undefined : turn.attachments });
+          for (const turn of list)
+            pool.push({
+              ...turn,
+              threadKey: key,
+              attachments: includeAttachments === false ? undefined : turn.attachments,
+            });
         }
         return searchTurnRecords(pool, queries, limit ?? 20);
       },
@@ -680,7 +838,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
     entityRegistry,
     identityConsolidation,
     memory: {
-      pageMemories: input => pageMemoryRows(stores.memories, input),
+      pageMemories: (input) => pageMemoryRows(stores.memories, input),
       searchMemories: async (filter) => {
         const scopes = new Set<string>(filter.scopes);
         return stores.memories
@@ -719,18 +877,33 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       ...createMemoryMaintenanceFixture(stores.memories, memoryManagement),
     },
     bookText: {
-      listReferences: async () => { throw new AppError("library/content-unavailable", "Fixture has no book reference documents"); },
-      listImages: async () => { throw new AppError("library/content-unavailable", "Fixture has no book image documents"); },
-      readImageInput: async () => { throw new AppError("library/content-unavailable", "Fixture has no decoded image inputs"); },
-      openImageResource: async () => { throw new AppError("library/content-unavailable", "Fixture has no book images"); },
-      readReference: async () => { throw new AppError("library/content-unavailable", "Fixture has no book reference documents"); },
+      listReferences: async () => {
+        throw new AppError("library/content-unavailable", "Fixture has no book reference documents");
+      },
+      listImages: async () => {
+        throw new AppError("library/content-unavailable", "Fixture has no book image documents");
+      },
+      readImageInput: async () => {
+        throw new AppError("library/content-unavailable", "Fixture has no decoded image inputs");
+      },
+      openImageResource: async () => {
+        throw new AppError("library/content-unavailable", "Fixture has no book images");
+      },
+      readReference: async () => {
+        throw new AppError("library/content-unavailable", "Fixture has no book reference documents");
+      },
       preparation: createMemoryTextPreparation(stores.chapters),
       ...bookNavigation,
-      getTextState: async bookId => {
+      getTextState: async (bookId) => {
         const chapters = stores.chapters.get(bookId);
-        return { bookId, contentVersion: "fixture", status: chapters ? "ready" : "unprepared",
-          text: chapters ? chapters.some(chapter => chapter.text.length > 0) ? "available" : "textless" : "unknown",
-          chapterCount: chapters?.length ?? 0, progress: null };
+        return {
+          bookId,
+          contentVersion: "fixture",
+          status: chapters ? "ready" : "unprepared",
+          text: chapters ? (chapters.some((chapter) => chapter.text.length > 0) ? "available" : "textless") : "unknown",
+          chapterCount: chapters?.length ?? 0,
+          progress: null,
+        };
       },
       getToc: async (bookId) => {
         const chapters = stores.chapters.get(bookId) ?? [];
@@ -741,8 +914,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
           hrefs: chapter.hrefs,
         }));
       },
-      getChapterText: async (bookId, chapterIndex) =>
-        stores.chapters.get(bookId)?.[chapterIndex]?.text,
+      getChapterText: async (bookId, chapterIndex) => stores.chapters.get(bookId)?.[chapterIndex]?.text,
       searchText: async ({ queries, bookId, throughChapterIndex, limit }) => {
         const results: BookTextHit[] = [];
         for (const [id, chapters] of stores.chapters) {
@@ -763,15 +935,35 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
     },
     bookMemory: createBookMemoryFixture(stores.chapterDigests, bookClassification),
     settings: {
-      getModelCatalog: async query => ({ provider: query.provider, revision: 1, refreshing: false, checkedAt: null, errorCode: null,
-        models: [], total: 0, offset: query.offset ?? 0, nextOffset: null }),
-      refreshModelCatalog: async provider => ({ provider, revision: 2, refreshing: false, checkedAt: Date.now(), errorCode: null,
-        models: [], total: 0, offset: 0, nextOffset: null }),
-      resetReading: async () => { throw new AppError("ui/unavailable", "Attach a reading reset fixture"); },
+      getModelCatalog: async (query) => ({
+        provider: query.provider,
+        revision: 1,
+        refreshing: false,
+        checkedAt: null,
+        errorCode: null,
+        models: [],
+        total: 0,
+        offset: query.offset ?? 0,
+        nextOffset: null,
+      }),
+      refreshModelCatalog: async (provider) => ({
+        provider,
+        revision: 2,
+        refreshing: false,
+        checkedAt: Date.now(),
+        errorCode: null,
+        models: [],
+        total: 0,
+        offset: 0,
+        nextOffset: null,
+      }),
+      resetReading: async () => {
+        throw new AppError("ui/unavailable", "Attach a reading reset fixture");
+      },
       getSettings: async (query) => querySettings(stores.settings, query, stores.bookSettings),
-      getSettingOptions: async query => {
+      getSettingOptions: async (query) => {
         const snapshot = querySettings(stores.settings, { target: query.target }, stores.bookSettings);
-        const setting = snapshot.settings.find(entry => entry.path === query.path);
+        const setting = snapshot.settings.find((entry) => entry.path === query.path);
         if (!setting) throw new AppError("settings/options-invalid", "Unknown fixture setting");
         return pageSettingOptions(setting.options ?? [], snapshot.revision, query);
       },

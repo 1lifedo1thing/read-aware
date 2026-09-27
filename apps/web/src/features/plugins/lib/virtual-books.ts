@@ -10,10 +10,7 @@ import { AppError, type EventOrigin } from "@read-aware/core";
 import { afterLocalKVWrites, commitLocalKVTransaction, localKV } from "../../../platform/local-store";
 import type { VirtualBookRef } from "../../reader/lib/reader-types";
 import { invalidateBookContent } from "../../library/lib/content-invalidation";
-import {
-  getContentProvider,
-  type RegisteredContentProvider,
-} from "../state/plugin-store";
+import { getContentProvider, type RegisteredContentProvider } from "../state/plugin-store";
 
 import { invoke } from "../../../platform/ipc";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
@@ -33,9 +30,20 @@ function readRegistry(): Record<string, VirtualBookBinding> {
   } catch {
     throw new AppError("db/error", "Virtual book registry is not valid JSON");
   }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)
-    || Object.values(parsed).some(value => typeof value !== "object" || value === null || Array.isArray(value)
-      || typeof value.pluginId !== "string" || typeof value.providerId !== "string" || typeof value.key !== "string")) {
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    Object.values(parsed).some(
+      (value) =>
+        typeof value !== "object" ||
+        value === null ||
+        Array.isArray(value) ||
+        typeof value.pluginId !== "string" ||
+        typeof value.providerId !== "string" ||
+        typeof value.key !== "string",
+    )
+  ) {
     throw new AppError("db/error", "Virtual book registry has invalid bindings");
   }
   return parsed as Record<string, VirtualBookBinding>;
@@ -48,11 +56,7 @@ export function getVirtualBookBinding(bookId: string): VirtualBookBinding | null
 export function findVirtualBookId(binding: VirtualBookBinding): string | null {
   const registry = readRegistry();
   for (const [bookId, entry] of Object.entries(registry)) {
-    if (
-      entry.pluginId === binding.pluginId &&
-      entry.providerId === binding.providerId &&
-      entry.key === binding.key
-    ) {
+    if (entry.pluginId === binding.pluginId && entry.providerId === binding.providerId && entry.key === binding.key) {
       return bookId;
     }
   }
@@ -86,7 +90,8 @@ export async function invalidateOwnedVirtualBook(
   const provider = resolveContentProvider(binding);
   if (!provider) throw new AppError("library/content-unavailable", "Content provider is not active");
   const bookId = await afterLocalKVWrites(() => findVirtualBookId(binding));
-  if (!bookId || !await exists(bookId)) throw new AppError("library/book-not-found", "Virtual book is not in the library");
+  if (!bookId || !(await exists(bookId)))
+    throw new AppError("library/book-not-found", "Virtual book is not in the library");
   signal?.throwIfAborted();
   if (resolveContentProvider(binding) !== provider || findVirtualBookId(binding) !== bookId) {
     throw new AppError("library/content-unavailable", "Virtual book binding or provider changed");
@@ -101,19 +106,21 @@ export async function removeOwnedVirtualBook(
   expectedBookId?: string,
 ): Promise<void> {
   const bookId = await afterLocalKVWrites(() => findVirtualBookId(binding));
-  if (expectedBookId !== undefined && (typeof expectedBookId !== "string" || !expectedBookId.trim() || expectedBookId.length > 256)) throw new AppError("plugin/invalid-argument", "Invalid expected virtual book ID");
+  if (
+    expectedBookId !== undefined &&
+    (typeof expectedBookId !== "string" || !expectedBookId.trim() || expectedBookId.length > 256)
+  )
+    throw new AppError("plugin/invalid-argument", "Invalid expected virtual book ID");
   if (!bookId) return;
-  if (expectedBookId !== undefined && bookId !== expectedBookId) throw new AppError("reader/superseded", "Virtual book binding changed since removal was requested");
+  if (expectedBookId !== undefined && bookId !== expectedBookId)
+    throw new AppError("reader/superseded", "Virtual book binding changed since removal was requested");
   await removeBook(bookId);
   await unbindVirtualBookDurably(bookId, binding);
 }
 
-export function resolveContentProvider(
-  binding: VirtualBookBinding,
-): RegisteredContentProvider | null {
+export function resolveContentProvider(binding: VirtualBookBinding): RegisteredContentProvider | null {
   return getContentProvider(binding.pluginId, binding.providerId);
 }
-
 
 /** Serialize same-binding creation/removal through receipt settlement, not just
  * the first registry lookup. Different providers can continue independently. */
@@ -122,25 +129,38 @@ export function withVirtualBookBinding<T>(binding: VirtualBookBinding, work: () 
   const key = JSON.stringify([binding.pluginId, binding.providerId, binding.key]);
   const result = settled(bindingTails.get(key) ?? Promise.resolve()).then(work);
   bindingTails.set(key, result);
-  void settled(result).then(() => { if (bindingTails.get(key) === result) bindingTails.delete(key); });
+  void settled(result).then(() => {
+    if (bindingTails.get(key) === result) bindingTails.delete(key);
+  });
   return result;
 }
 
-export async function commitBoundVirtualBook(bookId: string, binding: VirtualBookBinding, drafts: DomainEventDraft[], signal?: AbortSignal): Promise<void> {
+export async function commitBoundVirtualBook(
+  bookId: string,
+  binding: VirtualBookBinding,
+  drafts: DomainEventDraft[],
+  signal?: AbortSignal,
+): Promise<void> {
   const origin: EventOrigin = `plugin:${binding.pluginId}`;
   return runDomainWrite(async () => {
     signal?.throwIfAborted();
     const events = await mintEventRows(drafts);
     await afterLocalKVWrites(() => {
       signal?.throwIfAborted();
-      const expectedRegistry = localKV.getItem(REGISTRY_KEY), registry = readRegistry();
-      if (registry[bookId] || findVirtualBookId(binding)) throw new AppError("library/content-unavailable", "Virtual book binding changed");
+      const expectedRegistry = localKV.getItem(REGISTRY_KEY),
+        registry = readRegistry();
+      if (registry[bookId] || findVirtualBookId(binding))
+        throw new AppError("library/content-unavailable", "Virtual book binding changed");
       registry[bookId] = { ...binding };
       const replacementRegistry = JSON.stringify(registry);
-      return commitLocalKVTransaction(new Map([[REGISTRY_KEY, replacementRegistry]]), async () => {
-        signal?.throwIfAborted();
-        await invoke("virtual_book_create", { bookId, binding, events, expectedRegistry, replacementRegistry });
-      }, origin);
+      return commitLocalKVTransaction(
+        new Map([[REGISTRY_KEY, replacementRegistry]]),
+        async () => {
+          signal?.throwIfAborted();
+          await invoke("virtual_book_create", { bookId, binding, events, expectedRegistry, replacementRegistry });
+        },
+        origin,
+      );
     });
     broadcastDomainEventDrafts(drafts);
   });
@@ -148,16 +168,23 @@ export async function commitBoundVirtualBook(bookId: string, binding: VirtualBoo
 
 /** Run after local-store/legacy hydration and before plugin activation. Native
  * rechecks live books and the complete registry in the same write transaction. */
-export async function recoverVirtualBookBindings(listBooks: () => Promise<{ id: string; format: string }[]>): Promise<number> {
+export async function recoverVirtualBookBindings(
+  listBooks: () => Promise<{ id: string; format: string }[]>,
+): Promise<number> {
   return runDomainWrite(async () => {
-    const books = new Set((await listBooks()).filter(book => book.format === "virtual").map(book => book.id));
+    const books = new Set((await listBooks()).filter((book) => book.format === "virtual").map((book) => book.id));
     return afterLocalKVWrites(async () => {
-      const expectedRegistry = localKV.getItem(REGISTRY_KEY), registry = readRegistry();
-      const bookIds = Object.keys(registry).filter(id => !books.has(id));
+      const expectedRegistry = localKV.getItem(REGISTRY_KEY),
+        registry = readRegistry();
+      const bookIds = Object.keys(registry).filter((id) => !books.has(id));
       if (!bookIds.length) return 0;
       for (const id of bookIds) delete registry[id];
       const replacementRegistry = JSON.stringify(registry);
-      await commitLocalKVTransaction(new Map([[REGISTRY_KEY, replacementRegistry]]), () => invoke("virtual_book_prune", { bookIds, expectedRegistry, replacementRegistry }), "system");
+      await commitLocalKVTransaction(
+        new Map([[REGISTRY_KEY, replacementRegistry]]),
+        () => invoke("virtual_book_prune", { bookIds, expectedRegistry, replacementRegistry }),
+        "system",
+      );
       return bookIds.length;
     });
   });
@@ -169,7 +196,11 @@ export function unbindVirtualBookDurably(bookId: string, binding: VirtualBookBin
     const current = registry[bookId];
     // The shared book-removed listener may already have durably cleaned it up.
     if (!current) return;
-    if (current.pluginId !== binding.pluginId || current.providerId !== binding.providerId || current.key !== binding.key) {
+    if (
+      current.pluginId !== binding.pluginId ||
+      current.providerId !== binding.providerId ||
+      current.key !== binding.key
+    ) {
       throw new AppError("plugin/unavailable", "Virtual book binding changed during removal");
     }
     delete registry[bookId];

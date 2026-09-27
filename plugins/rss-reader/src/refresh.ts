@@ -7,24 +7,31 @@ export const REFRESH_SCHEDULE = "refresh-feeds";
 const REFRESH_CONCURRENCY = 4;
 
 async function refreshFeeds(ctx: RssPluginContext) {
-  const queue = await loadFeeds(ctx), total = queue.length;
-  let refreshed = 0, failed = 0, firstError: unknown;
-  await Promise.all(Array.from({ length: Math.min(REFRESH_CONCURRENCY, total) }, async () => {
-    for (let feed = queue.shift(); feed; feed = queue.shift()) {
-      try { if (await refreshFeed(ctx, feed.url)) refreshed++; }
-      catch (error) {
-        if (failed === 0) firstError = error;
-        failed++;
-        console.warn("RSS background refresh failed", error);
+  const queue = await loadFeeds(ctx),
+    total = queue.length;
+  let refreshed = 0,
+    failed = 0,
+    firstError: unknown;
+  await Promise.all(
+    Array.from({ length: Math.min(REFRESH_CONCURRENCY, total) }, async () => {
+      for (let feed = queue.shift(); feed; feed = queue.shift()) {
+        try {
+          if (await refreshFeed(ctx, feed.url)) refreshed++;
+        } catch (error) {
+          if (failed === 0) firstError = error;
+          failed++;
+          console.warn("RSS background refresh failed", error);
+        }
       }
-    }
-  }));
+    }),
+  );
   return { total, refreshed, failed, firstError };
 }
 
 export async function refreshAllFeeds(ctx: RssPluginContext): Promise<string> {
   const result = await refreshFeeds(ctx);
-  return result.failed === 0 ? tr(ctx.locale, "refreshedAll", { n: result.refreshed })
+  return result.failed === 0
+    ? tr(ctx.locale, "refreshedAll", { n: result.refreshed })
     : tr(ctx.locale, "refreshedSome", { ok: result.refreshed, total: result.total });
 }
 
@@ -32,7 +39,11 @@ export async function refreshScheduledFeeds(ctx: RssPluginContext): Promise<void
   const result = await refreshFeeds(ctx);
   // Revisit orphaned rows even when the network refresh failed.
   let cleanupError: unknown;
-  try { await reclaimFeedContent(ctx); } catch (error) { cleanupError = error; }
+  try {
+    await reclaimFeedContent(ctx);
+  } catch (error) {
+    cleanupError = error;
+  }
   // Finish the batch, but never let partial failure advance the host's last success.
   if (result.failed > 0) throw result.firstError ?? new Error("RSS refresh failed");
   if (cleanupError) throw cleanupError;

@@ -51,8 +51,7 @@ export const crossbookEvalSuite: EvalSuite<AgentEvalScenario> = {
   scenarios: [
     defineAgentEvalScenario({
       id: "which-book-said-it",
-      description:
-        "在书架全局定位一句模糊记得的句子，并归因到正确书籍。",
+      description: "在书架全局定位一句模糊记得的句子，并归因到正确书籍。",
       tags: ["retrieval", "global"],
       scope: { kind: "global", threadId: "crossbook" },
       seed: shelfSeed(),
@@ -117,8 +116,7 @@ export const crossbookEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "shelf-grounded-recommendation",
-      description:
-        "基于实际书架推荐下一步，并将书籍渲染为卡片。",
+      description: "基于实际书架推荐下一步，并将书籍渲染为卡片。",
       tags: ["presentation", "retrieval", "global"],
       scope: { kind: "global", threadId: "crossbook" },
       seed: shelfSeed(),

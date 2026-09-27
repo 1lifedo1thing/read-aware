@@ -24,15 +24,7 @@ import type { EvalRunRecord, EvalVariant, JsonObject } from "./types";
 import type { AgentEvalObservation } from "./types";
 import type { AgentEvalScenario } from "./agent-harness";
 
-const THINKING_LEVELS: ThinkingLevel[] = [
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-];
+const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 interface CandidateSpec {
   id: string;
@@ -137,9 +129,7 @@ function parseCandidate(value: string, index: number): CandidateSpec {
   const modelRef = (equals < 0 ? value : value.slice(equals + 1)).trim();
   const colon = modelRef.indexOf(":");
   if (!id || colon <= 0 || colon === modelRef.length - 1) {
-    throw new Error(
-      `invalid candidate ${JSON.stringify(value)}; expected name=provider:model`,
-    );
+    throw new Error(`invalid candidate ${JSON.stringify(value)}; expected name=provider:model`);
   }
   return { id, provider: modelRef.slice(0, colon), model: modelRef.slice(colon + 1) };
 }
@@ -221,9 +211,7 @@ interface EvalTarget {
 }
 /** 把目标（套件或组）+ 过滤器解析为逐套件的待跑场景列表。 */
 export function resolveEvalTargets(options: EvalCliOptions): EvalTarget[] {
-  const suiteIds = isEvalSuiteGroupId(options.suiteId)
-    ? suiteIdsOfGroup(options.suiteId)
-    : [options.suiteId];
+  const suiteIds = isEvalSuiteGroupId(options.suiteId) ? suiteIdsOfGroup(options.suiteId) : [options.suiteId];
   // 未知场景 id 直接报错（拼写保护）：单套件对它自己的场景集，组对全组并集
   const union = new Set(suiteIds.flatMap((id) => evalSuites[id].scenarios.map((s) => s.id)));
   const unknown = options.scenarioIds.filter((id) => !union.has(id));
@@ -251,9 +239,7 @@ function printVerboseRun(record: EvalRunRecord): void {
   const tools = Array.isArray(output.tools)
     ? output.tools
         .flatMap((tool) =>
-          tool && typeof tool === "object" && !Array.isArray(tool) && typeof tool.name === "string"
-            ? [tool.name]
-            : [],
+          tool && typeof tool === "object" && !Array.isArray(tool) && typeof tool.name === "string" ? [tool.name] : [],
         )
         .join(", ")
     : "";
@@ -292,9 +278,7 @@ export async function runEvalCli(args: string[]): Promise<void> {
     for (const target of targets) {
       for (const scenario of target.scenarios) {
         const prefix = withSuite ? `${target.suiteId}\t` : "";
-        console.log(
-          `${prefix}${scenario.id}\t${scenario.tags?.join(",") ?? ""}\t${scenario.description}`,
-        );
+        console.log(`${prefix}${scenario.id}\t${scenario.tags?.join(",") ?? ""}\t${scenario.description}`);
       }
     }
     return;
@@ -306,10 +290,7 @@ export async function runEvalCli(args: string[]): Promise<void> {
   let judgeLabel = "";
   let judgeMetadata: JsonObject = { enabled: false };
   if (options.judge) {
-    const judgeCompletion = resolveJudgeCompletion(
-      options.judgeProvider ?? options.provider,
-      options.judgeModel,
-    );
+    const judgeCompletion = resolveJudgeCompletion(options.judgeProvider ?? options.provider, options.judgeModel);
     judgeSecret = judgeCompletion.secret;
     judgeLabel = `${judgeCompletion.metadata.provider}:${judgeCompletion.metadata.model}`;
     judgeMetadata = {
@@ -358,15 +339,9 @@ interface SuiteRunContext {
   judgeMetadata: JsonObject;
 }
 
-async function runSuiteTarget(
-  options: EvalCliOptions,
-  target: EvalTarget,
-  context: SuiteRunContext,
-): Promise<void> {
+async function runSuiteTarget(options: EvalCliOptions, target: EvalTarget, context: SuiteRunContext): Promise<void> {
   const { judge } = context;
-  const scenarios = judge
-    ? target.scenarios.map((scenario) => withJudge(scenario, judge))
-    : target.scenarios;
+  const scenarios = judge ? target.scenarios.map((scenario) => withJudge(scenario, judge)) : target.scenarios;
   const suite = { ...evalSuites[target.suiteId], scenarios };
   const artifactStore = options.artifacts
     ? await EvalArtifactStore.create({
@@ -403,21 +378,14 @@ async function runSuiteTarget(
   );
 
   // 基线趋势只接受完整套件；筛选快扫不能把未运行的场景记成“移除”。
-  const registeredScenarioIds = new Set(
-    evalSuites[target.suiteId].scenarios.map((scenario) => scenario.id),
-  );
+  const registeredScenarioIds = new Set(evalSuites[target.suiteId].scenarios.map((scenario) => scenario.id));
   const completeSuiteRun =
     suite.scenarios.length === registeredScenarioIds.size &&
     suite.scenarios.every((scenario) => registeredScenarioIds.has(scenario.id));
   if (options.artifacts && completeSuiteRun) {
     const baselineModel = `${context.specs[0]!.provider}:${context.specs[0]!.model ?? "default"}`;
     const tags = new Map(suite.scenarios.map((scenario) => [scenario.id, scenario.tags ?? []]));
-    const currentTrend = trendFromSummary(
-      result.summary,
-      baselineModel,
-      options.thinkingLevel,
-      tags,
-    );
+    const currentTrend = trendFromSummary(result.summary, baselineModel, options.thinkingLevel, tags);
     const path = trendPath(resolve(options.outputDir ?? ".eval"), suite.id);
     const previous = await loadTrend(path);
     if (previous) {
@@ -438,7 +406,10 @@ async function runSuiteTarget(
       `${comparison.candidateVariantId} vs ${comparison.baselineVariantId}: diagnostic pass-rate ${(comparison.passRateDelta * 100).toFixed(1)} pp, score ${comparison.meanScoreDelta >= 0 ? "+" : ""}${comparison.meanScoreDelta.toFixed(3)}`,
     );
   }
-  if (artifactStore) console.log(`Artifacts: ${artifactStore.directory}\nRead structured evidence: bun run eval:review ${artifactStore.directory} --list\nThen --case <targetId>, --save <review.json> --gate. Viewer is optional for the user.`);
+  if (artifactStore)
+    console.log(
+      `Artifacts: ${artifactStore.directory}\nRead structured evidence: bun run eval:review ${artifactStore.directory} --list\nThen --case <targetId>, --save <review.json> --gate. Viewer is optional for the user.`,
+    );
 
   if (result.summary.errors > 0 || (options.gate && !qualityGatePassed(result.summary.quality!))) {
     process.exitCode = 1;

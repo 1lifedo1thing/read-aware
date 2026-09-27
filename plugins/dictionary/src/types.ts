@@ -38,15 +38,11 @@ export type DictionaryPluginContext = DictionaryContext & {
   };
   contributions: PluginContext["contributions"] & {
     agentTools: NonNullable<PluginContext["contributions"]["agentTools"]>;
-    agentRetrievalProviders: NonNullable<
-      PluginContext["contributions"]["agentRetrievalProviders"]
-    >;
+    agentRetrievalProviders: NonNullable<PluginContext["contributions"]["agentRetrievalProviders"]>;
   };
 };
 
-export function assertPluginCapabilities(
-  ctx: PluginContext,
-): asserts ctx is DictionaryPluginContext {
+export function assertPluginCapabilities(ctx: PluginContext): asserts ctx is DictionaryPluginContext {
   if (!ctx.domains.reading || !ctx.domains.library) {
     throw new Error('Dictionary requires "reading:read" and "library:read" permissions');
   }

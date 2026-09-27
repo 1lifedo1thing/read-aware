@@ -9,6 +9,7 @@ export function createContextBundlePort(): ContextBundlePort {
     capture: access.capture,
     history: access.history,
     read: access.read,
-    export: (threadKey, query, signal) => access.export(query, agentResources(threadKey, query.scope.kind === "book" ? query.scope.id : undefined), signal),
+    export: (threadKey, query, signal) =>
+      access.export(query, agentResources(threadKey, query.scope.kind === "book" ? query.scope.id : undefined), signal),
   };
 }

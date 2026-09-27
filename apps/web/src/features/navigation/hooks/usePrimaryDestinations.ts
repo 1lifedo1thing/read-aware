@@ -49,9 +49,7 @@ export function usePrimaryDestinations(): PrimaryDestination[] {
   return clampPrimaryNavVisible(layout.visible)
     .map((id): PrimaryDestination | null => {
       if (id.startsWith("plugin:")) {
-        const action = pageActions.find(
-          (entry) => pluginMenuId(entry.key) === id,
-        );
+        const action = pageActions.find((entry) => pluginMenuId(entry.key) === id);
         // pluginMenuId(key) and the plugin TopNav share the `plugin:<key>` shape.
         if (!action) return null;
         return { id, topNav: id as TopNav, label: contributionText(action.title) };
@@ -59,7 +57,5 @@ export function usePrimaryDestinations(): PrimaryDestination[] {
       const topNav = CORE_TOP_NAV[id];
       return topNav ? { id, topNav, label: coreLabels[id] } : null;
     })
-    .filter((destination): destination is PrimaryDestination =>
-      destination !== null,
-    );
+    .filter((destination): destination is PrimaryDestination => destination !== null);
 }

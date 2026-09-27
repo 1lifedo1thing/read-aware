@@ -72,7 +72,7 @@ type ProbeRunRecord = {
 };
 
 function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function waitUntil(check: () => boolean, label: string, timeout = WAIT_MS): Promise<void> {
@@ -142,9 +142,9 @@ function currentView(watched: WatchedView): PluginViewContent | undefined {
 }
 
 function progressWasPublished(views: readonly PluginViewContent[]): boolean {
-  return views.some(view => {
+  return views.some((view) => {
     if (view.kind !== "blocks") return false;
-    const progress = view.blocks.find(block => block.kind === "progress");
+    const progress = view.blocks.find((block) => block.kind === "progress");
     return !!progress && (progress.value !== null || progress.max !== undefined || progress.label?.includes("/"));
   });
 }
@@ -167,7 +167,9 @@ async function startWorker(manifest: PluginManifest, moduleUrl: string): Promise
 async function commandFor(pluginId: string, commandId: string) {
   let command: RegisteredCommand | undefined;
   await waitUntil(() => {
-    const found = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === pluginId && item.id === commandId);
+    const found = getDefaultStore()
+      .get(pluginCommandsAtom)
+      .find((item) => item.pluginId === pluginId && item.id === commandId);
     if (!found || found.state?.enabled === false) return false;
     command = found;
     return true;
@@ -178,7 +180,8 @@ async function commandFor(pluginId: string, commandId: string) {
 
 async function jumperSearch(bookId: string, query: string, matchCase = false, wholeWords = false): Promise<PluginView> {
   if (!fixture) throw new Error("Prepare the bounded search probe first");
-  if ((await reading.queries.session()).bookId !== bookId) throw new Error("Jumper search book is not the active Full2 book");
+  if ((await reading.queries.session()).bookId !== bookId)
+    throw new Error("Jumper search book is not the active Full2 book");
   const command = await commandFor(fixture.workerIds.jumper, "open");
   const rootResult = await command.run();
   try {
@@ -196,12 +199,24 @@ async function holdParserRead(bookId: string): Promise<ParserGate> {
   let releaseGate!: () => void;
   let finishLifetime!: () => void;
   let markReady!: () => void;
-  const gate = new Promise<void>(resolve => { releaseGate = resolve; });
-  const lifetime = new Promise<void>(resolve => { finishLifetime = resolve; });
-  const ready = new Promise<void>(resolve => { markReady = resolve; });
-  const state: ParserGate = { entered: 0, returned: 0, release: releaseGate, finish: finishLifetime, task: Promise.resolve() };
+  const gate = new Promise<void>((resolve) => {
+    releaseGate = resolve;
+  });
+  const lifetime = new Promise<void>((resolve) => {
+    finishLifetime = resolve;
+  });
+  const ready = new Promise<void>((resolve) => {
+    markReady = resolve;
+  });
+  const state: ParserGate = {
+    entered: 0,
+    returned: 0,
+    release: releaseGate,
+    finish: finishLifetime,
+    task: Promise.resolve(),
+  };
   state.task = withBookContent(bookId, undefined, undefined, async ({ book, contentVersion }) => {
-    if (!book.sections.some(section => section.getText || section.createDocument)) {
+    if (!book.sections.some((section) => section.getText || section.createDocument)) {
       throw new Error("Full2 TXT parser has no section reader");
     }
     const releaseParser = retainBook(book);
@@ -214,10 +229,13 @@ async function holdParserRead(bookId: string): Promise<ParserGate> {
     };
     const held = {
       ...book,
-      sections: book.sections.map(section => ({
+      sections: book.sections.map((section) => ({
         ...section,
-        ...(section.getText ? { getText: () => readAfterGate(() => section.getText!()) }
-          : section.createDocument ? { createDocument: () => readAfterGate(() => section.createDocument!()) } : {}),
+        ...(section.getText
+          ? { getText: () => readAfterGate(() => section.getText!()) }
+          : section.createDocument
+            ? { createDocument: () => readAfterGate(() => section.createDocument!()) }
+            : {}),
       })),
       destroy: releaseParser,
     } as FoliateBook;
@@ -231,7 +249,12 @@ async function holdParserRead(bookId: string): Promise<ParserGate> {
       await releaseOwner();
     }
   });
-  await Promise.race([ready, state.task.then(() => { throw new Error("Parser gate closed before registration"); })]);
+  await Promise.race([
+    ready,
+    state.task.then(() => {
+      throw new Error("Parser gate closed before registration");
+    }),
+  ]);
   return state;
 }
 
@@ -241,7 +264,8 @@ async function assertProgressAndResult(consumer: "jumper", bookId: string) {
   try {
     await waitUntil(() => currentView(watched)?.kind === "list", `${consumer} result`);
     const list = resultList(watched, `${consumer} result`);
-    if (!progressWasPublished(watched.views)) throw new Error(`${consumer} did not publish page progress before result`);
+    if (!progressWasPublished(watched.views))
+      throw new Error(`${consumer} did not publish page progress before result`);
     if (!list.items.length) throw new Error(`${consumer} returned no Full2 search hit`);
     return { status: "completed", progress: true, hits: list.items.length, title: list.title ?? "" };
   } finally {
@@ -263,7 +287,7 @@ async function assertCancelReplace(consumer: "jumper", bookId: string) {
     gate.finish();
     await gate.task;
     await delay(100);
-    if (cancelled.views.some(view => view.kind === "list")) {
+    if (cancelled.views.some((view) => view.kind === "list")) {
       throw new Error(`${consumer} published a late result after cancellation`);
     }
   } finally {
@@ -296,10 +320,15 @@ async function assertResultLimit(consumer: "jumper", bookId: string) {
     if (list.items.length !== RESULT_LIMIT) {
       throw new Error(`${consumer} expected ${RESULT_LIMIT} retained hits, got ${list.items.length}`);
     }
-    if (!list.title || list.title === RESULT_QUERY || !list.actions?.some(action => action.id === "retry")) {
+    if (!list.title || list.title === RESULT_QUERY || !list.actions?.some((action) => action.id === "retry")) {
       throw new Error(`${consumer} did not expose a visible result-limit terminal state`);
     }
-    return { status: "result-limit", progress: progressWasPublished(watched.views), hits: list.items.length, title: list.title };
+    return {
+      status: "result-limit",
+      progress: progressWasPublished(watched.views),
+      hits: list.items.length,
+      title: list.title,
+    };
   } finally {
     watched.dispose();
     releasePluginCallbacks(view);
@@ -321,9 +350,13 @@ export async function prepareDesktopBoundedSearchProbe() {
   const profile = await assertFull2BookAccessProfile();
   const before = await reading.queries.session();
   const books = (await library.queries.books.list())
-    .filter(book => book.fileName?.toLowerCase().startsWith(FULL2_FILE_PREFIX) && book.fileName?.toLowerCase().endsWith(".txt"))
+    .filter(
+      (book) =>
+        book.fileName?.toLowerCase().startsWith(FULL2_FILE_PREFIX) && book.fileName?.toLowerCase().endsWith(".txt"),
+    )
     .sort((a, b) => a.addedAt.localeCompare(b.addedAt));
-  if (books.length !== 2) throw new Error(`Full2 bounded search requires exactly two fixture TXT books, found ${books.length}`);
+  if (books.length !== 2)
+    throw new Error(`Full2 bounded search requires exactly two fixture TXT books, found ${books.length}`);
 
   // Plain-text paragraphs are concatenated by Foliate's text index. A
   // sentence boundary keeps each repeated token a separate whole word.
@@ -343,8 +376,10 @@ export async function prepareDesktopBoundedSearchProbe() {
   runRecord = { fixtureId: resultBook.id, completed: {}, budget: {} };
   try {
     await reading.commands.openBook(fixture.firstBookId, AbortSignal.timeout(20_000));
-    fixture.workerIds.jumper = await startWorker(jumperManifest as PluginManifest,
-      new URL("../../../../plugins/jumper/dist/main.js", import.meta.url).href);
+    fixture.workerIds.jumper = await startWorker(
+      jumperManifest as PluginManifest,
+      new URL("../../../../plugins/jumper/dist/main.js", import.meta.url).href,
+    );
     await commandFor(fixture.workerIds.jumper, "open");
     return {
       profile,
@@ -369,7 +404,7 @@ export async function runDesktopBoundedSearchProbe() {
   if (!fixture || !fixture.workerIds.jumper) {
     throw new Error("Prepare the bounded search probe first");
   }
-  const record = runRecord ??= { fixtureId: fixture.resultBookId, completed: {}, budget: {} };
+  const record = (runRecord ??= { fixtureId: fixture.resultBookId, completed: {}, budget: {} });
   for (const consumer of ["jumper"] as const) {
     if (Object.hasOwn(record.completed, consumer)) continue;
     await reading.commands.openBook(fixture.firstBookId, AbortSignal.timeout(20_000));
@@ -394,7 +429,7 @@ export async function runDesktopBoundedSearchBudgetProbe() {
   if (!fixture || !fixture.workerIds.jumper) {
     throw new Error("Prepare the bounded search probe first");
   }
-  const record = runRecord ??= { fixtureId: fixture.resultBookId, completed: {}, budget: {} };
+  const record = (runRecord ??= { fixtureId: fixture.resultBookId, completed: {}, budget: {} });
   await runBudgetStage(record);
   return {
     profile: fixture.profile,
@@ -422,27 +457,47 @@ export async function cleanupDesktopBoundedSearchProbe() {
   if (!current) return { removed: [], contributions: {} };
   const errors: string[] = [];
   for (const [id, worker] of workers) {
-    try { await worker.terminate(); } catch (error) { errors.push(`${id}: ${String(error)}`); }
+    try {
+      await worker.terminate();
+    } catch (error) {
+      errors.push(`${id}: ${String(error)}`);
+    }
   }
   workers.clear();
   for (const disposable of disposables.splice(0).reverse()) {
-    try { disposable.dispose(); } catch (error) { errors.push(`disposable: ${String(error)}`); }
+    try {
+      disposable.dispose();
+    } catch (error) {
+      errors.push(`disposable: ${String(error)}`);
+    }
   }
   try {
     if (current.originalBookId) await reading.commands.openBook(current.originalBookId, AbortSignal.timeout(20_000));
     else await reading.commands.close();
-  } catch (error) { errors.push(`restore reader: ${String(error)}`); }
+  } catch (error) {
+    errors.push(`restore reader: ${String(error)}`);
+  }
   try {
     if (await library.queries.books.get(current.resultBookId)) {
       const removal = await library.commands.books.removeMany([current.resultBookId]);
       let release = removal.files;
-      if (release.status === "pending") release = (await library.commands.books.retryRemovalCleanup([current.resultBookId])).files;
+      if (release.status === "pending")
+        release = (await library.commands.books.retryRemovalCleanup([current.resultBookId])).files;
       if (release.status === "pending") throw new Error(`result fixture file cleanup is pending: ${release.errorCode}`);
     }
-  } catch (error) { errors.push(`remove result fixture: ${String(error)}`); }
-  const contributions = Object.fromEntries(Object.values(current.workerIds).map(id => [id, inspectContributions(id).length]));
-  if (Object.values(contributions).some(count => count !== 0)) errors.push("Worker contributions remained after cleanup");
+  } catch (error) {
+    errors.push(`remove result fixture: ${String(error)}`);
+  }
+  const contributions = Object.fromEntries(
+    Object.values(current.workerIds).map((id) => [id, inspectContributions(id).length]),
+  );
+  if (Object.values(contributions).some((count) => count !== 0))
+    errors.push("Worker contributions remained after cleanup");
   fixture = undefined;
-  if (errors.length) throw new AggregateError(errors.map(error => new Error(error)), "Bounded search probe cleanup failed");
+  if (errors.length)
+    throw new AggregateError(
+      errors.map((error) => new Error(error)),
+      "Bounded search probe cleanup failed",
+    );
   return { removed: [current.resultBookId], contributions };
 }

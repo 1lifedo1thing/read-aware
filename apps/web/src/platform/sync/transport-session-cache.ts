@@ -30,8 +30,12 @@ export class TransportSessionCache {
   }
 
   refresh(): void {
-    if (this.entry && (this.find(this.entry.provider.ref) !== this.entry.provider
-      || this.entry.generation !== this.entry.provider.generation)) this.retire();
+    if (
+      this.entry &&
+      (this.find(this.entry.provider.ref) !== this.entry.provider ||
+        this.entry.generation !== this.entry.provider.generation)
+    )
+      this.retire();
   }
 
   stop(): void {
@@ -46,15 +50,29 @@ export class TransportSessionCache {
       this.retire();
       return Promise.reject(new AppError(ERR_SYNC_TRANSPORT_UNAVAILABLE, "Sync transport is not registered"));
     }
-    if (this.entry?.provider === provider && this.entry.endpointId === connection.endpointId
-      && this.entry.generation === provider.generation) return this.entry.pending;
+    if (
+      this.entry?.provider === provider &&
+      this.entry.endpointId === connection.endpointId &&
+      this.entry.generation === provider.generation
+    )
+      return this.entry.pending;
     this.retire();
-    const entry: Entry = { provider, generation: provider.generation, endpointId: connection.endpointId, retired: false, pending: undefined! };
+    const entry: Entry = {
+      provider,
+      generation: provider.generation,
+      endpointId: connection.endpointId,
+      retired: false,
+      pending: undefined!,
+    };
     this.entry = entry;
     entry.pending = (async () => {
       const session = await provider.open();
       if (entry.retired || session.endpointId !== connection.endpointId) {
-        try { await session.close(); } catch (error) { this.reportCleanup(error); }
+        try {
+          await session.close();
+        } catch (error) {
+          this.reportCleanup(error);
+        }
         throw entry.retired
           ? new AppError("plugin/unavailable", "Sync transport changed while opening")
           : new AppError(ERR_SYNC_TRANSPORT_MISMATCH, "Sync transport endpoint changed; reconnect to adopt it");
@@ -62,7 +80,9 @@ export class TransportSessionCache {
       entry.session = session;
       return session;
     })();
-    void entry.pending.catch(() => { if (this.entry === entry) this.entry = undefined; });
+    void entry.pending.catch(() => {
+      if (this.entry === entry) this.entry = undefined;
+    });
     return entry.pending;
   }
 }

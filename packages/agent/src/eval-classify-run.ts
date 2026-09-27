@@ -40,38 +40,96 @@ const model = createModelResolver(
 const routedModel = applyEvalRouting(model);
 
 type Policy = Awaited<ReturnType<typeof classifyBookReadingPolicy>>;
-type Observation = { policy: Policy; answer: string; turns: Array<{ input: { text: string }; answer: string }>; reviewEvidence: unknown };
-const scenarios = realBookSlugs().map(slug => {
+type Observation = {
+  policy: Policy;
+  answer: string;
+  turns: Array<{ input: { text: string }; answer: string }>;
+  reviewEvidence: unknown;
+};
+const scenarios = realBookSlugs().map((slug) => {
   const book = realBook(slug);
   const epub = book.epub();
-  const toc: ChapterRef[] = epub.chapters.map((chapter, index) => ({ index, title: chapter.title, chars: chapter.text.length }));
-  const source = { title: book.title(), author: epub.author, toc,
-    sampleText: epub.chapters[book.spec.firstContentChapter]?.text ?? "" };
+  const toc: ChapterRef[] = epub.chapters.map((chapter, index) => ({
+    index,
+    title: chapter.title,
+    chars: chapter.text.length,
+  }));
+  const source = {
+    title: book.title(),
+    author: epub.author,
+    toc,
+    sampleText: epub.chapters[book.spec.firstContentChapter]?.text ?? "",
+  };
   return {
-    id: slug, description: `Reading policy classification for ${book.title()}`,
-    input: toJsonValue({ source, expected: { narrativity: book.spec.narrativity, spoilerSensitive: book.spec.spoilerSensitive },
-      rubric: [...GLOBAL_QUALITY_RUBRIC, "Judge the book's actual form and spoiler sensitivity from its title, TOC and source sample; explain any conflict with the registry label."] }),
+    id: slug,
+    description: `Reading policy classification for ${book.title()}`,
+    input: toJsonValue({
+      source,
+      expected: { narrativity: book.spec.narrativity, spoilerSensitive: book.spec.spoilerSensitive },
+      rubric: [
+        ...GLOBAL_QUALITY_RUBRIC,
+        "Judge the book's actual form and spoiler sensitivity from its title, TOC and source sample; explain any conflict with the registry label.",
+      ],
+    }),
     source,
-    evaluate: ({ policy }: Observation) => assessmentFromChecks([{
-      id: "registry.policy-match", category: "policy", passed: policy?.narrativity === book.spec.narrativity && policy.spoilerSensitive === book.spec.spoilerSensitive,
-      message: "Comparison to the fixture registry (diagnostic; inspect source and classification rationale)",
-      expected: toJsonValue({ narrativity: book.spec.narrativity, spoilerSensitive: book.spec.spoilerSensitive }), actual: toJsonValue(policy),
-    }]),
+    evaluate: ({ policy }: Observation) =>
+      assessmentFromChecks([
+        {
+          id: "registry.policy-match",
+          category: "policy",
+          passed:
+            policy?.narrativity === book.spec.narrativity && policy.spoilerSensitive === book.spec.spoilerSensitive,
+          message: "Comparison to the fixture registry (diagnostic; inspect source and classification rationale)",
+          expected: toJsonValue({ narrativity: book.spec.narrativity, spoilerSensitive: book.spec.spoilerSensitive }),
+          actual: toJsonValue(policy),
+        },
+      ]),
   } satisfies EvalScenario<Observation> & { source: typeof source };
 });
-const artifacts = await EvalArtifactStore.create({ suiteId: "classify", secrets: [accountCredential(resolved.account)] });
-const result = await runEvalSuite<Observation, (typeof scenarios)[number]>({ id: "classify", code: "CLASSIFY", displayName: "阅读策略分类器", description: "Original-source policy classification review", scenarios }, [{
-  id: "baseline", metadata: { provider, model: resolved.modelId, thinkingLevel: "off" },
-  run: async scenario => {
-    const policy = await classifyBookReadingPolicy({ complete, model: routedModel, ...scenario.source });
-    const answer = policy ? JSON.stringify(policy) : "No confident policy returned.";
-    return { observation: { policy, answer, turns: [{ input: { text: `Classify the reading policy of ${scenario.source.title}` }, answer }], reviewEvidence: scenario.source } };
+const artifacts = await EvalArtifactStore.create({
+  suiteId: "classify",
+  secrets: [accountCredential(resolved.account)],
+});
+const result = await runEvalSuite<Observation, (typeof scenarios)[number]>(
+  {
+    id: "classify",
+    code: "CLASSIFY",
+    displayName: "阅读策略分类器",
+    description: "Original-source policy classification review",
+    scenarios,
   },
-}], { hooks: {
-  onPlan: plan => artifacts.writePlan(plan),
-  onRunComplete: async record => { console.log(formatRunLine(record)); await artifacts.writeRun(record); },
-} });
+  [
+    {
+      id: "baseline",
+      metadata: { provider, model: resolved.modelId, thinkingLevel: "off" },
+      run: async (scenario) => {
+        const policy = await classifyBookReadingPolicy({ complete, model: routedModel, ...scenario.source });
+        const answer = policy ? JSON.stringify(policy) : "No confident policy returned.";
+        return {
+          observation: {
+            policy,
+            answer,
+            turns: [{ input: { text: `Classify the reading policy of ${scenario.source.title}` }, answer }],
+            reviewEvidence: scenario.source,
+          },
+        };
+      },
+    },
+  ],
+  {
+    hooks: {
+      onPlan: (plan) => artifacts.writePlan(plan),
+      onRunComplete: async (record) => {
+        console.log(formatRunLine(record));
+        await artifacts.writeRun(record);
+      },
+    },
+  },
+);
 await artifacts.writeSummary(result.summary, formatEvalReport(result.summary));
 console.log(`Quality: ${qualitySummaryText(result.summary.quality!)}`);
-console.log(`Artifacts: ${artifacts.directory}; review source and output, then bun run eval:review ${artifacts.directory} --gate`);
-if (result.summary.errors > 0 || (process.argv.includes("--gate") && result.summary.quality!.pending > 0)) process.exitCode = 1;
+console.log(
+  `Artifacts: ${artifacts.directory}; review source and output, then bun run eval:review ${artifacts.directory} --gate`,
+);
+if (result.summary.errors > 0 || (process.argv.includes("--gate") && result.summary.quality!.pending > 0))
+  process.exitCode = 1;

@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@read-aware/ui";
 import { describeError, describeErrorCode, useTranslation } from "../../../i18n";
-import { readLocalApiStatus, setLocalApiEnabled, readLocalApiToken, rotateLocalApiToken,
-  supportsLocalApi, type LocalApiStatus } from "../../../platform/local-api";
+import {
+  readLocalApiStatus,
+  setLocalApiEnabled,
+  readLocalApiToken,
+  rotateLocalApiToken,
+  supportsLocalApi,
+  type LocalApiStatus,
+} from "../../../platform/local-api";
 import { createLogger } from "../../../platform/logger";
 import { hostIO } from "../../../services/host-io";
 
@@ -22,44 +28,70 @@ export function useLocalApi() {
   const accept = useCallback((next: LocalApiStatus) => {
     if (!mounted.current) return;
     setStatus(next);
-    setError(next.errorCode ? describeErrorCode(next.errorCode)?.body ?? null : null);
+    setError(next.errorCode ? (describeErrorCode(next.errorCode)?.body ?? null) : null);
   }, []);
   const refresh = useCallback(async () => {
-    try { accept(await readLocalApiStatus()); }
-    catch (error) { log.error("Status read failed", error); if (mounted.current) setError(describeError(error).body); }
+    try {
+      accept(await readLocalApiStatus());
+    } catch (error) {
+      log.error("Status read failed", error);
+      if (mounted.current) setError(describeError(error).body);
+    }
   }, [accept]);
   useEffect(() => {
     mounted.current = true;
     if (supported) void refresh();
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, [refresh, supported]);
   const run = async (work: () => Promise<void>) => {
     if (active.current) return;
-    active.current = true; setBusy(true);
-    try { await work(); }
-    catch (error) {
+    active.current = true;
+    setBusy(true);
+    try {
+      await work();
+    } catch (error) {
       log.error("Action failed", error);
       if (mounted.current) toast({ variant: "destructive", description: describeError(error).body });
       await refresh();
-    } finally { active.current = false; if (mounted.current) setBusy(false); }
+    } finally {
+      active.current = false;
+      if (mounted.current) setBusy(false);
+    }
   };
   return {
-    supported, status, error, busy, refresh,
-    change: (enabled: boolean) => run(async () => { accept(await setLocalApiEnabled(enabled)); }),
-    retry: () => run(async () => { accept(await setLocalApiEnabled(true)); }),
-    rotate: () => run(async () => {
-      accept(await rotateLocalApiToken());
-      toast({ description: t("localApi.rotated") });
-    }),
-    copyConnection: () => run(async () => {
-      const token = await readLocalApiToken();
-      await hostIO.writeClipboard(`export READAWARE_API_URL='${status!.baseUrl}'\nexport READAWARE_API_TOKEN='${token}'`);
-      toast({ description: t("localApi.copied") });
-    }),
+    supported,
+    status,
+    error,
+    busy,
+    refresh,
+    change: (enabled: boolean) =>
+      run(async () => {
+        accept(await setLocalApiEnabled(enabled));
+      }),
+    retry: () =>
+      run(async () => {
+        accept(await setLocalApiEnabled(true));
+      }),
+    rotate: () =>
+      run(async () => {
+        accept(await rotateLocalApiToken());
+        toast({ description: t("localApi.rotated") });
+      }),
+    copyConnection: () =>
+      run(async () => {
+        const token = await readLocalApiToken();
+        await hostIO.writeClipboard(
+          `export READAWARE_API_URL='${status!.baseUrl}'\nexport READAWARE_API_TOKEN='${token}'`,
+        );
+        toast({ description: t("localApi.copied") });
+      }),
     openSkill: () => run(() => hostIO.openExternal(SKILL_PAGE_URL)),
-    copyInstallPrompt: () => run(async () => {
-      await hostIO.writeClipboard(t("localApi.installPrompt", { url: SKILL_SOURCE_URL }));
-      toast({ description: t("localApi.installPromptCopied") });
-    }),
+    copyInstallPrompt: () =>
+      run(async () => {
+        await hostIO.writeClipboard(t("localApi.installPrompt", { url: SKILL_SOURCE_URL }));
+        toast({ description: t("localApi.installPromptCopied") });
+      }),
   };
 }

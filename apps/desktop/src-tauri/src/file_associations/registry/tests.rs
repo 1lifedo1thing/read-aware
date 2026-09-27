@@ -313,14 +313,31 @@ fn windows_installer_does_not_create_a_competing_registration_and_uninstall_cove
         .collect();
     assert_eq!(paths.len(), extensions.len());
     for ext in extensions {
-        assert!(paths.iter().any(|line| line.ends_with(&format!("\"{ext}\""))));
+        assert!(paths
+            .iter()
+            .any(|line| line.ends_with(&format!("\"{ext}\""))));
     }
     assert!(hook.contains("ReadAwareOwner"));
-    assert_eq!(hook.matches("!insertmacro READ_AWARE_ABORT_UNINSTALL").count(), 3);
+    assert_eq!(
+        hook.matches("!insertmacro READ_AWARE_ABORT_UNINSTALL")
+            .count(),
+        3
+    );
     let restores_stack = |source: &str| {
-        let expected = ["!macro READ_AWARE_ABORT_UNINSTALL", "Pop $2", "Pop $1", "Pop $R0", "Abort", "!macroend"];
-        source.lines().map(str::trim).collect::<Vec<_>>()
-            .windows(expected.len()).any(|lines| lines == expected)
+        let expected = [
+            "!macro READ_AWARE_ABORT_UNINSTALL",
+            "Pop $2",
+            "Pop $1",
+            "Pop $R0",
+            "Abort",
+            "!macroend",
+        ];
+        source
+            .lines()
+            .map(str::trim)
+            .collect::<Vec<_>>()
+            .windows(expected.len())
+            .any(|lines| lines == expected)
     };
     for newline in ["\n", "\r\n"] {
         let source = hook.lines().collect::<Vec<_>>().join(newline);

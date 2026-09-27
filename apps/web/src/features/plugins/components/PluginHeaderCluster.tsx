@@ -15,16 +15,8 @@ import { useTranslation } from "../../../i18n";
 import { openHeaderActionDialog } from "../lib/open-header-action";
 import { renderPluginIcon } from "../lib/plugin-icons";
 import { showPluginFailureToast } from "../lib/plugin-toast";
-import type {
-  HeaderActionInput,
-  PluginHeaderSurface,
-  RegisteredHeaderAction,
-} from "../lib/plugin-types";
-import {
-  HEADER_PIN_LIMIT,
-  headerActionsAtom,
-  pluginPlacementAtom,
-} from "../state/plugin-store";
+import type { HeaderActionInput, PluginHeaderSurface, RegisteredHeaderAction } from "../lib/plugin-types";
+import { HEADER_PIN_LIMIT, headerActionsAtom, pluginPlacementAtom } from "../state/plugin-store";
 import { PluginViewRenderer } from "./PluginViewRenderer";
 import { contributionText } from "../lib/plugin-i18n";
 import { usePluginViewSource } from "../hooks/usePluginViewSource";
@@ -40,12 +32,7 @@ type PluginHeaderClusterProps = {
   buttonClassName?: string;
 };
 
-export function PluginHeaderCluster({
-  surface,
-  input = {},
-  onOpenPage,
-  buttonClassName,
-}: PluginHeaderClusterProps) {
+export function PluginHeaderCluster({ surface, input = {}, onOpenPage, buttonClassName }: PluginHeaderClusterProps) {
   const { t } = useTranslation("plugins");
   const allActions = useAtomValue(headerActionsAtom);
   const placement = useAtomValue(pluginPlacementAtom);
@@ -53,17 +40,15 @@ export function PluginHeaderCluster({
   const actions = allActions.filter((action) => action.surface === surface && actionVisible(action));
   if (actions.length === 0) return null;
 
-  const pinnedKeys = (surface === "shelf" ? placement.shelfHeader : surface === "reader" ? placement.readerHeader : []).slice(
-    0,
-    HEADER_PIN_LIMIT,
-  );
+  const pinnedKeys = (
+    surface === "shelf" ? placement.shelfHeader : surface === "reader" ? placement.readerHeader : []
+  ).slice(0, HEADER_PIN_LIMIT);
   const pinned = pinnedKeys
     .map((key) => actions.find((action) => action.key === key))
     .filter((action): action is RegisteredHeaderAction => action !== undefined);
   const overflow = actions.filter((action) => !pinnedKeys.includes(action.key));
 
-  const opensPage = (action: RegisteredHeaderAction) =>
-    surface === "shelf" && action.presentation === "page";
+  const opensPage = (action: RegisteredHeaderAction) => surface === "shelf" && action.presentation === "page";
 
   return (
     <>
@@ -84,12 +69,7 @@ export function PluginHeaderCluster({
             />
           </Tooltip>
         ) : (
-          <PluginHeaderPopupButton
-            key={action.key}
-            action={action}
-            input={input}
-            buttonClassName={buttonClassName}
-          />
+          <PluginHeaderPopupButton key={action.key} action={action} input={input} buttonClassName={buttonClassName} />
         ),
       )}
       {overflow.length > 0 && (
@@ -169,9 +149,7 @@ export function PluginHeaderItem({
       </Tooltip>
     );
   }
-  return (
-    <PluginHeaderPopupButton action={action} input={input} buttonClassName={buttonClassName} variant={variant} />
-  );
+  return <PluginHeaderPopupButton action={action} input={input} buttonClassName={buttonClassName} variant={variant} />;
 }
 
 /** A pinned popup action: anchored Popover whose view loads when opened. */
@@ -188,8 +166,16 @@ function PluginHeaderPopupButton({
 }) {
   const toolbar = variant === "toolbar";
   const [open, setOpen] = useState(false);
-  const { view } = usePluginViewSource(action.view, open, () => action.view(input),
-    () => { showPluginFailureToast(action.pluginName); setOpen(false); }, input.book?.id ?? input.thread?.id);
+  const { view } = usePluginViewSource(
+    action.view,
+    open,
+    () => action.view(input),
+    () => {
+      showPluginFailureToast(action.pluginName);
+      setOpen(false);
+    },
+    input.book?.id ?? input.thread?.id,
+  );
 
   return (
     <Popover
@@ -202,23 +188,21 @@ function PluginHeaderPopupButton({
       triggerPressed={action.state?.checked}
       triggerTooltip={toolbar ? undefined : contributionText(action.title)}
       className={cn(buttonClassName, toolbar && "block w-full")}
-      triggerClassName={toolbar
-        ? cn(iconButtonClassName({ size: "toolbar" }), (open || action.state?.checked) && "text-fg")
-        : undefined}
-      trigger={toolbar ? (
-        renderPluginIcon(action.icon, 20)
-      ) : (
-        <span className="flex h-8 w-8 items-center justify-center rounded-md text-fg-muted hover:text-fg">
-          {renderPluginIcon(action.icon, 16)}
-        </span>
-      )}
+      triggerClassName={
+        toolbar ? cn(iconButtonClassName({ size: "toolbar" }), (open || action.state?.checked) && "text-fg") : undefined
+      }
+      trigger={
+        toolbar ? (
+          renderPluginIcon(action.icon, 20)
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-md text-fg-muted hover:text-fg">
+            {renderPluginIcon(action.icon, 16)}
+          </span>
+        )
+      }
       panelClassName="w-[28rem] max-w-[calc(100vw-2rem)] p-4"
     >
-      <PluginViewRenderer
-        view={view}
-        onClose={() => setOpen(false)}
-        className="max-h-[min(32rem,70vh)]"
-      />
+      <PluginViewRenderer view={view} onClose={() => setOpen(false)} className="max-h-[min(32rem,70vh)]" />
     </Popover>
   );
 }

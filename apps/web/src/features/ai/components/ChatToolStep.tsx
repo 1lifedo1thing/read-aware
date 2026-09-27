@@ -12,10 +12,7 @@ import type { ChatToolPart } from "../lib/chat-types";
  * localized label, and the distilled argument (e.g. the search query). Errors
  * stay understated — a plain suffix, no red banner.
  */
-export function ChatToolStep({ part, defaultExpanded = true }: {
-  part: ChatToolPart;
-  defaultExpanded?: boolean;
-}) {
+export function ChatToolStep({ part, defaultExpanded = true }: { part: ChatToolPart; defaultExpanded?: boolean }) {
   const { t } = useTranslation("ai");
   const contentId = useId();
   const label = useChatToolLabel(part.tool);
@@ -36,10 +33,7 @@ export function ChatToolStep({ part, defaultExpanded = true }: {
       ) : hasTrace ? (
         <CaretRight
           size={12}
-          className={cn(
-            "shrink-0 text-fg-subtle transition-transform",
-            expanded && "rotate-90",
-          )}
+          className={cn("shrink-0 text-fg-subtle transition-transform", expanded && "rotate-90")}
           aria-hidden="true"
         />
       ) : part.state === "error" ? (
@@ -75,11 +69,7 @@ export function ChatToolStep({ part, defaultExpanded = true }: {
         <div id={contentId} className="ml-1.5 mt-1.5 space-y-2 border-l border-border pl-3">
           {part.input && <TraceValue label={t("chat.tools.input")} value={part.input} />}
           {part.output && <TraceValue label={t("chat.tools.output")} value={part.output} />}
-          {running && (
-            <Caption className="ra-chat-pulse block text-fg-subtle">
-              {t("chat.tools.running")}
-            </Caption>
-          )}
+          {running && <Caption className="ra-chat-pulse block text-fg-subtle">{t("chat.tools.running")}</Caption>}
         </div>
       )}
     </div>

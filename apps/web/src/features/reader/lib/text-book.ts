@@ -9,13 +9,9 @@
  */
 import { decodeTextBook } from "./decode-text";
 import { inferBookLanguage } from "./book-language";
-import type { FoliateBook } from './foliate-engine';
+import type { FoliateBook } from "./foliate-engine";
 import { escapeHtml, wrapSectionHtml } from "./section-document";
-import {
-  labelFromOpeningWords,
-  linesToParagraphs,
-  splitTextIntoChapters,
-} from "./text-chapters";
+import { labelFromOpeningWords, linesToParagraphs, splitTextIntoChapters } from "./text-chapters";
 
 type BuiltSection = {
   id: string;
@@ -53,11 +49,9 @@ export function buildPlainTextFoliateBook(bytes: Uint8Array, fileName: string): 
 export function buildHtmlFoliateBook(bytes: Uint8Array, fileName: string): FoliateBook {
   const doc = new DOMParser().parseFromString(decodeTextBook(bytes), "text/html");
   const title = doc.querySelector("title")?.textContent?.trim();
-  const author = doc
-    .querySelector('meta[name="author" i]')
-    ?.getAttribute("content")
-    ?.trim();
-  const language = doc.documentElement.getAttribute("lang")?.trim() || inferBookLanguage(doc.body.textContent ?? "") || "und";
+  const author = doc.querySelector('meta[name="author" i]')?.getAttribute("content")?.trim();
+  const language =
+    doc.documentElement.getAttribute("lang")?.trim() || inferBookLanguage(doc.body.textContent ?? "") || "und";
 
   return assembleBook(splitHtmlBody(doc), {
     title: title || stripExtension(fileName),
@@ -136,8 +130,7 @@ function assembleBook(
         id: section.id,
         linear: "yes",
         size: docs[index]!.length,
-        load: async () =>
-          (url ??= URL.createObjectURL(new Blob([docs[index]!], { type: "text/html" }))),
+        load: async () => (url ??= URL.createObjectURL(new Blob([docs[index]!], { type: "text/html" }))),
         unload: () => {
           if (url) {
             URL.revokeObjectURL(url);

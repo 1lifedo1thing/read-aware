@@ -26,19 +26,11 @@ export function SettingsGroup({
     <section className={cn("min-w-0", className)}>
       {(title || aside) && (
         <div className="mb-3 flex items-center gap-2">
-          {title && (
-            <HeadingTag className="font-sans text-[13px] font-medium text-fg-muted">
-              {title}
-            </HeadingTag>
-          )}
+          {title && <HeadingTag className="font-sans text-[13px] font-medium text-fg-muted">{title}</HeadingTag>}
           {aside}
         </div>
       )}
-      {description && (
-        <p className="mb-3 -mt-1 font-sans text-[13px] leading-5 text-fg-muted">
-          {description}
-        </p>
-      )}
+      {description && <p className="mb-3 -mt-1 font-sans text-[13px] leading-5 text-fg-muted">{description}</p>}
       <div className="min-w-0">{children}</div>
     </section>
   );

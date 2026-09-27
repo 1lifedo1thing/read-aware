@@ -37,8 +37,12 @@ export function ReaderFootnotePopover({
     const menu = menuRef.current;
     menu?.focus();
     return () => {
-      if (previous instanceof HTMLElement && previous.isConnected
-        && (document.activeElement === document.body || menu?.contains(document.activeElement))) previous.focus();
+      if (
+        previous instanceof HTMLElement &&
+        previous.isConnected &&
+        (document.activeElement === document.body || menu?.contains(document.activeElement))
+      )
+        previous.focus();
     };
   }, [foreground, menuRef]);
 
@@ -54,7 +58,11 @@ export function ReaderFootnotePopover({
   }, [onClose]);
 
   const content = (
-    <div ref={containerRef} data-ui-portal={foreground || undefined} className={foreground ? "fixed inset-0 z-[90] overflow-hidden" : "absolute inset-0 z-30 overflow-hidden"}>
+    <div
+      ref={containerRef}
+      data-ui-portal={foreground || undefined}
+      className={foreground ? "fixed inset-0 z-[90] overflow-hidden" : "absolute inset-0 z-30 overflow-hidden"}
+    >
       {/* oxlint-disable-next-line react/forbid-elements -- full-bleed dismiss scrim behind the footnote popover */}
       <button
         type="button"
@@ -71,9 +79,7 @@ export function ReaderFootnotePopover({
         style={position}
       >
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 py-1 pl-3 pr-1">
-          <span className="font-sans text-eyebrow uppercase tracking-wide text-fg-subtle">
-            {label}
-          </span>
+          <span className="font-sans text-eyebrow uppercase tracking-wide text-fg-subtle">{label}</span>
           <IconButton
             label={t("closeNote")}
             size="sm"

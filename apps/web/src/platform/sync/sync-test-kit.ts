@@ -26,18 +26,9 @@ import {
 type FakeSnapshotFile = { frontierSeq: number; hlc: HlcStamp; events: PlainEvent[] };
 
 export const TEST_KDF = { algo: "argon2id", t: 1, m: 16, p: 1 } as const;
-export const testMasterKey = deriveMasterKey(
-  "同一个口令",
-  "c2FsdHNhbHRzYWx0c2FsdA==",
-  TEST_KDF,
-);
+export const testMasterKey = deriveMasterKey("同一个口令", "c2FsdHNhbHRzYWx0c2FsdA==", TEST_KDF);
 
-export function plain(
-  id: string,
-  wallMs: number,
-  deviceId: string,
-  text: string,
-): PlainEvent {
+export function plain(id: string, wallMs: number, deviceId: string, text: string): PlainEvent {
   return {
     id,
     type: "highlight.created",
@@ -77,10 +68,11 @@ export function fakeDevice() {
     });
   };
   const frontierOf = (events: PlainEvent[]): HlcStamp =>
-    events.reduce<HlcStamp>(
-      (best, e) => (e.hlc.wallMs > best.wallMs ? e.hlc : best),
-      { wallMs: 0, counter: 0, deviceId: "none" },
-    );
+    events.reduce<HlcStamp>((best, e) => (e.hlc.wallMs > best.wallMs ? e.hlc : best), {
+      wallMs: 0,
+      counter: 0,
+      deviceId: "none",
+    });
   // Test control: make applyRemote report the replay fallback (events behind
   // the local frontier), which is what flips the pull loop into staging.
   const controls = {

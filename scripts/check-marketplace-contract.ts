@@ -69,8 +69,7 @@ function requireEntry(raw: unknown, index: number): RegistryEntry {
   }
   if (
     entry.files != null &&
-    (!Array.isArray(entry.files) ||
-      entry.files.some((file) => typeof file !== "string" || !isSafePath(file)))
+    (!Array.isArray(entry.files) || entry.files.some((file) => typeof file !== "string" || !isSafePath(file)))
   ) {
     throw new Error(`registry.plugins[${index}].files contains an unsafe path`);
   }
@@ -78,12 +77,7 @@ function requireEntry(raw: unknown, index: number): RegistryEntry {
 }
 
 function isSafePath(path: string): boolean {
-  return (
-    path.length > 0 &&
-    !path.startsWith("/") &&
-    !path.includes("..") &&
-    !path.includes("\\")
-  );
+  return path.length > 0 && !path.startsWith("/") && !path.includes("..") && !path.includes("\\");
 }
 
 async function fetchText(baseUrl: string, path: string): Promise<string> {
@@ -126,13 +120,9 @@ async function checkSource(baseUrl: string): Promise<number> {
     seen.add(entry.id);
 
     const folder = `plugins/${entry.id}`;
-    const manifest = parseManifestJson(
-      await fetchText(baseUrl, `${folder}/manifest.json`),
-    );
+    const manifest = parseManifestJson(await fetchText(baseUrl, `${folder}/manifest.json`));
     if (manifest.id !== entry.id) {
-      throw new Error(
-        `${entry.id}: registry id does not match manifest id "${manifest.id}"`,
-      );
+      throw new Error(`${entry.id}: registry id does not match manifest id "${manifest.id}"`);
     }
     if (
       manifest.name !== entry.name ||
@@ -140,17 +130,10 @@ async function checkSource(baseUrl: string): Promise<number> {
       manifest.minAppVersion !== entry.minAppVersion ||
       !sameStrings(manifest.permissions, entry.permissions)
     ) {
-      throw new Error(
-        `${entry.id}: registry metadata differs from the authoritative manifest`,
-      );
+      throw new Error(`${entry.id}: registry metadata differs from the authoritative manifest`);
     }
-    if (
-      manifest.minAppVersion &&
-      !releaseSatisfies(appConfig.version, manifest.minAppVersion)
-    ) {
-      throw new Error(
-        `${entry.id}: requires app ${manifest.minAppVersion}, but this release is ${appConfig.version}`,
-      );
+    if (manifest.minAppVersion && !releaseSatisfies(appConfig.version, manifest.minAppVersion)) {
+      throw new Error(`${entry.id}: requires app ${manifest.minAppVersion}, but this release is ${appConfig.version}`);
     }
     assertPluginCapabilityRequirements(manifest);
 
@@ -158,9 +141,7 @@ async function checkSource(baseUrl: string): Promise<number> {
     for (const font of manifest.fonts ?? []) {
       for (const file of font.files) {
         if (!declaredPackageFiles.has(file.path)) {
-          throw new Error(
-            `${entry.id}: manifest font "${file.path}" is missing from registry.files`,
-          );
+          throw new Error(`${entry.id}: manifest font "${file.path}" is missing from registry.files`);
         }
       }
     }
@@ -176,7 +157,5 @@ async function checkSource(baseUrl: string): Promise<number> {
 
 for (const baseUrl of baseUrls) {
   const count = await checkSource(baseUrl);
-  console.log(
-    `Marketplace contract accepted ${count} plugin(s) for ReadAware ${appConfig.version}.`,
-  );
+  console.log(`Marketplace contract accepted ${count} plugin(s) for ReadAware ${appConfig.version}.`);
 }

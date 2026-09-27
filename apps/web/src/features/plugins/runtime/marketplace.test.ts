@@ -73,9 +73,7 @@ describe("fetchMarketplaceRegistry mirror memory", () => {
 
   test("a non-ok response is not remembered as good", async () => {
     const hosts = stubFetch((url) =>
-      url.includes("raw.githubusercontent.com")
-        ? new Response("missing", { status: 404 })
-        : registry(),
+      url.includes("raw.githubusercontent.com") ? new Response("missing", { status: 404 }) : registry(),
     );
 
     await fetchMarketplaceRegistry();

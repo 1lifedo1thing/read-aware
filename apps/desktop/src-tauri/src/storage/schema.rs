@@ -4,8 +4,8 @@
 //! Split out of `storage/mod.rs`. The migration list alone is several hundred
 //! lines and changes for entirely different reasons than the query code that
 //! used to sit beside it.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 /// Ordered schema migrations. Each `(version, name, sql)` is applied once, in
 /// version order, inside a transaction, and recorded in `schema_migrations`.
@@ -957,22 +957,22 @@ pub(crate) const COVER_PROJECTION_VERSION: i64 = 24;
 
 /// Apply migrations newer than the highest recorded version, up to `max_version`
 /// (`i64::MAX` in production; tests use lower caps to stage old databases).
-pub(crate) fn run_migrations_up_to(conn: &mut Connection, max_version: i64) -> Result<(), CommandError> {
+pub(crate) fn run_migrations_up_to(
+    conn: &mut Connection,
+    max_version: i64,
+) -> Result<(), CommandError> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS schema_migrations (
             version    INTEGER PRIMARY KEY,
             name       TEXT NOT NULL,
             applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
          );",
-    )
-    ?;
-    let current: i64 = conn
-        .query_row(
-            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
-            [],
-            |row| row.get(0),
-        )
-        ?;
+    )?;
+    let current: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+        [],
+        |row| row.get(0),
+    )?;
     for (version, name, sql) in MIGRATIONS {
         if *version > current && *version <= max_version {
             let tx = conn.transaction()?;
@@ -980,9 +980,15 @@ pub(crate) fn run_migrations_up_to(conn: &mut Connection, max_version: i64) -> R
             // v53's own recovery is superseded: a database that still has to
             // pass it reaches v54 in the same run, which settles positions
             // under the rule this build applies.
-            if *version == 54 { super::apply::recover_logged_progress(&tx)?; }
-            if *version == 36 { super::context_bundle_publication::install_source_clock(&tx)?; }
-            if *version == 37 { super::context_bundle_publication::install_blob_source_clock(&tx)?; }
+            if *version == 54 {
+                super::apply::recover_logged_progress(&tx)?;
+            }
+            if *version == 36 {
+                super::context_bundle_publication::install_source_clock(&tx)?;
+            }
+            if *version == 37 {
+                super::context_bundle_publication::install_blob_source_clock(&tx)?;
+            }
             if *version == 38 {
                 // An older client could retain an unknown onboarding event.
                 // Replay all decisions in order, not just its profile overwrite.
@@ -992,26 +998,36 @@ pub(crate) fn run_migrations_up_to(conn: &mut Connection, max_version: i64) -> R
                 // Recover formerly ignored facts without rewriting unrelated
                 // legacy projections. An incomplete bootstrap must finish replay.
                 super::events::for_each_event_after(&tx, None, |event| {
-                    if matches!(event.event_type.as_str(), "profile.updated" | "entity.resolved" | "entity.merged") {
+                    if matches!(
+                        event.event_type.as_str(),
+                        "profile.updated" | "entity.resolved" | "entity.merged"
+                    ) {
                         super::apply::apply_event(&tx, event)?;
                     }
                     Ok(())
                 })?;
-                tx.execute("UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0", [])?;
+                tx.execute(
+                    "UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0",
+                    [],
+                )?;
             }
             if *version == 35 {
                 // Older clients may already have stored unknown bundle events.
                 super::events::for_each_event_after(&tx, None, |event| {
-                    if event.event_type == "context.bundlePublished" { super::apply::apply_event(&tx, event)?; }
+                    if event.event_type == "context.bundlePublished" {
+                        super::apply::apply_event(&tx, event)?;
+                    }
                     Ok(())
                 })?;
-                tx.execute("UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0", [])?;
+                tx.execute(
+                    "UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0",
+                    [],
+                )?;
             }
             tx.execute(
                 "INSERT INTO schema_migrations (version, name) VALUES (?1, ?2)",
                 params![version, name],
-            )
-            ?;
+            )?;
             tx.commit()?;
         }
     }
@@ -1034,8 +1050,7 @@ pub(crate) fn apply_connection_pragmas(conn: &Connection) -> Result<(), CommandE
     // journal_mode returns the resulting mode as a row, so query it.
     conn.query_row("PRAGMA journal_mode = WAL", [], |row| {
         row.get::<_, String>(0)
-    })
-    ?;
+    })?;
     Ok(conn.execute_batch(
         "PRAGMA synchronous = NORMAL;
          PRAGMA busy_timeout = 5000;
@@ -1167,14 +1182,19 @@ pub(crate) fn fts_match_expr(query: &str) -> Option<String> {
 /// (v4's initial populate and the FTS triggers call `ra_fts_segment`).
 pub fn register_sql_functions(conn: &Connection) -> Result<(), CommandError> {
     conn.create_scalar_function(
-        "ra_progress_compare", 2,
-        rusqlite::functions::FunctionFlags::SQLITE_UTF8 | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC,
+        "ra_progress_compare",
+        2,
+        rusqlite::functions::FunctionFlags::SQLITE_UTF8
+            | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC,
         |ctx| {
             let parse = |index| -> rusqlite::Result<Value> {
                 let text: Option<String> = ctx.get(index)?;
-                text.map(|text| serde_json::from_str(&text)
-                    .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error))))
-                    .transpose().map(|value| value.unwrap_or(Value::Null))
+                text.map(|text| {
+                    serde_json::from_str(&text)
+                        .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error)))
+                })
+                .transpose()
+                .map(|value| value.unwrap_or(Value::Null))
             };
             Ok(super::reading_progress::compare(&parse(0)?, &parse(1)?) as i32)
         },
@@ -1193,7 +1213,6 @@ pub fn register_sql_functions(conn: &Connection) -> Result<(), CommandError> {
     Ok(())
 }
 
-
 // ── Factory reset ────────────────────────────────────────────────────────────
 
 /// Every user-data table, resolved by introspection so a future migration's
@@ -1202,19 +1221,18 @@ pub fn register_sql_functions(conn: &Connection) -> Result<(), CommandError> {
 /// user data), and virtual-table shadow tables — wiping a shadow directly
 /// corrupts its FTS index, while `DELETE FROM <vtab>` clears them properly.
 fn wipeable_tables(conn: &Connection) -> Result<Vec<String>, CommandError> {
-    let mut stmt = conn
-        .prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table'")
-        ?;
+    let mut stmt = conn.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table'")?;
     let rows: Vec<(String, Option<String>)> = stmt
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-        ?
-        .collect::<Result<_, _>>()
-        ?;
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<Result<_, _>>()?;
     let virtual_tables: Vec<String> = rows
         .iter()
         .filter(|(_, sql)| {
-            sql.as_deref()
-                .is_some_and(|s| s.trim_start().to_uppercase().starts_with("CREATE VIRTUAL TABLE"))
+            sql.as_deref().is_some_and(|s| {
+                s.trim_start()
+                    .to_uppercase()
+                    .starts_with("CREATE VIRTUAL TABLE")
+            })
         })
         .map(|(name, _)| name.clone())
         .collect();
@@ -1238,9 +1256,7 @@ fn wipeable_tables(conn: &Connection) -> Result<Vec<String>, CommandError> {
 /// caller reloads the webview afterwards — in-memory JS state is stale by
 /// definition once this returns.
 #[tauri::command]
-pub async fn wipe_all_data(
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn wipe_all_data(app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("wipe_all_data", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let data_dir = tauri::Manager::state::<DataDir>(&app);
@@ -1254,17 +1270,26 @@ pub async fn wipe_all_data(
     .await
 }
 
-pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Result<(), CommandError> {
+pub(crate) fn wipe_all_data_inner(
+    conn: &mut Connection,
+    data_dir: &Path,
+) -> Result<(), CommandError> {
     let mut tables = wipeable_tables(conn)?;
     // Deleting books produces cleanup intents; wipe those after their producer,
     // regardless of sqlite_master enumeration order.
-    tables.sort_by_key(|table| if table == "context_bundle_source_clock" { 2 }
-        else if table == "book_removal_cleanup" || table == "plugin_document_generations" { 1 } else { 0 });
+    tables.sort_by_key(|table| {
+        if table == "context_bundle_source_clock" {
+            2
+        } else if table == "book_removal_cleanup" || table == "plugin_document_generations" {
+            1
+        } else {
+            0
+        }
+    });
     let tx = conn.transaction()?;
     // FK order problems are sidestepped wholesale: defer enforcement to commit,
     // by which point every referencing row is gone too.
-    tx.execute_batch("PRAGMA defer_foreign_keys = ON;")
-        ?;
+    tx.execute_batch("PRAGMA defer_foreign_keys = ON;")?;
     for table in &tables {
         tx.execute(&format!("DELETE FROM \"{table}\""), [])
             .map_err(|e| format!("wiping {table}: {e}"))?;
@@ -1273,7 +1298,12 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
     ensure_local_device(&tx)?;
     // Commit anti-import flags with the deletion itself. A crash or filesystem
     // failure must never let the next WebView resurrect legacy user data.
-    for key in ["read-aware-migrated-v1", "read-aware-migrated-memories-v1", "read-aware-wipe-pending", "read-aware-wipe-webview-pending"] {
+    for key in [
+        "read-aware-migrated-v1",
+        "read-aware-migrated-memories-v1",
+        "read-aware-wipe-pending",
+        "read-aware-wipe-webview-pending",
+    ] {
         tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES(?1,'1',strftime('%Y-%m-%dT%H:%M:%fZ','now'))", [key])?;
     }
     tx.commit()?;
@@ -1281,11 +1311,13 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
         conn.execute_batch("VACUUM;")?;
         let blobs_dir = data_dir.join("blobs");
         if blobs_dir.exists() {
-            std::fs::remove_dir_all(&blobs_dir).map_err(|e| CommandError::context("removing blobs", e))?;
+            std::fs::remove_dir_all(&blobs_dir)
+                .map_err(|e| CommandError::context("removing blobs", e))?;
         }
         let key_file = data_dir.join("secret.key");
         if key_file.exists() {
-            std::fs::remove_file(&key_file).map_err(|e| CommandError::context("removing secret key", e))?;
+            std::fs::remove_file(&key_file)
+                .map_err(|e| CommandError::context("removing secret key", e))?;
         }
         // The app_kv cleanup fires the source-table DELETE trigger and can
         // recreate the clock after the wipe deleted it. Keep that cleanup and
@@ -1297,5 +1329,11 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
         cleanup_tx.commit()?;
         Ok(())
     };
-    finish().map_err(|error| CommandError::context_coded("data/wipe-incomplete", "Local records cleared; cleanup remains pending", error))
+    finish().map_err(|error| {
+        CommandError::context_coded(
+            "data/wipe-incomplete",
+            "Local records cleared; cleanup remains pending",
+            error,
+        )
+    })
 }

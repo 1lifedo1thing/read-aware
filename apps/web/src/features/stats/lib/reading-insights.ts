@@ -86,10 +86,7 @@ export function distinctDaysRead(daily: DailyReadingMap): number {
  * (it resumes from yesterday), so an active streak survives until a full empty
  * day passes.
  */
-export function readingStreak(
-  daily: DailyReadingMap,
-  now: number,
-): { current: number; longest: number } {
+export function readingStreak(daily: DailyReadingMap, now: number): { current: number; longest: number } {
   let current = 0;
   const startOffset = (daily[localDayKey(now)] ?? 0) > 0 ? 0 : 1;
   for (let i = startOffset; ; i += 1) {
@@ -269,7 +266,7 @@ export function buildHeatmapGrid(daily: DailyReadingMap, now: number): HeatmapGr
       const date = new Date(cursor);
       const active = date.getTime() <= today.getTime();
       const key = localDayKey(date.getTime());
-      const ms = active ? daily[key] ?? 0 : 0;
+      const ms = active ? (daily[key] ?? 0) : 0;
       column.push({ key, date, ms, level: heatmapLevel(ms), active, isToday: key === todayKey });
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -312,12 +309,7 @@ export function periodRangeLabel(t: TFunction<"stats">, period: StatsPeriod): st
 }
 
 /** Sum of daily reading over `count` days starting `fromOffset` days ago. */
-function sumDailyWindow(
-  daily: DailyReadingMap,
-  now: number,
-  fromOffset: number,
-  count: number,
-): number {
+function sumDailyWindow(daily: DailyReadingMap, now: number, fromOffset: number, count: number): number {
   let total = 0;
   for (let i = fromOffset; i < fromOffset + count; i += 1) {
     total += daily[dayKeyAtOffset(now, i)] ?? 0;

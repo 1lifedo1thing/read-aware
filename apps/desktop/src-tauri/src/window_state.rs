@@ -425,18 +425,34 @@ mod tests {
             CREATE TRIGGER placement_update AFTER UPDATE ON app_kv BEGIN UPDATE write_clock SET value=value+1; END;").unwrap();
         let mut state = placement();
         write(&conn, &state).unwrap();
-        conn.execute("UPDATE app_kv SET updated_at='baseline'", []).unwrap();
+        conn.execute("UPDATE app_kv SET updated_at='baseline'", [])
+            .unwrap();
         let changes = conn.total_changes();
         // Focus changes can repeatedly schedule a save of identical bounds.
         write(&conn, &state).unwrap();
         write(&conn, &state).unwrap();
         assert_eq!(conn.total_changes(), changes);
-        assert_eq!(conn.query_row("SELECT updated_at FROM app_kv", [], |row| row.get::<_, String>(0)).unwrap(), "baseline");
-        assert_eq!(conn.query_row("SELECT value FROM write_clock", [], |row| row.get::<_, i64>(0)).unwrap(), 1);
+        assert_eq!(
+            conn.query_row("SELECT updated_at FROM app_kv", [], |row| row
+                .get::<_, String>(0))
+                .unwrap(),
+            "baseline"
+        );
+        assert_eq!(
+            conn.query_row("SELECT value FROM write_clock", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
         state.normal.x += 20;
         write(&conn, &state).unwrap();
         assert_eq!(read(&conn).unwrap(), Some(state));
-        assert_eq!(conn.query_row("SELECT value FROM write_clock", [], |row| row.get::<_, i64>(0)).unwrap(), 2);
+        assert_eq!(
+            conn.query_row("SELECT value FROM write_clock", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
     }
 
     #[test]

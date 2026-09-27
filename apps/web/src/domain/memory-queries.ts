@@ -1,4 +1,13 @@
-import { AppError, normalizeMemoryQuery, type BookGraphQuery, type BookGraphResult, type ChapterDigest, type DigestFlavor, type MemoryQuery, type MemoryRecord } from "@read-aware/core";
+import {
+  AppError,
+  normalizeMemoryQuery,
+  type BookGraphQuery,
+  type BookGraphResult,
+  type ChapterDigest,
+  type DigestFlavor,
+  type MemoryQuery,
+  type MemoryRecord,
+} from "@read-aware/core";
 import { normalizeBookGraphQuery, queryBookGraph, type BookGraphBoundary } from "@read-aware/agent";
 import { normalizeMemoryPageQuery, type MemoryPageQuery, type MemoryPage } from "@read-aware/core";
 
@@ -14,15 +23,17 @@ export type MemoryQueryDeps = {
 };
 
 export function createMemoryQueries(deps: MemoryQueryDeps, lifetime?: AbortSignal): MemoryQueries {
-  const assertLive = () => { if (lifetime?.aborted) throw new AppError("plugin/cancelled", "Memory query owner retired"); };
+  const assertLive = () => {
+    if (lifetime?.aborted) throw new AppError("plugin/cancelled", "Memory query owner retired");
+  };
   return {
-    page: async input => {
+    page: async (input) => {
       assertLive();
       const page = await deps.page(normalizeMemoryPageQuery(input));
       assertLive();
       return structuredClone(page);
     },
-    search: async input => {
+    search: async (input) => {
       assertLive();
       const query = normalizeMemoryQuery(input);
       const rows = await deps.search(query);
@@ -31,7 +42,8 @@ export function createMemoryQueries(deps: MemoryQueryDeps, lifetime?: AbortSigna
     },
     bookGraph: async (bookId, input = {}) => {
       assertLive();
-      if (typeof bookId !== "string" || !bookId.trim() || bookId.length > 256) throw new AppError("memory/invalid-query", "Expected a book ID");
+      if (typeof bookId !== "string" || !bookId.trim() || bookId.length > 256)
+        throw new AppError("memory/invalid-query", "Expected a book ID");
       const query = normalizeBookGraphQuery(input);
       const { digests, boundary, flavor } = await deps.graph(bookId);
       assertLive();

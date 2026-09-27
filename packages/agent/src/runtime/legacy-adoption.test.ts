@@ -8,10 +8,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { messageText } from "../testing/message-text";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
-import {
-  fauxAssistantMessage,
-  type FauxProviderRegistration,
-} from "@earendil-works/pi-ai/providers/faux";
+import { fauxAssistantMessage, type FauxProviderRegistration } from "@earendil-works/pi-ai/providers/faux";
 import type { Id } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import type { RuntimeDeps, TurnRecord } from "../ports";
@@ -103,9 +100,7 @@ describe("legacy thread adoption", () => {
     expect(bootstrap!.content).toContain("绝望而不是恶意");
     expect(bootstrap!.content).not.toContain("接着聊");
     // 继承提炼吃的是同一历史窗口
-    const inherited = stores.savedMemoryInputs.find(
-      (input) => input.content === "读者读书为研究人物心理",
-    );
+    const inherited = stores.savedMemoryInputs.find((input) => input.content === "读者读书为研究人物心理");
     expect(inherited).toMatchObject({ scope: "user", sourceThreadKey: "book:b1" });
     // 滚动摘要以 bootstrap 为 previous 折叠本轮
     const fold = calls.find((call) => call.kind === "fold");
@@ -176,7 +171,8 @@ describe("legacy thread adoption", () => {
       for await (const _ of thread.sendTurn({ text: "接着聊。", turnId: "turn-1" })) {
         // stream
       }
-      const saveReply = () => transcript.push({ id: "reply-1", role: "assistant", content: "本轮回答", createdAt: "2026-09-27T00:00:05Z" });
+      const saveReply = () =>
+        transcript.push({ id: "reply-1", role: "assistant", content: "本轮回答", createdAt: "2026-09-27T00:00:05Z" });
       if (replySavedFirst) saveReply();
       await thread.flushBackgroundWork();
       if (!replySavedFirst) saveReply();

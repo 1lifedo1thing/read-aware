@@ -27,25 +27,47 @@ export type ReadingEmphasisReceipt = { status: "completed"; emphasis: ReadingEmp
 export type ReadingEmphasisRemoval = { status: "completed"; id: string; removed: boolean };
 
 function object(value: unknown, keys: string[]): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some(key => !keys.includes(key))) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).some((key) => !keys.includes(key))
+  ) {
     throw new AppError("reader/invalid-target", "Invalid temporary emphasis operation");
   }
   return value as Record<string, unknown>;
 }
 export function normalizeReadingEmphasisRef(value: unknown): ReadingEmphasisRef {
   const raw = object(value, ["id", "expectedRevision"]);
-  if (typeof raw.id !== "string" || !raw.id.trim() || raw.id.length > 256 || typeof raw.expectedRevision !== "number"
-    || !Number.isSafeInteger(raw.expectedRevision) || raw.expectedRevision < 1) throw new AppError("reader/invalid-target", "An observed emphasis identity and revision are required");
+  if (
+    typeof raw.id !== "string" ||
+    !raw.id.trim() ||
+    raw.id.length > 256 ||
+    typeof raw.expectedRevision !== "number" ||
+    !Number.isSafeInteger(raw.expectedRevision) ||
+    raw.expectedRevision < 1
+  )
+    throw new AppError("reader/invalid-target", "An observed emphasis identity and revision are required");
   return { id: raw.id, expectedRevision: raw.expectedRevision };
 }
 export function normalizeReadingEmphasisWrite(value: unknown): ReadingEmphasisWrite & { style: ReadingEmphasisStyle } {
   const raw = object(value, ["ranges", "style", "id", "expectedRevision"]);
-  if (!Array.isArray(raw.ranges) || raw.ranges.length < 1 || raw.ranges.length > 64
-    || raw.style !== undefined && raw.style !== "highlight" && raw.style !== "underline") throw new AppError("reader/invalid-target", "Emphasis requires 1-64 ranges and a supported style");
-  const ranges = raw.ranges.map(range => normalizeBookRangeQuery({ range }).range);
-  if (ranges.some(range => range.bookId !== ranges[0].bookId || range.contentVersion !== ranges[0].contentVersion)) {
+  if (
+    !Array.isArray(raw.ranges) ||
+    raw.ranges.length < 1 ||
+    raw.ranges.length > 64 ||
+    (raw.style !== undefined && raw.style !== "highlight" && raw.style !== "underline")
+  )
+    throw new AppError("reader/invalid-target", "Emphasis requires 1-64 ranges and a supported style");
+  const ranges = raw.ranges.map((range) => normalizeBookRangeQuery({ range }).range);
+  if (ranges.some((range) => range.bookId !== ranges[0].bookId || range.contentVersion !== ranges[0].contentVersion)) {
     throw new AppError("reader/invalid-target", "Emphasis ranges must share one book and content version");
   }
-  return { ranges, style: raw.style ?? "highlight", ...(raw.id !== undefined || raw.expectedRevision !== undefined
-    ? normalizeReadingEmphasisRef({ id: raw.id, expectedRevision: raw.expectedRevision }) : {}) };
+  return {
+    ranges,
+    style: raw.style ?? "highlight",
+    ...(raw.id !== undefined || raw.expectedRevision !== undefined
+      ? normalizeReadingEmphasisRef({ id: raw.id, expectedRevision: raw.expectedRevision })
+      : {}),
+  };
 }

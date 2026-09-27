@@ -7,10 +7,13 @@ async function nativeCall<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
   } catch (error) {
-    const detail = typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
-      ? error.message : String(error);
+    const detail =
+      typeof error === "object" && error !== null && "message" in error && typeof error.message === "string"
+        ? error.message
+        : String(error);
     throw new AppError(errorCode(error) ?? "ipc/unknown", `Native data directory operation failed: ${detail}`, {
-      cause: error, retryable: isRetryable(error),
+      cause: error,
+      retryable: isRetryable(error),
     });
   }
 }
@@ -20,7 +23,8 @@ export const nativeDataLocation = {
   supported: () => isTauri() && !isMobileOS(),
   async read(signal?: AbortSignal): Promise<string> {
     signal?.throwIfAborted();
-    if (!nativeDataLocation.supported()) throw new AppError("ui/unavailable", "Data directory requires the desktop app");
+    if (!nativeDataLocation.supported())
+      throw new AppError("ui/unavailable", "Data directory requires the desktop app");
     const path = await nativeCall(appDataDir);
     signal?.throwIfAborted();
     if (typeof path !== "string" || !path.trim()) throw new AppError("internal", "Native app data directory is empty");

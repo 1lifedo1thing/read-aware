@@ -61,7 +61,11 @@ describe.skipIf(N === 0)("mailbox stress", () => {
     expect(known).toBe(N);
 
     t = performance.now();
-    const again = core.append([sealed("e-1"), sealed("e-2"), sealed("brand-new")], "2026-09-07T00:00:00.000Z", Number.MAX_SAFE_INTEGER);
+    const again = core.append(
+      [sealed("e-1"), sealed("e-2"), sealed("brand-new")],
+      "2026-09-07T00:00:00.000Z",
+      Number.MAX_SAFE_INTEGER,
+    );
     console.log(`STRESS relay redelivery append: ${(performance.now() - t).toFixed(1)}ms`);
     expect(again).toMatchObject({ "e-1": 2, "e-2": 3, "brand-new": N + 1 });
   }, 600_000);

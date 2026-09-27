@@ -40,8 +40,6 @@ export default defineConfig({
     // the desktop instances and the Android emulator's 10.0.2.2 alias keep
     // using loopback); HMR still advertises the address devices can reach.
     host: tauriDevHost ? "0.0.0.0" : false,
-    hmr: tauriDevHost
-      ? { protocol: "ws", host: tauriDevHost, port: 5174 }
-      : undefined,
+    hmr: tauriDevHost ? { protocol: "ws", host: tauriDevHost, port: 5174 } : undefined,
   },
 });

@@ -30,17 +30,10 @@ type DownloadSectionProps = {
   strings?: DownloadSectionStrings;
 };
 
-export function DownloadSection({
-  downloads,
-  platform,
-  tag,
-  strings = DEFAULT_STRINGS,
-}: DownloadSectionProps) {
+export function DownloadSection({ downloads, platform, tag, strings = DEFAULT_STRINGS }: DownloadSectionProps) {
   return (
     <section id="download" className="mt-20 max-w-[36rem] scroll-mt-8 sm:mt-24">
-      <h2 className="text-[clamp(1.5rem,3vw,1.9rem)] font-normal leading-[1.18] tracking-[-0.01em]">
-        {strings.title}
-      </h2>
+      <h2 className="text-[clamp(1.5rem,3vw,1.9rem)] font-normal leading-[1.18] tracking-[-0.01em]">{strings.title}</h2>
       <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">
         {strings.intro}
         {tag ? strings.latest(tag) : ""}
@@ -62,25 +55,17 @@ export function DownloadSection({
             >
               <span className="text-[1.0625rem]">
                 {download.name}
-                {recommended && (
-                  <span className="ml-2 text-[0.875rem] text-fg-subtle">
-                    {strings.yourPlatform}
-                  </span>
-                )}
+                {recommended && <span className="ml-2 text-[0.875rem] text-fg-subtle">{strings.yourPlatform}</span>}
               </span>
 
               {download.comingSoon ? (
-                <span className="text-[0.9375rem] italic text-fg-subtle">
-                  {strings.comingSoon}
-                </span>
+                <span className="text-[0.9375rem] italic text-fg-subtle">{strings.comingSoon}</span>
               ) : (
                 <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[0.9375rem]">
                   <a
                     href={href}
                     className="underline underline-offset-4 transition-colors hover:text-fg-muted"
-                    {...(isPage
-                      ? { target: "_blank", rel: "noopener noreferrer" }
-                      : {})}
+                    {...(isPage ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   >
                     {download.primary?.label ?? strings.download}
                   </a>
@@ -100,9 +85,7 @@ export function DownloadSection({
         })}
       </ul>
 
-      <p className="mt-6 text-[0.875rem] italic leading-relaxed text-fg-muted">
-        {strings.signingNote}
-      </p>
+      <p className="mt-6 text-[0.875rem] italic leading-relaxed text-fg-muted">{strings.signingNote}</p>
     </section>
   );
 }

@@ -78,12 +78,7 @@ type ItemStory = StoryObj<typeof PluginHeaderItem>;
 
 /** Nothing pinned: every contribution sits behind the overflow trigger. */
 export const AllInOverflow: Story = {
-  decorators: [
-    withAtoms(
-      seed(headerActionsAtom, shelfActions),
-      seed(pluginPlacementAtom, placement([], [])),
-    ),
-  ],
+  decorators: [withAtoms(seed(headerActionsAtom, shelfActions), seed(pluginPlacementAtom, placement([], [])))],
 };
 
 /** Two pinned, two overflowed — the mixed row the shelf header usually shows. */
@@ -116,10 +111,7 @@ export const ReaderSurface: Story = {
     input: { book: { id: "b1", title: "Pale Fire", author: "Vladimir Nabokov" } },
   },
   decorators: [
-    withAtoms(
-      seed(headerActionsAtom, readerActions),
-      seed(pluginPlacementAtom, placement([], ["demo:lookup"])),
-    ),
+    withAtoms(seed(headerActionsAtom, readerActions), seed(pluginPlacementAtom, placement([], ["demo:lookup"]))),
   ],
 };
 
@@ -130,7 +122,10 @@ export const MorePinsThanLimit: Story = {
       seed(headerActionsAtom, shelfActions),
       seed(
         pluginPlacementAtom,
-        placement(shelfActions.map((a) => a.key), []),
+        placement(
+          shelfActions.map((a) => a.key),
+          [],
+        ),
       ),
     ),
   ],
@@ -148,12 +143,7 @@ export const StalePinnedKey: Story = {
 
 /** No contributions for this surface: the header is left exactly as it was. */
 export const NoContributions: Story = {
-  decorators: [
-    withAtoms(
-      seed(headerActionsAtom, []),
-      seed(pluginPlacementAtom, placement([], [])),
-    ),
-  ],
+  decorators: [withAtoms(seed(headerActionsAtom, []), seed(pluginPlacementAtom, placement([], [])))],
 };
 
 /** A single item on its own — how the menu-config surfaces render these. */

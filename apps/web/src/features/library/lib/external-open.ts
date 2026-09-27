@@ -25,24 +25,28 @@ export async function isExternalOpenBatchCurrent(batch: ExternalOpenBatch): Prom
 
 export function onExternalOpenRequest(handler: () => void, onError: (error: unknown) => void): () => void {
   let disposed = false;
-  const unlisten = listen("external-open-request", handler).catch(error => {
+  const unlisten = listen("external-open-request", handler).catch((error) => {
     log.warn("Subscribing to external file requests failed", error);
     if (!disposed) onError(error);
     return undefined;
   });
   return () => {
     disposed = true;
-    void unlisten.then(dispose => dispose?.()).catch(error => log.warn("Releasing external file subscription failed", error));
+    void unlisten
+      .then((dispose) => dispose?.())
+      .catch((error) => log.warn("Releasing external file subscription failed", error));
   };
 }
 
 /** Lift drained paths into import sources (size via Rust; bytes stay native). */
 export async function sourcesFromNativePaths(paths: string[], epoch: string): Promise<BookImportSource[]> {
-  return Promise.all(paths.map(async (path) => ({
-    kind: "native-path" as const,
-    path,
-    externalOpenEpoch: epoch,
-    name: fileNameFromPath(path),
-    size: await invoke<number>("book_file_size", { path }),
-  })));
+  return Promise.all(
+    paths.map(async (path) => ({
+      kind: "native-path" as const,
+      path,
+      externalOpenEpoch: epoch,
+      name: fileNameFromPath(path),
+      size: await invoke<number>("book_file_size", { path }),
+    })),
+  );
 }

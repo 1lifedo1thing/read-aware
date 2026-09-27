@@ -4,13 +4,7 @@ export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
 
-export type EvalCheckCategory =
-  | "answer"
-  | "tool"
-  | "interaction"
-  | "state"
-  | "policy"
-  | "quality";
+export type EvalCheckCategory = "answer" | "tool" | "interaction" | "state" | "policy" | "quality";
 
 export interface EvalCheck {
   id: string;
@@ -25,7 +19,10 @@ export interface EvalCheck {
 
 export interface EvalAssessment {
   /** Optional automated semantic opinion, never folded into diagnostic checks/score. */
-  modelReview?: { verdict: "pass" | "partial" | "fail"; criteria: Array<{ criterion: string; score: number; rationale: string }> };
+  modelReview?: {
+    verdict: "pass" | "partial" | "fail";
+    criteria: Array<{ criterion: string; score: number; rationale: string }>;
+  };
   /** Diagnostic checks only; not a product-quality verdict. */
   passed: boolean;
   /** Diagnostic score. Normalized to the inclusive 0..1 range. */
@@ -111,10 +108,7 @@ export interface EvalScenario<TObservation> {
   tags?: string[];
   /** Stable, secret-free scenario definition written into run artifacts. */
   input: JsonValue;
-  evaluate: (
-    observation: TObservation,
-    context?: { signal?: AbortSignal },
-  ) => EvalAssessment | Promise<EvalAssessment>;
+  evaluate: (observation: TObservation, context?: { signal?: AbortSignal }) => EvalAssessment | Promise<EvalAssessment>;
 }
 
 export interface EvalHarnessContext {
@@ -133,10 +127,7 @@ export interface EvalVariant<TScenario, TObservation> {
   id: string;
   description?: string;
   metadata: JsonObject;
-  run: (
-    scenario: TScenario,
-    context: EvalHarnessContext,
-  ) => Promise<EvalHarnessOutput<TObservation>>;
+  run: (scenario: TScenario, context: EvalHarnessContext) => Promise<EvalHarnessOutput<TObservation>>;
 }
 
 export interface EvalSuite<TScenario> {
@@ -269,11 +260,7 @@ export class EvalStageError extends Error {
   readonly stage: Exclude<EvalErrorStage, "timeout" | "scoring">;
   override readonly cause?: unknown;
 
-  constructor(
-    stage: Exclude<EvalErrorStage, "timeout" | "scoring">,
-    message: string,
-    cause?: unknown,
-  ) {
+  constructor(stage: Exclude<EvalErrorStage, "timeout" | "scoring">, message: string, cause?: unknown) {
     super(message);
     this.name = "EvalStageError";
     this.stage = stage;

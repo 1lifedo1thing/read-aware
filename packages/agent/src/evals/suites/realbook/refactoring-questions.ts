@@ -36,7 +36,11 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     book: fowler,
     cursorChapter: MID,
     turns: [{ text: "『坏味道』书里的这些名字用英文都怎么写？帮我列几个主要的，中文意思各是什么。" }],
-    coverage: { id: "answer.smells-bilingual", words: ["Duplicated Code", "Long Function", "Feature Envy", "Shotgun Surgery", "Mysterious Name"], min: 3 },
+    coverage: {
+      id: "answer.smells-bilingual",
+      words: ["Duplicated Code", "Long Function", "Feature Envy", "Shotgun Surgery", "Mysterious Name"],
+      min: 3,
+    },
     noFence: true,
     criteria: { bilingual: "English names preserved with Chinese glosses — chapter 9 vocabulary" },
     rubric: [
@@ -100,7 +104,11 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     book: fowler,
     cursorChapter: MID,
     turns: [{ text: "我们代码里三个模块各有一份几乎一样的分页逻辑，每次改需求要改三处。按这本书该怎么处理？" }],
-    coverage: { id: "answer.consult-duplication", words: ["Duplicated Code", "Extract Function", "Pull Up Method"], min: 2 },
+    coverage: {
+      id: "answer.consult-duplication",
+      words: ["Duplicated Code", "Extract Function", "Pull Up Method"],
+      min: 2,
+    },
     noFence: true,
     criteria: { diagnosis: "Duplicated Code (#9) → the book's own consolidation moves" },
     rubric: [
@@ -160,7 +168,11 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     turns: [{ text: "这本书开篇一直用的那个贯穿示例程序是什么？讲的是什么业务？" }],
     // 第二版的贯穿例子是剧团账单（theater/plays/invoices）——video store
     // 是第一版，实证：正文 tragedy/comedy/performance 于开篇即现。
-    coverage: { id: "answer.first-example", words: ["theater", "剧团", "剧院", "剧目", "play", "performance", "演出", "账单", "statement"], min: 2 },
+    coverage: {
+      id: "answer.first-example",
+      words: ["theater", "剧团", "剧院", "剧目", "play", "performance", "演出", "账单", "statement"],
+      min: 2,
+    },
     retrieval: true,
     noFence: true,
     criteria: { example: "video #7 首现 — the video store example" },
@@ -229,7 +241,9 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     mustContain: ["重构"],
     noFence: true,
     criteria: { philosophy: "the when-not line from the opening chapters" },
-    rubric: ["States the book's own boundaries (code that works and won't change again, rewrite economics) rather than generic caution"],
+    rubric: [
+      "States the book's own boundaries (code that works and won't change again, rewrite economics) rather than generic caution",
+    ],
   }),
   bookQuestion({
     id: "how-to-use-this-book",
@@ -273,7 +287,11 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     turns: [{ text: "帮我提炼：读到现在，这本书最核心的三个思想是什么？" }],
     expectation: { tools: { maxCalls: 3 }, maxRounds: 4 },
     // 中文提问→中文回答：词表双语（英文术语或中文说法都算命中）
-    coverage: { id: "answer.takeaways", words: ["behavior", "行为", "small", "小步", "smell", "坏味道", "test", "测试", "structure", "结构"], min: 3 },
+    coverage: {
+      id: "answer.takeaways",
+      words: ["behavior", "行为", "small", "小步", "smell", "坏味道", "test", "测试", "structure", "结构"],
+      min: 3,
+    },
     noFence: true,
     criteria: { synthesis: "digest-based" },
     rubric: ["Three load-bearing ideas, each one sentence, in the book's own terms"],
@@ -297,7 +315,11 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     book: fowler,
     cursorChapter: MID,
     turns: [{ text: "坏味道那章和后面的手法目录是什么关系？是先查味道再查手法吗？" }],
-    coverage: { id: "answer.smells-catalog-flow", words: ["smell", "坏味道", "catalog", "目录", "refactoring", "重构手法", "手法"], min: 2 },
+    coverage: {
+      id: "answer.smells-catalog-flow",
+      words: ["smell", "坏味道", "catalog", "目录", "refactoring", "重构手法", "手法"],
+      min: 2,
+    },
     noFence: true,
     criteria: { synthesis: "smell → refactoring mapping is the book's intended workflow" },
     rubric: ["Explains the intended workflow (smells point at refactorings) as the book itself frames it"],
@@ -317,7 +339,9 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
       highlights: stores.annotations
         .filter((annotation) => annotation.kind === "highlight")
         .map((annotation) =>
-          annotation.kind === "highlight" ? { text: annotation.text, color: annotation.color } : { text: "", color: "" },
+          annotation.kind === "highlight"
+            ? { text: annotation.text, color: annotation.color }
+            : { text: "", color: "" },
         ),
     }),
     criteria: { verbatim: "highlight text equals the quoted English sentence, color blue" },
@@ -347,7 +371,9 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     tags: ["state", "refactoring", "book"],
     book: fowler,
     cursorChapter: MID,
-    turns: [{ text: "记条笔记：重构 = 在不改行为的前提下调整结构，每一步都要小到能验证。Extract Function 是最常用的起点。" }],
+    turns: [
+      { text: "记条笔记：重构 = 在不改行为的前提下调整结构，每一步都要小到能验证。Extract Function 是最常用的起点。" },
+    ],
     expectation: {
       tools: { required: ["create_annotation"], forbidden: ["remember"], noErrors: true, maxCalls: 2 },
     },
@@ -395,7 +421,11 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
           progressPercent: 60,
           status: "reading",
           totalMs: 12 * 60 * 60 * 1000,
-          daily: { "2026-08-17": 5 * 60 * 60 * 1000, "2026-08-18": 4 * 60 * 60 * 1000, "2026-08-19": 3 * 60 * 60 * 1000 },
+          daily: {
+            "2026-08-17": 5 * 60 * 60 * 1000,
+            "2026-08-18": 4 * 60 * 60 * 1000,
+            "2026-08-19": 3 * 60 * 60 * 1000,
+          },
         },
       ],
     },
@@ -417,6 +447,8 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     },
     noFence: true,
     criteria: { honesty: "framed as general suggestions, in Chinese" },
-    rubric: ["Recommends genuinely adjacent classics (working effectively with legacy code, design patterns adjacent) as world knowledge, answer in Chinese"],
+    rubric: [
+      "Recommends genuinely adjacent classics (working effectively with legacy code, design patterns adjacent) as world knowledge, answer in Chinese",
+    ],
   }),
 ];

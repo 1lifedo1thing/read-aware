@@ -35,15 +35,11 @@ export type FeedResult = {
 };
 
 type LibraryWithCommands = NonNullable<PluginContext["domains"]["library"]> & {
-  commands: NonNullable<
-    NonNullable<PluginContext["domains"]["library"]>["commands"]
-  >;
+  commands: NonNullable<NonNullable<PluginContext["domains"]["library"]>["commands"]>;
 };
 
 type ReadingWithCommands = NonNullable<PluginContext["domains"]["reading"]> & {
-  commands: NonNullable<
-    NonNullable<PluginContext["domains"]["reading"]>["commands"]
-  >;
+  commands: NonNullable<NonNullable<PluginContext["domains"]["reading"]>["commands"]>;
 };
 
 export type RssPluginContext = PluginContext & {

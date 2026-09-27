@@ -19,13 +19,7 @@
  * the browser shell has no event log, and its IndexedDB paths are dev scaffolding.
  */
 import { invoke } from "./ipc";
-import type {
-  DomainEvent,
-  DomainEventEnvelope,
-  DomainEventType,
-  EventOrigin,
-  HlcStamp,
-} from "@read-aware/core";
+import type { DomainEvent, DomainEventEnvelope, DomainEventType, EventOrigin, HlcStamp } from "@read-aware/core";
 import { isTauri } from "./environment";
 import { createHlcClock } from "./hlc";
 import { createLogger } from "./logger";
@@ -152,15 +146,13 @@ export async function mintEventRows(drafts: DomainEventDraft[]): Promise<EventRo
 export async function mintEventRowsAfterCurrentFrontier(drafts: DomainEventDraft[]): Promise<EventRowWire[]> {
   const info = await invoke<LocalDeviceInfo>("local_device_get");
   clock.seed(info.lastHlcWallMs, info.lastHlcCounter);
-  return drafts.map(draft => toEventRow(draft, info.deviceId));
+  return drafts.map((draft) => toEventRow(draft, info.deviceId));
 }
 
 function toEventRow(draft: DomainEventDraft, deviceId: string): EventRowWire {
   actorCause(draft.origin);
   const route = AGGREGATE_ROUTES[draft.type];
-  const aggregateId = route
-    ? (draft.payload as Record<string, unknown>)[route.idKey]
-    : undefined;
+  const aggregateId = route ? (draft.payload as Record<string, unknown>)[route.idKey] : undefined;
   return {
     id: crypto.randomUUID(),
     type: draft.type,
@@ -194,9 +186,7 @@ export type DomainEventBroadcast = {
 const domainListeners = new Set<(event: DomainEventBroadcast) => void>();
 
 /** Observe every UX-emitted domain event; returns the unsubscribe. */
-export function onDomainEventBroadcast(
-  listener: (event: DomainEventBroadcast) => void,
-): () => void {
+export function onDomainEventBroadcast(listener: (event: DomainEventBroadcast) => void): () => void {
   domainListeners.add(listener);
   return () => {
     domainListeners.delete(listener);
@@ -214,12 +204,15 @@ export function broadcastDomainEvents(drafts: DomainEventDraft[]): void {
   if (domainListeners.size === 0) return;
   const now = new Date().toISOString();
   for (const draft of drafts) {
-    const event = stampEventCause({
-      type: draft.type,
-      payload: draft.payload,
-      createdAt: draft.createdAt ?? now,
-      origin: draft.origin === undefined ? "user" : actorOrigin(draft.origin),
-    } as DomainEventBroadcast, draft.origin);
+    const event = stampEventCause(
+      {
+        type: draft.type,
+        payload: draft.payload,
+        createdAt: draft.createdAt ?? now,
+        origin: draft.origin === undefined ? "user" : actorOrigin(draft.origin),
+      } as DomainEventBroadcast,
+      draft.origin,
+    );
     for (const listener of [...domainListeners]) {
       try {
         listener(event);
@@ -262,9 +255,7 @@ export type CommitReport = { appended: number; applied: number };
  * Throws if the store rejects the batch (nothing lands), so callers surface a
  * real failure instead of showing a change that was never persisted.
  */
-export async function commitDomainEvents(
-  ...drafts: DomainEventDraft[]
-): Promise<CommitReport> {
+export async function commitDomainEvents(...drafts: DomainEventDraft[]): Promise<CommitReport> {
   if (drafts.length === 0) return { appended: 0, applied: 0 };
   if (!isTauri()) {
     // Browser shell (vite dev / Storybook): no store at all. Observers still
@@ -304,8 +295,8 @@ export async function commitDomainEventBatch<R = CommitReport>(
   options: DomainEventCommitOptions<R> = {},
 ): Promise<R> {
   const { signal, beforeDispatch } = options;
-  const dispatch = options.dispatch
-    ?? ((events: EventRowWire[]) => invoke<CommitReport>("commit_events", { events }) as Promise<R>);
+  const dispatch =
+    options.dispatch ?? ((events: EventRowWire[]) => invoke<CommitReport>("commit_events", { events }) as Promise<R>);
   return runDomainWrite(async () => {
     signal?.throwIfAborted();
     const events = await mintEventRows(drafts);
@@ -344,5 +335,5 @@ export async function listEventAggregateIds(types: DomainEventType[]): Promise<S
 /** Host transaction compiler; callers never supply event IDs or HLC stamps. */
 export async function prepareAtomicEventRows(drafts: DomainEventDraft[]) {
   const { deviceId } = await getDeviceInfo();
-  return drafts.map(draft => toEventRow(draft, deviceId));
+  return drafts.map((draft) => toEventRow(draft, deviceId));
 }

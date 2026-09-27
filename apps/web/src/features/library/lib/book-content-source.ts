@@ -12,7 +12,13 @@ import { virtualContentVersion } from "./content-version";
 import { assertContentNotInvalidated, contentInvalidationRevision } from "./content-invalidation";
 export { virtualContentVersion } from "./content-version";
 
-type Content = { book: FoliateBook; contentVersion: string; provider?: ReturnType<typeof resolveContentProvider>; providerKey?: string; invalidation?: string };
+type Content = {
+  book: FoliateBook;
+  contentVersion: string;
+  provider?: ReturnType<typeof resolveContentProvider>;
+  providerKey?: string;
+  invalidation?: string;
+};
 const active = new Map<string, Content>();
 
 export async function fileContentVersion(bookId: string): Promise<string> {
@@ -22,17 +28,28 @@ export async function fileContentVersion(bookId: string): Promise<string> {
 }
 
 /** Borrows the reader's parser; each concurrent query retains its own lease. */
-export function registerActiveBookContent(bookId: string, book: FoliateBook, contentVersion: string,
-  provider?: ReturnType<typeof resolveContentProvider>, invalidation = contentInvalidationRevision(bookId),
-  providerKey = provider ? getVirtualBookBinding(bookId)?.key : undefined): () => void {
+export function registerActiveBookContent(
+  bookId: string,
+  book: FoliateBook,
+  contentVersion: string,
+  provider?: ReturnType<typeof resolveContentProvider>,
+  invalidation = contentInvalidationRevision(bookId),
+  providerKey = provider ? getVirtualBookBinding(bookId)?.key : undefined,
+): () => void {
   assertContentNotInvalidated(bookId, invalidation);
   const entry: Content = { book, contentVersion, provider, providerKey, invalidation };
   active.set(bookId, entry);
-  return () => { if (active.get(bookId) === entry) active.delete(bookId); };
+  return () => {
+    if (active.get(bookId) === entry) active.delete(bookId);
+  };
 }
 
-export async function withBookContent<T>(bookId: string, expectedVersion: string | undefined,
-  signal: AbortSignal | undefined, read: (content: Content) => Promise<T>): Promise<T> {
+export async function withBookContent<T>(
+  bookId: string,
+  expectedVersion: string | undefined,
+  signal: AbortSignal | undefined,
+  read: (content: Content) => Promise<T>,
+): Promise<T> {
   signal?.throwIfAborted();
   const record = await getBookRecord(bookId);
   if (!record) throw new AppError("library/book-not-found", "Book is not in the library");
@@ -41,14 +58,14 @@ export async function withBookContent<T>(bookId: string, expectedVersion: string
   if (binding && !provider) throw new AppError("library/content-unavailable", "Book content provider is unavailable");
   const invalidation = contentInvalidationRevision(bookId);
   let content = active.get(bookId);
-  if (content?.invalidation !== invalidation || binding && content?.providerKey !== binding.key) content = undefined;
+  if (content?.invalidation !== invalidation || (binding && content?.providerKey !== binding.key)) content = undefined;
   let release: (() => Promise<void>) | undefined;
   try {
     if (content) {
-      if (binding && content.provider !== provider) throw new AppError("library/content-unavailable", "Active book belongs to an earlier provider activation");
+      if (binding && content.provider !== provider)
+        throw new AppError("library/content-unavailable", "Active book belongs to an earlier provider activation");
       release = retainBook(content.book);
-    }
-    else if (binding) {
+    } else if (binding) {
       if (!provider) throw new AppError("library/content-unavailable", "Book content provider is unavailable");
       const value = await provider.load(binding.key);
       signal?.throwIfAborted();
@@ -68,14 +85,22 @@ export async function withBookContent<T>(bookId: string, expectedVersion: string
       signal?.throwIfAborted();
       assertContentNotInvalidated(bookId, invalidation);
       const currentBinding = getVirtualBookBinding(bookId);
-      if (currentBinding?.pluginId !== binding?.pluginId || currentBinding?.providerId !== binding?.providerId
-        || currentBinding?.key !== binding?.key) throw new AppError("reader/stale-location", "Book content binding changed");
-      if (expectedVersion && expectedVersion !== content!.contentVersion
-        || !binding && await fileContentVersion(bookId) !== content!.contentVersion) {
+      if (
+        currentBinding?.pluginId !== binding?.pluginId ||
+        currentBinding?.providerId !== binding?.providerId ||
+        currentBinding?.key !== binding?.key
+      )
+        throw new AppError("reader/stale-location", "Book content binding changed");
+      if (
+        (expectedVersion && expectedVersion !== content!.contentVersion) ||
+        (!binding && (await fileContentVersion(bookId)) !== content!.contentVersion)
+      ) {
         throw new AppError("reader/stale-location", "Book content revision changed");
       }
-      if (binding && resolveContentProvider(binding) !== provider) throw new AppError("library/content-unavailable", "Book content provider was replaced or removed");
-      if (!await getBookRecord(bookId)) throw new AppError("library/book-not-found", "Book was removed during content access");
+      if (binding && resolveContentProvider(binding) !== provider)
+        throw new AppError("library/content-unavailable", "Book content provider was replaced or removed");
+      if (!(await getBookRecord(bookId)))
+        throw new AppError("library/book-not-found", "Book was removed during content access");
       signal?.throwIfAborted();
       assertContentNotInvalidated(bookId, invalidation);
     };
@@ -86,5 +111,7 @@ export async function withBookContent<T>(bookId: string, expectedVersion: string
   } catch (error) {
     if (error instanceof ContentBudgetError) throw new AppError(error.code, error.message, { cause: error });
     throw error;
-  } finally { await release?.(); }
+  } finally {
+    await release?.();
+  }
 }

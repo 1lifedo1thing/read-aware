@@ -47,10 +47,7 @@ export function ChatMessageActions({
       )}
     >
       {text && (
-        <Tooltip
-          content={copied ? t("chat.message.copied") : t("chat.message.copy")}
-          align={tooltipAlign}
-        >
+        <Tooltip content={copied ? t("chat.message.copied") : t("chat.message.copy")} align={tooltipAlign}>
           <IconButton
             size="sm"
             className="h-6 w-6"

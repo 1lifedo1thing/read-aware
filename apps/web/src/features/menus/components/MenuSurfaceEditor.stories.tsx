@@ -147,10 +147,7 @@ export const AllOverflowed: Story = {
     layout({
       shelfHeader: {
         visible: [],
-        overflow: [
-          ...CORE_MENU_DEFAULTS.shelfHeader,
-          ...CORE_OVERFLOW_DEFAULTS.shelfHeader,
-        ],
+        overflow: [...CORE_MENU_DEFAULTS.shelfHeader, ...CORE_OVERFLOW_DEFAULTS.shelfHeader],
       },
     }),
   ],
@@ -161,11 +158,7 @@ export const WithPluginItemsPinned: Story = {
   decorators: [
     layout({
       shelfHeader: {
-        visible: [
-          ...CORE_MENU_DEFAULTS.shelfHeader,
-          pluginMenuId("vocab:notebook"),
-          pluginMenuId("rss:feeds"),
-        ],
+        visible: [...CORE_MENU_DEFAULTS.shelfHeader, pluginMenuId("vocab:notebook"), pluginMenuId("rss:feeds")],
         overflow: [...CORE_OVERFLOW_DEFAULTS.shelfHeader],
       },
     }),
@@ -182,12 +175,7 @@ export const PrimaryNavAtCap: Story = {
   decorators: [
     layout({
       primaryNav: {
-        visible: [
-          "core:library",
-          "core:agent",
-          "core:stats",
-          pluginMenuId("vocab:notebook"),
-        ],
+        visible: ["core:library", "core:agent", "core:stats", pluginMenuId("vocab:notebook")],
         overflow: [],
       },
     }),
@@ -196,11 +184,5 @@ export const PrimaryNavAtCap: Story = {
 
 /** No plugins installed: only the core items are arrangeable. */
 export const WithoutPlugins: Story = {
-  decorators: [
-    withAtoms(
-      seed(menuConfigAtom, config()),
-      seed(headerActionsAtom, []),
-      seed(selectionActionsAtom, []),
-    ),
-  ],
+  decorators: [withAtoms(seed(menuConfigAtom, config()), seed(headerActionsAtom, []), seed(selectionActionsAtom, []))],
 };

@@ -1,5 +1,10 @@
 import { AppError, ERR_PLUGIN_INVALID_ARGUMENT, ERR_PLUGIN_QUOTA_EXCEEDED } from "@read-aware/core";
-import type { PluginLogEntry, PluginLoggingService, PluginLogReceipt, PluginLifecyclePhase } from "@read-aware/plugin-types";
+import type {
+  PluginLogEntry,
+  PluginLoggingService,
+  PluginLogReceipt,
+  PluginLifecyclePhase,
+} from "@read-aware/plugin-types";
 import { createLogger, type Logger } from "../../../platform/logger";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
 
@@ -19,8 +24,8 @@ export class PluginLogBudget {
 
   take(pluginId: string): number | null {
     const now = this.now();
-    this.entries = this.entries.filter(entry => entry.at > now - WINDOW_MS);
-    const owned = this.entries.filter(entry => entry.pluginId === pluginId);
+    this.entries = this.entries.filter((entry) => entry.at > now - WINDOW_MS);
+    const owned = this.entries.filter((entry) => entry.pluginId === pluginId);
     let retryAt = now;
     if (owned.length >= PLUGIN_LIMIT) retryAt = Math.max(retryAt, owned[0].at + WINDOW_MS);
     if (this.entries.length >= APP_LIMIT) retryAt = Math.max(retryAt, this.entries[0].at + WINDOW_MS);
@@ -32,25 +37,43 @@ export class PluginLogBudget {
 
 type LogEnvelope = Omit<PluginLogEntry, "level"> & { version: string; phase: PluginLifecyclePhase };
 
-function normalize(entry: PluginLogEntry, version: string, phase: PluginLifecyclePhase): { level: PluginLogEntry["level"]; payload: LogEnvelope } {
-  const invalid = (): never => { throw new AppError(ERR_PLUGIN_INVALID_ARGUMENT, "Expected a structured plugin diagnostic event"); };
+function normalize(
+  entry: PluginLogEntry,
+  version: string,
+  phase: PluginLifecyclePhase,
+): { level: PluginLogEntry["level"]; payload: LogEnvelope } {
+  const invalid = (): never => {
+    throw new AppError(ERR_PLUGIN_INVALID_ARGUMENT, "Expected a structured plugin diagnostic event");
+  };
   if (!entry || typeof entry !== "object" || Array.isArray(entry)) return invalid();
-  if (Object.keys(entry).some(key => !["level", "event", "errorCode", "fields"].includes(key))) return invalid();
-  if (!["debug", "info", "warn", "error"].includes(entry.level) || typeof entry.event !== "string" || !EVENT_NAME.test(entry.event)) return invalid();
-  if (entry.errorCode !== undefined && (typeof entry.errorCode !== "string" || !EVENT_NAME.test(entry.errorCode))) return invalid();
+  if (Object.keys(entry).some((key) => !["level", "event", "errorCode", "fields"].includes(key))) return invalid();
+  if (
+    !["debug", "info", "warn", "error"].includes(entry.level) ||
+    typeof entry.event !== "string" ||
+    !EVENT_NAME.test(entry.event)
+  )
+    return invalid();
+  if (entry.errorCode !== undefined && (typeof entry.errorCode !== "string" || !EVENT_NAME.test(entry.errorCode)))
+    return invalid();
   const payload: LogEnvelope = { event: entry.event, version, phase };
   if (entry.errorCode !== undefined) payload.errorCode = entry.errorCode;
   if (entry.fields !== undefined) {
     if (!entry.fields || typeof entry.fields !== "object" || Array.isArray(entry.fields)) return invalid();
     const fields = Object.entries(entry.fields);
-    if (fields.length > MAX_FIELDS) throw new AppError(ERR_PLUGIN_QUOTA_EXCEEDED, "Too many plugin diagnostic measurements");
+    if (fields.length > MAX_FIELDS)
+      throw new AppError(ERR_PLUGIN_QUOTA_EXCEEDED, "Too many plugin diagnostic measurements");
     payload.fields = {};
     for (const [key, value] of fields) {
-      if (!FIELD_NAME.test(key) || (typeof value !== "boolean" && (typeof value !== "number" || !Number.isFinite(value)))) return invalid();
+      if (
+        !FIELD_NAME.test(key) ||
+        (typeof value !== "boolean" && (typeof value !== "number" || !Number.isFinite(value)))
+      )
+        return invalid();
       Object.defineProperty(payload.fields, key, { enumerable: true, value });
     }
   }
-  if (JSON.stringify(payload).length > MAX_ENTRY_CHARS) throw new AppError(ERR_PLUGIN_QUOTA_EXCEEDED, "Plugin diagnostic entry exceeds character budget");
+  if (JSON.stringify(payload).length > MAX_ENTRY_CHARS)
+    throw new AppError(ERR_PLUGIN_QUOTA_EXCEEDED, "Plugin diagnostic entry exceeds character budget");
   return { level: entry.level, payload };
 }
 
@@ -68,9 +91,15 @@ export function createPluginLogging(
   return {
     async policy() {
       lifecycle.signal.throwIfAborted();
-      return { levels: development ? ["debug", "info", "warn", "error"] : ["info", "warn", "error"],
-        maxEntryChars: MAX_ENTRY_CHARS, maxFields: MAX_FIELDS, perPluginLimit: PLUGIN_LIMIT,
-        appLimit: APP_LIMIT, windowMs: WINDOW_MS, delivery: "best-effort" };
+      return {
+        levels: development ? ["debug", "info", "warn", "error"] : ["info", "warn", "error"],
+        maxEntryChars: MAX_ENTRY_CHARS,
+        maxFields: MAX_FIELDS,
+        perPluginLimit: PLUGIN_LIMIT,
+        appLimit: APP_LIMIT,
+        windowMs: WINDOW_MS,
+        delivery: "best-effort",
+      };
     },
     async write(entry): Promise<PluginLogReceipt> {
       lifecycle.signal.throwIfAborted();

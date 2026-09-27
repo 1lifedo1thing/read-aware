@@ -51,7 +51,10 @@ function verticalScroller(target: Element | null, root: Element): Element | null
  * zero height until it next opens, while its closed class runs out the
  * collapse transition the bar listens for.
  */
-export function useDrawerDragDismiss<T extends HTMLElement>(ref: RefObject<T | null>, { open, onDismiss }: Options): void {
+export function useDrawerDragDismiss<T extends HTMLElement>(
+  ref: RefObject<T | null>,
+  { open, onDismiss }: Options,
+): void {
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
   const awaitingClose = useRef(false);
@@ -87,8 +90,8 @@ export function useDrawerDragDismiss<T extends HTMLElement>(ref: RefObject<T | n
     };
 
     const touchOf = (event: TouchEvent, id: number) =>
-      Array.from(event.changedTouches).find((touch) => touch.identifier === id)
-      ?? Array.from(event.touches).find((touch) => touch.identifier === id);
+      Array.from(event.changedTouches).find((touch) => touch.identifier === id) ??
+      Array.from(event.touches).find((touch) => touch.identifier === id);
 
     const settle = (to: number, done: () => void) => {
       if (el.style.height === `${to}px`) {
@@ -125,8 +128,9 @@ export function useDrawerDragDismiss<T extends HTMLElement>(ref: RefObject<T | n
         startX: touch.clientX,
         startY: touch.clientY,
         scroller: verticalScroller(target, el),
-        guarded: isTextEntry(target)
-          || (!!selection && !selection.isCollapsed && !!selection.anchorNode && el.contains(selection.anchorNode)),
+        guarded:
+          isTextEntry(target) ||
+          (!!selection && !selection.isCollapsed && !!selection.anchorNode && el.contains(selection.anchorNode)),
         lock: { kind: "pending" },
         height: 0,
         offset: 0,
@@ -168,8 +172,8 @@ export function useDrawerDragDismiss<T extends HTMLElement>(ref: RefObject<T | n
       if (!current || !touchOf(event, current.touchId)) return;
       gesture = null;
       if (current.lock.kind !== "drag") return;
-      const leave = event.type === "touchend"
-        && shouldDismiss(current.offset, releaseVelocity(current.samples), current.height, 1);
+      const leave =
+        event.type === "touchend" && shouldDismiss(current.offset, releaseVelocity(current.samples), current.height, 1);
       if (!leave) {
         settle(current.height, restore);
         return;

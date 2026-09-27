@@ -7,18 +7,22 @@ type ChapterStarts = ReadonlyMap<number, readonly ResolvedNavigation[]>;
 
 /** Href-less groups contribute their name, not a boundary. Nested sections stay
  * in their enclosing chapter, matching the reader's continuous scroll surface. */
-export function readerChapterEntries(items: readonly TOCItem[], parents: string[] = []): { href: string; title?: string; aliases: string[] }[] {
-  const hrefs = (items: readonly TOCItem[]): string[] => items.flatMap(item =>
-    [...(item.href ? [item.href] : []), ...hrefs(item.subitems ?? [])]);
-  return items.flatMap(item => {
+export function readerChapterEntries(
+  items: readonly TOCItem[],
+  parents: string[] = [],
+): { href: string; title?: string; aliases: string[] }[] {
+  const hrefs = (items: readonly TOCItem[]): string[] =>
+    items.flatMap((item) => [...(item.href ? [item.href] : []), ...hrefs(item.subitems ?? [])]);
+  return items.flatMap((item) => {
     const path = [...parents, ...(item.label?.trim() ? [item.label.trim()] : [])];
-    return item.href ? [{ href: item.href, title: path.join(" › ") || undefined, aliases: hrefs(item.subitems ?? []) }]
+    return item.href
+      ? [{ href: item.href, title: path.join(" › ") || undefined, aliases: hrefs(item.subitems ?? []) }]
       : readerChapterEntries(item.subitems ?? [], path);
   });
 }
 
 export function readerChapterBlock(target: Node): Element | null {
-  const element = target.nodeType === 1 ? target as Element : target.parentElement;
+  const element = target.nodeType === 1 ? (target as Element) : target.parentElement;
   return element?.closest(chapterBlocks) ?? element;
 }
 
@@ -29,10 +33,16 @@ export async function prepareReaderChapterStarts(book: Book): Promise<ChapterSta
   if (book.rendition?.layout === "pre-paginated" || !book.resolveHref) return starts;
   // A nested subsection is not a new chapter. Href-less grouping labels do not
   // consume a level, so their chapter children still get boundaries.
-  const targets = await Promise.all([...new Set(readerChapterEntries(book.toc ?? []).map(entry => entry.href))].map(async href => {
-    try { return await book.resolveHref!(href); }
-    catch (error) { log.warn("Could not resolve chapter boundary", { href, error }); return null; }
-  }));
+  const targets = await Promise.all(
+    [...new Set(readerChapterEntries(book.toc ?? []).map((entry) => entry.href))].map(async (href) => {
+      try {
+        return await book.resolveHref!(href);
+      } catch (error) {
+        log.warn("Could not resolve chapter boundary", { href, error });
+        return null;
+      }
+    }),
+  );
   for (const target of targets) {
     // Zero (and an omitted anchor) means the start of a source document.
     // Dropping it merges unrelated chapters into one ever-growing scroll view.
@@ -56,8 +66,11 @@ export function markReaderChapterStarts(doc: Document, index: number, starts: Ch
     const before = doc.createRange();
     before.selectNodeContents(doc.body);
     before.setEndBefore(block);
-    const hasPrevious = !!before.toString().trim() || Array.from(doc.body.querySelectorAll("img, svg, video, canvas"))
-      .some(image => !!(image.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const hasPrevious =
+      !!before.toString().trim() ||
+      Array.from(doc.body.querySelectorAll("img, svg, video, canvas")).some(
+        (image) => !!(image.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING),
+      );
     block.setAttribute("data-ra-chapter-start", hasPrevious ? "next" : "first");
   }
 }
@@ -81,7 +94,10 @@ export function normalizeReaderTextSizes(doc: Document): void {
   const styles = new Map<Element, CSSStyleDeclaration>();
   const style = (el: Element) => {
     let value = styles.get(el);
-    if (!value) { value = win.getComputedStyle(el); styles.set(el, value); }
+    if (!value) {
+      value = win.getComputedStyle(el);
+      styles.set(el, value);
+    }
     return value;
   };
   const small: Element[] = [];
@@ -89,7 +105,10 @@ export function normalizeReaderTextSizes(doc: Document): void {
     if (el.closest(`${scriptOrGraphic}, script, style`) || parseFloat(style(el).fontSize) >= minimum - 0.01) continue;
     let script = false;
     for (let parent: Element | null = el; parent && parent !== doc.body; parent = parent.parentElement) {
-      if (["super", "sub"].includes(style(parent).verticalAlign)) { script = true; break; }
+      if (["super", "sub"].includes(style(parent).verticalAlign)) {
+        script = true;
+        break;
+      }
     }
     if (!script) small.push(el);
   }

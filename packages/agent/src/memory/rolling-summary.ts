@@ -28,9 +28,7 @@ Rules:
 
 /** 历史转录 → READER/ASSISTANT 行（bootstrap 摘要与继承提炼共用的格式）。 */
 export function formatTurnsForFolding(turns: TurnRecord[]): string {
-  return turns
-    .map((turn) => `${turn.role === "user" ? "READER" : "ASSISTANT"}: ${turn.content}`)
-    .join("\n\n");
+  return turns.map((turn) => `${turn.role === "user" ? "READER" : "ASSISTANT"}: ${turn.content}`).join("\n\n");
 }
 
 export interface BootstrapSummaryInput {
@@ -46,9 +44,7 @@ export interface BootstrapSummaryInput {
  * 摘要。失败返回 undefined（这一轮按无摘要继续，下一轮门条件仍成立、
  * 自动重试）。
  */
-export async function bootstrapSummaryFromHistory(
-  input: BootstrapSummaryInput,
-): Promise<string | undefined> {
+export async function bootstrapSummaryFromHistory(input: BootstrapSummaryInput): Promise<string | undefined> {
   if (input.turns.length === 0) return undefined;
   try {
     const message = await input.complete(input.model, {

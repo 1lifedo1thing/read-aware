@@ -37,9 +37,16 @@ pub(super) fn read_snapshot(
     id: &str,
 ) -> Result<Option<BookClassificationSnapshot>, CommandError> {
     let Some((narrativity, spoiler_sensitive)) = conn
-        .query_row("SELECT narrativity,spoiler_sensitive FROM books WHERE id=?1", [id], |row| {
-            Ok((row.get::<_, Option<String>>(0)?, row.get::<_, Option<bool>>(1)?))
-        })
+        .query_row(
+            "SELECT narrativity,spoiler_sensitive FROM books WHERE id=?1",
+            [id],
+            |row| {
+                Ok((
+                    row.get::<_, Option<String>>(0)?,
+                    row.get::<_, Option<bool>>(1)?,
+                ))
+            },
+        )
         .optional()?
     else {
         return Ok(None);
@@ -94,7 +101,10 @@ pub(crate) fn book_classification_commit_inner(
         .and_then(|v| v.as_str())
         .ok_or_else(invalid)?;
     let automatic = p.get("onlyIfUnclassified") == Some(&serde_json::Value::Bool(true));
-    let spoiler_sensitive = p.get("spoilerSensitive").map(|v| v.as_bool().ok_or_else(invalid)).transpose()?;
+    let spoiler_sensitive = p
+        .get("spoilerSensitive")
+        .map(|v| v.as_bool().ok_or_else(invalid))
+        .transpose()?;
     if !valid_id(id)
         || !matches!(flavor, "narrative" | "expository")
         || event.id.is_empty()
@@ -103,7 +113,10 @@ pub(crate) fn book_classification_commit_inner(
         || event.aggregate_id.as_deref() != Some(id)
         || p.len() != (if automatic { 3 } else { 2 }) + usize::from(spoiler_sensitive.is_some())
         || p.keys().any(|key| {
-            key != "bookId" && key != "narrativity" && key != "spoilerSensitive" && !(automatic && key == "onlyIfUnclassified")
+            key != "bookId"
+                && key != "narrativity"
+                && key != "spoilerSensitive"
+                && !(automatic && key == "onlyIfUnclassified")
         })
     {
         return Err(invalid());
@@ -126,7 +139,10 @@ pub(crate) fn book_classification_commit_inner(
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let snapshot = read_snapshot(&tx, id)?
         .ok_or_else(|| CommandError::new("reader/book-not-found", "Book not found"))?;
-    if automatic && snapshot.narrativity.is_some() && (spoiler_sensitive.is_none() || snapshot.spoiler_sensitive.is_some()) {
+    if automatic
+        && snapshot.narrativity.is_some()
+        && (spoiler_sensitive.is_none() || snapshot.spoiler_sensitive.is_some())
+    {
         tx.commit()?;
         return Ok(BookClassificationReceipt {
             snapshot,
@@ -148,15 +164,26 @@ pub(crate) fn book_classification_commit_inner(
         return Err(invalid());
     }
     // Automatic backfills fill each missing field independently; never rewrite a user's flavor.
-    let expected_flavor = if automatic { snapshot.narrativity.as_deref().unwrap_or(flavor) } else { flavor }.to_owned();
-    let expected_spoilers = if automatic { snapshot.spoiler_sensitive.or(spoiler_sensitive) } else { spoiler_sensitive.or(snapshot.spoiler_sensitive) };
+    let expected_flavor = if automatic {
+        snapshot.narrativity.as_deref().unwrap_or(flavor)
+    } else {
+        flavor
+    }
+    .to_owned();
+    let expected_spoilers = if automatic {
+        snapshot.spoiler_sensitive.or(spoiler_sensitive)
+    } else {
+        spoiler_sensitive.or(snapshot.spoiler_sensitive)
+    };
     let report = commit_events_in_transaction(&tx, std::slice::from_ref(event))?;
     if report.appended != 1 || report.applied != 1 {
         return Err(CommandError::internal("Incomplete classification commit"));
     }
     let snapshot = read_snapshot(&tx, id)?
         .ok_or_else(|| CommandError::internal("Classification target disappeared"))?;
-    if snapshot.narrativity.as_deref() != Some(expected_flavor.as_str()) || snapshot.spoiler_sensitive != expected_spoilers {
+    if snapshot.narrativity.as_deref() != Some(expected_flavor.as_str())
+        || snapshot.spoiler_sensitive != expected_spoilers
+    {
         return Err(CommandError::new(
             "memory/conflict",
             "Classification was superseded during ordered replay",

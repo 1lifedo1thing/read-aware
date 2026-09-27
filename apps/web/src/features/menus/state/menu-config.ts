@@ -13,12 +13,7 @@
 import { atom, getDefaultStore } from "jotai";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
 
-export type MenuSurface =
-  | "primaryNav"
-  | "shelfHeader"
-  | "readerHeader"
-  | "readerToolbar"
-  | "selection";
+export type MenuSurface = "primaryNav" | "shelfHeader" | "readerHeader" | "readerToolbar" | "selection";
 
 export type SurfaceLayout = {
   /** Ordered, rendered inline. */
@@ -35,26 +30,14 @@ export const CORE_MENU_DEFAULTS: Record<MenuSurface, string[]> = {
   // pages are known items that default to the hidden zone (see
   // CORE_OVERFLOW_DEFAULTS).
   primaryNav: ["core:library", "core:agent"],
-  shelfHeader: [
-    "core:search",
-    "core:import",
-    "core:viewControl",
-    "core:stats",
-    "core:settings",
-  ],
+  shelfHeader: ["core:search", "core:import", "core:viewControl", "core:stats", "core:settings"],
   // Right cluster only — back/TOC/notes stay fixed on the left.
   readerHeader: ["core:navigator", "core:appearance", "core:chat"],
   // The phone reader's bottom toolbar. Back and the overflow menu stay fixed
   // in the top bar, so every action here — contents and notes included — is
   // the user's to arrange; what doesn't fit the width joins the overflow.
   readerToolbar: ["core:toc", "core:notes", "core:navigator", "core:appearance", "core:chat"],
-  selection: [
-    "core:copy",
-    "core:highlight",
-    "core:underline",
-    "core:addNote",
-    "core:askAI",
-  ],
+  selection: ["core:copy", "core:highlight", "core:underline", "core:addNote", "core:askAI"],
 };
 
 /**
@@ -71,10 +54,7 @@ export const CORE_OVERFLOW_DEFAULTS: Record<MenuSurface, string[]> = {
 };
 
 /** Per-surface arrangement rules the Menus editor enforces. */
-export const SURFACE_RULES: Record<
-  MenuSurface,
-  { minVisible: number; maxVisible: number | null }
-> = {
+export const SURFACE_RULES: Record<MenuSurface, { minVisible: number; maxVisible: number | null }> = {
   // Never empty (it is the only way between Library and Agent) and capped so
   // the centered switcher cannot outgrow a narrow window.
   primaryNav: { minVisible: 1, maxVisible: 4 },
@@ -114,9 +94,7 @@ function sanitizeLayout(raw: unknown, fallback: SurfaceLayout): SurfaceLayout {
   if (typeof raw !== "object" || raw === null) return fallback;
   const record = raw as Partial<SurfaceLayout>;
   const clean = (list: unknown): string[] | null =>
-    Array.isArray(list)
-      ? [...new Set(list.filter((id): id is string => typeof id === "string"))]
-      : null;
+    Array.isArray(list) ? [...new Set(list.filter((id): id is string => typeof id === "string"))] : null;
   return {
     visible: clean(record.visible) ?? fallback.visible,
     overflow: clean(record.overflow) ?? fallback.overflow,
@@ -147,11 +125,7 @@ function migrateLegacyPlacement(base: MenuConfig): MenuConfig {
     const raw = localKV.getItem(LEGACY_PLACEMENT_KEY);
     if (!raw) return base;
     const legacy = JSON.parse(raw) as Partial<Record<MenuSurface, string[]>>;
-    for (const surface of [
-      "shelfHeader",
-      "readerHeader",
-      "selection",
-    ] as const) {
+    for (const surface of ["shelfHeader", "readerHeader", "selection"] as const) {
       for (const key of legacy[surface] ?? []) {
         const id = pluginMenuId(key);
         if (!base[surface].visible.includes(id)) base[surface].visible.push(id);

@@ -101,9 +101,7 @@ export function PluginMarketplaceView({
                 <Caption className="text-fg-subtle">v{entry.version}</Caption>
                 {entry.author && <Caption className="text-fg-subtle">{entry.author}</Caption>}
               </span>
-              {entry.description && (
-                <p className="mt-0.5 font-sans text-sm text-fg-muted">{entry.description}</p>
-              )}
+              {entry.description && <p className="mt-0.5 font-sans text-sm text-fg-muted">{entry.description}</p>}
               <span className="mt-1.5 flex flex-wrap items-center gap-1">
                 {(entry.permissions ?? []).map((permission) => (
                   <Badge key={permission} className="text-[11px]">

@@ -67,8 +67,6 @@ export const RemoveConfirmation: Story = {
 export const AddToCollection: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Add selected to collection" }),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Add selected to collection" }));
   },
 };

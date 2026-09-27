@@ -91,16 +91,11 @@ export function WhatsNewDialogView({
           <Heading as="h2" size="xl">
             {t("update.whatsNewTitle", { version })}
             {codename && (
-              <span className="ml-2 font-serif italic font-normal tracking-normal text-fg-muted">
-                {" "}{codename}
-              </span>
+              <span className="ml-2 font-serif italic font-normal tracking-normal text-fg-muted"> {codename}</span>
             )}
           </Heading>
           {entry?.date && (
-            <time
-              dateTime={entry.date}
-              className="text-xs leading-relaxed text-fg-subtle"
-            >
+            <time dateTime={entry.date} className="text-xs leading-relaxed text-fg-subtle">
               {new Date(`${entry.date}T00:00:00Z`).toLocaleDateString(locale, {
                 year: "numeric",
                 month: "long",
@@ -115,7 +110,9 @@ export function WhatsNewDialogView({
           {configureSearch && (
             <section className="border-b border-border px-6 py-5 sm:px-8">
               <h3 className="font-sans text-sm font-medium text-fg">{t("settings:search.title")}</h3>
-              <Body as="p" className="mt-1.5">{t("settings:search.keyHint")}</Body>
+              <Body as="p" className="mt-1.5">
+                {t("settings:search.keyHint")}
+              </Body>
               <Button className="mt-3" variant="outline" size="sm" onClick={configureSearch}>
                 {t("settings:search.keyPlaceholder")}
               </Button>
@@ -148,10 +145,7 @@ export function WhatsNewDialogView({
                       }`}
                     >
                       {group.items.map((item, index) => (
-                        <li
-                          key={index}
-                          className="pl-[0.15em] text-sm leading-relaxed text-fg-muted"
-                        >
+                        <li key={index} className="pl-[0.15em] text-sm leading-relaxed text-fg-muted">
                           {item.title && (
                             <strong className="font-medium text-fg">
                               {item.title}
@@ -174,18 +168,28 @@ export function WhatsNewDialogView({
         </div>
 
         <section className="shrink-0 border-t border-border px-6 pb-4 pt-5 sm:px-8">
-          <h3 className="font-sans text-sm font-medium text-fg">
-            {t("common:community.title")}
-          </h3>
+          <h3 className="font-sans text-sm font-medium text-fg">{t("common:community.title")}</h3>
           <Body as="p" className="mt-1.5">
             {t("common:community.description")}
           </Body>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName()}>
+            <a
+              href={PROJECT_REPOSITORY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={openLink}
+              className={buttonClassName()}
+            >
               <Star size={16} aria-hidden="true" />
               {t("common:community.star")}
             </a>
-            <a href={PROJECT_DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName({ variant: "outline" })}>
+            <a
+              href={PROJECT_DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={openLink}
+              className={buttonClassName({ variant: "outline" })}
+            >
               <DiscordLogo size={18} aria-hidden="true" />
               {t("common:community.discord")}
             </a>
@@ -203,7 +207,9 @@ export function WhatsNewDialogView({
             {t("update.whatsNewChangelog")}
             <ArrowSquareOut size={14} weight="regular" aria-hidden="true" />
           </a>
-          <Button variant="ghost" size="sm" onClick={close}>{t("update.whatsNewDone")}</Button>
+          <Button variant="ghost" size="sm" onClick={close}>
+            {t("update.whatsNewDone")}
+          </Button>
         </div>
       </div>
     </Dialog>

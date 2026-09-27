@@ -5,26 +5,34 @@ import { buildMaintenanceTools } from "./maintenance-tools";
 test("Agent connection tests request native consent without receiving configuration or response text", async () => {
   const { deps } = createInMemoryDeps();
   const calls: unknown[] = [];
-  deps.maintenance.requestConnectionTest = async signal => { calls.push(signal); return { action: "test", status: "responded" }; };
-  const tool = buildMaintenanceTools(deps).find(tool => tool.name === "request_ai_connection_test")!;
+  deps.maintenance.requestConnectionTest = async (signal) => {
+    calls.push(signal);
+    return { action: "test", status: "responded" };
+  };
+  const tool = buildMaintenanceTools(deps).find((tool) => tool.name === "request_ai_connection_test")!;
   const abort = new AbortController();
   const result = await tool.execute("test", {}, abort.signal);
   expect(result.content[0]).toEqual({ type: "text", text: JSON.stringify({ action: "test", status: "responded" }) });
-  expect(calls).toEqual([abort.signal]); expect(tool.executionMode).toBe("sequential");
-  abort.abort(); await expect(tool.execute("cancel", {}, abort.signal)).rejects.toThrow(); expect(calls).toHaveLength(1);
+  expect(calls).toEqual([abort.signal]);
+  expect(tool.executionMode).toBe("sequential");
+  abort.abort();
+  await expect(tool.execute("cancel", {}, abort.signal)).rejects.toThrow();
+  expect(calls).toHaveLength(1);
 });
 
 test("Agent backup requests preserve native outcomes without file content or automatic approval", async () => {
   const { deps, stores } = createInMemoryDeps();
   const signal = new AbortController().signal;
   deps.maintenance.requestBackup = async (action, received) => {
-    expect(received).toBe(signal); return { action, status: action === "import" ? "imported" : "cancelled" };
+    expect(received).toBe(signal);
+    return { action, status: action === "import" ? "imported" : "cancelled" };
   };
-  const tool = buildMaintenanceTools(deps).find(tool => tool.name === "request_backup")!;
+  const tool = buildMaintenanceTools(deps).find((tool) => tool.name === "request_backup")!;
   expect(tool.executionMode).toBe("sequential");
   for (const action of ["import", "export"]) {
     const result = await tool.execute("backup", { action }, signal);
-    const text = result.content[0]; if (text.type !== "text") throw Error("Expected text");
+    const text = result.content[0];
+    if (text.type !== "text") throw Error("Expected text");
     expect(JSON.parse(text.text)).toEqual({ action, status: action === "import" ? "imported" : "cancelled" });
   }
   expect(stores.interactions).toHaveLength(0);
@@ -33,45 +41,74 @@ test("Agent backup requests preserve native outcomes without file content or aut
 });
 
 test("Agent maintenance reads locally by default, propagates check failures and reveals without claiming completion", async () => {
-  const { deps } = createInMemoryDeps(), calls: unknown[] = [], signal = new AbortController().signal;
-  deps.maintenance.checkForUpdates = async s => { calls.push(s); throw Error("offline"); };
-  deps.maintenance.openSettings = async (surface, s) => { calls.push([surface, s]); return { status: "opened", surface }; };
-  const tools = buildMaintenanceTools(deps), call = (name: string, params: unknown) => tools.find(t => t.name === name)!.execute("test", params, signal);
-  await call("get_software_update", {}); expect(calls).toHaveLength(0);
+  const { deps } = createInMemoryDeps(),
+    calls: unknown[] = [],
+    signal = new AbortController().signal;
+  deps.maintenance.checkForUpdates = async (s) => {
+    calls.push(s);
+    throw Error("offline");
+  };
+  deps.maintenance.openSettings = async (surface, s) => {
+    calls.push([surface, s]);
+    return { status: "opened", surface };
+  };
+  const tools = buildMaintenanceTools(deps),
+    call = (name: string, params: unknown) => tools.find((t) => t.name === name)!.execute("test", params, signal);
+  await call("get_software_update", {});
+  expect(calls).toHaveLength(0);
   await expect(call("get_software_update", { check: true })).rejects.toThrow("offline");
   const result = await call("open_maintenance_settings", { surface: "diagnostics" });
-  expect(JSON.stringify(result)).toContain("opened"); expect(JSON.stringify(result)).not.toContain("completed");
+  expect(JSON.stringify(result)).toContain("opened");
+  expect(JSON.stringify(result)).not.toContain("completed");
   expect(calls).toEqual([signal, ["diagnostics", signal]]);
   for (const surface of ["plugins", "backup-import", "backup-export", "delete-data", "data-location"]) {
     const result = await call("open_maintenance_settings", { surface });
     expect(JSON.stringify(result)).toContain("opened");
     expect(calls[calls.length - 1]).toEqual([surface, signal]);
   }
-  await expect(call("open_maintenance_settings", { surface: "install" })).rejects.toMatchObject({ code: "ui/invalid-target" });
+  await expect(call("open_maintenance_settings", { surface: "install" })).rejects.toMatchObject({
+    code: "ui/invalid-target",
+  });
 });
 
 test("Agent diagnostic reports delegate preview/confirmation to the host and preserve final outcomes", async () => {
   const { deps, stores } = createInMemoryDeps();
   const signal = new AbortController().signal;
   deps.diagnostics.requestReport = async (action, received) => {
-    expect(received).toBe(signal); return { action, status: action === "export" ? "cancelled" : "sent" };
+    expect(received).toBe(signal);
+    return { action, status: action === "export" ? "cancelled" : "sent" };
   };
-  const tool = buildMaintenanceTools(deps).find(tool => tool.name === "request_diagnostics_report")!;
+  const tool = buildMaintenanceTools(deps).find((tool) => tool.name === "request_diagnostics_report")!;
   for (const action of ["export", "send"]) {
     const result = await tool.execute("report", { action }, signal);
     expect(JSON.stringify(result)).toContain(action === "export" ? "cancelled" : "sent");
   }
   expect(stores.interactions).toHaveLength(0);
-  await expect(tool.execute("invalid", { action: "upload-anywhere" }, signal)).rejects.toMatchObject({ code: "ui/invalid-target" });
-  await expect(tool.execute("cancelled", { action: "send" }, AbortSignal.abort(Error("cancelled")))).rejects.toThrow("cancelled");
+  await expect(tool.execute("invalid", { action: "upload-anywhere" }, signal)).rejects.toMatchObject({
+    code: "ui/invalid-target",
+  });
+  await expect(tool.execute("cancelled", { action: "send" }, AbortSignal.abort(Error("cancelled")))).rejects.toThrow(
+    "cancelled",
+  );
 });
 
 test("Agent verification uses the shared port, preserves cancellation and never converts failure into success", async () => {
-  const { deps } = createInMemoryDeps(), signals: Array<AbortSignal | undefined> = [];
-  const summary = { scope: "event-projections" as const, checkedAt: "2026-09-11T00:00:00Z", consistent: false,
-    eventsReplayed: 20, driftedTables: 1, onlyLiveRows: 2, onlyReplayedRows: 0 };
-  deps.diagnostics.verifyProjections = async signal => { signals.push(signal); return summary; };
-  const tool = buildMaintenanceTools(deps).find(tool => tool.name === "verify_local_data")!;
+  const { deps } = createInMemoryDeps(),
+    signals: Array<AbortSignal | undefined> = [];
+  const summary = {
+    scope: "event-projections" as const,
+    checkedAt: "2026-09-11T00:00:00Z",
+    consistent: false,
+    eventsReplayed: 20,
+    driftedTables: 1,
+    onlyLiveRows: 2,
+    onlyReplayedRows: 0,
+  };
+  deps.diagnostics.verifyProjections = async (signal) => {
+    signals.push(signal);
+    return summary;
+  };
+  const tool = buildMaintenanceTools(deps).find((tool) => tool.name === "verify_local_data")!;
   const signal = new AbortController().signal;
   expect(tool.executionMode).toBe("sequential");
   const result = await tool.execute("test", {}, signal);
@@ -82,7 +119,9 @@ test("Agent verification uses the shared port, preserves cancellation and never 
   await expect(tool.execute("test", {}, AbortSignal.abort())).rejects.toBeDefined();
   expect(signals).toHaveLength(1);
   const failure = Object.assign(Error("pending"), { code: "sync/log-incomplete" });
-  deps.diagnostics.verifyProjections = async () => { throw failure; };
+  deps.diagnostics.verifyProjections = async () => {
+    throw failure;
+  };
   await expect(tool.execute("test", {}, signal)).rejects.toBe(failure);
 });
 
@@ -91,8 +130,11 @@ test("projection repair tool waits for native confirmation receipt and exposes n
   const signal = new AbortController().signal;
   let received: AbortSignal | undefined;
   const pending = Promise.withResolvers<import("@read-aware/core").ProjectionRepairReceipt>();
-  deps.diagnostics.requestProjectionRepair = next => { received = next; return pending.promise; };
-  const tool = buildMaintenanceTools(deps).find(tool => tool.name === "request_projection_repair")!;
+  deps.diagnostics.requestProjectionRepair = (next) => {
+    received = next;
+    return pending.promise;
+  };
+  const tool = buildMaintenanceTools(deps).find((tool) => tool.name === "request_projection_repair")!;
   const result = tool.execute("repair", {}, signal);
   expect(received).toBe(signal);
   pending.resolve({ action: "repair", status: "rebuilt-reload-required" });

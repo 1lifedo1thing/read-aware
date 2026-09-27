@@ -41,30 +41,24 @@ const store = getDefaultStore();
 
 // ─── Contribution registries ─────────────────────────────────────────────────
 
-const selectionActionsRegistry =
-  createInteractiveContributionRegistry<RegisteredSelectionAction>("selectionActions", "run");
-const headerActionsRegistry =
-  createInteractiveContributionRegistry<RegisteredHeaderAction>("headerActions", "view");
-const contextActionsRegistry =
-  createInteractiveContributionRegistry<RegisteredContextAction>("contextActions", "run");
-const readerModesRegistry =
-  createContributionRegistry<RegisteredReaderMode>("readerModes");
-const commandsRegistry =
-  createInteractiveContributionRegistry<RegisteredCommand>("commands", "run");
-const toolsRegistry =
-  createInteractiveContributionRegistry<RegisteredTool>("agentTools", "execute");
+const selectionActionsRegistry = createInteractiveContributionRegistry<RegisteredSelectionAction>(
+  "selectionActions",
+  "run",
+);
+const headerActionsRegistry = createInteractiveContributionRegistry<RegisteredHeaderAction>("headerActions", "view");
+const contextActionsRegistry = createInteractiveContributionRegistry<RegisteredContextAction>("contextActions", "run");
+const readerModesRegistry = createContributionRegistry<RegisteredReaderMode>("readerModes");
+const commandsRegistry = createInteractiveContributionRegistry<RegisteredCommand>("commands", "run");
+const toolsRegistry = createInteractiveContributionRegistry<RegisteredTool>("agentTools", "execute");
 const agentContextProvidersRegistry =
   createContributionRegistry<RegisteredAgentContextProvider>("agentContextProviders");
 const agentRetrievalProvidersRegistry =
   createContributionRegistry<RegisteredAgentRetrievalProvider>("agentRetrievalProviders");
 const memoryCandidateProvidersRegistry =
   createContributionRegistry<RegisteredMemoryCandidateProvider>("memoryCandidateProviders");
-const themesRegistry =
-  createContributionRegistry<RegisteredPluginTheme>("themes");
-const fontsRegistry =
-  createContributionRegistry<RegisteredPluginFont>("fonts");
-const voiceProvidersRegistry =
-  createContributionRegistry<RegisteredVoiceProvider>("voiceProviders");
+const themesRegistry = createContributionRegistry<RegisteredPluginTheme>("themes");
+const fontsRegistry = createContributionRegistry<RegisteredPluginFont>("fonts");
+const voiceProvidersRegistry = createContributionRegistry<RegisteredVoiceProvider>("voiceProviders");
 
 export const selectionActionsAtom = selectionActionsRegistry.atom;
 export const headerActionsAtom = headerActionsRegistry.atom;
@@ -94,17 +88,11 @@ export function markPluginsReady(): void {
   store.set(pluginsReadyAtom, true);
 }
 
-export function registerSelectionActionContribution(
-  item: RegisteredSelectionAction,
-  source?: DomainActor,
-) {
+export function registerSelectionActionContribution(item: RegisteredSelectionAction, source?: DomainActor) {
   return selectionActionsRegistry.register(item, source);
 }
 
-export function registerHeaderActionContribution(
-  item: RegisteredHeaderAction,
-  source?: DomainActor,
-) {
+export function registerHeaderActionContribution(item: RegisteredHeaderAction, source?: DomainActor) {
   return headerActionsRegistry.register(item, source);
 }
 
@@ -112,10 +100,7 @@ export function registerContextActionContribution(item: RegisteredContextAction,
   return contextActionsRegistry.register(item, source);
 }
 
-export function registerReaderModeContribution(
-  item: RegisteredReaderMode,
-  source?: DomainActor,
-): PluginDisposable {
+export function registerReaderModeContribution(item: RegisteredReaderMode, source?: DomainActor): PluginDisposable {
   return readerModesRegistry.register(item, source);
 }
 
@@ -149,10 +134,7 @@ export function registerMemoryCandidateProviderContribution(
   return memoryCandidateProvidersRegistry.register(item, source);
 }
 
-export function registerThemeContribution(
-  item: RegisteredPluginTheme,
-  source?: DomainActor,
-) {
+export function registerThemeContribution(item: RegisteredPluginTheme, source?: DomainActor) {
   return themesRegistry.register(item, source);
 }
 
@@ -160,10 +142,7 @@ export function registerFontContribution(item: RegisteredPluginFont, source?: Do
   return fontsRegistry.register(item, source);
 }
 
-export function registerVoiceProviderContribution(
-  item: RegisteredVoiceProvider,
-  source?: DomainActor,
-) {
+export function registerVoiceProviderContribution(item: RegisteredVoiceProvider, source?: DomainActor) {
   return voiceProvidersRegistry.register(item, source);
 }
 
@@ -179,8 +158,7 @@ export type RegisteredSettingsOptions = {
   resolve: (values: PluginFormValues) => Promise<PluginSelectOption[]>;
 };
 
-const settingsOptionsRegistry =
-  createContributionRegistry<RegisteredSettingsOptions>("settingsOptions");
+const settingsOptionsRegistry = createContributionRegistry<RegisteredSettingsOptions>("settingsOptions");
 
 export function registerSettingsOptionsContribution(
   item: RegisteredSettingsOptions,
@@ -189,14 +167,8 @@ export function registerSettingsOptionsContribution(
   return settingsOptionsRegistry.register(item, source);
 }
 
-export function getSettingsOptionsProvider(
-  pluginId: string,
-  fieldId: string,
-): RegisteredSettingsOptions | null {
-  return settingsOptionsRegistry.find(
-    (provider) =>
-      provider.pluginId === pluginId && provider.fieldId === fieldId,
-  );
+export function getSettingsOptionsProvider(pluginId: string, fieldId: string): RegisteredSettingsOptions | null {
+  return settingsOptionsRegistry.find((provider) => provider.pluginId === pluginId && provider.fieldId === fieldId);
 }
 
 export type RegisteredContentProvider = {
@@ -206,25 +178,17 @@ export type RegisteredContentProvider = {
   load: (bookKey: string) => Promise<VirtualBookContent>;
 };
 
-const contentProvidersRegistry =
-  createContributionRegistry<RegisteredContentProvider>("contentProviders");
+const contentProvidersRegistry = createContributionRegistry<RegisteredContentProvider>("contentProviders");
 
 export const contentProvidersAtom = contentProvidersRegistry.atom;
 
-export function registerContentProviderContribution(
-  provider: RegisteredContentProvider,
-  source?: DomainActor,
-) {
+export function registerContentProviderContribution(provider: RegisteredContentProvider, source?: DomainActor) {
   return contentProvidersRegistry.register(provider, source);
 }
 
-export function getContentProvider(
-  pluginId: string,
-  providerId: string,
-): RegisteredContentProvider | null {
+export function getContentProvider(pluginId: string, providerId: string): RegisteredContentProvider | null {
   return contentProvidersRegistry.find(
-    (provider) =>
-      provider.pluginId === pluginId && provider.providerId === providerId,
+    (provider) => provider.pluginId === pluginId && provider.providerId === providerId,
   );
 }
 
@@ -236,11 +200,15 @@ export function updateVoiceProviderVoices(
   source?: DomainActor,
 ): RegisteredVoiceProvider | null {
   let replacement: RegisteredVoiceProvider | null = null;
-  voiceProvidersRegistry.update(key, (entry) => {
-    if (entry !== expected) return entry;
-    replacement = { ...entry, voices };
-    return replacement;
-  }, source);
+  voiceProvidersRegistry.update(
+    key,
+    (entry) => {
+      if (entry !== expected) return entry;
+      replacement = { ...entry, voices };
+      return replacement;
+    },
+    source,
+  );
   return replacement;
 }
 
@@ -263,19 +231,27 @@ export function getRegisteredMemoryCandidateProviders(): RegisteredMemoryCandida
 }
 
 /** A mounted reader owns its selection; stale cleanup must not clear a newer book. */
-const activeReaderModeAtom = atom<{ value: { owner: object; key: string | null } | null }>(stampEventCause({ value: null }));
+const activeReaderModeAtom = atom<{ value: { owner: object; key: string | null } | null }>(
+  stampEventCause({ value: null }),
+);
 /** Host-only selection envelope, including the cause of clearing a selection. */
 export const activeReaderModeSourceAtom = activeReaderModeAtom;
 export function setActiveReaderMode(owner: object, key: string | null, origin: DomainActor = "system"): void {
   const current = store.get(activeReaderModeAtom).value;
-  if (current?.owner !== owner || current.key !== key) store.set(activeReaderModeAtom, stampEventCause({ value: { owner, key } }, causalActor(origin)));
+  if (current?.owner !== owner || current.key !== key)
+    store.set(activeReaderModeAtom, stampEventCause({ value: { owner, key } }, causalActor(origin)));
 }
 export function releaseActiveReaderMode(owner: object, origin: DomainActor = "system"): void {
-  if (store.get(activeReaderModeAtom).value?.owner === owner) store.set(activeReaderModeAtom, stampEventCause({ value: null }, causalActor(origin)));
+  if (store.get(activeReaderModeAtom).value?.owner === owner)
+    store.set(activeReaderModeAtom, stampEventCause({ value: null }, causalActor(origin)));
 }
 export const textUnitReaderModeAtom = atom((get) => {
   const selection = get(activeReaderModeAtom).value;
-  return get(readerModesAtom).find(mode => mode.kind === "text-unit-navigator" && (!selection || mode.key === selection.key)) ?? null;
+  return (
+    get(readerModesAtom).find(
+      (mode) => mode.kind === "text-unit-navigator" && (!selection || mode.key === selection.key),
+    ) ?? null
+  );
 });
 
 export function setInstalledPlugins(plugins: InstalledPlugin[], origin: DomainActor = "system"): void {
@@ -288,9 +264,13 @@ export function updateInstalledPlugin(
   origin: DomainActor = "system",
 ): void {
   const current = store.get(installedPluginsAtom);
-  const target = current.find(plugin => plugin.manifest.id === id);
-  if (!target || Object.entries(patch).every(([key, value]) => Object.is(target[key as keyof InstalledPlugin], value))) return;
-  setInstalledPlugins(current.map(plugin => plugin.manifest.id === id ? { ...plugin, ...patch } : plugin), origin);
+  const target = current.find((plugin) => plugin.manifest.id === id);
+  if (!target || Object.entries(patch).every(([key, value]) => Object.is(target[key as keyof InstalledPlugin], value)))
+    return;
+  setInstalledPlugins(
+    current.map((plugin) => (plugin.manifest.id === id ? { ...plugin, ...patch } : plugin)),
+    origin,
+  );
 }
 
 // ─── Enabled state (persisted) ───────────────────────────────────────────────
@@ -346,7 +326,9 @@ function readBookAccessMap(): Record<string, unknown> {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return Object.assign(Object.create(null), parsed) as Record<string, unknown>;
     }
-  } catch { /* Invalid saved authority must never become a broad legacy grant. */ }
+  } catch {
+    /* Invalid saved authority must never become a broad legacy grant. */
+  }
   throw new AppError("plugin/invalid-input", "Saved plugin book grants are invalid");
 }
 
@@ -354,8 +336,12 @@ function normalizeBookAccess(value: unknown): PluginBookAccess | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as { mode?: unknown; bookId?: unknown };
   if (candidate.mode === "all" || candidate.mode === "current") return { mode: candidate.mode };
-  if (candidate.mode === "book" && typeof candidate.bookId === "string"
-    && candidate.bookId.trim() && candidate.bookId.length <= 512) {
+  if (
+    candidate.mode === "book" &&
+    typeof candidate.bookId === "string" &&
+    candidate.bookId.trim() &&
+    candidate.bookId.length <= 512
+  ) {
     return { mode: "book", bookId: candidate.bookId };
   }
   return null;
@@ -377,14 +363,19 @@ function writeBookAccess(id: string, grant: PluginBookAccess | null, origin: Dom
   origin = causalActor(origin);
   const work = bookAccessWriteTail.then(() => {
     const map = readBookAccessMap();
-    if (grant) map[id] = grant; else delete map[id];
+    if (grant) map[id] = grant;
+    else delete map[id];
     return localKV.setItemAsync(BOOK_ACCESS_KEY, JSON.stringify(map), origin);
   });
   bookAccessWriteTail = settled(work);
   return work;
 }
 
-export function persistPluginBookAccess(id: string, grant: PluginBookAccess, origin: DomainActor = "user"): Promise<void> {
+export function persistPluginBookAccess(
+  id: string,
+  grant: PluginBookAccess,
+  origin: DomainActor = "user",
+): Promise<void> {
   const captured = normalizeBookAccess(grant);
   if (!captured) return Promise.reject(new AppError("plugin/invalid-input", "Invalid plugin book grant"));
   return writeBookAccess(id, captured, origin);
@@ -465,34 +456,49 @@ export type PluginDialogRequest = {
 const pluginDialogStateAtom = atom<PluginDialogRequest | null>(null);
 const dialogOwnerWatches = new WeakMap<PluginDialogRequest, () => void>();
 const viewLog = createLogger("plugin-views");
-function updatePluginDialog(get: Getter, set: Setter, update: PluginDialogRequest | null | ((previous: PluginDialogRequest | null) => PluginDialogRequest | null)): void {
-    const previous = get(pluginDialogStateAtom);
-    let next = typeof update === "function" ? update(previous) : update;
-    if (next === previous) return;
-    if (next) {
-      const request = next;
-      try {
-        dialogOwnerWatches.set(request, observePluginCallbackOwners([request.owner, request.view], () => {
+function updatePluginDialog(
+  get: Getter,
+  set: Setter,
+  update: PluginDialogRequest | null | ((previous: PluginDialogRequest | null) => PluginDialogRequest | null),
+): void {
+  const previous = get(pluginDialogStateAtom);
+  let next = typeof update === "function" ? update(previous) : update;
+  if (next === previous) return;
+  if (next) {
+    const request = next;
+    try {
+      dialogOwnerWatches.set(
+        request,
+        observePluginCallbackOwners([request.owner, request.view], () => {
           if (get(pluginDialogStateAtom)?.requestId === request.requestId) updatePluginDialog(get, set, null);
-        }));
-      } catch (error) {
-        viewLog.warn("Dialog owner is unavailable", error);
-        try { releasePluginCallbacks(request.view); } catch (cleanupError) { viewLog.warn("Unavailable dialog cleanup failed", cleanupError); }
-        next = null;
+        }),
+      );
+    } catch (error) {
+      viewLog.warn("Dialog owner is unavailable", error);
+      try {
+        releasePluginCallbacks(request.view);
+      } catch (cleanupError) {
+        viewLog.warn("Unavailable dialog cleanup failed", cleanupError);
       }
+      next = null;
     }
-    set(pluginDialogStateAtom, next);
-    if (previous) { dialogOwnerWatches.get(previous)?.(); dialogOwnerWatches.delete(previous); }
-    if (previous?.view !== next?.view) {
-      try { releasePluginCallbacks(previous?.view, next?.view); }
-      catch (error) { viewLog.warn("Retired dialog cleanup failed", error); }
+  }
+  set(pluginDialogStateAtom, next);
+  if (previous) {
+    dialogOwnerWatches.get(previous)?.();
+    dialogOwnerWatches.delete(previous);
+  }
+  if (previous?.view !== next?.view) {
+    try {
+      releasePluginCallbacks(previous?.view, next?.view);
+    } catch (error) {
+      viewLog.warn("Retired dialog cleanup failed", error);
     }
+  }
 }
-export const pluginDialogAtom = atom(get => get(pluginDialogStateAtom), updatePluginDialog);
+export const pluginDialogAtom = atom((get) => get(pluginDialogStateAtom), updatePluginDialog);
 
-export function openPluginDialog(
-  request: Omit<PluginDialogRequest, "requestId">,
-): string {
+export function openPluginDialog(request: Omit<PluginDialogRequest, "requestId">): string {
   const requestId = crypto.randomUUID();
   store.set(pluginDialogAtom, { ...request, requestId });
   return requestId;
@@ -510,10 +516,7 @@ export function resolvePluginDialog(requestId: string, view: PluginView): boolea
 }
 
 /** Mark a pending Dialog failed (in-place error state) if it's still this request's. */
-export function failPluginDialog(
-  requestId: string,
-  failure: { code?: string; retry?: () => void },
-): boolean {
+export function failPluginDialog(requestId: string, failure: { code?: string; retry?: () => void }): boolean {
   const current = store.get(pluginDialogAtom);
   if (current?.requestId !== requestId) return false;
   store.set(pluginDialogAtom, { ...current, view: null, failure });
@@ -560,7 +563,7 @@ export function requestInstallConsent(
   return new Promise((resolve) => {
     const request: PluginInstallConsentRequest = {
       manifest,
-      books: books.map(book => ({ id: book.id, title: book.title })),
+      books: books.map((book) => ({ id: book.id, title: book.title })),
       resolve: (approved, grant = { mode: "all" }) => {
         signal?.removeEventListener("abort", abort);
         if (store.get(pluginInstallConsentAtom) === request) store.set(pluginInstallConsentAtom, null);

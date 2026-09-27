@@ -1,4 +1,13 @@
-import type { BookTocEntry, PluginAction, PluginListItem, PluginListSearch, PluginListView, PluginView, PluginViewResult, ReadingLocation } from "@read-aware/plugin-types";
+import type {
+  BookTocEntry,
+  PluginAction,
+  PluginListItem,
+  PluginListSearch,
+  PluginListView,
+  PluginView,
+  PluginViewResult,
+  ReadingLocation,
+} from "@read-aware/plugin-types";
 import { chapterNumber, findChapters } from "./chapters";
 import { tr } from "./strings";
 import type { JumperContext } from "./types";
@@ -23,7 +32,7 @@ export function matchChapters(entries: BookTocEntry[], query: string): BookTocEn
 type Chapter = { entry: BookTocEntry; parent: BookTocEntry | null };
 
 function flattenWithParents(entries: BookTocEntry[], parent: BookTocEntry | null = null): Chapter[] {
-  return entries.flatMap(entry => [{ entry, parent }, ...flattenWithParents(entry.children, entry)]);
+  return entries.flatMap((entry) => [{ entry, parent }, ...flattenWithParents(entry.children, entry)]);
 }
 
 /** The href without its fragment: TOC entries and the reader's location both carry one. */
@@ -39,7 +48,12 @@ function section(href: string | undefined): string | null {
  */
 export async function jumperView(ctx: JumperContext): Promise<PluginView> {
   const session = await ctx.domains.reading.queries.session();
-  if (!session.bookId) return { kind: "detail", title: "Jumper", content: [{ kind: "text", text: tr(ctx.locale, "noBook"), tone: "muted" }] };
+  if (!session.bookId)
+    return {
+      kind: "detail",
+      title: "Jumper",
+      content: [{ kind: "text", text: tr(ctx.locale, "noBook"), tone: "muted" }],
+    };
   const bookId = session.bookId;
   const toc = await ctx.domains.library.queries.books.getNavigationToc(bookId);
   const chapters = flattenWithParents(toc.entries);
@@ -49,7 +63,9 @@ export async function jumperView(ctx: JumperContext): Promise<PluginView> {
   const chapterItem = ({ entry, parent }: Chapter): PluginListItem => {
     const current = currentSection !== null && section(entry.location?.href ?? undefined) === currentSection;
     return {
-      id: `chapter:${entry.id}`, title: entry.label || String(entry.ordinal), icon: "book-open",
+      id: `chapter:${entry.id}`,
+      title: entry.label || String(entry.ordinal),
+      icon: "book-open",
       subtitle: entry.location ? parent?.label || undefined : tr(ctx.locale, "unavailable"),
       ...(current ? { accessories: [{ kind: "tag", text: tr(ctx.locale, "current") }] } : {}),
       ...(entry.location ? { onSelect: () => jump(ctx, entry.location!) } : {}),
@@ -59,12 +75,22 @@ export async function jumperView(ctx: JumperContext): Promise<PluginView> {
   const pageItems = async (query: string): Promise<PluginListItem[]> => {
     if (!PAGE_LABEL.test(query)) return [];
     try {
-      const page = await ctx.domains.library.queries.books.listNavigationTargets({ bookId, contentVersion: toc.contentVersion, kind: "pages", label: query, limit: PAGE_LIMIT });
+      const page = await ctx.domains.library.queries.books.listNavigationTargets({
+        bookId,
+        contentVersion: toc.contentVersion,
+        kind: "pages",
+        label: query,
+        limit: PAGE_LIMIT,
+      });
       if (page.status === "absent") return [];
-      return page.items.filter(item => item.location).map(item => ({
-        id: `page:${item.index}`, title: tr(ctx.locale, "pageTitle").replace("{n}", item.label ?? String(item.index + 1)), icon: "file-text",
-        onSelect: () => jump(ctx, item.location!),
-      }));
+      return page.items
+        .filter((item) => item.location)
+        .map((item) => ({
+          id: `page:${item.index}`,
+          title: tr(ctx.locale, "pageTitle").replace("{n}", item.label ?? String(item.index + 1)),
+          icon: "file-text",
+          onSelect: () => jump(ctx, item.location!),
+        }));
     } catch (error) {
       // A page catalog that cannot be read only loses its rows; chapters and
       // the text search still answer the same keystroke.
@@ -75,26 +101,43 @@ export async function jumperView(ctx: JumperContext): Promise<PluginView> {
 
   const rows = async (query: string): Promise<PluginListItem[]> => {
     if (!query) return chapters.map(chapterItem);
-    const byId = new Map(chapters.map(chapter => [chapter.entry.id, chapter]));
-    const matched = matchChapters(toc.entries, query).map(entry => chapterItem(byId.get(entry.id) ?? { entry, parent: null }));
+    const byId = new Map(chapters.map((chapter) => [chapter.entry.id, chapter]));
+    const matched = matchChapters(toc.entries, query).map((entry) =>
+      chapterItem(byId.get(entry.id) ?? { entry, parent: null }),
+    );
     const search: PluginListItem = {
-      id: "search", title: tr(ctx.locale, "searchText").replace("{q}", query), icon: "magnifying-glass",
+      id: "search",
+      title: tr(ctx.locale, "searchText").replace("{q}", query),
+      icon: "magnifying-glass",
       // Smart case: capitals in the query ask for an exact-case match.
       onSelect: () => ({ view: textSearchView(ctx, { bookId, query, limit: 20, matchCase: /\p{Lu}/u.test(query) }) }),
     };
-    return [...matched, ...await pageItems(query), search];
+    return [...matched, ...(await pageItems(query)), search];
   };
 
   const search: PluginListSearch = {
-    placeholder: tr(ctx.locale, "goTo"), autoFocus: true,
-    onQuery: async query => ({ view: list(await rows(query)) }),
+    placeholder: tr(ctx.locale, "goTo"),
+    autoFocus: true,
+    onQuery: async (query) => ({ view: list(await rows(query)) }),
   };
-  const actions: PluginAction[] = (["back", "forward"] as const).map(direction => ({
-    id: direction, label: tr(ctx.locale, direction), icon: direction === "back" ? "arrow-left" : "arrow-right", priority: "primary",
+  const actions: PluginAction[] = (["back", "forward"] as const).map((direction) => ({
+    id: direction,
+    label: tr(ctx.locale, direction),
+    icon: direction === "back" ? "arrow-left" : "arrow-right",
+    priority: "primary",
     disabled: !(direction === "back" ? session.history.canGoBack : session.history.canGoForward),
-    run: async () => { await ctx.domains.reading.commands[direction](guard); return { close: true }; },
+    run: async () => {
+      await ctx.domains.reading.commands[direction](guard);
+      return { close: true };
+    },
   }));
   // A typed query always carries its text-search row, so only an empty box can be empty.
-  const list = (items: PluginListItem[]): PluginListView => ({ kind: "list", items, search, actions, emptyText: tr(ctx.locale, "noToc") });
+  const list = (items: PluginListItem[]): PluginListView => ({
+    kind: "list",
+    items,
+    search,
+    actions,
+    emptyText: tr(ctx.locale, "noToc"),
+  });
   return list(await rows(""));
 }

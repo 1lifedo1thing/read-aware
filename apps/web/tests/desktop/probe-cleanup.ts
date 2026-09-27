@@ -6,10 +6,14 @@
  */
 export async function withProbeCleanup<T>(run: () => Promise<T>, cleanup: () => Promise<void> | void): Promise<T> {
   let result: T;
-  try { result = await run(); }
-  catch (error) {
-    try { await cleanup(); }
-    catch (cleanupError) { throw new AggregateError([error, cleanupError], "Probe failed and its cleanup failed too"); }
+  try {
+    result = await run();
+  } catch (error) {
+    try {
+      await cleanup();
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], "Probe failed and its cleanup failed too");
+    }
     throw error;
   }
   await cleanup();

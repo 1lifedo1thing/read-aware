@@ -78,9 +78,7 @@ function formatDuration(ms: number, t: TFunction<"reader">): string {
   if (minutes < 60) return t("completion.minutes", { count: minutes });
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest === 0
-    ? t("completion.hours", { count: hours })
-    : t("completion.hoursMinutes", { hours, minutes: rest });
+  return rest === 0 ? t("completion.hours", { count: hours }) : t("completion.hoursMinutes", { hours, minutes: rest });
 }
 
 export function ReaderCompletionScreenView({
@@ -124,7 +122,6 @@ export function ReaderCompletionScreenView({
       });
     });
   }, [book.id, finished, onFinishedChange, toast, t]);
-
 
   /**
    * Hand the look back to the agent instead of writing it here. It has the
@@ -256,11 +253,7 @@ export function ReaderCompletionScreenView({
           </Caption>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button
-              variant={finished ? "solid" : "outline"}
-              onClick={toggleFinished}
-              style={finishedButtonStyle}
-            >
+            <Button variant={finished ? "solid" : "outline"} onClick={toggleFinished} style={finishedButtonStyle}>
               <CheckCircle size={17} weight={finished ? "fill" : "regular"} />
               {finished ? t("completion.markedFinished") : t("completion.markFinished")}
             </Button>
@@ -307,7 +300,6 @@ export function ReaderCompletionScreenView({
               </ul>
             </div>
           ) : null}
-
         </div>
       </div>
     </div>

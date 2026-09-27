@@ -62,51 +62,31 @@ function swap(text: string, from: string, to: string): string {
 // ── Preserved mirror-form sections ──────────────────────────────────────────
 const GENERATED_CORE = "// ─── Generated @read-aware/core vocabulary";
 const existingHeader = cut(mirror, "/**\n * MIRROR", "// ─── Permissions");
-const mirrorPrefix = cut(
-  existingHeader,
-  "/**\n * MIRROR",
-  "/**\n * @read-aware/plugin-types",
-);
+const mirrorPrefix = cut(existingHeader, "/**\n * MIRROR", "/**\n * @read-aware/plugin-types");
 const sourceImports = src.indexOf("import {");
 if (sourceImports < 0) throw new Error("plugin contract import block missing");
 const contractIntro = src.slice(0, sourceImports);
-const baseCoreStart = existingHeader.indexOf(
-  "// ─── Inlined @read-aware/core vocabulary",
-);
+const baseCoreStart = existingHeader.indexOf("// ─── Inlined @read-aware/core vocabulary");
 if (baseCoreStart < 0) throw new Error("inlined core vocabulary marker missing");
 const baseCoreEnd = existingHeader.includes(GENERATED_CORE)
   ? existingHeader.indexOf(GENERATED_CORE)
   : existingHeader.length;
-const mirrorHeader =
-  mirrorPrefix + contractIntro + existingHeader.slice(baseCoreStart, baseCoreEnd);
+const mirrorHeader = mirrorPrefix + contractIntro + existingHeader.slice(baseCoreStart, baseCoreEnd);
 const payloadTailAnchor = mirror.includes("/** Book, source, metadata")
   ? "/** Book, source, metadata"
   : "/** Everything library management emits";
 const payloadMap = cut(mirror, "// ─── Events", payloadTailAnchor);
 
 const domainSource = readFileSync(coreDomainsPath, "utf8");
-const domainIds = [...domainSource.matchAll(/^  ([a-z][a-zA-Z]*): \{/gm)].map(
-  (match) => match[1],
-);
-const domainPermissions = [...domainSource.matchAll(/pluginAccess: \[([^\]]*)\]/g)].flatMap(
-  (match, index) =>
-    [...match[1].matchAll(/"(read|write)"/g)].map(
-      (access) => `${domainIds[index]}:${access[1]}`,
-    ),
+const domainIds = [...domainSource.matchAll(/^  ([a-z][a-zA-Z]*): \{/gm)].map((match) => match[1]);
+const domainPermissions = [...domainSource.matchAll(/pluginAccess: \[([^\]]*)\]/g)].flatMap((match, index) =>
+  [...match[1].matchAll(/"(read|write)"/g)].map((access) => `${domainIds[index]}:${access[1]}`),
 );
 const capabilitySource = readFileSync(coreCapabilitiesPath, "utf8");
 const catalogIds = (start: string, end: string) =>
-  [...cut(capabilitySource, start, end).matchAll(/^  ([a-z][a-zA-Z]*): \{/gm)].map(
-    (match) => match[1],
-  );
-const contributionIds = catalogIds(
-  "export const CONTRIBUTION_CATALOG = {",
-  "export type ContributionId",
-);
-const hostServiceIds = catalogIds(
-  "export const HOST_SERVICE_CATALOG = {",
-  "export type HostServiceId",
-);
+  [...cut(capabilitySource, start, end).matchAll(/^  ([a-z][a-zA-Z]*): \{/gm)].map((match) => match[1]);
+const contributionIds = catalogIds("export const CONTRIBUTION_CATALOG = {", "export type ContributionId");
+const hostServiceIds = catalogIds("export const HOST_SERVICE_CATALOG = {", "export type HostServiceId");
 const declarativeSchemaIds = catalogIds(
   "export const DECLARATIVE_SCHEMA_CATALOG = {",
   "export type DeclarativeSchemaId",
@@ -117,14 +97,10 @@ export type Id = string;
 export type IsoDate = string;
 export type DomainId = ${domainIds.map((id) => `"${id}"`).join(" | ")};
 export type DomainAccess = "read" | "write";
-export type DomainPermission = ${domainPermissions
-  .map((permission) => `"${permission}"`)
-  .join(" | ")};
+export type DomainPermission = ${domainPermissions.map((permission) => `"${permission}"`).join(" | ")};
 export type ContributionId = ${contributionIds.map((id) => `"${id}"`).join(" | ")};
 export type HostServiceId = ${hostServiceIds.map((id) => `"${id}"`).join(" | ")};
-export type DeclarativeSchemaId = ${declarativeSchemaIds
-  .map((id) => `"${id}"`)
-  .join(" | ")};
+export type DeclarativeSchemaId = ${declarativeSchemaIds.map((id) => `"${id}"`).join(" | ")};
 
 `;
 const settingsVocabulary = readFileSync(coreSettingsPath, "utf8").replace(
@@ -138,9 +114,7 @@ const coreReadModels = readFileSync(coreReadModelsPath, "utf8").replace(
 
 // ── Source sections, with the curated transformations ───────────────────────
 let perms = cut(src, "// ─── Permissions", "// ─── Manifest");
-const publicPluginPermissions = PLUGIN_PERMISSIONS.filter(
-  (permission) => permission !== "reader:modes",
-);
+const publicPluginPermissions = PLUGIN_PERMISSIONS.filter((permission) => permission !== "reader:modes");
 perms = swap(
   perms,
   `export type PluginPermission = CorePluginPermission;
@@ -150,11 +124,7 @@ export const PLUGIN_PERMISSIONS = CORE_PLUGIN_PERMISSIONS;`,
   `export type PluginPermission =
 ${publicPluginPermissions.map((permission) => `  | "${permission}"`).join("\n")};`,
 );
-perms = swap(
-  perms,
-  ` * - \`reader:modes\` — privileged host-rendered reader-mode registration.\n`,
-  "",
-);
+perms = swap(perms, ` * - \`reader:modes\` — privileged host-rendered reader-mode registration.\n`, "");
 
 let middle = cut(src, "// ─── Manifest", "// ─── Reader-mode contributions");
 middle = swap(
@@ -183,11 +153,7 @@ localized = swap(
   "// ─── Localized copy ──────────────────────────────────────────────────────────",
 );
 
-const contributions = cut(
-  src,
-  "/**\n * A key chord for a command's default binding.",
-  "// ─── Events",
-);
+const contributions = cut(src, "/**\n * A key chord for a command's default binding.", "// ─── Events");
 const eventsTail = cut(src, "/** Book, source, metadata", "// ─── Read models");
 const publicReadModels = cut(src, "// ─── Read models", "// ─── Domain APIs");
 const domainApis = cut(src, "// ─── Domain APIs", "// ─── Context handed to activate()");

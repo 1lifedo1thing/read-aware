@@ -27,10 +27,7 @@ export function GeneralPanel() {
   }));
 
   return (
-    <SettingsPage
-      title={t("general.title")}
-      description={t("general.description")}
-    >
+    <SettingsPage title={t("general.title")} description={t("general.description")}>
       <SettingsGroup title={t("general.onLaunch")}>
         <ChoiceGroup
           label={t("general.startView")}
@@ -48,25 +45,42 @@ export function GeneralPanel() {
         <SettingsRow
           borderless
           title={t("general.desktopIntegration.launchAtStartup.title")}
-          description={failure
-            ? <InlineError compact onRetry={failure.retryable && !busy ? retry : undefined} retryLabel={t("common:errorBoundary.retry")}>{failure.body}</InlineError>
-            : t("general.desktopIntegration.launchAtStartup.description")}
+          description={
+            failure ? (
+              <InlineError
+                compact
+                onRetry={failure.retryable && !busy ? retry : undefined}
+                retryLabel={t("common:errorBoundary.retry")}
+              >
+                {failure.body}
+              </InlineError>
+            ) : (
+              t("general.desktopIntegration.launchAtStartup.description")
+            )
+          }
           control={
-            startup.status === "loading" ? <Spinner size="sm" /> : <Toggle
-              aria-label={t("general.desktopIntegration.launchAtStartup.title")}
-              checked={startup.status === "ready" && startup.enabled}
-              disabled={busy || startup.status !== "ready"}
-              aria-busy={busy}
-              onChange={(launchAtStartup) => void update("launchAtStartup", launchAtStartup)}
-            />
+            startup.status === "loading" ? (
+              <Spinner size="sm" />
+            ) : (
+              <Toggle
+                aria-label={t("general.desktopIntegration.launchAtStartup.title")}
+                checked={startup.status === "ready" && startup.enabled}
+                disabled={busy || startup.status !== "ready"}
+                aria-busy={busy}
+                onChange={(launchAtStartup) => void update("launchAtStartup", launchAtStartup)}
+              />
+            )
           }
         />
         <SettingsRow
           title={t("general.desktopIntegration.fileAssociations.title")}
-          description={isMacOS()
-            ? t("general.desktopIntegration.fileAssociations.descriptionMac")
-            : isWindows() || isLinux() ? t("general.desktopIntegration.fileAssociations.descriptionRegistration")
-            : t("general.desktopIntegration.fileAssociations.description")}
+          description={
+            isMacOS()
+              ? t("general.desktopIntegration.fileAssociations.descriptionMac")
+              : isWindows() || isLinux()
+                ? t("general.desktopIntegration.fileAssociations.descriptionRegistration")
+                : t("general.desktopIntegration.fileAssociations.description")
+          }
           control={
             <Toggle
               aria-label={t("general.desktopIntegration.fileAssociations.title")}
@@ -96,9 +110,7 @@ export function GeneralPanel() {
               aria-label={t("general.desktopIntegration.whatsNewDialog.title")}
               checked={settings.whatsNewDialog}
               disabled={busy}
-              onChange={(whatsNewDialog) =>
-                void update("whatsNewDialog", whatsNewDialog)
-              }
+              onChange={(whatsNewDialog) => void update("whatsNewDialog", whatsNewDialog)}
             />
           }
         />

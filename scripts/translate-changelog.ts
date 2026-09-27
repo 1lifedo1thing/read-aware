@@ -68,7 +68,7 @@ function buildPrompt(language: string, styleAnchor: Entry | undefined, entry: En
     '- Product name "ReadAware" stays in Latin script. UI terms should match the app\'s conventions visible in the style sample.',
     "- Tone: match the style sample — plain, precise, quietly enthusiastic release notes; no marketing fluff.",
     "- For Chinese and Japanese, use full-width CJK punctuation (，。：；！？——) exactly as the style sample does; never half-width commas or periods in prose.",
-    "- Do not add quotation marks, brackets, or any decoration around \"title\" values — they are bare phrases.",
+    '- Do not add quotation marks, brackets, or any decoration around "title" values — they are bare phrases.',
     ...(styleAnchor
       ? [
           "",
@@ -85,12 +85,7 @@ function buildPrompt(language: string, styleAnchor: Entry | undefined, entry: En
 /** Same tree of types/keys — a wrong shape means the model freelanced. */
 function sameShape(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) || Array.isArray(b)) {
-    return (
-      Array.isArray(a) &&
-      Array.isArray(b) &&
-      a.length === b.length &&
-      a.every((item, i) => sameShape(item, b[i]))
-    );
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => sameShape(item, b[i]));
   }
   if (typeof a === "object" && a !== null) {
     if (typeof b !== "object" || b === null) return false;
@@ -98,11 +93,7 @@ function sameShape(a: unknown, b: unknown): boolean {
     const kb = Object.keys(b as object).sort();
     return (
       ka.length === kb.length &&
-      ka.every(
-        (k, i) =>
-          k === kb[i] &&
-          sameShape((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
-      )
+      ka.every((k, i) => k === kb[i] && sameShape((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
     );
   }
   return typeof a === typeof b;
@@ -134,7 +125,11 @@ function attempt(model: string, prompt: string): Entry | null {
   );
   if (run.status !== 0 || !run.stdout.trim()) return null;
   // Tolerate stray fences even though the prompt forbids them.
-  const raw = run.stdout.trim().replace(/^```(?:json)?/, "").replace(/```$/, "").trim();
+  const raw = run.stdout
+    .trim()
+    .replace(/^```(?:json)?/, "")
+    .replace(/```$/, "")
+    .trim();
   try {
     return JSON.parse(raw) as Entry;
   } catch {
@@ -162,14 +157,10 @@ function translate(language: string, styleAnchor: Entry | undefined, entry: Entr
 // ── main ─────────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 const versionArg = args.includes("--version") ? args[args.indexOf("--version") + 1] : undefined;
-const localesArg = args.includes("--locales")
-  ? args[args.indexOf("--locales") + 1]!.split(",")
-  : Object.keys(LOCALES);
+const localesArg = args.includes("--locales") ? args[args.indexOf("--locales") + 1]!.split(",") : Object.keys(LOCALES);
 
 const { entries: enEntries } = readEntries("en");
-const source = versionArg
-  ? enEntries.find((entry) => entry.version === versionArg)
-  : enEntries[0];
+const source = versionArg ? enEntries.find((entry) => entry.version === versionArg) : enEntries[0];
 if (!source) throw new Error(`no English changelog entry for ${versionArg ?? "(latest)"}`);
 console.log(`Translating changelog entry v${source.version} → ${localesArg.join(", ")}`);
 
@@ -191,10 +182,7 @@ for (const locale of localesArg) {
   const existing = entries.findIndex((entry) => entry.version === source.version);
   if (existing >= 0) entries[existing] = translated;
   else entries.unshift(translated);
-  writeFileSync(
-    join(RESOURCES, `${locale}.site.json`),
-    JSON.stringify(data, null, 2) + "\n",
-  );
+  writeFileSync(join(RESOURCES, `${locale}.site.json`), JSON.stringify(data, null, 2) + "\n");
   console.log(`  wrote ${locale}.site.json`);
 }
 

@@ -9,16 +9,7 @@
  * (zh-Hant says 權杖 for token, zh-Hans says 令牌, ja says トークン).
  */
 
-export const RELAY_LANGS = [
-  "en",
-  "zh-Hans",
-  "zh-Hant",
-  "ja",
-  "de",
-  "es",
-  "fr",
-  "ru",
-] as const;
+export const RELAY_LANGS = ["en", "zh-Hans", "zh-Hant", "ja", "de", "es", "fr", "ru"] as const;
 
 export type RelayLang = (typeof RELAY_LANGS)[number];
 
@@ -60,8 +51,7 @@ export const EMAIL: Record<RelayLang, EmailStrings> = {
   en: {
     subject: "Sign in to ReadAware Sync",
     click: "Click this link to finish signing in to ReadAware:",
-    fallback:
-      "If it does not open the app, paste the link into ReadAware's Data & Sync settings instead.",
+    fallback: "If it does not open the app, paste the link into ReadAware's Data & Sync settings instead.",
     expires: "The link expires in 15 minutes. If you did not request it, ignore this email.",
   },
   "zh-Hans": {
@@ -79,8 +69,7 @@ export const EMAIL: Record<RelayLang, EmailStrings> = {
   ja: {
     subject: "ReadAware Sync にサインイン",
     click: "次のリンクをクリックして ReadAware へのサインインを完了してください：",
-    fallback:
-      "アプリが開かない場合は、リンクを ReadAware の「データと同期」設定に貼り付けてください。",
+    fallback: "アプリが開かない場合は、リンクを ReadAware の「データと同期」設定に貼り付けてください。",
     expires: "リンクの有効期限は 15 分です。心当たりがない場合は、このメールを無視してください。",
   },
   de: {
@@ -88,14 +77,12 @@ export const EMAIL: Record<RelayLang, EmailStrings> = {
     click: "Klicke auf diesen Link, um die Anmeldung bei ReadAware abzuschließen:",
     fallback:
       "Falls sich die App nicht öffnet, füge den Link stattdessen in ReadAwares Einstellungen unter „Daten & Sync“ ein.",
-    expires:
-      "Der Link ist 15 Minuten gültig. Falls du ihn nicht angefordert hast, ignoriere diese E-Mail.",
+    expires: "Der Link ist 15 Minuten gültig. Falls du ihn nicht angefordert hast, ignoriere diese E-Mail.",
   },
   es: {
     subject: "Inicia sesión en ReadAware Sync",
     click: "Haz clic en este enlace para terminar de iniciar sesión en ReadAware:",
-    fallback:
-      "Si la aplicación no se abre, pega el enlace en los ajustes de «Datos y sincronización» de ReadAware.",
+    fallback: "Si la aplicación no se abre, pega el enlace en los ajustes de «Datos y sincronización» de ReadAware.",
     expires: "El enlace caduca en 15 minutos. Si no lo solicitaste, ignora este correo.",
   },
   fr: {
@@ -103,16 +90,13 @@ export const EMAIL: Record<RelayLang, EmailStrings> = {
     click: "Cliquez sur ce lien pour terminer votre connexion à ReadAware :",
     fallback:
       "Si l'application ne s'ouvre pas, collez le lien dans les réglages « Données et synchronisation » de ReadAware.",
-    expires:
-      "Le lien expire dans 15 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.",
+    expires: "Le lien expire dans 15 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.",
   },
   ru: {
     subject: "Вход в ReadAware Sync",
     click: "Нажмите на эту ссылку, чтобы завершить вход в ReadAware:",
-    fallback:
-      "Если приложение не открылось, вставьте ссылку в настройки ReadAware «Данные и синхронизация».",
-    expires:
-      "Ссылка действительна 15 минут. Если вы её не запрашивали, просто проигнорируйте это письмо.",
+    fallback: "Если приложение не открылось, вставьте ссылку в настройки ReadAware «Данные и синхронизация».",
+    expires: "Ссылка действительна 15 минут. Если вы её не запрашивали, просто проигнорируйте это письмо.",
   },
 };
 

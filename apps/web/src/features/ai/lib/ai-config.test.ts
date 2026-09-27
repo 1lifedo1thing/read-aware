@@ -7,18 +7,15 @@ import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 const storage = new Map<string, string>();
 installFileGlobals({ localStorage: memoryStorage(storage) });
 
-import {
-  DEFAULT_CUSTOM_OPENAI_API,
-  LEGACY_CUSTOM_OPENAI_API,
-  READAWARE_MODEL_IDS,
-} from "@read-aware/agent";
+import { DEFAULT_CUSTOM_OPENAI_API, LEGACY_CUSTOM_OPENAI_API, READAWARE_MODEL_IDS } from "@read-aware/agent";
 import {
   DEFAULT_MODELS,
   DEFAULT_THINKING_LEVEL,
   getStoredProviderSettings,
   getAIConfig,
   SUBSCRIPTION_MODELS,
-  saveAIConfig, clearAIConfig,
+  saveAIConfig,
+  clearAIConfig,
 } from "./ai-config";
 import { hydrateSecrets, getSecret, setSecret, deleteSecret } from "../../../platform/secret-store";
 
@@ -26,18 +23,23 @@ beforeAll(() => hydrateSecrets());
 beforeEach(() => storage.clear());
 
 test("read-only prerequisites resolve legacy credentials without migrating and report malformed config", () => {
-  const legacy = getSecret("ai-api-key"), provider = getSecret("ai-api-key.openai");
+  const legacy = getSecret("ai-api-key"),
+    provider = getSecret("ai-api-key.openai");
   try {
-    deleteSecret("ai-api-key.openai"); setSecret("ai-api-key", "legacy-fixture");
+    deleteSecret("ai-api-key.openai");
+    setSecret("ai-api-key", "legacy-fixture");
     storage.set("read-aware-ai-config", JSON.stringify({ provider: "openai", model: "fixture" }));
     expect(getAIConfig({ migrateLegacy: false, strict: true })?.apiKey).toBe("legacy-fixture");
-    expect(getSecret("ai-api-key")).toBe("legacy-fixture"); expect(getSecret("ai-api-key.openai")).toBe("");
+    expect(getSecret("ai-api-key")).toBe("legacy-fixture");
+    expect(getSecret("ai-api-key.openai")).toBe("");
     storage.set("read-aware-ai-config", "{malformed");
     expect(() => getAIConfig({ migrateLegacy: false, strict: true })).toThrow();
     expect(getAIConfig()).toBeNull();
   } finally {
-    if (legacy) setSecret("ai-api-key", legacy); else deleteSecret("ai-api-key");
-    if (provider) setSecret("ai-api-key.openai", provider); else deleteSecret("ai-api-key.openai");
+    if (legacy) setSecret("ai-api-key", legacy);
+    else deleteSecret("ai-api-key");
+    if (provider) setSecret("ai-api-key.openai", provider);
+    else deleteSecret("ai-api-key.openai");
   }
 });
 
@@ -125,9 +127,7 @@ describe("AI provider defaults", () => {
       customApi: DEFAULT_CUSTOM_OPENAI_API,
       customSupportsThinking: false,
     });
-    expect(
-      getStoredProviderSettings("custom").customMaxOutputTokens,
-    ).toBeUndefined();
+    expect(getStoredProviderSettings("custom").customMaxOutputTokens).toBeUndefined();
   });
 
   test("keeps legacy Custom providers on their previous Responses path", () => {
@@ -162,9 +162,7 @@ describe("AI provider defaults", () => {
       }),
     );
 
-    expect(getStoredProviderSettings("custom").customApi).toBe(
-      LEGACY_CUSTOM_OPENAI_API,
-    );
+    expect(getStoredProviderSettings("custom").customApi).toBe(LEGACY_CUSTOM_OPENAI_API);
   });
 
   test("persists Custom compatibility controls", () => {
@@ -203,7 +201,8 @@ describe("model selection contracts", () => {
     saveAIConfig({ provider: "zai-coding-cn", apiKey: "", model: "glm-my-choice", fastModel: "glm-my-fast-choice" });
     saveAIConfig({ provider: "openai", apiKey: "", model: "my-openai-choice" });
     expect(getStoredProviderSettings("zai-coding-cn")).toMatchObject({
-      model: "glm-my-choice", fastModel: "glm-my-fast-choice",
+      model: "glm-my-choice",
+      fastModel: "glm-my-fast-choice",
     });
   });
 });
@@ -251,7 +250,7 @@ describe("OpenRouter routing preferences", () => {
 test("configuration save and clear retain one cause across preferences and credential cleanup", () => {
   setSecret("ai-api-key", "old-fixture");
   const notices: object[] = [];
-  const offKV = onLocalKVCommit(value => notices.push(value));
+  const offKV = onLocalKVCommit((value) => notices.push(value));
   const offSecret = onSecretCommit((_key, _source, value) => notices.push(value));
   try {
     const saved = causalActor("user");
@@ -264,5 +263,8 @@ test("configuration save and clear retain one cause across preferences and crede
     expect(notices.length).toBeGreaterThan(1);
     for (const notice of notices) expect(eventCause(notice)).toEqual(actorCause(cleared));
     expect(getSecret("ai-api-key.openai")).toBe("");
-  } finally { offKV(); offSecret(); }
+  } finally {
+    offKV();
+    offSecret();
+  }
 });

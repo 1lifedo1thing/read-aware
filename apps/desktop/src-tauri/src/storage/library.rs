@@ -6,8 +6,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- Library projection (books + collections; book-file bytes via blob store) ---
 
@@ -117,18 +117,12 @@ const BOOK_SELECT: &str = "SELECT b.id, b.title, b.author, b.format, b.file_name
    LEFT JOIN blob_objects bo ON bo.key = b.cover_blob_key AND bo.deleted_at IS NULL";
 
 #[tauri::command]
-pub async fn library_load(
-    app: tauri::AppHandle,
-) -> Result<Vec<LibraryBook>, CommandError> {
+pub async fn library_load(app: tauri::AppHandle) -> Result<Vec<LibraryBook>, CommandError> {
     crate::storage::blocking("library_load", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        let mut stmt = conn
-            .prepare(BOOK_SELECT)
-            ?;
-        let rows = stmt
-            .query_map([], row_to_library_book)
-            ?;
+        let mut stmt = conn.prepare(BOOK_SELECT)?;
+        let rows = stmt.query_map([], row_to_library_book)?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -252,18 +246,14 @@ pub async fn library_list_collections(
     crate::storage::blocking("library_list_collections", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        let mut stmt = conn
-            .prepare("SELECT id, name, created_at FROM collections")
-            ?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok(Collection {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    created_at: row.get(2)?,
-                })
+        let mut stmt = conn.prepare("SELECT id, name, created_at FROM collections")?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Collection {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                created_at: row.get(2)?,
             })
-            ?;
+        })?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -292,8 +282,7 @@ pub async fn library_put_collection(
             "INSERT INTO collections (id, name, created_at) VALUES (?1, ?2, ?3)
          ON CONFLICT(id) DO UPDATE SET name = excluded.name",
             params![collection.id, collection.name, collection.created_at],
-        )
-        ?;
+        )?;
         Ok(())
     })
     .await
@@ -301,7 +290,6 @@ pub async fn library_put_collection(
 
 // Collection deletion has no command of its own: `collection.removed` describes
 // it, and applying that event drops the row and clears its books' membership.
-
 
 // ── Content identity (dedup) ─────────────────────────────────────────────────
 

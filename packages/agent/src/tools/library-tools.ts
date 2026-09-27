@@ -17,8 +17,7 @@ export function buildThreadTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
   const listBooks: AgentTool = {
     name: "list_books",
     label: "List books",
-    description:
-      "List every book on the user's shelf with title, author, and reading progress.",
+    description: "List every book on the user's shelf with title, author, and reading progress.",
     parameters: Type.Object({}),
     execute: async () => textResult(await deps.library.listBooks()),
   };
@@ -33,9 +32,7 @@ export function buildThreadTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
     parameters:
       scope.kind === "book"
         ? Type.Object({
-            bookId: Type.Optional(
-              Type.String({ description: "Book id; defaults to the current book" }),
-            ),
+            bookId: Type.Optional(Type.String({ description: "Book id; defaults to the current book" })),
           })
         : Type.Object({
             bookId: Type.String({ description: "Book id from list_books" }),
@@ -57,7 +54,9 @@ export function buildThreadTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
       "Read a page of the user's highlights, notes, and recorded questions: {items,nextCursor,consistency}. bookId defaults to the current book. Follow nextCursor with the SAME bookId/kind/query to continue. Newest first; live pages are not a frozen export snapshot. Byte limits can produce shorter pages; always follow nextCursor. Oversized individual annotations reject with annotations/read-budget-exceeded, never truncated text. Pass annotationId for one exact ID (zero or one items) plus its revision token, required for editing/batch changes; do not combine it with query/cursor. kind filters the annotation type. Omit query to browse without a text filter.",
     parameters: Type.Object({
       bookId: Type.Optional(Type.String({ description: "Book id; defaults to the current book" })),
-      annotationId: Type.Optional(Type.String({ description: "Exact annotation ID; does not scan the annotation list" })),
+      annotationId: Type.Optional(
+        Type.String({ description: "Exact annotation ID; does not scan the annotation list" }),
+      ),
       kind: Type.Optional(Type.Union([Type.Literal("highlight"), Type.Literal("note"), Type.Literal("ask")])),
       limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "Rows per page, default 20" })),
       cursor: Type.Optional(Type.String({ description: "Opaque nextCursor from the preceding page" })),
@@ -70,21 +69,30 @@ export function buildThreadTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
     }),
     execute: async (_id, params) => {
       const { bookId, query, annotationId, kind, limit, cursor } = params as {
-        bookId?: string; query?: string; annotationId?: string; kind?: "highlight" | "note" | "ask"; limit?: number; cursor?: string;
+        bookId?: string;
+        query?: string;
+        annotationId?: string;
+        kind?: "highlight" | "note" | "ask";
+        limit?: number;
+        cursor?: string;
       };
       const target = (normalizeBookIdParam(bookId) ?? defaultBookId) as Id | undefined;
       if (annotationId !== undefined) {
-        if (query !== undefined || cursor !== undefined) throw new AppError("annotations/invalid-input", "annotationId cannot be combined with query or cursor");
+        if (query !== undefined || cursor !== undefined)
+          throw new AppError("annotations/invalid-input", "annotationId cannot be combined with query or cursor");
         const snapshot = await deps.annotations.inspectAnnotation(annotationId as Id);
         const annotation = snapshot?.annotation;
         const matches = annotation && (!target || annotation.bookId === target) && (!kind || annotation.kind === kind);
-        return textResult({ items: matches ? [annotation] : [], revision: matches ? snapshot!.revision : null, nextCursor: null, consistency: "live" });
+        return textResult({
+          items: matches ? [annotation] : [],
+          revision: matches ? snapshot!.revision : null,
+          nextCursor: null,
+          consistency: "live",
+        });
       }
       return textResult(await deps.annotations.pageAnnotations({ bookId: target, query, kind, limit, cursor }));
     },
   };
 
-  return scope.kind === "book"
-    ? [getBookOverview, getAnnotations]
-    : [listBooks, getBookOverview, getAnnotations];
+  return scope.kind === "book" ? [getBookOverview, getAnnotations] : [listBooks, getBookOverview, getAnnotations];
 }

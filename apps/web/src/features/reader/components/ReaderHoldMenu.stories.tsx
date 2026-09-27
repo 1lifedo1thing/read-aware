@@ -1,7 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useRef } from "react";
 import {
-  ChatCircleDots, Copy, Highlighter, ListBullets, NotePencil, SpeakerHigh, TextUnderline, X,
+  ChatCircleDots,
+  Copy,
+  Highlighter,
+  ListBullets,
+  NotePencil,
+  SpeakerHigh,
+  TextUnderline,
+  X,
 } from "@phosphor-icons/react";
 import type { HoldMenuState } from "../hooks/useReaderHoldMenu";
 import { ReaderHoldMenu } from "./ReaderHoldMenu";

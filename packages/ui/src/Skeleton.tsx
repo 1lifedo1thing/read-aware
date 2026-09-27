@@ -9,13 +9,7 @@ type SkeletonProps = {
   className?: string;
 };
 
-export function Skeleton({
-  variant = "text",
-  width,
-  height,
-  lines = 1,
-  className,
-}: SkeletonProps) {
+export function Skeleton({ variant = "text", width, height, lines = 1, className }: SkeletonProps) {
   const { t } = useTranslation("ui");
   if (variant === "text" && lines > 1) {
     return (
@@ -23,10 +17,7 @@ export function Skeleton({
         {Array.from({ length: lines }).map((_, i) => (
           <div
             key={i}
-            className={cn(
-              "h-4 animate-pulse rounded bg-fill-strong",
-              i === lines - 1 && "w-3/4",
-            )}
+            className={cn("h-4 animate-pulse rounded bg-fill-strong", i === lines - 1 && "w-3/4")}
             style={{ width: i < lines - 1 ? width : undefined }}
           />
         ))}

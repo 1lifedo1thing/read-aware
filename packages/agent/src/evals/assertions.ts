@@ -1,10 +1,4 @@
-import type {
-  AgentEvalObservation,
-  EvalAssessment,
-  EvalCheck,
-  EvalCheckCategory,
-  JsonValue,
-} from "./types";
+import type { AgentEvalObservation, EvalAssessment, EvalCheck, EvalCheckCategory, JsonValue } from "./types";
 
 export interface AgentTraceExpectation {
   answer?: {
@@ -43,10 +37,7 @@ function check(
 
 export function assessmentFromChecks(checks: EvalCheck[]): EvalAssessment {
   const totalWeight = checks.reduce((total, entry) => total + (entry.weight ?? 1), 0);
-  const passedWeight = checks.reduce(
-    (total, entry) => total + (entry.passed ? (entry.weight ?? 1) : 0),
-    0,
-  );
+  const passedWeight = checks.reduce((total, entry) => total + (entry.passed ? (entry.weight ?? 1) : 0), 0);
   return {
     passed: checks.every((entry) => entry.passed),
     score: totalWeight === 0 ? 1 : passedWeight / totalWeight,
@@ -86,11 +77,8 @@ export function evaluateAgentTrace(
     })
     .join("\n");
   const userCjkRatio = userText.length ? cjkCount(userText) / userText.length : 0;
-  const answerCjkRatio = observation.answer.length
-    ? cjkCount(observation.answer) / observation.answer.length
-    : 0;
-  const scriptDrift =
-    userCjkRatio < 0.02 && answerCjkRatio > 0.3 && observation.answer.length > 40;
+  const answerCjkRatio = observation.answer.length ? cjkCount(observation.answer) / observation.answer.length : 0;
+  const scriptDrift = userCjkRatio < 0.02 && answerCjkRatio > 0.3 && observation.answer.length > 40;
   checks.push(
     check(
       "answer.script-consistency",
@@ -183,9 +171,7 @@ export function evaluateAgentTrace(
 
   if (expectation.tools?.exactSequence) {
     const expected = expectation.tools.exactSequence;
-    const passed =
-      expected.length === toolNames.length &&
-      expected.every((name, index) => name === toolNames[index]);
+    const passed = expected.length === toolNames.length && expected.every((name, index) => name === toolNames[index]);
     checks.push(
       check(
         "tool.exact-sequence",
@@ -205,9 +191,7 @@ export function evaluateAgentTrace(
         "tool.no-errors",
         "tool",
         failedTools.length === 0,
-        failedTools.length === 0
-          ? "all tool calls succeeded"
-          : `tool calls failed: ${failedTools.join(", ")}`,
+        failedTools.length === 0 ? "all tool calls succeeded" : `tool calls failed: ${failedTools.join(", ")}`,
         [],
         failedTools,
       ),

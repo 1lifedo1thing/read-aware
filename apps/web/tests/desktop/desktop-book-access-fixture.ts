@@ -85,8 +85,8 @@ export async function cleanupFull2BookAccessFixture(): Promise<Full2BookAccessCl
   }
 
   const library = createLibraryDomain("user");
-  const existing = new Set((await library.queries.books.list()).map(book => book.id));
-  const missing = ids.filter(id => !existing.has(id));
+  const existing = new Set((await library.queries.books.list()).map((book) => book.id));
+  const missing = ids.filter((id) => !existing.has(id));
   if (missing.length) throw new Error(`Full2 fixture books are missing: ${missing.join(", ")}`);
 
   const removal = await library.commands.books.removeMany(ids);
@@ -98,9 +98,7 @@ export async function cleanupFull2BookAccessFixture(): Promise<Full2BookAccessCl
     throw new Error(`Full2 fixture file cleanup is pending: ${release.errorCode}`);
   }
 
-  const remainingBookIds = (await library.queries.books.list())
-    .map(book => book.id)
-    .filter(id => ids.includes(id));
+  const remainingBookIds = (await library.queries.books.list()).map((book) => book.id).filter((id) => ids.includes(id));
   if (remainingBookIds.length) {
     throw new Error(`Full2 fixture books remain after cleanup: ${remainingBookIds.join(", ")}`);
   }

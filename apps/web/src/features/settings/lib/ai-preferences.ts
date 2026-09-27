@@ -4,12 +4,7 @@ export const AI_PREFERENCES_KEY = "read-aware-ai-preferences";
 const STORAGE_KEY = AI_PREFERENCES_KEY;
 
 /** Reader-surfaced AI capabilities. Toggles gate features as they ship. */
-export type AIFeatureKey =
-  | "explainSelection"
-  | "defineTerm"
-  | "translate"
-  | "summarizeChapter"
-  | "askConversation";
+export type AIFeatureKey = "explainSelection" | "defineTerm" | "translate" | "summarizeChapter" | "askConversation";
 
 /**
  * Reader-surfaced AI capabilities in display order. Labels and descriptions are
@@ -67,8 +62,7 @@ export function normalizeAIPreferences(parsed: Partial<AIPreferences>): AIPrefer
     features: { ...DEFAULT_AI_PREFERENCES.features, ...parsed.features },
     buildMemory: parsed.buildMemory ?? DEFAULT_AI_PREFERENCES.buildMemory,
     sendHighlightedText: parsed.sendHighlightedText ?? DEFAULT_AI_PREFERENCES.sendHighlightedText,
-    sendSurroundingContext:
-      parsed.sendSurroundingContext ?? DEFAULT_AI_PREFERENCES.sendSurroundingContext,
+    sendSurroundingContext: parsed.sendSurroundingContext ?? DEFAULT_AI_PREFERENCES.sendSurroundingContext,
     followStreaming: parsed.followStreaming ?? DEFAULT_AI_PREFERENCES.followStreaming,
   };
 }

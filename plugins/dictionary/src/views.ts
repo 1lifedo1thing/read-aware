@@ -9,12 +9,7 @@ import type {
 } from "@read-aware/plugin-types";
 import { exportSavedWords } from "./export";
 import { definitionOf, formatDate } from "./format";
-import {
-  isTargetLanguage,
-  LANGUAGE_OPTIONS,
-  LANGUAGE_VALUE_BY_NAME,
-  type TargetLanguage,
-} from "./languages";
+import { isTargetLanguage, LANGUAGE_OPTIONS, LANGUAGE_VALUE_BY_NAME, type TargetLanguage } from "./languages";
 import { getTargetLanguage } from "./lookup";
 import type { DictionaryContext, SavedWord } from "./types";
 import { changeWordLanguage, wordCollection } from "./words";
@@ -26,9 +21,7 @@ function wordDetail(
   onRemove: PluginAction["run"],
 ): PluginDetailView {
   const metadata: PluginMetadataItem[] = [
-    ...(word.bookTitle
-      ? [{ kind: "label" as const, label: "Book", value: word.bookTitle, icon: "book-open" }]
-      : []),
+    ...(word.bookTitle ? [{ kind: "label" as const, label: "Book", value: word.bookTitle, icon: "book-open" }] : []),
     ...(formatDate(word.addedAt)
       ? [
           {
@@ -41,10 +34,7 @@ function wordDetail(
       : []),
   ];
   const passage =
-    word.context &&
-    word.context.trim().toLowerCase() !== word.term.trim().toLowerCase()
-      ? word.context
-      : undefined;
+    word.context && word.context.trim().toLowerCase() !== word.term.trim().toLowerCase() ? word.context : undefined;
 
   return {
     kind: "detail",
@@ -81,13 +71,8 @@ export async function wordDetailView(
   doc: PluginDocument<SavedWord>,
 ): Promise<PluginDetailView> {
   const word = doc.data;
-  const inferredLanguage =
-    word.targetLanguage ??
-    LANGUAGE_VALUE_BY_NAME[word.language] ??
-    getTargetLanguage(ctx);
-  const targetLanguage = isTargetLanguage(inferredLanguage)
-    ? inferredLanguage
-    : getTargetLanguage(ctx);
+  const inferredLanguage = word.targetLanguage ?? LANGUAGE_VALUE_BY_NAME[word.language] ?? getTargetLanguage(ctx);
+  const targetLanguage = isTargetLanguage(inferredLanguage) ? inferredLanguage : getTargetLanguage(ctx);
 
   return wordDetail(
     word,
@@ -132,12 +117,10 @@ export async function notebookView(ctx: DictionaryContext): Promise<PluginListVi
       subtitle: definitionOf(doc.data.entry),
       timestamp: doc.data.addedAt,
       icon: "book-bookmark",
-      keywords: [doc.data.language, doc.data.bookTitle, doc.data.context].filter(
-        (value): value is string => Boolean(value),
+      keywords: [doc.data.language, doc.data.bookTitle, doc.data.context].filter((value): value is string =>
+        Boolean(value),
       ),
-      accessories: doc.data.bookTitle
-        ? [{ kind: "text", text: doc.data.bookTitle }]
-        : undefined,
+      accessories: doc.data.bookTitle ? [{ kind: "text", text: doc.data.bookTitle }] : undefined,
       presentation: "dialog",
       onSelect: async () => ({ view: await wordDetailView(ctx, doc) }),
     })),

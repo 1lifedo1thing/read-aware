@@ -26,10 +26,7 @@ function useBrowserLocaleRedirect(locale: Locale) {
     } catch {
       // Storage unavailable — treat as no stored preference.
     }
-    const stored =
-      choice && (LOCALES as readonly string[]).includes(choice)
-        ? (choice as Locale)
-        : null;
+    const stored = choice && (LOCALES as readonly string[]).includes(choice) ? (choice as Locale) : null;
     const target = stored ? (stored === "en" ? null : stored) : detectBrowserLocale();
     if (target) window.location.replace(`/${target}/${window.location.search}${window.location.hash}`);
   }, [locale]);
@@ -37,16 +34,12 @@ function useBrowserLocaleRedirect(locale: Locale) {
 
 /** The first of the visitor's languages we can serve decides — including en. */
 function detectBrowserLocale(): Exclude<Locale, "en"> | null {
-  const languages = navigator.languages?.length
-    ? navigator.languages
-    : [navigator.language];
+  const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
   for (const entry of languages) {
     const lang = (entry ?? "").toLowerCase();
     if (lang.startsWith("en")) return null;
     if (lang.startsWith("zh")) {
-      return lang.includes("hant") || lang.startsWith("zh-tw") || lang.startsWith("zh-hk")
-        ? "zh-hant"
-        : "zh";
+      return lang.includes("hant") || lang.startsWith("zh-tw") || lang.startsWith("zh-hk") ? "zh-hant" : "zh";
     }
     for (const candidate of ["ja", "fr", "de", "ru", "es"] as const) {
       if (lang.startsWith(candidate)) return candidate;
@@ -66,9 +59,7 @@ export function HomePage({ locale }: { locale: Locale }) {
     latest: (tag: string) => t("home.download.latest", { tag }),
     downloadFor: (name: string) => t("home.download.downloadFor", { name }),
   };
-  const freeLine = release.tag
-    ? t("home.freeLineWithTag", { tag: release.tag })
-    : t("home.freeLine");
+  const freeLine = release.tag ? t("home.freeLineWithTag", { tag: release.tag }) : t("home.freeLine");
 
   return (
     <div className="min-h-screen bg-paper text-fg">
@@ -81,29 +72,16 @@ export function HomePage({ locale }: { locale: Locale }) {
             <h1 className="text-[2.5rem] font-normal leading-[1.12] tracking-normal sm:text-[3rem]">
               {content.heroTitle}
             </h1>
-            <p className="mt-6 text-[1.1875rem] leading-[1.75] text-fg">
-              {content.heroLead}
-            </p>
+            <p className="mt-6 text-[1.1875rem] leading-[1.75] text-fg">{content.heroLead}</p>
             <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <DownloadMenu
-                downloads={release.downloads}
-                platform={release.platform}
-                strings={downloadStrings}
-              />
-              <span className="text-[0.9375rem] text-fg-muted">
-                {freeLine}
-              </span>
+              <DownloadMenu downloads={release.downloads} platform={release.platform} strings={downloadStrings} />
+              <span className="text-[0.9375rem] text-fg-muted">{freeLine}</span>
             </div>
           </section>
 
           {/* Plate: the shelf */}
           <div className="mt-8 sm:mt-16">
-            <Plate
-              base="shelf"
-              alt={content.shelfAlt}
-              caption={content.shelfCaption}
-              eager
-            />
+            <Plate base="shelf" alt={content.shelfAlt} caption={content.shelfCaption} eager />
           </div>
 
           {/* The page */}
@@ -111,16 +89,10 @@ export function HomePage({ locale }: { locale: Locale }) {
             <h2 className="text-[clamp(1.5rem,3vw,1.9rem)] font-normal leading-[1.18] tracking-[-0.01em]">
               {content.readerTitle}
             </h2>
-            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">
-              {content.readerBody}
-            </p>
+            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">{content.readerBody}</p>
           </section>
           <div className="mt-10">
-            <Plate
-              base="reader"
-              alt={content.readerAlt}
-              caption={content.readerCaption}
-            />
+            <Plate base="reader" alt={content.readerAlt} caption={content.readerCaption} />
           </div>
 
           {/* The memory */}
@@ -128,16 +100,10 @@ export function HomePage({ locale }: { locale: Locale }) {
             <h2 className="text-[clamp(1.5rem,3vw,1.9rem)] font-normal leading-[1.18] tracking-[-0.01em]">
               {content.memoryTitle}
             </h2>
-            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">
-              {content.memoryBody}
-            </p>
+            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">{content.memoryBody}</p>
           </section>
           <div className="mt-10">
-            <Plate
-              base="context"
-              alt={content.contextAlt}
-              caption={content.contextCaption}
-            />
+            <Plate base="context" alt={content.contextAlt} caption={content.contextCaption} />
           </div>
 
           {/* The plugins */}
@@ -145,16 +111,10 @@ export function HomePage({ locale }: { locale: Locale }) {
             <h2 className="text-[clamp(1.5rem,3vw,1.9rem)] font-normal leading-[1.18] tracking-[-0.01em]">
               {content.pluginTitle}
             </h2>
-            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">
-              {content.pluginBody}
-            </p>
+            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">{content.pluginBody}</p>
           </section>
           <div className="mt-10">
-            <Plate
-              base="plugins"
-              alt={content.pluginAlt}
-              caption={content.pluginCaption}
-            />
+            <Plate base="plugins" alt={content.pluginAlt} caption={content.pluginCaption} />
           </div>
 
           {/* The sync */}
@@ -162,9 +122,7 @@ export function HomePage({ locale }: { locale: Locale }) {
             <h2 className="text-[clamp(1.5rem,3vw,1.9rem)] font-normal leading-[1.18] tracking-[-0.01em]">
               {content.syncTitle}
             </h2>
-            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">
-              {content.syncBody}
-            </p>
+            <p className="mt-5 text-[1.0625rem] leading-[1.75] text-fg">{content.syncBody}</p>
           </section>
 
           {/* In short */}
@@ -174,14 +132,9 @@ export function HomePage({ locale }: { locale: Locale }) {
             </h2>
             <dl className="mt-8">
               {content.notes.map(({ title, body }, index) => (
-                <div
-                  key={title}
-                  className={index === 0 ? "py-5" : "border-t border-border py-5"}
-                >
+                <div key={title} className={index === 0 ? "py-5" : "border-t border-border py-5"}>
                   <dt className="text-[1.0625rem] font-medium">{title}</dt>
-                  <dd className="mt-1.5 text-[1.0625rem] leading-[1.7] text-fg-muted">
-                    {body}
-                  </dd>
+                  <dd className="mt-1.5 text-[1.0625rem] leading-[1.7] text-fg-muted">{body}</dd>
                 </div>
               ))}
             </dl>

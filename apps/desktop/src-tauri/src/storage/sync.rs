@@ -5,8 +5,8 @@
 //! module only answers "what still owes the relay a push" and records what the
 //! relay has confirmed. Nothing here talks to the network, and nothing here
 //! writes a projection — the pull path lands through `apply_remote_events`.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 /// The engine's stable code for "the account is out of blob room"
 /// (`ERR_SYNC_QUOTA` in @read-aware/core) — what a quota refusal leaves in
@@ -49,9 +49,7 @@ pub(crate) fn sync_profile_get_inner(conn: &Connection) -> Result<SyncProfile, C
 }
 
 #[tauri::command]
-pub async fn sync_profile_get(
-    app: tauri::AppHandle,
-) -> Result<SyncProfile, CommandError> {
+pub async fn sync_profile_get(app: tauri::AppHandle) -> Result<SyncProfile, CommandError> {
     crate::storage::blocking("sync_profile_get", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -60,7 +58,10 @@ pub async fn sync_profile_get(
     .await
 }
 
-pub(crate) fn sync_profile_set_inner(conn: &Connection, profile: &SyncProfile) -> Result<(), CommandError> {
+pub(crate) fn sync_profile_set_inner(
+    conn: &Connection,
+    profile: &SyncProfile,
+) -> Result<(), CommandError> {
     conn.execute(
         "INSERT INTO sync_profile
             (id, sync_enabled, remote_account_id, encryption_key_ref,
@@ -80,8 +81,7 @@ pub(crate) fn sync_profile_set_inner(conn: &Connection, profile: &SyncProfile) -
             profile.last_push_at,
             profile.last_pull_at,
         ],
-    )
-    ?;
+    )?;
     Ok(())
 }
 
@@ -101,16 +101,17 @@ pub async fn sync_profile_set(
 /// Stamp `last_push_at` / `last_pull_at` = now without racing a full
 /// profile write from another part of the loop.
 #[tauri::command]
-pub async fn sync_profile_touch(
-    field: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn sync_profile_touch(field: String, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("sync_profile_touch", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let column = match field.as_str() {
             "push" => "last_push_at",
             "pull" => "last_pull_at",
-            other => return Err(CommandError::internal(format!("sync_profile_touch: unknown field `{other}`"))),
+            other => {
+                return Err(CommandError::internal(format!(
+                    "sync_profile_touch: unknown field `{other}`"
+                )))
+            }
         };
         let conn = db.0.lock()?;
         conn.execute(
@@ -120,8 +121,7 @@ pub async fn sync_profile_touch(
               WHERE id = 1"
             ),
             [],
-        )
-        ?;
+        )?;
         Ok(())
     })
     .await
@@ -184,7 +184,10 @@ pub async fn sync_cursor_get(
     .await
 }
 
-pub(crate) fn sync_cursor_set_inner(conn: &Connection, cursor: &SyncCursor) -> Result<(), CommandError> {
+pub(crate) fn sync_cursor_set_inner(
+    conn: &Connection,
+    cursor: &SyncCursor,
+) -> Result<(), CommandError> {
     conn.execute(
         "INSERT INTO sync_cursors
             (feed_name, remote_cursor, hlc_wall_ms, hlc_counter, hlc_device, updated_at)
@@ -202,8 +205,7 @@ pub(crate) fn sync_cursor_set_inner(conn: &Connection, cursor: &SyncCursor) -> R
             cursor.hlc.as_ref().map(|h| h.counter),
             cursor.hlc.as_ref().map(|h| h.device_id.clone()),
         ],
-    )
-    ?;
+    )?;
     Ok(())
 }
 
@@ -229,18 +231,14 @@ pub(crate) fn sync_outbox_events_inner(
     conn: &Connection,
     limit: i64,
 ) -> Result<Vec<EventRow>, CommandError> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT de.* FROM domain_events de
+    let mut stmt = conn.prepare(
+        "SELECT de.* FROM domain_events de
              JOIN event_sync_state es ON es.event_id = de.id
              WHERE es.push_state IN ('pending','failed')
              ORDER BY de.hlc_wall_ms, de.hlc_counter, de.hlc_device
              LIMIT ?1",
-        )
-        ?;
-    let iter = stmt
-        .query_map(params![limit], events::row_to_event)
-        ?;
+    )?;
+    let iter = stmt.query_map(params![limit], events::row_to_event)?;
     let mut out = Vec::new();
     for row in iter {
         out.push(row?);
@@ -275,8 +273,7 @@ pub(crate) fn sync_mark_events_pushed_inner(
                     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
               WHERE event_id = ?1",
             params![event_id, seq.to_string()],
-        )
-        ?;
+        )?;
     }
     tx.commit()?;
     Ok(())
@@ -308,8 +305,7 @@ pub(crate) fn sync_mark_events_failed_inner(
                     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
               WHERE event_id = ?1",
             params![event_id, error],
-        )
-        ?;
+        )?;
     }
     tx.commit()?;
     Ok(())
@@ -351,9 +347,8 @@ pub(crate) fn sync_outbox_blobs_inner(
     conn: &Connection,
     limit: i64,
 ) -> Result<Vec<SyncBlobTask>, CommandError> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT bo.key, bo.byte_size, bo.mime_type FROM blob_objects bo
+    let mut stmt = conn.prepare(
+        "SELECT bo.key, bo.byte_size, bo.mime_type FROM blob_objects bo
              JOIN blob_sync_state bs ON bs.blob_key = bo.key
              WHERE bs.push_state IN ('pending','failed')
                AND bo.sync_required = 1
@@ -362,17 +357,14 @@ pub(crate) fn sync_outbox_blobs_inner(
              ORDER BY CASE WHEN bo.kind = 'cover_image' THEN 0 ELSE 1 END,
                       bs.updated_at
              LIMIT ?1",
-        )
-        ?;
-    let iter = stmt
-        .query_map(params![limit], |row| {
-            Ok(SyncBlobTask {
-                key: row.get(0)?,
-                byte_size: row.get(1)?,
-                mime_type: row.get(2)?,
-            })
+    )?;
+    let iter = stmt.query_map(params![limit], |row| {
+        Ok(SyncBlobTask {
+            key: row.get(0)?,
+            byte_size: row.get(1)?,
+            mime_type: row.get(2)?,
         })
-        ?;
+    })?;
     let mut out = Vec::new();
     for row in iter {
         out.push(row?);
@@ -412,8 +404,7 @@ pub(crate) fn sync_mark_blobs_inner(
                 pushed_at = COALESCE(excluded.pushed_at, blob_sync_state.pushed_at),
                 updated_at = excluded.updated_at",
             params![key, state, error],
-        )
-        ?;
+        )?;
     }
     tx.commit()?;
     Ok(())
@@ -462,9 +453,8 @@ pub async fn sync_mark_blobs_rejected(
 pub(crate) fn sync_quota_rejected_blobs_inner(
     conn: &Connection,
 ) -> Result<Vec<SyncBlobTask>, CommandError> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT bo.key, bo.byte_size, bo.mime_type FROM blob_objects bo
+    let mut stmt = conn.prepare(
+        "SELECT bo.key, bo.byte_size, bo.mime_type FROM blob_objects bo
              JOIN blob_sync_state bs ON bs.blob_key = bo.key
              WHERE bs.push_state = 'rejected'
                AND bs.last_error = ?1
@@ -473,17 +463,14 @@ pub(crate) fn sync_quota_rejected_blobs_inner(
                AND bo.storage_uri IS NOT NULL
              ORDER BY CASE WHEN bo.kind = 'cover_image' THEN 0 ELSE 1 END,
                       bs.updated_at",
-        )
-        ?;
-    let iter = stmt
-        .query_map(params![CODE_SYNC_QUOTA], |row| {
-            Ok(SyncBlobTask {
-                key: row.get(0)?,
-                byte_size: row.get(1)?,
-                mime_type: row.get(2)?,
-            })
+    )?;
+    let iter = stmt.query_map(params![CODE_SYNC_QUOTA], |row| {
+        Ok(SyncBlobTask {
+            key: row.get(0)?,
+            byte_size: row.get(1)?,
+            mime_type: row.get(2)?,
         })
-        ?;
+    })?;
     let mut out = Vec::new();
     for row in iter {
         out.push(row?);
@@ -549,45 +536,39 @@ pub struct SyncOutboxCounts {
     pub unverified_blobs: i64,
 }
 
-pub(crate) fn sync_outbox_counts_inner(conn: &Connection) -> Result<SyncOutboxCounts, CommandError> {
-    let events: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM event_sync_state WHERE push_state IN ('pending','failed')",
-            [],
-            |row| row.get(0),
-        )
-        ?;
-    let unverified_events: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM event_sync_state WHERE push_state = 'unverified'",
-            [],
-            |row| row.get(0),
-        )
-        ?;
-    let blobs: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM blob_objects bo
+pub(crate) fn sync_outbox_counts_inner(
+    conn: &Connection,
+) -> Result<SyncOutboxCounts, CommandError> {
+    let events: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM event_sync_state WHERE push_state IN ('pending','failed')",
+        [],
+        |row| row.get(0),
+    )?;
+    let unverified_events: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM event_sync_state WHERE push_state = 'unverified'",
+        [],
+        |row| row.get(0),
+    )?;
+    let blobs: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM blob_objects bo
              JOIN blob_sync_state bs ON bs.blob_key = bo.key
              WHERE bs.push_state IN ('pending','failed')
                AND bo.sync_required = 1
                AND bo.deleted_at IS NULL
                AND bo.storage_uri IS NOT NULL",
-            [],
-            |row| row.get(0),
-        )
-        ?;
-    let unverified_blobs: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM blob_objects bo
+        [],
+        |row| row.get(0),
+    )?;
+    let unverified_blobs: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM blob_objects bo
              JOIN blob_sync_state bs ON bs.blob_key = bo.key
              WHERE bs.push_state = 'unverified'
                AND bo.sync_required = 1
                AND bo.deleted_at IS NULL
                AND bo.storage_uri IS NOT NULL",
-            [],
-            |row| row.get(0),
-        )
-        ?;
+        [],
+        |row| row.get(0),
+    )?;
     Ok(SyncOutboxCounts {
         events,
         blobs,
@@ -597,9 +578,7 @@ pub(crate) fn sync_outbox_counts_inner(conn: &Connection) -> Result<SyncOutboxCo
 }
 
 #[tauri::command]
-pub async fn sync_outbox_counts(
-    app: tauri::AppHandle,
-) -> Result<SyncOutboxCounts, CommandError> {
+pub async fn sync_outbox_counts(app: tauri::AppHandle) -> Result<SyncOutboxCounts, CommandError> {
     crate::storage::blocking("sync_outbox_counts", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -611,7 +590,10 @@ pub async fn sync_outbox_counts(
 // ── Verification (the `unverified` state) ────────────────────────────────────
 
 /// Event ids whose mailbox status is unknown, oldest bookkeeping first.
-pub(crate) fn sync_unverified_events_inner(conn: &Connection, limit: i64) -> Result<Vec<String>, CommandError> {
+pub(crate) fn sync_unverified_events_inner(
+    conn: &Connection,
+    limit: i64,
+) -> Result<Vec<String>, CommandError> {
     let mut stmt = conn.prepare(
         // Index order only: a reset stamps every row with the same
         // updated_at, and a tie-breaker would sort the whole backlog per page
@@ -690,9 +672,7 @@ pub async fn sync_resolve_events(
 /// A transport that cannot answer "do you have these ids?" gets the
 /// pessimistic settlement: everything unverified owes a push.
 #[tauri::command]
-pub async fn sync_assume_events_missing(
-    app: tauri::AppHandle,
-) -> Result<i64, CommandError> {
+pub async fn sync_assume_events_missing(app: tauri::AppHandle) -> Result<i64, CommandError> {
     crate::storage::blocking("sync_assume_events_missing", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -710,7 +690,10 @@ pub async fn sync_assume_events_missing(
 /// Blobs whose mailbox status is unknown and that this device could push
 /// (bytes present, user data). Same shape as the outbox so the engine can
 /// HEAD them with the byte size in hand.
-pub(crate) fn sync_unverified_blobs_inner(conn: &Connection, limit: i64) -> Result<Vec<SyncBlobTask>, CommandError> {
+pub(crate) fn sync_unverified_blobs_inner(
+    conn: &Connection,
+    limit: i64,
+) -> Result<Vec<SyncBlobTask>, CommandError> {
     let mut stmt = conn.prepare(
         "SELECT bo.key, bo.byte_size, bo.mime_type FROM blob_objects bo
            JOIN blob_sync_state bs ON bs.blob_key = bo.key
@@ -795,9 +778,7 @@ pub async fn sync_resolve_blobs(
 /// Pessimistic settlement for a transport without HEAD: every unverified
 /// blob owes a push.
 #[tauri::command]
-pub async fn sync_assume_blobs_missing(
-    app: tauri::AppHandle,
-) -> Result<i64, CommandError> {
+pub async fn sync_assume_blobs_missing(app: tauri::AppHandle) -> Result<i64, CommandError> {
     crate::storage::blocking("sync_assume_blobs_missing", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -836,9 +817,8 @@ pub async fn sync_book_backlog(
     crate::storage::blocking("sync_book_backlog", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        let mut stmt = conn
-            .prepare(
-                "SELECT substr(bo.key, length('bookfile:') + 1),
+        let mut stmt = conn.prepare(
+            "SELECT substr(bo.key, length('bookfile:') + 1),
                     b.title,
                     bo.byte_size,
                     bs.push_state,
@@ -858,8 +838,7 @@ pub async fn sync_book_backlog(
                          ELSE 2
                        END,
                        bo.byte_size DESC",
-            )
-            ?;
+        )?;
         let rows = stmt
             .query_map([], |row| {
                 Ok(SyncBookBacklogRow {
@@ -870,10 +849,8 @@ pub async fn sync_book_backlog(
                     last_error: row.get(4)?,
                     local_bytes: row.get(5)?,
                 })
-            })
-            ?
-            .collect::<Result<Vec<_>, _>>()
-            ?;
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(rows)
     })
     .await
@@ -929,8 +906,7 @@ pub(crate) fn sync_adopt_account_inner(
             SET push_state = 'unverified', remote_uri = NULL, pushed_at = NULL,
                 last_error = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now');
          DELETE FROM sync_cursors;",
-    )
-    ?;
+    )?;
     tx.execute(
         "INSERT INTO sync_profile (id, bookkeeping_account_id, updated_at)
          VALUES (1, ?1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -940,8 +916,7 @@ pub(crate) fn sync_adopt_account_inner(
             last_pull_at = NULL,
             updated_at = excluded.updated_at",
         params![account_id],
-    )
-    ?;
+    )?;
     tx.commit()?;
     Ok(true)
 }

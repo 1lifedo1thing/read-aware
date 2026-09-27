@@ -43,17 +43,11 @@ function normalizeUnit(value: unknown, index: number): PluginReaderTextUnit {
   return {
     id: unit.id,
     label: normalizeLocalizedText(unit.label, `reader mode unit ${unit.id}.label`),
-    previousLabel: normalizeLocalizedText(
-      unit.previousLabel,
-      `reader mode unit ${unit.id}.previousLabel`,
-    ),
+    previousLabel: normalizeLocalizedText(unit.previousLabel, `reader mode unit ${unit.id}.previousLabel`),
     nextLabel: normalizeLocalizedText(unit.nextLabel, `reader mode unit ${unit.id}.nextLabel`),
     ...(unit.toggleLabel
       ? {
-          toggleLabel: normalizeLocalizedText(
-            unit.toggleLabel,
-            `reader mode unit ${unit.id}.toggleLabel`,
-          ),
+          toggleLabel: normalizeLocalizedText(unit.toggleLabel, `reader mode unit ${unit.id}.toggleLabel`),
         }
       : {}),
     ...(typeof unit.icon === "string" && unit.icon ? { icon: unit.icon } : {}),
@@ -70,26 +64,14 @@ function normalizeCopy(value: unknown): PluginReaderModeCopy {
     title: normalizeLocalizedText(copy.title, "reader mode copy.title"),
     enable: normalizeLocalizedText(copy.enable, "reader mode copy.enable"),
     exit: normalizeLocalizedText(copy.exit, "reader mode copy.exit"),
-    returnToCurrent: normalizeLocalizedText(
-      copy.returnToCurrent,
-      "reader mode copy.returnToCurrent",
-    ),
+    returnToCurrent: normalizeLocalizedText(copy.returnToCurrent, "reader mode copy.returnToCurrent"),
     showToolbars: normalizeLocalizedText(copy.showToolbars, "reader mode copy.showToolbars"),
     moreActions: normalizeLocalizedText(copy.moreActions, "reader mode copy.moreActions"),
-    collapseActions: normalizeLocalizedText(
-      copy.collapseActions,
-      "reader mode copy.collapseActions",
-    ),
+    collapseActions: normalizeLocalizedText(copy.collapseActions, "reader mode copy.collapseActions"),
     menuLabel: normalizeLocalizedText(copy.menuLabel, "reader mode copy.menuLabel"),
     shortcuts: {
-      description: normalizeLocalizedText(
-        shortcuts.description,
-        "reader mode copy.shortcuts.description",
-      ),
-      volumeKeys: normalizeLocalizedText(
-        shortcuts.volumeKeys,
-        "reader mode copy.shortcuts.volumeKeys",
-      ),
+      description: normalizeLocalizedText(shortcuts.description, "reader mode copy.shortcuts.description"),
+      volumeKeys: normalizeLocalizedText(shortcuts.volumeKeys, "reader mode copy.shortcuts.volumeKeys"),
     },
   };
 }
@@ -134,10 +116,7 @@ export function normalizeReaderMode(value: unknown): PluginReaderMode {
  * Validate the segmenter's output before offsets touch a DOM Range. Rejecting
  * the whole block is safer than partially applying malformed boundaries.
  */
-export function normalizeReaderTextSegments(
-  value: unknown,
-  textLength: number,
-): PluginReaderTextSegment[] {
+export function normalizeReaderTextSegments(value: unknown, textLength: number): PluginReaderTextSegment[] {
   if (!Array.isArray(value)) throw new Error("reader mode segments must be an array");
   const segments: PluginReaderTextSegment[] = [];
   let previousEnd = 0;

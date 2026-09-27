@@ -29,34 +29,23 @@ function ToolTrace({ tools }: { tools: NonNullable<TranscriptTurn["tools"]> }) {
   const [open, setOpen] = useState(false);
   if (tools.length === 0) return null;
   return (
-    <details
-      className="mt-3"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-    >
-      <summary className="cursor-pointer text-[11px] text-[var(--subtle)]">
-        工具轨迹 · {tools.length}
-      </summary>
+    <details className="mt-3" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="cursor-pointer text-[11px] text-[var(--subtle)]">工具轨迹 · {tools.length}</summary>
       {open && (
         <div className="mt-2 grid gap-1">
           {tools.map((tool, index) => (
             <details
               key={`${tool.name}-${index}`}
-              className={`border-l-2 pl-2.5 ${
-                tool.isError ? "border-[var(--fail)]" : "border-[var(--border)]"
-              }`}
+              className={`border-l-2 pl-2.5 ${tool.isError ? "border-[var(--fail)]" : "border-[var(--border)]"}`}
             >
               <summary className="flex cursor-pointer items-center gap-2 text-xs">
                 <code>{tool.name}</code>
                 {tool.isError && (
-                  <span className="rounded-[4px] bg-[var(--fail-bg)] px-1.5 text-[10px] text-[var(--fail)]">
-                    错误
-                  </span>
+                  <span className="rounded-[4px] bg-[var(--fail-bg)] px-1.5 text-[10px] text-[var(--fail)]">错误</span>
                 )}
               </summary>
               {tool.args !== undefined && (
-                <pre className="mt-1 max-h-72 overflow-auto">
-                  {JSON.stringify(tool.args, null, 2)}
-                </pre>
+                <pre className="mt-1 max-h-72 overflow-auto">{JSON.stringify(tool.args, null, 2)}</pre>
               )}
               {tool.output && <pre className="mt-1 max-h-72 overflow-auto">{tool.output}</pre>}
             </details>
@@ -67,13 +56,7 @@ function ToolTrace({ tools }: { tools: NonNullable<TranscriptTurn["tools"]> }) {
   );
 }
 
-export function TranscriptView({
-  turns,
-  activeIndex,
-}: {
-  turns: TranscriptTurn[];
-  activeIndex?: number;
-}) {
+export function TranscriptView({ turns, activeIndex }: { turns: TranscriptTurn[]; activeIndex?: number }) {
   return (
     <div>
       {turns.map((turn, index) => (
@@ -90,9 +73,7 @@ export function TranscriptView({
             {turn.cursor?.chapterTitle && (
               <span className="ml-auto max-w-[60%] truncate font-normal normal-case tracking-normal text-[var(--subtle)] max-sm:max-w-[48%]">
                 {turn.cursor.chapterTitle}
-                {turn.cursor.bookProgress !== undefined
-                  ? ` · ${Math.round(turn.cursor.bookProgress * 100)}%`
-                  : ""}
+                {turn.cursor.bookProgress !== undefined ? ` · ${Math.round(turn.cursor.bookProgress * 100)}%` : ""}
               </span>
             )}
           </div>

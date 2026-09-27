@@ -13,7 +13,9 @@ export function openPluginViewChannel(owner: AbortSignal, apply: Channel["apply"
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
-    disposed = true; channels.delete(id); counts.set(owner, (counts.get(owner) ?? 1) - 1);
+    disposed = true;
+    channels.delete(id);
+    counts.set(owner, (counts.get(owner) ?? 1) - 1);
     owner.removeEventListener("abort", dispose);
   };
   counts.set(owner, (counts.get(owner) ?? 0) + 1);
@@ -22,12 +24,18 @@ export function openPluginViewChannel(owner: AbortSignal, apply: Channel["apply"
   return { channel: { id } satisfies PluginViewChannel, dispose };
 }
 
-export function publishPluginView(owner: AbortSignal, channel: PluginViewChannel, update: PluginViewUpdate): PluginViewUpdateReceipt {
-  if (!channel || typeof channel.id !== "string" || channel.id.length > 128) throw new AppError("plugin/invalid-input", "Invalid view channel");
+export function publishPluginView(
+  owner: AbortSignal,
+  channel: PluginViewChannel,
+  update: PluginViewUpdate,
+): PluginViewUpdateReceipt {
+  if (!channel || typeof channel.id !== "string" || channel.id.length > 128)
+    throw new AppError("plugin/invalid-input", "Invalid view channel");
   const target = channels.get(channel.id);
   // Unknown and foreign channels have the same outcome; no cross-actor discovery.
   if (!target || target.owner !== owner || owner.aborted) return { status: "inactive" };
-  if (!update || !Number.isSafeInteger(update.revision) || update.revision < 0) throw new AppError("plugin/invalid-input", "Invalid view revision");
+  if (!update || !Number.isSafeInteger(update.revision) || update.revision < 0)
+    throw new AppError("plugin/invalid-input", "Invalid view revision");
   if (update.revision <= target.revision) return { status: "stale" };
   target.apply(update);
   target.revision = update.revision;

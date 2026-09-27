@@ -30,18 +30,11 @@ export function PluginActionGroup({
   onResult,
 }: PluginActionGroupProps) {
   const { t } = useTranslation("plugins");
-  const { inline, overflow } = display === "toolbar"
-    ? splitToolbarActions(actions)
-    : { inline: actions, overflow: [] as PluginAction[] };
+  const { inline, overflow } =
+    display === "toolbar" ? splitToolbarActions(actions) : { inline: actions, overflow: [] as PluginAction[] };
 
   return (
-    <Stack
-      direction="horizontal"
-      gap="sm"
-      align="center"
-      justify={align === "end" ? "end" : "start"}
-      wrap
-    >
+    <Stack direction="horizontal" gap="sm" align="center" justify={align === "end" ? "end" : "start"} wrap>
       {inline.map((action) => (
         <Button
           key={action.id}

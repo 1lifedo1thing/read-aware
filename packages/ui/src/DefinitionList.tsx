@@ -19,12 +19,7 @@ const columnClasses = {
   3: "sm:grid-cols-3",
 } as const;
 
-export function DefinitionList({
-  items,
-  columns = 1,
-  variant = "stacked",
-  className,
-}: DefinitionListProps) {
+export function DefinitionList({ items, columns = 1, variant = "stacked", className }: DefinitionListProps) {
   return (
     <dl
       className={cn(
@@ -37,10 +32,7 @@ export function DefinitionList({
       {items.map((item) => (
         <div
           key={item.label}
-          className={cn(
-            "min-w-0",
-            variant === "inline" && "grid grid-cols-[minmax(5rem,auto)_minmax(0,1fr)] gap-4",
-          )}
+          className={cn("min-w-0", variant === "inline" && "grid grid-cols-[minmax(5rem,auto)_minmax(0,1fr)] gap-4")}
         >
           <dt className="min-w-0 [overflow-wrap:anywhere] font-sans text-[13px] font-medium text-fg-subtle">
             {item.label}

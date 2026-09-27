@@ -13,7 +13,7 @@ const server = Bun.serve({
   async fetch(request) {
     const path = new URL(request.url).pathname;
     if (path === "/__fault" && request.method === "POST") {
-      const { status } = await request.json() as { status: number | null };
+      const { status } = (await request.json()) as { status: number | null };
       if (status !== null && status !== 503) return new Response("Only 503/null", { status: 400 });
       dav.failWith = status;
       return Response.json({ status });
@@ -24,7 +24,8 @@ const server = Bun.serve({
         faultStatus: dav.failWith,
         requests,
         objects: [...dav.files].map(([path, bytes]) => ({
-          path, byteSize: bytes.length,
+          path,
+          byteSize: bytes.length,
           sha256: new Bun.CryptoHasher("sha256").update(bytes).digest("hex"),
           // Synthetic fixture content only; allows proving no marker plaintext
           // crossed the transport. No production data should reach this server.
@@ -34,7 +35,8 @@ const server = Bun.serve({
     }
     const body = new Uint8Array(await request.arrayBuffer());
     const response = await dav.fetchFn(request.url, {
-      method: request.method, headers: request.headers,
+      method: request.method,
+      headers: request.headers,
       ...(body.length ? { body } : {}),
     });
     requests.push({ method: request.method, path, status: response.status, bytes: body.length });

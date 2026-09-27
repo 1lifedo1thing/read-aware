@@ -10,42 +10,74 @@ import { createAgentTransactions } from "./transactions-port";
 
 // Model configuration changes must not create a second owner of running jobs.
 const runners = new Map<string, DurableJobRunner>();
-let generation = 0, stopping = false;
+let generation = 0,
+  stopping = false;
 const transactionsFor = createAgentTransactions();
 const log = createLogger("agent-jobs");
 function runnerFor(scope: ThreadScope): DurableJobRunner {
   if (stopping) throw new AppError("jobs/unavailable", "Agent jobs are stopping");
-  const key = threadScopeKey(scope), existing = runners.get(key);
-  if (existing) { runners.delete(key); runners.set(key, existing); return existing; }
+  const key = threadScopeKey(scope),
+    existing = runners.get(key);
+  if (existing) {
+    runners.delete(key);
+    runners.set(key, existing);
+    return existing;
+  }
   if (runners.size >= 256) {
     const idle = [...runners].find(([, runner]) => !runner.active);
     if (!idle) throw new AppError("jobs/quota-exceeded", "Too many active Agent task scopes");
-    runners.delete(idle[0]); void idle[1].stop();
+    runners.delete(idle[0]);
+    void idle[1].stop();
   }
   const transactions = transactionsFor(scope);
   const assertBook = (bookId: string) => {
-    if (scope.kind === "book" && bookId !== scope.bookId) throw new AppError("plugin/object-access-denied", "Job is outside the conversation book");
+    if (scope.kind === "book" && bookId !== scope.bookId)
+      throw new AppError("plugin/object-access-denied", "Job is outside the conversation book");
   };
   const acquireBook = async (bookId: string, signal: AbortSignal) => {
-    signal.throwIfAborted(); assertBook(bookId);
-    return { signal, isAllowed: () => !signal.aborted && (scope.kind !== "book" || scope.bookId === bookId), dispose() {} };
+    signal.throwIfAborted();
+    assertBook(bookId);
+    return {
+      signal,
+      isAllowed: () => !signal.aborted && (scope.kind !== "book" || scope.bookId === bookId),
+      dispose() {},
+    };
   };
   const authorize = async (plan: DurableJobPlan, signal: AbortSignal) => {
     signal.throwIfAborted();
     const grants: Array<{ assert(): void | Promise<void>; dispose(): void }> = [];
     try {
       for (const step of plan.steps) {
-        if (step.kind === "transaction") grants.push(await transactions.authorizeDurableOperations(step.operations, signal));
+        if (step.kind === "transaction")
+          grants.push(await transactions.authorizeDurableOperations(step.operations, signal));
         else assertBook(step.bookId);
       }
-      return { assert: async () => { signal.throwIfAborted(); for (const grant of grants) await grant.assert(); }, dispose: () => { for (const grant of grants) grant.dispose(); } };
-    } catch (error) { for (const grant of grants) grant.dispose(); throw error; }
+      return {
+        assert: async () => {
+          signal.throwIfAborted();
+          for (const grant of grants) await grant.assert();
+        },
+        dispose: () => {
+          for (const grant of grants) grant.dispose();
+        },
+      };
+    } catch (error) {
+      for (const grant of grants) grant.dispose();
+      throw error;
+    }
   };
-  const runner = new DurableJobRunner(nativeDurableJobStore(`agent:${key}`), createDurableJobExecutor({
-    actor: "agent", transactions, authorize, acquireBook, report: error => log.error("Saved Agent task failed", error),
-  }));
+  const runner = new DurableJobRunner(
+    nativeDurableJobStore(`agent:${key}`),
+    createDurableJobExecutor({
+      actor: "agent",
+      transactions,
+      authorize,
+      acquireBook,
+      report: (error) => log.error("Saved Agent task failed", error),
+    }),
+  );
   runners.set(key, runner);
-  void runner.recover().catch(error => log.error("Saved Agent task recovery failed", error));
+  void runner.recover().catch((error) => log.error("Saved Agent task recovery failed", error));
   return runner;
 }
 
@@ -56,7 +88,7 @@ export function agentJobs(scope: ThreadScope): DurableJobsPort & { inspectPlan(i
     get: (id, signal) => runnerFor(scope).get(id, signal),
     list: (query, signal) => runnerFor(scope).list(query, signal),
     control: (id, action, signal) => runnerFor(scope).control(id, action, signal),
-    inspectPlan: id => runnerFor(scope).inspectPlan(id),
+    inspectPlan: (id) => runnerFor(scope).inspectPlan(id),
   };
 }
 export async function recoverAgentJobs(): Promise<void> {
@@ -71,8 +103,13 @@ export async function recoverAgentJobs(): Promise<void> {
   }
 }
 export async function stopAgentJobs(): Promise<void> {
-  generation++; stopping = true;
+  generation++;
+  stopping = true;
   const active = [...runners.values()];
-  try { await Promise.all(active.map(runner => runner.stop())); }
-  finally { runners.clear(); stopping = false; }
+  try {
+    await Promise.all(active.map((runner) => runner.stop()));
+  } finally {
+    runners.clear();
+    stopping = false;
+  }
 }

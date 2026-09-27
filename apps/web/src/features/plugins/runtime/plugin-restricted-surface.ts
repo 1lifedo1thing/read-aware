@@ -35,28 +35,38 @@ type ObservePolicy<F extends Method> = {
   readonly [policyKind]: "observe";
   readonly run: (...args: Parameters<F>) => () => PluginDisposable;
 };
-type MethodPolicy<F extends Method> = DenyPolicy | RunPolicy<F>
+type MethodPolicy<F extends Method> =
+  | DenyPolicy
+  | RunPolicy<F>
   | (ReturnType<F> extends PluginDisposable ? ObservePolicy<F> : never);
 
 type OptionalKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T];
 
 /** The exhaustive restricted classification of a domain API shape. */
-export type RestrictedPolicy<T> = T extends Method ? MethodPolicy<T> : {
-  readonly [K in keyof T]-?: K extends OptionalKeys<T>
-    ? RestrictedPolicy<Exclude<T[K], undefined>> | AbsentPolicy
-    : RestrictedPolicy<T[K]>;
-};
+export type RestrictedPolicy<T> = T extends Method
+  ? MethodPolicy<T>
+  : {
+      readonly [K in keyof T]-?: K extends OptionalKeys<T>
+        ? RestrictedPolicy<Exclude<T[K], undefined>> | AbsentPolicy
+        : RestrictedPolicy<T[K]>;
+    };
 
 export const restricted = {
   deny: { [policyKind]: "deny" } as DenyPolicy,
   absent: { [policyKind]: "absent" } as AbsentPolicy,
   read: <F extends Method>(run: F): RunPolicy<F> => ({ [policyKind]: "read", run }),
   command: <F extends Method>(run: F): RunPolicy<F> => ({ [policyKind]: "command", run }),
-  observe: <A extends unknown[]>(run: (...args: A) => () => PluginDisposable) =>
-    ({ [policyKind]: "observe" as const, run }),
+  observe: <A extends unknown[]>(run: (...args: A) => () => PluginDisposable) => ({
+    [policyKind]: "observe" as const,
+    run,
+  }),
 };
 
-type AnyPolicy = DenyPolicy | AbsentPolicy | RunPolicy<Method> | { readonly [policyKind]: "observe"; readonly run: Method };
+type AnyPolicy =
+  | DenyPolicy
+  | AbsentPolicy
+  | RunPolicy<Method>
+  | { readonly [policyKind]: "observe"; readonly run: Method };
 
 /** Classification of every method a restricted surface object exposes, keyed by
  * the owning object so wrappers installed later (event reactions) keep it. */
@@ -91,7 +101,9 @@ function build(lifecycle: RestrictedLifecycle, path: string, table: object): obj
       case "absent":
         continue;
       case "deny":
-        surface[key] = () => { throw pluginObjectAccessDenied(operation); };
+        surface[key] = () => {
+          throw pluginObjectAccessDenied(operation);
+        };
         break;
       case "read": {
         const run = entry.run;

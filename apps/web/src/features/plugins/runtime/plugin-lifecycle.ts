@@ -1,7 +1,4 @@
-import type {
-  PluginDisposable,
-  PluginLifecyclePhase,
-} from "@read-aware/plugin-types";
+import type { PluginDisposable, PluginLifecyclePhase } from "@read-aware/plugin-types";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import { createLogger } from "../../../platform/logger";
@@ -37,21 +34,29 @@ export class PluginLifecycleController {
   private retirement: DomainActor | undefined;
 
   /** Host-only, single source for cancellation and contribution retirement. */
-  get retirementActor(): DomainActor | undefined { return this.retirement; }
+  get retirementActor(): DomainActor | undefined {
+    return this.retirement;
+  }
   beginRetirement(source: DomainActor = "system"): DomainActor {
-    return this.retirement ??= causalActor(source);
+    return (this.retirement ??= causalActor(source));
   }
   private readonly operations = new AbortController();
 
-  get signal(): AbortSignal { return this.operations.signal; }
-  cancelOperations(): void { this.operations.abort(new AppError("plugin/cancelled", "Plugin runtime has stopped")); }
+  get signal(): AbortSignal {
+    return this.operations.signal;
+  }
+  cancelOperations(): void {
+    this.operations.abort(new AppError("plugin/cancelled", "Plugin runtime has stopped"));
+  }
 
   constructor(disposables: PluginDisposable[]) {
     // The outer instance owns one scope, not a growing list of retired handles.
     disposables.push({ dispose: () => this.stop() });
   }
 
-  get registrationCount(): number { return this.registrations.size; }
+  get registrationCount(): number {
+    return this.registrations.size;
+  }
 
   get phase(): PluginLifecyclePhase {
     return this.current;
@@ -69,8 +74,9 @@ export class PluginLifecycleController {
     };
     this.registrations.add(entry);
     if (this.current === "active") {
-      try { this.activateRegistrations([entry], "active"); }
-      catch (error) {
+      try {
+        this.activateRegistrations([entry], "active");
+      } catch (error) {
         this.disposeRegistration(entry);
         throw error;
       }
@@ -132,8 +138,11 @@ export class PluginLifecycleController {
       for (const entry of activated.reverse()) {
         const live = entry.live;
         entry.live = undefined;
-        try { live?.dispose(); }
-        catch (disposeError) { failures.push(disposeError); }
+        try {
+          live?.dispose();
+        } catch (disposeError) {
+          failures.push(disposeError);
+        }
       }
       // Reentrant registrations were produced by this failed attempt. Keeping
       // them for retry would register both the old child and its replacement.
@@ -196,8 +205,11 @@ export class PluginLifecycleController {
     this.cancelOperations();
     const errors: unknown[] = [];
     for (const entry of [...this.registrations].reverse()) {
-      try { this.disposeRegistration(entry); }
-      catch (error) { errors.push(error); }
+      try {
+        this.disposeRegistration(entry);
+      } catch (error) {
+        errors.push(error);
+      }
     }
     if (errors.length) throw new AggregateError(errors, "Plugin registration disposal failed");
   }
@@ -210,7 +222,10 @@ export class PluginLifecycleController {
     this.assertStorageWrite(operation);
     const pending = withPluginRuntimeDataWrite(write);
     this.storageWrites.add(pending);
-    void pending.then(() => this.storageWrites.delete(pending), () => this.storageWrites.delete(pending));
+    void pending.then(
+      () => this.storageWrites.delete(pending),
+      () => this.storageWrites.delete(pending),
+    );
     return pending;
   }
 
@@ -230,21 +245,43 @@ export class PluginLifecycleController {
     const signal = callerSignal ? AbortSignal.any([this.signal, callerSignal]) : this.signal;
     signal.throwIfAborted();
     if (this.reads.size >= 32) throw new AppError("plugin/busy", "Plugin read capacity is occupied");
-    const pending = Promise.resolve().then(() => { signal.throwIfAborted(); return run(signal); });
+    const pending = Promise.resolve().then(() => {
+      signal.throwIfAborted();
+      return run(signal);
+    });
     this.reads.add(pending);
-    this.trackCleanup(pending.then(() => { this.reads.delete(pending); }, error => {
-      this.reads.delete(pending);
-      // Normal read failures already reach the caller. After cancellation only
-      // the expected abort is ignorable; source/cleanup failures still surface.
-      const expectedAbort = error === signal.reason || error instanceof Error && error.name === "AbortError"
-        || error instanceof AppError && ["library/cancelled", "memory/cancelled", "plugin/cancelled"].includes(error.code);
-      if (signal.aborted && !expectedAbort) throw error;
-    }));
+    this.trackCleanup(
+      pending.then(
+        () => {
+          this.reads.delete(pending);
+        },
+        (error) => {
+          this.reads.delete(pending);
+          // Normal read failures already reach the caller. After cancellation only
+          // the expected abort is ignorable; source/cleanup failures still surface.
+          const expectedAbort =
+            error === signal.reason ||
+            (error instanceof Error && error.name === "AbortError") ||
+            (error instanceof AppError &&
+              ["library/cancelled", "memory/cancelled", "plugin/cancelled"].includes(error.code));
+          if (signal.aborted && !expectedAbort) throw error;
+        },
+      ),
+    );
     return new Promise<T>((resolve, reject) => {
       const cancel = () => reject(signal.reason);
       signal.addEventListener("abort", cancel, { once: true });
-      void pending.then(value => { signal.removeEventListener("abort", cancel); if (signal.aborted) reject(signal.reason); else resolve(value); },
-        error => { signal.removeEventListener("abort", cancel); reject(signal.aborted ? signal.reason : error); });
+      void pending.then(
+        (value) => {
+          signal.removeEventListener("abort", cancel);
+          if (signal.aborted) reject(signal.reason);
+          else resolve(value);
+        },
+        (error) => {
+          signal.removeEventListener("abort", cancel);
+          reject(signal.aborted ? signal.reason : error);
+        },
+      );
     });
   }
 
@@ -252,7 +289,7 @@ export class PluginLifecycleController {
     this.cleanups.add(pending);
     void pending.then(
       () => this.cleanups.delete(pending),
-      error => {
+      (error) => {
         this.cleanups.delete(pending);
         log.warn("Plugin asynchronous resource cleanup failed", error);
         // Keep one failure for the shutdown caller; repeated failures are logged.

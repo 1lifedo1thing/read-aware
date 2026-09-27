@@ -7,5 +7,8 @@ export const readingContextPolicy: ReadingContextPolicy = {
     const preferences = getAIPreferences();
     return { selection: preferences.sendHighlightedText, surrounding: preferences.sendSurroundingContext };
   },
-  subscribe: listener => onLocalKVChange(key => { if (key === AI_PREFERENCES_KEY) listener(); }),
+  subscribe: (listener) =>
+    onLocalKVChange((key) => {
+      if (key === AI_PREFERENCES_KEY) listener();
+    }),
 };

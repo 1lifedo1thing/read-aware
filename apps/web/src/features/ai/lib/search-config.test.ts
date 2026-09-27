@@ -8,8 +8,14 @@ import { getSearchConfig, saveSearchConfig, SEARCH_CONFIG_KEY } from "./search-c
 const storage = new Map<string, string>();
 installFileGlobals({ localStorage: memoryStorage(storage) });
 beforeAll(() => hydrateSecrets());
-beforeEach(() => { storage.clear(); deleteSecret("ai-api-key.search.tinyfish"); });
-afterEach(() => { deleteSecret("ai-api-key.search.tinyfish"); deleteSecret("ai-api-key.search.fixture"); });
+beforeEach(() => {
+  storage.clear();
+  deleteSecret("ai-api-key.search.tinyfish");
+});
+afterEach(() => {
+  deleteSecret("ai-api-key.search.tinyfish");
+  deleteSecret("ai-api-key.search.fixture");
+});
 
 test("search defaults on, requires its own key, and preserves an explicit opt-out", () => {
   expect(getSearchConfig()).toEqual({ provider: "tinyfish", enabled: true, apiKey: "" });
@@ -29,7 +35,9 @@ test("search defaults on, requires its own key, and preserves an explicit opt-ou
     expect(agentWeb.configured("search")).toBe(false);
     saveSearchConfig({ ...getSearchConfig(), apiKey: "" });
     expect(getSecret("ai-api-key.search.tinyfish")).toBe("");
-  } finally { setSecret("ai-api-key.openai", previous); }
+  } finally {
+    setSecret("ai-api-key.openai", previous);
+  }
 });
 
 test("registry providers retain independent credentials when switching", () => {
@@ -42,49 +50,86 @@ test("registry providers retain independent credentials when switching", () => {
     expect(getSecret("ai-api-key.search.tinyfish")).toBe("first-key");
     saveSearchConfig({ provider: "tinyfish", enabled: true, apiKey: "first-key" });
     expect(getSecret("ai-api-key.search.fixture")).toBe("second-key");
-  } finally { delete registry.fixture; }
+  } finally {
+    delete registry.fixture;
+  }
 });
 
 test("unknown or malformed stored provider cannot silently enable TinyFish", () => {
   setSecret("ai-api-key.search.tinyfish", "existing");
-  for (const raw of ['{"provider":"unknown","enabled":true}', '{"provider":"tinyfish","enabled":"true"}', 'null', '{bad']) {
+  for (const raw of [
+    '{"provider":"unknown","enabled":true}',
+    '{"provider":"tinyfish","enabled":"true"}',
+    "null",
+    "{bad",
+  ]) {
     storage.set(SEARCH_CONFIG_KEY, raw);
     let code: string | undefined;
-    expect(getSearchConfig(error => { code = error.code; }).enabled).toBe(false);
+    expect(
+      getSearchConfig((error) => {
+        code = error.code;
+      }).enabled,
+    ).toBe(false);
     expect(code).toBe("search/not-configured");
   }
 });
 
 test("one provider owns both operations; retired fetch settings cannot cause a fallback", async () => {
-  const factories = Object.values(WEB_PROVIDERS).map(provider => spyOn(provider, "create").mockImplementation(apiKey => {
-    expect(apiKey).toBe(`secret-${provider.id}`);
-    return {
-      search: async input => ({ provider: provider.id, query: input.query, sources: [], retrievedAt: "now" }),
-      ...(provider.supportsFetch ? { fetch: async (input: { url: string }) => ({ provider: provider.id, url: input.url,
-        finalUrl: input.url, title: "Source", text: "Page text", offset: 0, nextOffset: null, retrievedAt: "now" }) } : {}),
-    };
-  }));
+  const factories = Object.values(WEB_PROVIDERS).map((provider) =>
+    spyOn(provider, "create").mockImplementation((apiKey) => {
+      expect(apiKey).toBe(`secret-${provider.id}`);
+      return {
+        search: async (input) => ({ provider: provider.id, query: input.query, sources: [], retrievedAt: "now" }),
+        ...(provider.supportsFetch
+          ? {
+              fetch: async (input: { url: string }) => ({
+                provider: provider.id,
+                url: input.url,
+                finalUrl: input.url,
+                title: "Source",
+                text: "Page text",
+                offset: 0,
+                nextOffset: null,
+                retrievedAt: "now",
+              }),
+            }
+          : {}),
+      };
+    }),
+  );
   try {
     for (const provider of Object.keys(WEB_PROVIDERS) as (keyof typeof WEB_PROVIDERS)[]) {
       saveSearchConfig({ provider, enabled: true, apiKey: `secret-${provider}` });
     }
     for (const provider of Object.values(WEB_PROVIDERS)) {
       // A saved TinyFish key and old fallback configuration must have no effect.
-      storage.set(SEARCH_CONFIG_KEY, JSON.stringify({ provider: provider.id, enabled: true, fetchProvider: "tinyfish" }));
+      storage.set(
+        SEARCH_CONFIG_KEY,
+        JSON.stringify({ provider: provider.id, enabled: true, fetchProvider: "tinyfish" }),
+      );
       expect(agentWeb.configured("search")).toBe(true);
       expect(agentWeb.configured("fetch")).toBe(provider.supportsFetch);
       expect((await agentWeb.search({ query: "release" })).provider).toBe(provider.id);
-      if (provider.supportsFetch) expect((await agentWeb.fetch({ url: "https://example.org" })).provider).toBe(provider.id);
-      else await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({ code: "search/fetch-failed" });
+      if (provider.supportsFetch)
+        expect((await agentWeb.fetch({ url: "https://example.org" })).provider).toBe(provider.id);
+      else
+        await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({
+          code: "search/fetch-failed",
+        });
       saveSearchConfig(getSearchConfig());
       expect(JSON.parse(storage.get(SEARCH_CONFIG_KEY)!)).toEqual({ enabled: true, provider: provider.id });
       saveSearchConfig({ ...getSearchConfig(), apiKey: "" });
-      expect(agentWeb.configured("search")).toBe(false); expect(agentWeb.configured("fetch")).toBe(false);
-      await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({ code: "search/not-configured" });
+      expect(agentWeb.configured("search")).toBe(false);
+      expect(agentWeb.configured("fetch")).toBe(false);
+      await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({
+        code: "search/not-configured",
+      });
       saveSearchConfig({ ...getSearchConfig(), apiKey: `secret-${provider.id}`, enabled: false });
-      expect(agentWeb.configured("search")).toBe(false); expect(agentWeb.configured("fetch")).toBe(false);
+      expect(agentWeb.configured("search")).toBe(false);
+      expect(agentWeb.configured("fetch")).toBe(false);
     }
-    for (const provider of Object.keys(WEB_PROVIDERS)) expect(getSecret(`ai-api-key.search.${provider}`)).toBe(`secret-${provider}`);
+    for (const provider of Object.keys(WEB_PROVIDERS))
+      expect(getSecret(`ai-api-key.search.${provider}`)).toBe(`secret-${provider}`);
     expect([...storage.values()].join()).not.toContain("secret-");
     for (const [index, provider] of Object.values(WEB_PROVIDERS).entries()) {
       expect(factories[index]).toHaveBeenCalledTimes(provider.supportsFetch ? 2 : 1);

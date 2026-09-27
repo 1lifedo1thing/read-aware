@@ -28,9 +28,7 @@ const PARLIAMENT_CHAPTER = 17;
 
 function readerCursor() {
   const epub = lebon.epub();
-  const charsBefore = epub.chapters
-    .slice(0, READER_CHAPTER)
-    .reduce((sum, chapter) => sum + chapter.text.length, 0);
+  const charsBefore = epub.chapters.slice(0, READER_CHAPTER).reduce((sum, chapter) => sum + chapter.text.length, 0);
   const totalChars = epub.chapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
   return {
     chapterIndex: READER_CHAPTER,
@@ -45,13 +43,11 @@ export const lebonEvalSuite: EvalSuite<AgentEvalScenario> = {
   id: "lebon",
   displayName: "《乌合之众》",
   code: "S08",
-  description:
-    "基于完整中文勒庞图书的真实场景（概念图，无剧透栅栏）。",
+  description: "基于完整中文勒庞图书的真实场景（概念图，无剧透栅栏）。",
   scenarios: [
     defineAgentEvalScenario({
       id: "concept-graph-answers",
-      description:
-        "注入概念图后，机制问题从摘要关系回答——少量工具调用，本版术语。",
+      description: "注入概念图后，机制问题从摘要关系回答——少量工具调用，本版术语。",
       tags: ["digest", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -89,8 +85,7 @@ export const lebonEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "forward-retrieval-unfenced",
-      description:
-        "关于说明性图书后续章节的问题自由向前检索——无需权限，无剧透仪式。",
+      description: "关于说明性图书后续章节的问题自由向前检索——无需权限，无剧透仪式。",
       tags: ["retrieval", "forward", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -162,19 +157,19 @@ export const lebonEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, { answer: { mustContain: ["威望"] } }),
-          coverageAssessment(observation, "answer.taxonomy-edition-terms", [
-            "被赋予的威望",
-            "人为的威望",
-            "个人的威望",
-          ], 1),
+          coverageAssessment(
+            observation,
+            "answer.taxonomy-edition-terms",
+            ["被赋予的威望", "人为的威望", "个人的威望"],
+            1,
+          ),
           noFenceAssessment(observation),
           cjkAnswerAssessment(observation),
         ),
     }),
     defineAgentEvalScenario({
       id: "argument-arc-from-digest",
-      description:
-        "复述全书到此的论证弧（群体心理→机制→领袖→手段）——概念图的谱系面，信任注入的图而非重读全书。",
+      description: "复述全书到此的论证弧（群体心理→机制→领袖→手段）——概念图的谱系面，信任注入的图而非重读全书。",
       tags: ["digest", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -204,20 +199,14 @@ export const lebonEvalSuite: EvalSuite<AgentEvalScenario> = {
             tools: { maxCalls: 3 },
             maxRounds: 4,
           }),
-          coverageAssessment(
-            observation,
-            "answer.argument-arc",
-            ["群体", "暗示", "领袖", "传染", "威望", "断言"],
-            4,
-          ),
+          coverageAssessment(observation, "answer.argument-arc", ["群体", "暗示", "领袖", "传染", "威望", "断言"], 4),
           noFenceAssessment(observation),
           cjkAnswerAssessment(observation),
         ),
     }),
     defineAgentEvalScenario({
       id: "modern-transfer-application",
-      description:
-        "把概念图迁移到书写不存在的现代域（社交媒体）：用本书术语评估哪里说中、哪里预见不到。",
+      description: "把概念图迁移到书写不存在的现代域（社交媒体）：用本书术语评估哪里说中、哪里预见不到。",
       tags: ["digest", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {

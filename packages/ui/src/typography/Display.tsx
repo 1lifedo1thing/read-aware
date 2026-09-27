@@ -14,21 +14,9 @@ type DisplayProps<T extends ElementType = "h1"> = {
   size?: DisplaySize;
 } & Omit<ComponentPropsWithRef<T>, "as" | "size">;
 
-export function Display<T extends ElementType = "h1">({
-  as,
-  size = "7xl",
-  className,
-  ...props
-}: DisplayProps<T>) {
+export function Display<T extends ElementType = "h1">({ as, size = "7xl", className, ...props }: DisplayProps<T>) {
   const Tag = (as || "h1") as ElementType;
   return (
-    <Tag
-      className={cn(
-        "font-serif leading-display tracking-tight text-fg",
-        sizeClasses[size],
-        className,
-      )}
-      {...props}
-    />
+    <Tag className={cn("font-serif leading-display tracking-tight text-fg", sizeClasses[size], className)} {...props} />
   );
 }

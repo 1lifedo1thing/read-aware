@@ -91,14 +91,11 @@ export function useProgressScrub({
     [onSeek],
   );
 
-  const fractionAt = useCallback(
-    (event: PointerEvent<HTMLElement>): number | null => {
-      const rect = event.currentTarget.getBoundingClientRect();
-      if (rect.width <= 0) return null;
-      return clampFraction((event.clientX - rect.left) / rect.width);
-    },
-    [],
-  );
+  const fractionAt = useCallback((event: PointerEvent<HTMLElement>): number | null => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return null;
+    return clampFraction((event.clientX - rect.left) / rect.width);
+  }, []);
 
   const endDrag = useCallback((event: PointerEvent<HTMLElement>) => {
     draggingRef.current = false;
@@ -253,7 +250,7 @@ export function useProgressScrub({
     pointerFraction,
     dragging,
     active: pointerFraction != null || dragging,
-    displayFraction: dragging ? pointerFraction ?? fraction : pending ?? fraction,
+    displayFraction: dragging ? (pointerFraction ?? fraction) : (pending ?? fraction),
     handleProps: {
       onPointerDown,
       onPointerMove,

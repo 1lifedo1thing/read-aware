@@ -31,20 +31,15 @@ export function useHeaderClusterCapacity(itemCount: number) {
 
     const measure = () => {
       const styles = getComputedStyle(container);
-      const content =
-        container.clientWidth -
-        parseFloat(styles.paddingLeft) -
-        parseFloat(styles.paddingRight);
+      const content = container.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight);
       const fixedLeft = fixedLeftRef.current?.getBoundingClientRect().width ?? 0;
       const navBox = navBoxRef.current;
       // scrollWidth, not clientWidth: the nav's NATURAL width, even while the
       // center track is momentarily clipping it.
       const nav = navBox ? Math.max(navBox.scrollWidth, navBox.clientWidth) : 0;
-      const rightSpacer =
-        rightSpacerRef.current?.getBoundingClientRect().width ?? 0;
+      const rightSpacer = rightSpacerRef.current?.getBoundingClientRect().width ?? 0;
 
-      const available =
-        content - fixedLeft - nav - rightSpacer - DOTS_WIDTH - SAFETY_MARGIN;
+      const available = content - fixedLeft - nav - rightSpacer - DOTS_WIDTH - SAFETY_MARGIN;
       const fits = Math.floor((available + ITEM_GAP) / (ITEM_WIDTH + ITEM_GAP));
       const next = Math.max(0, Math.min(itemCount, fits));
       setCapacity((current) => (current === next ? current : next));

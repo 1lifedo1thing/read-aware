@@ -32,9 +32,7 @@ function text(result: { content: Array<{ type: string; text?: string }> }): stri
 describe("spoiler fence", () => {
   test("read_chapter beyond the fence is blocked with a retryable instruction", async () => {
     const { read_chapter } = tools(1);
-    await expect(read_chapter!.execute("r1", { chapterIndex: 2 })).rejects.toThrow(
-      "beyond the reader's position",
-    );
+    await expect(read_chapter!.execute("r1", { chapterIndex: 2 })).rejects.toThrow("beyond the reader's position");
     const within = await read_chapter!.execute("r2", { chapterIndex: 1 });
     expect(text(within)).toContain("still safe text");
   });
@@ -47,22 +45,18 @@ describe("spoiler fence", () => {
 
   test("a model cannot create spoiler permission with its tool argument", async () => {
     const { read_chapter, search_book_text } = tools(1);
-    await expect(
-      read_chapter!.execute("r-denied", { chapterIndex: 2, confirmSpoiler: true }),
-    ).rejects.toThrow("reader has not explicitly granted spoiler permission");
-    await expect(
-      search_book_text!.execute("s-denied", { queries: ["killer"], confirmSpoiler: true }),
-    ).rejects.toThrow("reader has not explicitly granted spoiler permission");
+    await expect(read_chapter!.execute("r-denied", { chapterIndex: 2, confirmSpoiler: true })).rejects.toThrow(
+      "reader has not explicitly granted spoiler permission",
+    );
+    await expect(search_book_text!.execute("s-denied", { queries: ["killer"], confirmSpoiler: true })).rejects.toThrow(
+      "reader has not explicitly granted spoiler permission",
+    );
   });
 
   test("a viewport boundary blocks the unread remainder of the current chapter", async () => {
     const { read_chapter, search_book_text } = tools(-1);
-    await expect(read_chapter!.execute("r-current", { chapterIndex: 0 })).rejects.toThrow(
-      "viewport boundary",
-    );
-    const clamped = JSON.parse(
-      text(await search_book_text!.execute("s-current", { queries: ["lighthouse"] })),
-    );
+    await expect(read_chapter!.execute("r-current", { chapterIndex: 0 })).rejects.toThrow("viewport boundary");
+    const clamped = JSON.parse(text(await search_book_text!.execute("s-current", { queries: ["lighthouse"] })));
     expect(clamped.totalHits).toBe(0);
     expect(clamped.throughChapterIndex).toBe(-1);
   });

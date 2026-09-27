@@ -30,16 +30,13 @@ export function PluginMetadata({ items, layout = "horizontal" }: PluginMetadataP
 
 export function PluginMetadataLine({ items }: Pick<PluginMetadataProps, "items">) {
   const visibleItems = items.filter(
-    (item): item is Exclude<PluginMetadataItem, { kind: "divider" }> =>
-      item.kind !== "divider",
+    (item): item is Exclude<PluginMetadataItem, { kind: "divider" }> => item.kind !== "divider",
   );
   return (
     <Stack direction="horizontal" gap="md" align="center" wrap className="max-w-full">
       {visibleItems.map((item, index) => {
         const value = item.kind === "tags" ? item.values.join(", ") : item.value;
-        const icon = item.kind === "label" && item.icon
-          ? renderPluginIcon(item.icon, 13)
-          : undefined;
+        const icon = item.kind === "label" && item.icon ? renderPluginIcon(item.icon, 13) : undefined;
         return (
           <span
             key={index}

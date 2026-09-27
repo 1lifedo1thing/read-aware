@@ -12,12 +12,7 @@ import { initReactI18next, useTranslation } from "react-i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { i18n } from "./instance";
 import { actorFromEvent, causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
-import {
-  DEFAULT_LOCALE,
-  LOCALES,
-  NAMESPACES,
-  type AppLocale,
-} from "./config";
+import { DEFAULT_LOCALE, LOCALES, NAMESPACES, type AppLocale } from "./config";
 import { settled } from "../platform/write-settlement";
 
 function syncDocumentLocale(locale: AppLocale): void {
@@ -36,12 +31,7 @@ let initPromise: Promise<typeof i18n> | null = null;
 export function initI18n(locale: AppLocale): Promise<typeof i18n> {
   if (initPromise) return initPromise;
   initPromise = i18n
-    .use(
-      resourcesToBackend(
-        (language: string, namespace: string) =>
-          import(`./locales/${language}/${namespace}.json`),
-      ),
-    )
+    .use(resourcesToBackend((language: string, namespace: string) => import(`./locales/${language}/${namespace}.json`)))
     .use(initReactI18next)
     .init({
       lng: locale,
@@ -62,7 +52,7 @@ export function initI18n(locale: AppLocale): Promise<typeof i18n> {
 let localeSource = stampEventCause({ locale: i18n.language });
 let localeRequest: { locale: AppLocale; origin: DomainActor } | undefined;
 let localeTail: Promise<unknown> = Promise.resolve();
-i18n.on("languageChanged", locale => {
+i18n.on("languageChanged", (locale) => {
   localeSource = stampEventCause({ locale }, localeRequest?.locale === locale ? localeRequest.origin : "system");
 });
 
@@ -77,8 +67,12 @@ export function setLocale(locale: AppLocale, origin: DomainActor = "user"): Prom
   const pending = localeTail.then(async () => {
     if (i18n.language === locale) return;
     localeRequest = request;
-    try { await i18n.changeLanguage(locale); syncDocumentLocale(locale); }
-    finally { localeRequest = undefined; }
+    try {
+      await i18n.changeLanguage(locale);
+      syncDocumentLocale(locale);
+    } finally {
+      localeRequest = undefined;
+    }
   });
   localeTail = settled(pending);
   return pending;

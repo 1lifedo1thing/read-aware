@@ -24,9 +24,7 @@ export async function saveWord(
     language: targetLanguage,
   });
   const passage =
-    input.context && input.context.trim().toLowerCase() !== term.toLowerCase()
-      ? input.context.trim()
-      : undefined;
+    input.context && input.context.trim().toLowerCase() !== term.toLowerCase() ? input.context.trim() : undefined;
 
   await wordCollection(ctx).put(
     idFor(term, language),

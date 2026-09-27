@@ -75,9 +75,7 @@ function MetadataTags({ title, values }: MetadataTagsProps) {
       gap="sm"
       align={layout === "horizontal" ? "center" : "stretch"}
     >
-      <Caption className={layout === "horizontal" ? "shrink-0 text-fg-subtle" : "text-fg-subtle"}>
-        {title}
-      </Caption>
+      <Caption className={layout === "horizontal" ? "shrink-0 text-fg-subtle" : "text-fg-subtle"}>{title}</Caption>
       <Stack direction="horizontal" gap="sm" align="center" wrap>
         {values.map((value) => (
           <Tag key={value}>{value}</Tag>
@@ -89,9 +87,7 @@ function MetadataTags({ title, values }: MetadataTagsProps) {
 
 function MetadataSeparator() {
   const layout = useContext(MetadataLayoutContext);
-  return layout === "horizontal"
-    ? <Divider className="h-4 self-center border-l border-t-0" />
-    : <Divider />;
+  return layout === "horizontal" ? <Divider className="h-4 self-center border-l border-t-0" /> : <Divider />;
 }
 
 Metadata.Label = MetadataLabel;

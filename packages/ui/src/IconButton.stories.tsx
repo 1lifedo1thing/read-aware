@@ -40,7 +40,9 @@ export const ToolbarSlots: Story = {
   parameters: { viewport: { defaultViewport: "mobile1" } },
   render: (args) => (
     <div className="grid w-full max-w-sm grid-cols-5 border-t border-border bg-fill px-1">
-      {Array.from({ length: 5 }, (_, i) => <IconButton key={i} {...args} className={i === 1 ? "text-fg" : undefined} />)}
+      {Array.from({ length: 5 }, (_, i) => (
+        <IconButton key={i} {...args} className={i === 1 ? "text-fg" : undefined} />
+      ))}
     </div>
   ),
 };

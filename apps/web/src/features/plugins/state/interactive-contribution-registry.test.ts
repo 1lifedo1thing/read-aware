@@ -5,8 +5,12 @@ import { decodePluginCallbacks, PluginCallbackRegistry, pluginCallbackOwner } fr
 import { createInteractiveContributionRegistry } from "./interactive-contribution-registry";
 
 type Action = { key: string; pluginId: string; state?: PluginActionState; run(): unknown };
-const state = (revision: number, enabled = true, visible = true, checked?: boolean): PluginActionState =>
-  ({ revision, enabled, visible, ...(checked === undefined ? {} : { checked }) });
+const state = (revision: number, enabled = true, visible = true, checked?: boolean): PluginActionState => ({
+  revision,
+  enabled,
+  visible,
+  ...(checked === undefined ? {} : { checked }),
+});
 const fixture = () => createInteractiveContributionRegistry<Action>("commands", "run", { catalog: false });
 
 test("action states are validated immutable snapshots and all new executions recheck availability", async () => {
@@ -43,15 +47,29 @@ test("malformed initial and updated states do not replace a valid registration o
   const item = { key: "probe:one", pluginId: "probe", run: () => null };
   const registration = registry.register(item);
   const original = registry.list()[0];
-  for (const invalid of [null, {}, -1, { ...state(1), revision: NaN }, { ...state(1), revision: 1.5 },
-    { ...state(1), revision: -1 }, { ...state(1), revision: Number.MAX_SAFE_INTEGER + 1 },
-    { ...state(1), enabled: "yes" }, { ...state(1), visible: 0 }, { ...state(1), checked: null }]) {
-    expect(() => registry.register({ ...item, state: invalid as PluginActionState }))
-      .toThrow(expect.objectContaining({ code: "plugin/invalid-input" }));
-    await expect(registration.updateState(invalid as PluginActionState)).rejects.toMatchObject({ code: "plugin/invalid-input" });
+  for (const invalid of [
+    null,
+    {},
+    -1,
+    { ...state(1), revision: NaN },
+    { ...state(1), revision: 1.5 },
+    { ...state(1), revision: -1 },
+    { ...state(1), revision: Number.MAX_SAFE_INTEGER + 1 },
+    { ...state(1), enabled: "yes" },
+    { ...state(1), visible: 0 },
+    { ...state(1), checked: null },
+  ]) {
+    expect(() => registry.register({ ...item, state: invalid as PluginActionState })).toThrow(
+      expect.objectContaining({ code: "plugin/invalid-input" }),
+    );
+    await expect(registration.updateState(invalid as PluginActionState)).rejects.toMatchObject({
+      code: "plugin/invalid-input",
+    });
     expect(registry.list()[0]).toBe(original);
   }
-  await expect(registration.updateState(undefined as unknown as PluginActionState)).rejects.toMatchObject({ code: "plugin/invalid-input" });
+  await expect(registration.updateState(undefined as unknown as PluginActionState)).rejects.toMatchObject({
+    code: "plugin/invalid-input",
+  });
   registration.dispose();
 });
 
@@ -59,7 +77,12 @@ test("replacement and activation retirement invalidate exact handles, not matchi
   const registry = fixture();
   const owner = new AbortController();
   const wire = new PluginCallbackRegistry();
-  const callback = decodePluginCallbacks(wire.encode(() => "old"), (handle, args) => wire.invoke(handle, args), undefined, owner.signal) as Action["run"];
+  const callback = decodePluginCallbacks(
+    wire.encode(() => "old"),
+    (handle, args) => wire.invoke(handle, args),
+    undefined,
+    owner.signal,
+  ) as Action["run"];
   const old = registry.register({ key: "probe:one", pluginId: "probe", run: callback });
   const cached = registry.list()[0].run;
   expect(pluginCallbackOwner(cached)).toBe(owner.signal);

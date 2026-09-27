@@ -9,14 +9,7 @@ import type { BookTextRange } from "./book-range";
 // views from them — so shape drift between the surfaces is a type error,
 // not a code-review hope.
 
-import type {
-  BookFormat,
-  HighlightColor,
-  HighlightStyle,
-  Id,
-  IsoDate,
-  ReadingStatus,
-} from "./entities";
+import type { BookFormat, HighlightColor, HighlightStyle, Id, IsoDate, ReadingStatus } from "./entities";
 
 /** A shelf book as the books domain lists it. */
 export interface BookSummary {

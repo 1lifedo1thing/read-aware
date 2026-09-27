@@ -77,10 +77,7 @@ export const AmongBooks: Story = {
   render: (args) => (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-x-6 gap-y-8">
       <CollectionTile {...args} />
-      <CollectionTile
-        {...args}
-        data={{ id: "c6", name: "Essays", count: 5, coverUrls: COVERS.slice(0, 3) }}
-      />
+      <CollectionTile {...args} data={{ id: "c6", name: "Essays", count: 5, coverUrls: COVERS.slice(0, 3) }} />
       <CollectionTile {...args} data={{ id: "c7", name: "To read", count: 0, coverUrls: [] }} />
     </div>
   ),

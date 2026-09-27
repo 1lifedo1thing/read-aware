@@ -12,13 +12,7 @@ type SettingsRowProps = {
 };
 
 /** A label/description pair with a trailing control, divided by a hairline. */
-export function SettingsRow({
-  title,
-  description,
-  control,
-  borderless,
-  className,
-}: SettingsRowProps) {
+export function SettingsRow({ title, description, control, borderless, className }: SettingsRowProps) {
   return (
     <div
       className={cn(
@@ -32,9 +26,7 @@ export function SettingsRow({
     >
       <div className="min-w-0 flex-1 basis-52">
         <p className="font-sans text-sm font-medium text-fg">{title}</p>
-        {description && (
-          <p className="mt-0.5 font-sans text-[13px] leading-5 text-fg-muted">{description}</p>
-        )}
+        {description && <p className="mt-0.5 font-sans text-[13px] leading-5 text-fg-muted">{description}</p>}
       </div>
       {control && <div className="ml-auto flex max-w-full items-center pt-0.5">{control}</div>}
     </div>

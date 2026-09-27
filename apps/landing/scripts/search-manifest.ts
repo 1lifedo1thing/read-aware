@@ -18,18 +18,11 @@ export async function contentHash(html: string): Promise<string> {
         text.push(chunk.text);
       },
     })
-    .on(
-      'meta[name="description"], link[rel="canonical"], link[hreflang], main a, main img',
-      {
-        element(el) {
-          attributes.push(
-            ["content", "href", "hreflang", "src", "alt"].map((key) =>
-              el.getAttribute(key),
-            ),
-          );
-        },
+    .on('meta[name="description"], link[rel="canonical"], link[hreflang], main a, main img', {
+      element(el) {
+        attributes.push(["content", "href", "hreflang", "src", "alt"].map((key) => el.getAttribute(key)));
       },
-    )
+    })
     .transform(new Response(html))
     .text();
   // Ignore bundle hashes, preloads, CSS and React IDs, not visible copy/links.
@@ -43,19 +36,10 @@ export async function contentHash(html: string): Promise<string> {
     .digest("hex");
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
-function isPublicPage(
-  page: unknown,
-  seen: ReadonlySet<string>,
-): page is SearchManifestPage {
-  if (
-    !isRecord(page) ||
-    typeof page.url !== "string" ||
-    typeof page.hash !== "string"
-  )
-    return false;
+function isPublicPage(page: unknown, seen: ReadonlySet<string>): page is SearchManifestPage {
+  if (!isRecord(page) || typeof page.url !== "string" || typeof page.hash !== "string") return false;
   const url = new URL(page.url);
   return !(
     url.origin !== ORIGIN ||
@@ -74,18 +58,12 @@ function isPublicPage(
 }
 
 function assertManifest(value: unknown): asserts value is SearchManifest {
-  if (
-    !isRecord(value) ||
-    value.version !== 1 ||
-    !Array.isArray(value.pages) ||
-    !value.pages.length
-  )
+  if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.pages) || !value.pages.length)
     throw new Error("Invalid search manifest");
   const pages: unknown[] = value.pages;
   const seen = new Set<string>();
   for (const page of pages) {
-    if (!isPublicPage(page, seen))
-      throw new Error("Invalid public page in search manifest");
+    if (!isPublicPage(page, seen)) throw new Error("Invalid public page in search manifest");
     seen.add(page.url);
   }
 }
@@ -98,19 +76,12 @@ export function validateManifest(value: unknown): SearchManifest {
 
 // The IndexNow CLI passes parsed JSON straight through, so both manifests are
 // validated here rather than trusted from their declared types.
-export function changedUrls(
-  previous: SearchManifest | null,
-  current: SearchManifest,
-): string[] {
+export function changedUrls(previous: SearchManifest | null, current: SearchManifest): string[] {
   validateManifest(current);
   if (previous) validateManifest(previous);
-  const old = new Map(
-    (previous?.pages ?? []).map((page) => [page.url, page.hash]),
-  );
+  const old = new Map((previous?.pages ?? []).map((page) => [page.url, page.hash]));
   const now = new Map(current.pages.map((page) => [page.url, page.hash]));
-  return [...new Set([...now.keys(), ...old.keys()])]
-    .filter((url) => old.get(url) !== now.get(url))
-    .sort();
+  return [...new Set([...now.keys(), ...old.keys()])].filter((url) => old.get(url) !== now.get(url)).sort();
 }
 
 export function submissionUrls(
@@ -120,8 +91,6 @@ export function submissionUrls(
 ): string[] {
   // Deployment and notification can succeed independently. Diff against the
   // last acknowledged manifest too, so a later deploy retries missed changes.
-  const pending = acknowledged
-    ? changedUrls(acknowledged, current)
-    : current.pages.map((page) => page.url);
+  const pending = acknowledged ? changedUrls(acknowledged, current) : current.pages.map((page) => page.url);
   return [...new Set([...changedUrls(deployed, current), ...pending])].sort();
 }

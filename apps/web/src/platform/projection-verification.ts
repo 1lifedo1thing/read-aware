@@ -14,7 +14,11 @@ let active: Promise<ProjectionReport> | undefined;
 export function verifyProjectionReport(origin: DomainActor = "user"): Promise<ProjectionReport> {
   if (!active) {
     origin = causalActor(origin);
-    active = invoke<ProjectionReport>("verify_projections").then(report => stampEventCause(report, origin)).finally(() => { active = undefined; });
+    active = invoke<ProjectionReport>("verify_projections")
+      .then((report) => stampEventCause(report, origin))
+      .finally(() => {
+        active = undefined;
+      });
   }
   return active;
 }

@@ -62,33 +62,54 @@ describe("ensureUsableToc with collapsed targets (a converter that lost its anch
   const posHref = (fid: number) => `kindle:pos:fid:${fid.toString(32).toUpperCase().padStart(4, "0")}:off:0000000000`;
   type Line = string | { link: string };
   const textNode = (text: string) => ({ nodeType: 3, textContent: text });
-  const lineNodes = (line: Line) => typeof line === "string" ? [textNode(line)]
-    : [{ nodeType: 1, tagName: "a", getAttribute: (name: string) => (name === "href" ? "#x" : null), childNodes: [textNode(line.link)] }];
+  const lineNodes = (line: Line) =>
+    typeof line === "string"
+      ? [textNode(line)]
+      : [
+          {
+            nodeType: 1,
+            tagName: "a",
+            getAttribute: (name: string) => (name === "href" ? "#x" : null),
+            childNodes: [textNode(line.link)],
+          },
+        ];
   /** A leaf block whose lines are joined by `<br>`, as converters set them;
    *  a `{ link }` line is an anchor with an href, as on a contents page. */
   const block = (tagName: string, ...lines: Line[]) => ({
-    tagName, textContent: lines.map((line) => (typeof line === "string" ? line : line.link)).join(""), children: [] as unknown[],
+    tagName,
+    textContent: lines.map((line) => (typeof line === "string" ? line : line.link)).join(""),
+    children: [] as unknown[],
     childNodes: lines.flatMap((line, index) => [
       ...(index ? [{ nodeType: 1, tagName: "br", getAttribute: () => null, childNodes: [] }] : []),
       ...lineNodes(line),
     ]),
-    matches: (selector: string) => selector.split(",").map((part) => part.trim()).includes(tagName),
+    matches: (selector: string) =>
+      selector
+        .split(",")
+        .map((part) => part.trim())
+        .includes(tagName),
   });
   /** The slice of a parsed document the repair reads: body blocks, plus the
    *  heading lookup `labelFromDocument` would use. */
-  const docOf = (...blocks: ReturnType<typeof block>[]): Document => ({
-    body: { querySelectorAll: () => blocks, children: blocks },
-    querySelectorAll: (selector: string) => (selector.startsWith("h1") ? blocks.filter((b) => /^h[1-3]$/.test(b.tagName)) : []),
-  }) as unknown as Document;
-  const chapter = (number: string, ...title: string[]) => docOf(block("h2", number), ...title.map((line) => block("p", line)));
+  const docOf = (...blocks: ReturnType<typeof block>[]): Document =>
+    ({
+      body: { querySelectorAll: () => blocks, children: blocks },
+      querySelectorAll: (selector: string) =>
+        selector.startsWith("h1") ? blocks.filter((b) => /^h[1-3]$/.test(b.tagName)) : [],
+    }) as unknown as Document;
+  const chapter = (number: string, ...title: string[]) =>
+    docOf(block("h2", number), ...title.map((line) => block("p", line)));
   const collapsedBook = () => {
     const docs: Document[] = [
       docOf(),
       // The contents page links each chapter, number and title in one paragraph.
-      docOf(block("p", "CONTENTS"), block("p", { link: "Introduction: How This Book Came to Be" }),
+      docOf(
+        block("p", "CONTENTS"),
+        block("p", { link: "Introduction: How This Book Came to Be" }),
         block("p", { link: "CHAPTER ONE" }, { link: "Childhood: Abandoned and Chosen" }),
         block("p", { link: "CHAPTER TWO" }, { link: "Odd Couple: The Two Steves" }),
-        block("p", { link: "CHAPTER THREE" }, { link: "The Dropout: Turn On, Tune In . . ." })),
+        block("p", { link: "CHAPTER THREE" }, { link: "The Dropout: Turn On, Tune In . . ." }),
+      ),
       chapter("INTRODUCTION", "How This Book Came to Be", "In the early summer of 2004, I got a phone call."),
       chapter("CHAPTER ONE", "CHILDHOOD", "Abandoned and Chosen"),
       chapter("CHAPTER TWO", "ODD COUPLE", "The Two Steves"),
@@ -100,8 +121,16 @@ describe("ensureUsableToc with collapsed targets (a converter that lost its anch
     return {
       toc: [
         { label: "Introduction: How This Book Came to Be", href: posHref(0) },
-        { label: "CHAPTER ONE", href: posHref(0), subitems: [{ label: "Childhood: Abandoned and Chosen", href: posHref(0) }] },
-        { label: "CHAPTER TWO", href: posHref(0), subitems: [{ label: "Odd Couple: The Two Steves", href: posHref(0) }] },
+        {
+          label: "CHAPTER ONE",
+          href: posHref(0),
+          subitems: [{ label: "Childhood: Abandoned and Chosen", href: posHref(0) }],
+        },
+        {
+          label: "CHAPTER TWO",
+          href: posHref(0),
+          subitems: [{ label: "Odd Couple: The Two Steves", href: posHref(0) }],
+        },
         // A chapter whose nav splits number, title and subtitle into three entries.
         { label: "CHAPTER THREE", href: posHref(0) },
         { label: "The Dropout:", href: posHref(0) },
@@ -123,7 +152,15 @@ describe("ensureUsableToc with collapsed targets (a converter that lost its anch
     const book = collapsedBook();
     expect(await ensureUsableToc(book)).toBe(true);
     expect(book.toc.map((item) => item.href)).toEqual([
-      posHref(2), posHref(3), posHref(4), posHref(5), posHref(5), posHref(5), posHref(0), posHref(6), posHref(7),
+      posHref(2),
+      posHref(3),
+      posHref(4),
+      posHref(5),
+      posHref(5),
+      posHref(5),
+      posHref(0),
+      posHref(6),
+      posHref(7),
     ]);
     // A chapter's title line lands with its number; the hierarchy is kept in place.
     expect(book.toc[1]?.subitems?.[0]?.href).toBe(posHref(3));
@@ -139,8 +176,10 @@ describe("ensureUsableToc with collapsed targets (a converter that lost its anch
     const book = {
       ...collapsedBook(),
       toc: labels.map((label) => ({ label: `CHAPTER ${label}`, href: posHref(0) })),
-      sections: [docOf(block("p", "Contents"), ...labels.map((label) => block("p", `CHAPTER ${label}`))),
-        ...labels.map((label) => chapter(`CHAPTER ${label}`, "A title"))].map((doc, index) => ({ id: index, createDocument: () => doc })),
+      sections: [
+        docOf(block("p", "Contents"), ...labels.map((label) => block("p", `CHAPTER ${label}`))),
+        ...labels.map((label) => chapter(`CHAPTER ${label}`, "A title")),
+      ].map((doc, index) => ({ id: index, createDocument: () => doc })),
     };
     expect(await ensureUsableToc(book)).toBe(true);
     expect(book.toc.map((item) => item.href)).toEqual(labels.map((_, index) => posHref(index + 1)));
@@ -165,7 +204,10 @@ describe("ensureUsableToc with collapsed targets (a converter that lost its anch
 
   test("a book too large to synthesize still gets its collapsed entries repaired", async () => {
     const book = collapsedBook();
-    const filler = Array.from({ length: 70 }, (_, index) => ({ id: 100 + index, createDocument: () => docOf(block("p", `Page ${index}`)) }));
+    const filler = Array.from({ length: 70 }, (_, index) => ({
+      id: 100 + index,
+      createDocument: () => docOf(block("p", `Page ${index}`)),
+    }));
     book.sections = [...book.sections, ...filler];
     expect(await ensureUsableToc(book)).toBe(true);
     expect(book.toc.map((item) => item.href).slice(0, 3)).toEqual([posHref(2), posHref(3), posHref(4)]);

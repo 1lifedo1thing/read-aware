@@ -14,25 +14,32 @@ test("one activity group across prose and images preserves visible content order
   const before = structuredClone(parts);
 
   expect(groupChatActivity(parts)).toEqual([
-    intro, { type: "activity", parts: [search, reasoning, fetch] }, image, reply,
+    intro,
+    { type: "activity", parts: [search, reasoning, fetch] },
+    image,
+    reply,
   ]);
   expect(parts).toEqual(before);
 });
 
 test("a pending interaction stays visible while its calling tool is grouped", () => {
   const prompt: ChatAssistantPart = {
-    type: "interaction", id: "confirm", state: "pending",
+    type: "interaction",
+    id: "confirm",
+    state: "pending",
     request: { id: "confirm", threadKey: "global:test", kind: "permission", action: "delete-book", subject: "Example" },
   };
   const running: ChatToolPart = { type: "tool", id: "delete", tool: "delete_book", state: "running" };
   expect(groupChatActivity([search, running, prompt])).toEqual([
-    { type: "activity", parts: [search, running] }, prompt,
+    { type: "activity", parts: [search, running] },
+    prompt,
   ]);
 });
 
 test("turns without tools retain their standalone reasoning and legacy text presentation", () => {
   const parts: ChatAssistantPart[] = [
-    { type: "thinking", text: "Check the passage." }, { type: "text", text: "The answer." },
+    { type: "thinking", text: "Check the passage." },
+    { type: "text", text: "The answer." },
   ];
   expect(groupChatActivity(parts)).toBe(parts);
   expect(groupChatActivity([])).toEqual([]);

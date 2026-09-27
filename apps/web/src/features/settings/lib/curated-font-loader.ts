@@ -69,7 +69,8 @@ async function loadFaceBytes(face: CuratedFontFace): Promise<ArrayBuffer> {
   const res = await fetch(face.url, { signal: AbortSignal.timeout(FACE_FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`Font fetch failed (${res.status}) for ${face.url}`);
   const bytes = await res.arrayBuffer();
-  if (database) await idbPut(database, face.url, bytes).catch((error: unknown) => log.warn("Could not cache a font face", error));
+  if (database)
+    await idbPut(database, face.url, bytes).catch((error: unknown) => log.warn("Could not cache a font face", error));
   return bytes;
 }
 
@@ -118,11 +119,7 @@ function reportProgress(fontId: string, progress: CuratedFontProgress): void {
 // hundreds of requests (and IndexedDB writes) at once.
 const FETCH_CONCURRENCY = 8;
 
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T) => Promise<R>,
-): Promise<R[]> {
+async function mapLimit<T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> {
   const results = new Array<R>(items.length);
   let cursor = 0;
   async function run(): Promise<void> {
@@ -191,10 +188,7 @@ function memoKey(fontId: string, weights?: readonly number[]): string {
  * one download and one set of blob URLs; overlapping sets still share bytes
  * through the IndexedDB cache. Failures are NOT memoized: re-selecting retries.
  */
-export function ensureCuratedFontFaceCss(
-  fontId: string,
-  weights?: readonly number[],
-): Promise<string> {
+export function ensureCuratedFontFaceCss(fontId: string, weights?: readonly number[]): Promise<string> {
   const key = memoKey(fontId, weights);
   let pending = faceCssMemo.get(key);
   if (!pending) {
@@ -208,10 +202,7 @@ export function ensureCuratedFontFaceCss(
 }
 
 /** Inject a curated font's `@font-face` into the app document (UI + preview). */
-export async function injectCuratedFontFace(
-  fontId: string,
-  weights?: readonly number[],
-): Promise<void> {
+export async function injectCuratedFontFace(fontId: string, weights?: readonly number[]): Promise<void> {
   const css = await ensureCuratedFontFaceCss(fontId, weights);
   if (!css) return;
   const elementId = `curated-font-${fontId}`;

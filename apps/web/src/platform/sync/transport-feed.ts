@@ -82,9 +82,7 @@ export function createTransportFeedRelay(options: TransportFeedOptions): SyncRel
    * in deterministic order (device id ascending, batch index ascending), so
    * two extensions from the same remote state produce the same journal.
    */
-  async function extendJournal(
-    session: PluginSyncTransportSession,
-  ): Promise<TransportFeedJournal> {
+  async function extendJournal(session: PluginSyncTransportSession): Promise<TransportFeedJournal> {
     const journal = loadJournal();
     const listing = await session.listEventBatches();
     const counts = knownCounts(journal);
@@ -126,15 +124,10 @@ export function createTransportFeedRelay(options: TransportFeedOptions): SyncRel
         throw error;
       }
       ownNext = index + 1;
-      return Object.fromEntries(
-        events.map((event, position) => [event.id, index * BATCH_SEQ_STRIDE + position]),
-      );
+      return Object.fromEntries(events.map((event, position) => [event.id, index * BATCH_SEQ_STRIDE + position]));
     },
 
-    async pullEvents(
-      after: number,
-      limit: number,
-    ): Promise<{ events: SealedEventWire[]; next: number }> {
+    async pullEvents(after: number, limit: number): Promise<{ events: SealedEventWire[]; next: number }> {
       const session = await options.session();
       let journal = loadJournal();
       let position = after < 0 ? 0 : after;

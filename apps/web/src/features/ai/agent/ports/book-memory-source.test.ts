@@ -6,18 +6,37 @@ import * as source from "../../../../domain/book-digest";
 import { createBookMemoryPort } from "./book-memory-port";
 
 const restores: (() => void)[] = [];
-afterEach(() => { for (const restore of restores.splice(0).reverse()) restore(); });
-function own<T extends { mockRestore(): void }>(spy: T): T { restores.push(() => spy.mockRestore()); return spy; }
-const row = (contentVersion?: string) => ({ bookId: "b", chapterIndex: 0, chapterHref: "chapter", contentVersion,
-  summary: "Earlier edition", charactersJson: "[]", relationsJson: "[]", digestVersion: CHAPTER_DIGEST_VERSION });
+afterEach(() => {
+  for (const restore of restores.splice(0).reverse()) restore();
+});
+function own<T extends { mockRestore(): void }>(spy: T): T {
+  restores.push(() => spy.mockRestore());
+  return spy;
+}
+const row = (contentVersion?: string) => ({
+  bookId: "b",
+  chapterIndex: 0,
+  chapterHref: "chapter",
+  contentVersion,
+  summary: "Earlier edition",
+  charactersJson: "[]",
+  relationsJson: "[]",
+  digestVersion: CHAPTER_DIGEST_VERSION,
+});
 
 test("production book memory reads exclude old, unversioned and outdated-format sources before graph/prompt consumers", async () => {
   own(spyOn(environment, "isTauri").mockReturnValue(true));
   own(spyOn(source, "getDigestContentVersion").mockResolvedValue("sha256:current"));
-  const native = own(spyOn(ipc, "invoke").mockResolvedValue([row("sha256:old"), { ...row(), chapterIndex: 1 }, { ...row("sha256:current"), chapterIndex: 2 },
-    { ...row("sha256:current"), chapterIndex: 3, digestVersion: CHAPTER_DIGEST_VERSION - 1 }]));
+  const native = own(
+    spyOn(ipc, "invoke").mockResolvedValue([
+      row("sha256:old"),
+      { ...row(), chapterIndex: 1 },
+      { ...row("sha256:current"), chapterIndex: 2 },
+      { ...row("sha256:current"), chapterIndex: 3, digestVersion: CHAPTER_DIGEST_VERSION - 1 },
+    ]),
+  );
   const result = await createBookMemoryPort().listDigests("b");
-  expect(result.map(item => item.chapterIndex)).toEqual([2]);
+  expect(result.map((item) => item.chapterIndex)).toEqual([2]);
   expect(native).toHaveBeenCalledWith("chapter_digests_list", { bookId: "b", contentVersion: "sha256:current" });
 });
 

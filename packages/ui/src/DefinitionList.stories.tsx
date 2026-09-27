@@ -51,5 +51,11 @@ export const LongIdentifiers: Story = {
       { label: "UnbrokenLabel".repeat(8), value: "UnbrokenValue".repeat(8) },
     ],
   },
-  decorators: [(Story) => <div style={{ width: 320, maxWidth: "100%" }}><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320, maxWidth: "100%" }}>
+        <Story />
+      </div>
+    ),
+  ],
 };

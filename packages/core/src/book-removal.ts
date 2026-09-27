@@ -9,11 +9,20 @@ export type BookRemovalCleanupPage = {
   nextCursor: string | null;
 };
 
-export function normalizeBookRemovalCleanupQuery(input: BookRemovalCleanupQuery = {}): { after: string | null; limit: number } {
-  if (!input || typeof input !== "object" || Array.isArray(input)) throw new AppError("library/invalid-cleanup-query", "Expected a cleanup query object");
-  const limit = input.limit ?? 50, after = input.after ?? null;
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100
-    || (after !== null && (typeof after !== "string" || !after.trim() || after.length > 256))) {
+export function normalizeBookRemovalCleanupQuery(input: BookRemovalCleanupQuery = {}): {
+  after: string | null;
+  limit: number;
+} {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw new AppError("library/invalid-cleanup-query", "Expected a cleanup query object");
+  const limit = input.limit ?? 50,
+    after = input.after ?? null;
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    (after !== null && (typeof after !== "string" || !after.trim() || after.length > 256))
+  ) {
     throw new AppError("library/invalid-cleanup-query", "Expected limit 1-100 and an optional book ID cursor");
   }
   return { limit, after };
@@ -30,8 +39,12 @@ export type BookRemovalReceipt = BookFileReleaseReceipt & {
 };
 
 export function normalizeBookRemovalIds(input: unknown): string[] {
-  if (!Array.isArray(input) || input.length < 1 || input.length > MAX_BOOK_REMOVAL_BATCH
-    || Array.from(input).some(id => typeof id !== "string" || !id.trim() || id.length > 256)) {
+  if (
+    !Array.isArray(input) ||
+    input.length < 1 ||
+    input.length > MAX_BOOK_REMOVAL_BATCH ||
+    Array.from(input).some((id) => typeof id !== "string" || !id.trim() || id.length > 256)
+  ) {
     throw new AppError("library/invalid-removal", "Expected 1-1000 non-empty book IDs of at most 256 characters");
   }
   return [...new Set(input as string[])];

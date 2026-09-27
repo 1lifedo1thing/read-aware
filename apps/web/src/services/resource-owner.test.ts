@@ -3,34 +3,71 @@ import { AppError, BOOK_IMPORT_FORMATS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE } 
 import { ResourceOwner, type ResourceAdapter, type NativeResource } from "./resource-owner";
 
 function fixture(authorizeBook: (id: string) => void = () => {}) {
-  const files = new Map<string, Uint8Array>(), released: string[] = [], errors: unknown[] = [];
-  let count = 0, now = 0;
+  const files = new Map<string, Uint8Array>(),
+    released: string[] = [],
+    errors: unknown[] = [];
+  let count = 0,
+    now = 0;
   const make = (name = "file.bin", bytes = new Uint8Array()): NativeResource => {
-    const id = `native-${++count}`; files.set(id, bytes); return { id, name, size: bytes.length, mimeType: "application/octet-stream" };
+    const id = `native-${++count}`;
+    files.set(id, bytes);
+    return { id, name, size: bytes.length, mimeType: "application/octet-stream" };
   };
   const adapter: ResourceAdapter = {
-    pick: async () => [], openBook: async () => make("book.epub", new Uint8Array([1, 2, 3])),
+    pick: async () => [],
+    openBook: async () => make("book.epub", new Uint8Array([1, 2, 3])),
     openCover: async () => make("cover.png", new Uint8Array([1, 2, 3])),
     copyImage: async () => ({ copied: true, width: 1, height: 1 }),
     imagePreview: async () => new Uint8Array([1, 2, 3]).buffer,
-    create: async options => ({ ...make(options.name), mimeType: options.mimeType! }),
+    create: async (options) => ({ ...make(options.name), mimeType: options.mimeType! }),
     append: async (id, offset, bytes) => {
-      const previous = files.get(id)!; if (previous.length !== offset) throw Error("offset");
-      const next = new Uint8Array(offset + bytes.length); next.set(previous); next.set(bytes, offset); files.set(id, next); return next.length;
+      const previous = files.get(id)!;
+      if (previous.length !== offset) throw Error("offset");
+      const next = new Uint8Array(offset + bytes.length);
+      next.set(previous);
+      next.set(bytes, offset);
+      files.set(id, next);
+      return next.length;
     },
     read: async (id, offset, length) => new Uint8Array(files.get(id)!.slice(offset, offset + length)).buffer,
-    commit: async () => {}, commitContext: async () => { throw Error("Unexpected context seal"); }, save: async () => false,
-    release: async id => { released.push(id); files.delete(id); },
+    commit: async () => {},
+    commitContext: async () => {
+      throw Error("Unexpected context seal");
+    },
+    save: async () => false,
+    release: async (id) => {
+      released.push(id);
+      files.delete(id);
+    },
   };
-  const owner = new ResourceOwner(adapter, error => errors.push(error), authorizeBook, () => now);
-  return { owner, adapter, files, released, errors, make, time: (value: number) => { now = value; } };
+  const owner = new ResourceOwner(
+    adapter,
+    (error) => errors.push(error),
+    authorizeBook,
+    () => now,
+  );
+  return {
+    owner,
+    adapter,
+    files,
+    released,
+    errors,
+    make,
+    time: (value: number) => {
+      now = value;
+    },
+  };
 }
 
 test("file picker accepts the library format catalog including compound suffixes and rejects malformed filters", async () => {
-  const f = fixture(), calls: unknown[] = [];
-  f.adapter.pick = async options => { calls.push(options); return []; };
+  const f = fixture(),
+    calls: unknown[] = [];
+  f.adapter.pick = async (options) => {
+    calls.push(options);
+    return [];
+  };
   try {
-    const options = { multiple: false, extensions: BOOK_IMPORT_FORMATS.flatMap(format => format.extensions) };
+    const options = { multiple: false, extensions: BOOK_IMPORT_FORMATS.flatMap((format) => format.extensions) };
     expect(options.extensions).toContain("fb2.zip");
     expect(await f.owner.pick(options)).toEqual({ cancelled: true, resources: [] });
     expect(calls).toEqual([options]);
@@ -38,26 +75,40 @@ test("file picker accepts the library format catalog including compound suffixes
       await expect(f.owner.pick({ extensions: [extension] })).rejects.toMatchObject({ code: "ui/invalid-target" });
     }
     expect(calls).toHaveLength(1);
-  } finally { await f.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+  }
 });
 
 test("directory grants isolate owners, snapshot inputs and files, expire and release independently", async () => {
-  const a = fixture(), b = fixture(), calls: unknown[] = [];
+  const a = fixture(),
+    b = fixture(),
+    calls: unknown[] = [];
   a.adapter.directories = {
     pick: async () => ({ id: "native-dir", name: "chosen" }),
-    list: async (id, query) => { calls.push([id, query]); return { entries: [], nextCursor: null, omittedCount: 1 }; },
-    openFile: async (id, path) => { calls.push([id, path]); return a.make("a.txt", new Uint8Array([7])); },
-    release: async id => { calls.push(["release", id]); },
+    list: async (id, query) => {
+      calls.push([id, query]);
+      return { entries: [], nextCursor: null, omittedCount: 1 };
+    },
+    openFile: async (id, path) => {
+      calls.push([id, path]);
+      return a.make("a.txt", new Uint8Array([7]));
+    },
+    release: async (id) => {
+      calls.push(["release", id]);
+    },
   };
   try {
     const { directory } = await a.owner.pickDirectory();
     expect(directory!.id).not.toBe("native-dir");
     await expect(b.owner.listDirectory(directory!.id)).rejects.toMatchObject({ code: "fs/not-found" });
-    const query = { relativePath: "child", limit: 1 }, listing = a.owner.listDirectory(directory!.id, query);
+    const query = { relativePath: "child", limit: 1 },
+      listing = a.owner.listDirectory(directory!.id, query);
     query.relativePath = "../escape";
     expect(await listing).toMatchObject({ omittedCount: 1 });
     expect(calls[0]).toEqual(["native-dir", { relativePath: "child", limit: 1 }]);
-    for (const bad of ["../secret", "/etc/passwd", "a\\b", "C:secret", "a/./b", ""]) expect(() => a.owner.openDirectoryFile(directory!.id, bad)).toThrow();
+    for (const bad of ["../secret", "/etc/passwd", "a\\b", "C:secret", "a/./b", ""])
+      expect(() => a.owner.openDirectoryFile(directory!.id, bad)).toThrow();
     const file = await a.owner.openDirectoryFile(directory!.id, "child/a.txt");
     expect(file).toMatchObject({ source: "picked", state: "ready", size: 1 });
     await a.owner.releaseDirectory(directory!.id);
@@ -66,29 +117,49 @@ test("directory grants isolate owners, snapshot inputs and files, expire and rel
     const second = (await a.owner.pickDirectory()).directory!;
     a.time(second.expiresAt);
     await expect(a.owner.listDirectory(second.id)).rejects.toMatchObject({ code: "fs/not-found" });
-  } finally { await a.owner.dispose(); await b.owner.dispose(); }
+  } finally {
+    await a.owner.dispose();
+    await b.owner.dispose();
+  }
 });
 
 test("directory retirement drains late picker and file acquisition, rejects extra grants, cleans native handles", async () => {
-  const f = fixture(), picked = Promise.withResolvers<{ id: string; name: string }>(), released: string[] = [];
+  const f = fixture(),
+    picked = Promise.withResolvers<{ id: string; name: string }>(),
+    released: string[] = [];
   f.adapter.directories = {
-    pick: () => picked.promise, list: async () => ({ entries: [], nextCursor: null, omittedCount: 0 }),
-    openFile: async () => f.make(), release: async id => { released.push(id); },
+    pick: () => picked.promise,
+    list: async () => ({ entries: [], nextCursor: null, omittedCount: 0 }),
+    openFile: async () => f.make(),
+    release: async (id) => {
+      released.push(id);
+    },
   };
-  const pending = f.owner.pickDirectory().catch(error => error);
-  await Bun.sleep(0); const retired = f.owner.dispose();
+  const pending = f.owner.pickDirectory().catch((error) => error);
+  await Bun.sleep(0);
+  const retired = f.owner.dispose();
   picked.resolve({ id: "late", name: "folder" });
-  expect(await pending).toMatchObject({ code: "ui/superseded" }); await retired;
+  expect(await pending).toMatchObject({ code: "ui/superseded" });
+  await retired;
   expect(released).toEqual(["late"]);
-  const second = fixture(), file = Promise.withResolvers<NativeResource>();
-  second.adapter.directories = { ...f.adapter.directories, pick: async () => ({ id: "dir", name: "folder" }), openFile: () => file.promise };
+  const second = fixture(),
+    file = Promise.withResolvers<NativeResource>();
+  second.adapter.directories = {
+    ...f.adapter.directories,
+    pick: async () => ({ id: "dir", name: "folder" }),
+    openFile: () => file.promise,
+  };
   const refs = [];
   for (let i = 0; i < 4; i++) refs.push((await second.owner.pickDirectory()).directory!);
   await expect(second.owner.pickDirectory()).rejects.toMatchObject({ code: "ui/unavailable" });
-  const opening = second.owner.openDirectoryFile(refs[0]!.id, "file").catch(error => error);
-  await Bun.sleep(0); const stopped = second.owner.dispose(); file.resolve(second.make());
-  expect(await opening).toMatchObject({ code: "ui/superseded" }); await stopped;
-  expect(second.files.size).toBe(0); expect(released).toHaveLength(5);
+  const opening = second.owner.openDirectoryFile(refs[0]!.id, "file").catch((error) => error);
+  await Bun.sleep(0);
+  const stopped = second.owner.dispose();
+  file.resolve(second.make());
+  expect(await opening).toMatchObject({ code: "ui/superseded" });
+  await stopped;
+  expect(second.files.size).toBe(0);
+  expect(released).toHaveLength(5);
 });
 
 test("host drops copy bounded chunks to immutable owned snapshots and clean partial batches", async () => {
@@ -96,94 +167,178 @@ test("host drops copy bounded chunks to immutable owned snapshots and clean part
   try {
     const bytes = new Uint8Array(RESOURCE_MAX_CHUNK + 2).fill(9);
     const refs = await f.owner.importDroppedFiles([new File([bytes], "large.bin"), new File([], "empty.txt")]);
-    expect(refs.map(ref => [ref.name, ref.size, ref.state, ref.source])).toEqual([["large.bin", bytes.length, "ready", "picked"], ["empty.txt", 0, "ready", "picked"]]);
+    expect(refs.map((ref) => [ref.name, ref.size, ref.state, ref.source])).toEqual([
+      ["large.bin", bytes.length, "ready", "picked"],
+      ["empty.txt", 0, "ready", "picked"],
+    ]);
     expect([...new Uint8Array((await f.owner.read(refs[0]!.id, RESOURCE_MAX_CHUNK, 2)).data)]).toEqual([9, 9]);
     for (const ref of refs) await f.owner.release(ref.id);
-    f.adapter.commit = async () => { throw Error("disk failed"); };
-    await expect(f.owner.importDroppedFiles([new File(["a"], "a.txt"), new File(["b"], "b.txt")])).rejects.toThrow("disk failed");
+    f.adapter.commit = async () => {
+      throw Error("disk failed");
+    };
+    await expect(f.owner.importDroppedFiles([new File(["a"], "a.txt"), new File(["b"], "b.txt")])).rejects.toThrow(
+      "disk failed",
+    );
     expect(f.files.size).toBe(0);
     const stop = new AbortController();
-    f.adapter.append = async () => { stop.abort(Error("view hidden")); return 1; };
+    f.adapter.append = async () => {
+      stop.abort(Error("view hidden"));
+      return 1;
+    };
     await expect(f.owner.importDroppedFiles([new File(["a"], "a.txt")], stop.signal)).rejects.toThrow("view hidden");
     expect(f.files.size).toBe(0);
-  } finally { await f.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+  }
 });
 
 test("associated opening requires an owned sealed document and rechecks before dispatch, preserving accepted effects", async () => {
-  const f = fixture(), other = fixture(), signal = new AbortController(); let dispatched = 0;
-  f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { beforeWrite!(); dispatched++; return false; };
+  const f = fixture(),
+    other = fixture(),
+    signal = new AbortController();
+  let dispatched = 0;
+  f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => {
+    beforeWrite!();
+    dispatched++;
+    return false;
+  };
   try {
     const text = await f.owner.create({ name: "note.txt" });
     expect(await f.owner.conditions({ operation: "resources.openAssociated", resourceId: text.id })).toEqual([
-      { kind: "object", state: "unavailable", reason: "resource-not-sealed", errorCode: "ui/invalid-target" }]);
+      { kind: "object", state: "unavailable", reason: "resource-not-sealed", errorCode: "ui/invalid-target" },
+    ]);
 
     await expect(f.owner.openAssociated(text.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
     await f.owner.commit(text.id);
-    expect((await f.owner.conditions({ operation: "resources.openAssociated", resourceId: text.id })).map(item => item.reason)).toContain("resource-associated-app-not-checked");
-    expect((await other.owner.conditions({ operation: "resources.save", resourceId: text.id }))[0]?.errorCode).toBe("fs/not-found");
+    expect(
+      (await f.owner.conditions({ operation: "resources.openAssociated", resourceId: text.id })).map(
+        (item) => item.reason,
+      ),
+    ).toContain("resource-associated-app-not-checked");
+    expect((await other.owner.conditions({ operation: "resources.save", resourceId: text.id }))[0]?.errorCode).toBe(
+      "fs/not-found",
+    );
     expect(dispatched).toBe(0);
 
     await expect(other.owner.openAssociated(text.id)).rejects.toMatchObject({ code: "fs/not-found" });
     expect(await f.owner.openAssociated(text.id)).toEqual({ opened: false });
-    const executable = await f.owner.create({ name: "run.exe" }); await f.owner.commit(executable.id);
+    const executable = await f.owner.create({ name: "run.exe" });
+    await f.owner.commit(executable.id);
     await expect(f.owner.openAssociated(executable.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
     expect(dispatched).toBe(1);
-    f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { signal.abort(Error("cancel")); beforeWrite!(); dispatched++; return true; };
-    await expect(f.owner.openAssociated(text.id, signal.signal)).rejects.toThrow("cancel"); expect(dispatched).toBe(1);
+    f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => {
+      signal.abort(Error("cancel"));
+      beforeWrite!();
+      dispatched++;
+      return true;
+    };
+    await expect(f.owner.openAssociated(text.id, signal.signal)).rejects.toThrow("cancel");
+    expect(dispatched).toBe(1);
     const late = new AbortController();
-    f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { beforeWrite!(); dispatched++; late.abort(); return true; };
+    f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => {
+      beforeWrite!();
+      dispatched++;
+      late.abort();
+      return true;
+    };
     expect(await f.owner.openAssociated(text.id, late.signal)).toEqual({ opened: true });
-    f.adapter.openAssociated = async () => { throw Error("No associated app"); };
+    f.adapter.openAssociated = async () => {
+      throw Error("No associated app");
+    };
     await expect(f.owner.openAssociated(text.id)).rejects.toThrow("No associated app");
-  } finally { await f.owner.dispose(); await other.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+    await other.owner.dispose();
+  }
 });
 
 test("image previews use only owned sealed non-book resources and recheck expiry and cancellation", async () => {
-  const f = fixture(), other = fixture();
+  const f = fixture(),
+    other = fixture();
   const calls: string[] = [];
-  f.adapter.imagePreview = async id => { calls.push(id); return new Uint8Array([1, 2, 3]).buffer; };
+  f.adapter.imagePreview = async (id) => {
+    calls.push(id);
+    return new Uint8Array([1, 2, 3]).buffer;
+  };
   try {
     const ref = await f.owner.create({ name: "image.bin" });
     await expect(f.owner.imagePreview(ref.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
-    await f.owner.append(ref.id, 0, new Uint8Array([3, 2, 1])); await f.owner.commit(ref.id);
+    await f.owner.append(ref.id, 0, new Uint8Array([3, 2, 1]));
+    await f.owner.commit(ref.id);
     await expect(other.owner.imagePreview(ref.id)).rejects.toMatchObject({ code: "fs/not-found" });
     const book = await f.owner.openBook("book");
     await expect(f.owner.imagePreview(book!.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
     const blob = await f.owner.imagePreview(ref.id);
-    expect(blob.type).toBe("image/png"); expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([1, 2, 3]);
-    expect(calls).toHaveLength(1); expect(calls[0]).toStartWith("native-");
+    expect(blob.type).toBe("image/png");
+    expect([...new Uint8Array(await blob.arrayBuffer())]).toEqual([1, 2, 3]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toStartWith("native-");
     const abort = new AbortController();
-    f.adapter.imagePreview = async () => { abort.abort(Error("cancelled")); return new ArrayBuffer(1); };
+    f.adapter.imagePreview = async () => {
+      abort.abort(Error("cancelled"));
+      return new ArrayBuffer(1);
+    };
     await expect(f.owner.imagePreview(ref.id, abort.signal)).rejects.toThrow("cancelled");
-    f.adapter.imagePreview = async () => { f.time(ref.expiresAt); return new ArrayBuffer(1); };
+    f.adapter.imagePreview = async () => {
+      f.time(ref.expiresAt);
+      return new ArrayBuffer(1);
+    };
     await expect(f.owner.imagePreview(ref.id)).rejects.toMatchObject({ code: "fs/not-found" });
-  } finally { await f.owner.dispose(); await other.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+    await other.owner.dispose();
+  }
 });
 
 test("image acquisition serializes source reads, seals chunks, checks scope and cleans failed copies", async () => {
-  const f = fixture(id => { if (id !== "book") throw new AppError("memory/forbidden", "Wrong book"); });
+  const f = fixture((id) => {
+    if (id !== "book") throw new AppError("memory/forbidden", "Wrong book");
+  });
   try {
     expect(() => f.owner.importImage("other", async () => new Blob(["pixels"]))).toThrow();
     const bytes = new Uint8Array(RESOURCE_MAX_CHUNK + 3).fill(17);
     const resource = await f.owner.importImage("book", async () => new Blob([bytes], { type: "image/png" }));
     expect(resource).toMatchObject({ source: "image", state: "ready", size: bytes.length, name: "illustration.png" });
-    expect(await f.owner.read(resource!.id, RESOURCE_MAX_CHUNK, 3)).toMatchObject({ eof: true, nextOffset: bytes.length });
-    await expect(f.owner.append(resource!.id, bytes.length, new Uint8Array([1]))).rejects.toMatchObject({ code: "ui/invalid-target" });
-    await f.owner.release(resource!.id); expect(f.files.size).toBe(0);
-    f.adapter.commit = async () => { throw new AppError("fs/permission-denied", "Cannot seal"); };
-    await expect(f.owner.importImage("book", async () => new Blob(["pixels"]))).rejects.toMatchObject({ code: "fs/permission-denied" });
+    expect(await f.owner.read(resource!.id, RESOURCE_MAX_CHUNK, 3)).toMatchObject({
+      eof: true,
+      nextOffset: bytes.length,
+    });
+    await expect(f.owner.append(resource!.id, bytes.length, new Uint8Array([1]))).rejects.toMatchObject({
+      code: "ui/invalid-target",
+    });
+    await f.owner.release(resource!.id);
+    expect(f.files.size).toBe(0);
+    f.adapter.commit = async () => {
+      throw new AppError("fs/permission-denied", "Cannot seal");
+    };
+    await expect(f.owner.importImage("book", async () => new Blob(["pixels"]))).rejects.toMatchObject({
+      code: "fs/permission-denied",
+    });
     expect(f.files.size).toBe(0);
     const abort = new AbortController();
-    await expect(f.owner.importImage("book", async () => { abort.abort(Error("retired")); return new Blob(["pixels"]); }, abort.signal)).rejects.toThrow("retired");
+    await expect(
+      f.owner.importImage(
+        "book",
+        async () => {
+          abort.abort(Error("retired"));
+          return new Blob(["pixels"]);
+        },
+        abort.signal,
+      ),
+    ).rejects.toThrow("retired");
     expect(f.files.size).toBe(0);
-  } finally { await f.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+  }
 });
 
 test("resource chunks are copied before queueing, offset checked, sealed and saved with honest cancellation", async () => {
   const f = fixture();
   try {
     const ref = await f.owner.create({ name: "output.bin" });
-    const bytes = new Uint8Array([0, 255]); const append = f.owner.append(ref.id, 0, bytes); bytes[1] = 1;
+    const bytes = new Uint8Array([0, 255]);
+    const append = f.owner.append(ref.id, 0, bytes);
+    bytes[1] = 1;
     expect((await append).size).toBe(2);
     await expect(f.owner.append(ref.id, 0, bytes)).rejects.toMatchObject({ code: "ui/invalid-target" });
     await expect(f.owner.read(ref.id, 0, 2)).rejects.toMatchObject({ code: "ui/invalid-target" });
@@ -193,109 +348,196 @@ test("resource chunks are copied before queueing, offset checked, sealed and sav
     expect(await f.owner.save(ref.id)).toEqual({ saved: false });
     await expect(f.owner.read(ref.id, 0, RESOURCE_MAX_CHUNK + 1)).rejects.toMatchObject({ code: "ui/invalid-target" });
     expect(() => f.owner.save(ref.id, "../escape.bin")).toThrow();
-    await f.owner.release(ref.id); await f.owner.release(ref.id);
+    await f.owner.release(ref.id);
+    await f.owner.release(ref.id);
     expect(f.files.size).toBe(0);
-  } finally { await f.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+  }
 });
 
 test("references and book authorization are owner-scoped, with quota/expiry and no native identifier disclosure", async () => {
-  const a = fixture(id => { if (id !== "book") throw new AppError("memory/forbidden", "wrong book"); }), b = fixture();
+  const a = fixture((id) => {
+      if (id !== "book") throw new AppError("memory/forbidden", "wrong book");
+    }),
+    b = fixture();
   try {
-    const ref = await a.owner.openBook("book"); expect(ref).not.toBeNull();
+    const ref = await a.owner.openBook("book");
+    expect(ref).not.toBeNull();
     expect(ref!.id).not.toStartWith("native-");
     await expect(b.owner.stat(ref!.id)).rejects.toMatchObject({ code: "fs/not-found" });
     expect(() => a.owner.openBook("other")).toThrow();
-    a.time(ref!.expiresAt); await expect(a.owner.read(ref!.id, 0, 1)).rejects.toMatchObject({ code: "fs/not-found" });
+    a.time(ref!.expiresAt);
+    await expect(a.owner.read(ref!.id, 0, 1)).rejects.toMatchObject({ code: "fs/not-found" });
     b.adapter.pick = async () => [{ ...b.make(), size: RESOURCE_MAX_SIZE + 1 }];
-    await expect(b.owner.pick()).rejects.toMatchObject({ code: "ui/unavailable" }); expect(b.files.size).toBe(0);
+    await expect(b.owner.pick()).rejects.toMatchObject({ code: "ui/unavailable" });
+    expect(b.files.size).toBe(0);
     expect(await a.owner.pick()).toEqual({ cancelled: true, resources: [] });
-  } finally { await a.owner.dispose(); await b.owner.dispose(); }
+  } finally {
+    await a.owner.dispose();
+    await b.owner.dispose();
+  }
 });
 
 test("retirement drains accepted work, cleans late resources and does not launch queued work", async () => {
-  const f = fixture(), ready = Promise.withResolvers<NativeResource>();
+  const f = fixture(),
+    ready = Promise.withResolvers<NativeResource>();
   f.adapter.create = () => ready.promise;
-  const pending = f.owner.create({ name: "late.bin" }).then(value => value, error => error);
-  await Bun.sleep(0); const queued = f.owner.create({ name: "never.bin" }).then(value => value, error => error);
-  let finished = false; const draining = f.owner.dispose().then(() => { finished = true; });
-  await Bun.sleep(0); expect(finished).toBe(false);
-  ready.resolve(f.make()); await draining;
-  expect(await pending).toMatchObject({ code: "ui/superseded" }); expect(await queued).toMatchObject({ code: "ui/superseded" });
-  expect(f.files.size).toBe(0); expect(f.released).toHaveLength(1);
+  const pending = f.owner.create({ name: "late.bin" }).then(
+    (value) => value,
+    (error) => error,
+  );
+  await Bun.sleep(0);
+  const queued = f.owner.create({ name: "never.bin" }).then(
+    (value) => value,
+    (error) => error,
+  );
+  let finished = false;
+  const draining = f.owner.dispose().then(() => {
+    finished = true;
+  });
+  await Bun.sleep(0);
+  expect(finished).toBe(false);
+  ready.resolve(f.make());
+  await draining;
+  expect(await pending).toMatchObject({ code: "ui/superseded" });
+  expect(await queued).toMatchObject({ code: "ui/superseded" });
+  expect(f.files.size).toBe(0);
+  expect(f.released).toHaveLength(1);
 });
 
 test("cancelled and failed writes never report success; export-only read policy is enforced at the owner", async () => {
   const f = fixture();
-  const restricted = new ResourceOwner(f.adapter, error => f.errors.push(error), () => {}, Date.now,
-    ref => { if (ref.source === "book") throw new AppError("memory/forbidden", "export only"); });
+  const restricted = new ResourceOwner(
+    f.adapter,
+    (error) => f.errors.push(error),
+    () => {},
+    Date.now,
+    (ref) => {
+      if (ref.source === "book") throw new AppError("memory/forbidden", "export only");
+    },
+  );
   try {
     const ref = await f.owner.create({ name: "file.bin" });
-    f.adapter.append = async () => { throw Error("disk full"); };
+    f.adapter.append = async () => {
+      throw Error("disk full");
+    };
     await expect(f.owner.append(ref.id, 0, new Uint8Array([1]))).rejects.toThrow("disk full");
     expect((await f.owner.stat(ref.id)).size).toBe(0);
-    const abort = new AbortController(); abort.abort();
+    const abort = new AbortController();
+    abort.abort();
     await expect(f.owner.commit(ref.id, abort.signal)).rejects.toThrow();
     expect((await f.owner.stat(ref.id)).state).toBe("writing");
     const book = await restricted.openBook("book");
     await expect(restricted.read(book!.id, 0, 1)).rejects.toMatchObject({ code: "memory/forbidden" });
     expect(await restricted.save(book!.id)).toEqual({ saved: false });
-  } finally { await f.owner.dispose(); await restricted.dispose(); }
+  } finally {
+    await f.owner.dispose();
+    await restricted.dispose();
+  }
 });
 
 test("read-only domain consumption holds its lease but rejects a retired result", async () => {
-  const f = fixture(), gate = Promise.withResolvers<void>();
+  const f = fixture(),
+    gate = Promise.withResolvers<void>();
   const ref = await f.owner.create({ name: "book.txt" });
   await expect(f.owner.use(ref.id, async () => "no")).rejects.toMatchObject({ code: "ui/invalid-target" });
   await f.owner.commit(ref.id);
   let consumed = false;
-  const importing = f.owner.use(ref.id, async native => {
-    expect(native.id).toStartWith("native-"); await gate.promise; consumed = true; return "imported";
-  }).then(value => value, error => error);
+  const importing = f.owner
+    .use(ref.id, async (native) => {
+      expect(native.id).toStartWith("native-");
+      await gate.promise;
+      consumed = true;
+      return "imported";
+    })
+    .then(
+      (value) => value,
+      (error) => error,
+    );
   await Bun.sleep(0);
-  const retiring = f.owner.dispose(); expect(f.files.size).toBe(1);
-  gate.resolve(); await retiring;
-  expect(consumed).toBe(true); expect(await importing).toMatchObject({ code: "ui/superseded" });
+  const retiring = f.owner.dispose();
+  expect(f.files.size).toBe(1);
+  gate.resolve();
+  await retiring;
+  expect(consumed).toBe(true);
+  expect(await importing).toMatchObject({ code: "ui/superseded" });
   expect(f.files.size).toBe(0);
 });
 
-test.each(["cancel", "retire", "expire"])("write leases recheck %s immediately before dispatch", async mode => {
-  const f = fixture(), gate = Promise.withResolvers<void>(), caller = new AbortController();
-  const ref = await f.owner.create({ name: "book.txt" }); await f.owner.commit(ref.id);
-  let written = false, retiring: Promise<void> | undefined;
-  const pending = f.owner.useForWrite(ref.id, async (_native, beforeWrite) => {
-    await gate.promise; beforeWrite(); written = true; return "imported";
-  }, caller.signal).catch(error => error);
+test.each(["cancel", "retire", "expire"])("write leases recheck %s immediately before dispatch", async (mode) => {
+  const f = fixture(),
+    gate = Promise.withResolvers<void>(),
+    caller = new AbortController();
+  const ref = await f.owner.create({ name: "book.txt" });
+  await f.owner.commit(ref.id);
+  let written = false,
+    retiring: Promise<void> | undefined;
+  const pending = f.owner
+    .useForWrite(
+      ref.id,
+      async (_native, beforeWrite) => {
+        await gate.promise;
+        beforeWrite();
+        written = true;
+        return "imported";
+      },
+      caller.signal,
+    )
+    .catch((error) => error);
   await Bun.sleep(0);
   if (mode === "cancel") caller.abort(new AppError("ui/superseded", "Cancelled"));
   else if (mode === "retire") retiring = f.owner.dispose();
   else f.time(ref.expiresAt);
   gate.resolve();
   expect(await pending).toMatchObject({ code: mode === "expire" ? "fs/not-found" : "ui/superseded" });
-  expect(written).toBe(false); await (retiring ?? f.owner.dispose());
+  expect(written).toBe(false);
+  await (retiring ?? f.owner.dispose());
 });
 
-test.each(["imported", "duplicate", "failed"])("accepted write leases retain the actual %s outcome after cancellation and retirement", async outcome => {
-  const f = fixture(), gate = Promise.withResolvers<void>(), caller = new AbortController();
-  const ref = await f.owner.create({ name: "book.txt" });
-  await expect(f.owner.useForWrite(ref.id, async () => "no")).rejects.toMatchObject({ code: "ui/invalid-target" });
-  await f.owner.commit(ref.id);
-  const failure = new AppError("db/locked", "Native write failed");
-  const pending = f.owner.useForWrite(ref.id, async (_native, beforeWrite) => {
-    beforeWrite(); await gate.promise;
-    if (outcome === "failed") throw failure;
-    return { status: outcome };
-  }, caller.signal).catch(error => error);
-  await Bun.sleep(0); caller.abort();
-  let disposed = false; const retiring = f.owner.dispose().then(() => { disposed = true; });
-  await Bun.sleep(0); expect(disposed).toBe(false); expect(f.files.size).toBe(1);
-  gate.resolve();
-  if (outcome === "failed") expect(await pending).toBe(failure);
-  else expect(await pending).toEqual({ status: outcome });
-  await retiring; expect(f.files.size).toBe(0);
-});
+test.each(["imported", "duplicate", "failed"])(
+  "accepted write leases retain the actual %s outcome after cancellation and retirement",
+  async (outcome) => {
+    const f = fixture(),
+      gate = Promise.withResolvers<void>(),
+      caller = new AbortController();
+    const ref = await f.owner.create({ name: "book.txt" });
+    await expect(f.owner.useForWrite(ref.id, async () => "no")).rejects.toMatchObject({ code: "ui/invalid-target" });
+    await f.owner.commit(ref.id);
+    const failure = new AppError("db/locked", "Native write failed");
+    const pending = f.owner
+      .useForWrite(
+        ref.id,
+        async (_native, beforeWrite) => {
+          beforeWrite();
+          await gate.promise;
+          if (outcome === "failed") throw failure;
+          return { status: outcome };
+        },
+        caller.signal,
+      )
+      .catch((error) => error);
+    await Bun.sleep(0);
+    caller.abort();
+    let disposed = false;
+    const retiring = f.owner.dispose().then(() => {
+      disposed = true;
+    });
+    await Bun.sleep(0);
+    expect(disposed).toBe(false);
+    expect(f.files.size).toBe(1);
+    gate.resolve();
+    if (outcome === "failed") expect(await pending).toBe(failure);
+    else expect(await pending).toEqual({ status: outcome });
+    await retiring;
+    expect(f.files.size).toBe(0);
+  },
+);
 
 test("cover snapshots keep book authorization, isolation, null availability and retirement cleanup", async () => {
-  const f = fixture(id => { if (id !== "book") throw new AppError("memory/forbidden", "wrong book"); });
+  const f = fixture((id) => {
+    if (id !== "book") throw new AppError("memory/forbidden", "wrong book");
+  });
   try {
     expect(() => f.owner.openCover("other")).toThrow();
     const cover = await f.owner.openCover("book");
@@ -304,17 +546,27 @@ test("cover snapshots keep book authorization, isolation, null availability and 
     expect(new Uint8Array((await f.owner.read(cover!.id, 0, 3)).data)).toEqual(new Uint8Array([1, 2, 3]));
     f.adapter.openCover = async () => null;
     expect(await f.owner.openCover("book")).toBeNull();
-    const late = Promise.withResolvers<NativeResource>(); f.adapter.openCover = () => late.promise;
-    const pending = f.owner.openCover("book").catch(error => error);
-    await Bun.sleep(0); const retiring = f.owner.dispose();
-    late.resolve(f.make("late.png")); await retiring;
-    expect(await pending).toMatchObject({ code: "ui/superseded" }); expect(f.files.size).toBe(0);
-  } finally { await f.owner.dispose(); }
+    const late = Promise.withResolvers<NativeResource>();
+    f.adapter.openCover = () => late.promise;
+    const pending = f.owner.openCover("book").catch((error) => error);
+    await Bun.sleep(0);
+    const retiring = f.owner.dispose();
+    late.resolve(f.make("late.png"));
+    await retiring;
+    expect(await pending).toMatchObject({ code: "ui/superseded" });
+    expect(f.files.size).toBe(0);
+  } finally {
+    await f.owner.dispose();
+  }
 });
 
 test("image copy requires own sealed non-book resource and preserves failures and cancellation", async () => {
-  const f = fixture(); let copies = 0;
-  f.adapter.copyImage = async () => { copies++; return { copied: true, width: 2, height: 3 }; };
+  const f = fixture();
+  let copies = 0;
+  f.adapter.copyImage = async () => {
+    copies++;
+    return { copied: true, width: 2, height: 3 };
+  };
   try {
     await expect(f.owner.copyImage("foreign")).rejects.toMatchObject({ code: "fs/not-found" });
     const original = await f.owner.openBook("book");
@@ -322,17 +574,23 @@ test("image copy requires own sealed non-book resource and preserves failures an
     const ref = await f.owner.create({ name: "image.png" });
     await expect(f.owner.copyImage(ref.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
     await f.owner.commit(ref.id);
-    await expect(f.owner.copyImage(ref.id, AbortSignal.abort())).rejects.toBeDefined(); expect(copies).toBe(0);
+    await expect(f.owner.copyImage(ref.id, AbortSignal.abort())).rejects.toBeDefined();
+    expect(copies).toBe(0);
     expect(await f.owner.copyImage(ref.id)).toEqual({ copied: true, width: 2, height: 3 });
     expect((await f.owner.stat(ref.id)).state).toBe("ready");
-    f.adapter.copyImage = async () => { throw new AppError("ui/unavailable", "clipboard"); };
+    f.adapter.copyImage = async () => {
+      throw new AppError("ui/unavailable", "clipboard");
+    };
     await expect(f.owner.copyImage(ref.id)).rejects.toMatchObject({ code: "ui/unavailable" });
-  } finally { await f.owner.dispose(); }
+  } finally {
+    await f.owner.dispose();
+  }
 });
 
 test("model image input uses the same native decoder, rejects foreign/book references and bounds decoded PNG bytes", async () => {
   const { resourceModelImage } = await import("./model-image");
-  const a = fixture(), b = fixture();
+  const a = fixture(),
+    b = fixture();
   try {
     const ref = await a.owner.openCover("book");
     expect(await resourceModelImage(a.owner, ref!.id)).toEqual({ mimeType: "image/png", data: "AQID" });
@@ -341,5 +599,8 @@ test("model image input uses the same native decoder, rejects foreign/book refer
     await expect(resourceModelImage(a.owner, original!.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
     a.adapter.imagePreview = async () => new ArrayBuffer(8 * 1024 * 1024 + 1);
     await expect(resourceModelImage(a.owner, ref!.id)).rejects.toMatchObject({ code: "ai/image-budget-exceeded" });
-  } finally { await a.owner.dispose(); await b.owner.dispose(); }
+  } finally {
+    await a.owner.dispose();
+    await b.owner.dispose();
+  }
 });

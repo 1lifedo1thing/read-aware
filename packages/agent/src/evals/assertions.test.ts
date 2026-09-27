@@ -2,9 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { AgentEvalObservation } from "./types";
 import { evaluateAgentTrace } from "./assertions";
 
-function observation(
-  partial: Partial<AgentEvalObservation> = {},
-): AgentEvalObservation {
+function observation(partial: Partial<AgentEvalObservation> = {}): AgentEvalObservation {
   return {
     turns: [],
     answer: "",

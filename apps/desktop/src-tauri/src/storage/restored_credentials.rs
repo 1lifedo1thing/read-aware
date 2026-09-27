@@ -4,7 +4,10 @@
 use super::{credential_crypto as crypto, local_event_guard, DataDir, Db, EventRow};
 use crate::error::CommandError;
 use rusqlite::{Connection, Transaction, TransactionBehavior};
-use std::{collections::{BTreeSet, BTreeMap}, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
+};
 use tauri::Manager;
 
 fn valid(slot: &str) -> bool {
@@ -19,8 +22,14 @@ fn invalid() -> CommandError {
 pub(crate) fn enqueue(tx: &Transaction<'_>, slot: &str) -> Result<(), CommandError> {
     enqueue_with_source(tx, slot, None)
 }
-pub(crate) fn enqueue_with_source(tx: &Transaction<'_>, slot: &str, source: Option<&serde_json::Value>) -> Result<(), CommandError> {
-    if let Some(source) = source { super::durable_jobs::validate_source(source).map_err(|_| invalid())?; }
+pub(crate) fn enqueue_with_source(
+    tx: &Transaction<'_>,
+    slot: &str,
+    source: Option<&serde_json::Value>,
+) -> Result<(), CommandError> {
+    if let Some(source) = source {
+        super::durable_jobs::validate_source(source).map_err(|_| invalid())?;
+    }
     if !valid(slot) {
         return Err(invalid());
     }
@@ -42,22 +51,37 @@ pub(crate) fn pending(conn: &Connection) -> Result<Vec<String>, CommandError> {
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
-pub(crate) fn enqueue_current(conn: &mut Connection, only_unpublished: bool) -> Result<(), CommandError> {
+pub(crate) fn enqueue_current(
+    conn: &mut Connection,
+    only_unpublished: bool,
+) -> Result<(), CommandError> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     let slots = {
         let mut query = tx.prepare("SELECT substr(key,19) FROM app_kv WHERE substr(key,1,18)='read-aware-secret:' AND substr(key,19,10)='ai-api-key' AND (?1=0 OR NOT EXISTS (SELECT 1 FROM synced_preferences p WHERE p.key='secret:'||substr(app_kv.key,19)))")?;
-        let rows = query.query_map([only_unpublished], |row| row.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+        let rows = query
+            .query_map([only_unpublished], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
         rows
     };
-    for slot in slots { if !contains(&tx, &slot)? { enqueue(&tx, &slot)?; } }
-    tx.commit()?; Ok(())
+    for slot in slots {
+        if !contains(&tx, &slot)? {
+            enqueue(&tx, &slot)?;
+        }
+    }
+    tx.commit()?;
+    Ok(())
 }
 #[tauri::command]
-pub async fn restored_credentials_enqueue_current(app: tauri::AppHandle, only_unpublished: bool) -> Result<(), CommandError> {
+pub async fn restored_credentials_enqueue_current(
+    app: tauri::AppHandle,
+    only_unpublished: bool,
+) -> Result<(), CommandError> {
     super::blocking("restored_credentials_enqueue_current", move || {
-        let db = app.state::<Db>(); let mut conn = db.0.lock()?;
+        let db = app.state::<Db>();
+        let mut conn = db.0.lock()?;
         enqueue_current(&mut conn, only_unpublished)
-    }).await
+    })
+    .await
 }
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -127,9 +151,17 @@ pub(crate) fn publish(
                 _ => error,
             }
         })?;
-        let source_json: Option<String> = tx.query_row("SELECT source_json FROM restored_credential_publications WHERE slot=?1", [slot], |row| row.get(0))?;
-        let source = source_json.map(|raw| serde_json::from_str::<serde_json::Value>(&raw).map_err(|_| invalid())).transpose()?;
-        if let Some(value) = &source { super::durable_jobs::validate_source(value).map_err(|_| invalid())?; }
+        let source_json: Option<String> = tx.query_row(
+            "SELECT source_json FROM restored_credential_publications WHERE slot=?1",
+            [slot],
+            |row| row.get(0),
+        )?;
+        let source = source_json
+            .map(|raw| serde_json::from_str::<serde_json::Value>(&raw).map_err(|_| invalid()))
+            .transpose()?;
+        if let Some(value) = &source {
+            super::durable_jobs::validate_source(value).map_err(|_| invalid())?;
+        }
         let local = crypto::local(&tx, root, slot)?;
         let size = local.as_ref().map_or(0, |value| value.len())
             + source.as_ref().map_or(0, |value| value.to_string().len());
@@ -154,7 +186,9 @@ pub(crate) fn publish(
             "DELETE FROM restored_credential_publications WHERE slot=?1",
             [slot],
         )?;
-        if let Some(source) = source { sources.insert(event.id.clone(), source); }
+        if let Some(source) = source {
+            sources.insert(event.id.clone(), source);
+        }
         published.push(event.clone());
     }
     tx.commit()?;

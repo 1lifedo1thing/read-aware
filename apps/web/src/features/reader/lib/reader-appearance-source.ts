@@ -1,5 +1,9 @@
 import { actorFromEvent, eventCause, mergeEventCauses, stampEventCause } from "../../../platform/domain-actor";
-import { toEffectiveReaderSettings, type ReaderSettings, type ReaderSettingsPreferences } from "../../settings/lib/reader-settings";
+import {
+  toEffectiveReaderSettings,
+  type ReaderSettings,
+  type ReaderSettingsPreferences,
+} from "../../settings/lib/reader-settings";
 
 export type ReaderAppearanceInput = {
   bookId: string;
@@ -15,17 +19,22 @@ export type ReaderAppearanceProjection = { input: ReaderAppearanceInput; value: 
 
 /** Only inputs that changed the rendered settings contribute a cause. Inactive
  * book overrides and old auto-theme roots must not revive a consumed reaction. */
-export function projectReaderAppearance(input: ReaderAppearanceInput, previous?: ReaderAppearanceProjection): ReaderAppearanceProjection {
+export function projectReaderAppearance(
+  input: ReaderAppearanceInput,
+  previous?: ReaderAppearanceProjection,
+): ReaderAppearanceProjection {
   const value = toEffectiveReaderSettings(input.prefs, input.theme.value);
-  if (previous?.input.bookId === input.bookId && JSON.stringify(value) === JSON.stringify(previous.value)) return { input, value: previous.value };
+  if (previous?.input.bookId === input.bookId && JSON.stringify(value) === JSON.stringify(previous.value))
+    return { input, value: previous.value };
   const sources: object[] = [];
   if (!previous || previous.input.bookId !== input.bookId) sources.push(input.source);
   else {
     if (previous.input.scope !== input.scope) sources.push(input.scopeSource);
-    else if (input.scope === "global" && previous.input.language !== input.language && input.languageSource) sources.push(input.languageSource);
+    else if (input.scope === "global" && previous.input.language !== input.language && input.languageSource)
+      sources.push(input.languageSource);
     else if (JSON.stringify(previous.input.prefs) !== JSON.stringify(input.prefs)) sources.push(input.source);
     if (input.prefs.theme === "auto" && previous.input.theme.value !== input.theme.value) sources.push(input.theme);
   }
-  const tracked = sources.map(source => eventCause(source) ? source : stampEventCause({}));
+  const tracked = sources.map((source) => (eventCause(source) ? source : stampEventCause({})));
   return { input, value: stampEventCause(value, actorFromEvent(mergeEventCauses(tracked, {}))) };
 }

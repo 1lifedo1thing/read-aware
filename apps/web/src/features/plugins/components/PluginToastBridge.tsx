@@ -21,7 +21,10 @@ export function PluginToastBridge() {
           variant: "destructive",
           title: payload.pluginName,
           description: description?.body ?? t("runtime.actionFailed"),
-          action: description?.retryable && payload.retry ? { label: t("common:errorBoundary.retry"), onClick: payload.retry } : undefined,
+          action:
+            description?.retryable && payload.retry
+              ? { label: t("common:errorBoundary.retry"), onClick: payload.retry }
+              : undefined,
           onDismiss: payload.onDismiss,
         });
         return handle.dismiss;

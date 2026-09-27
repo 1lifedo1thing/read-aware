@@ -49,7 +49,15 @@ export function ShelfGrid({ tileStyle }: { tileStyle?: (tile: Tile, r: number, c
           return (
             <div
               key={`${r}-${c}`}
-              style={{ position: "absolute", left: b.x, top: b.y, width: COVER_W, borderRadius: 2, boxShadow: shadow.cover, ...tileStyle?.(tile, r, c) }}
+              style={{
+                position: "absolute",
+                left: b.x,
+                top: b.y,
+                width: COVER_W,
+                borderRadius: 2,
+                boxShadow: shadow.cover,
+                ...tileStyle?.(tile, r, c),
+              }}
             >
               {typeof tile === "number" ? <BookCover id={tile} /> : <CollectionTile {...tile} />}
             </div>
@@ -63,7 +71,10 @@ export function ShelfGrid({ tileStyle }: { tileStyle?: (tile: Tile, r: number, c
 export function BookCover({ id, style }: { id: number; style?: CSSProperties }) {
   return (
     <div style={{ borderRadius: 2, overflow: "hidden", aspectRatio: "2 / 3", ...style }}>
-      <Img src={staticFile(`covers/${id}.jpg`)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      <Img
+        src={staticFile(`covers/${id}.jpg`)}
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      />
     </div>
   );
 }
@@ -80,14 +91,33 @@ function CollectionTile({ collection, count, covers }: Collection) {
         boxShadow: `inset 0 0 0 1px ${color.border}`,
       }}
     >
-      <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 1 }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gridTemplateRows: "1fr 1fr",
+          gap: 1,
+        }}
+      >
         {covers.slice(0, 4).map((id) => (
-          <Img key={id} src={staticFile(`covers/${id}.jpg`)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <Img
+            key={id}
+            src={staticFile(`covers/${id}.jpg`)}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
         ))}
       </div>
-      <div style={{ position: "absolute", insetInline: 0, bottom: 0, background: "rgba(12,10,9,0.7)", padding: "6px 8px" }}>
-        <div style={{ fontFamily: font.appSerif, fontSize: 12, fontWeight: 500, lineHeight: 1.25, color: "#ffffff" }}>{collection}</div>
-        <div style={{ marginTop: 2, fontFamily: font.sans, fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{count} books</div>
+      <div
+        style={{ position: "absolute", insetInline: 0, bottom: 0, background: "rgba(12,10,9,0.7)", padding: "6px 8px" }}
+      >
+        <div style={{ fontFamily: font.appSerif, fontSize: 12, fontWeight: 500, lineHeight: 1.25, color: "#ffffff" }}>
+          {collection}
+        </div>
+        <div style={{ marginTop: 2, fontFamily: font.sans, fontSize: 10, color: "rgba(255,255,255,0.7)" }}>
+          {count} books
+        </div>
       </div>
     </div>
   );

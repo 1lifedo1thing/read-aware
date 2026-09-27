@@ -29,9 +29,7 @@ export function bookCursor(book: RealBookFixture, chapterIndex: number, chapterP
   const chapters = book.epub().chapters;
   const chapter = chapters[chapterIndex];
   if (!chapter) throw new Error(`${book.spec.slug} fixture has no chapter ${chapterIndex}`);
-  const charsBefore = chapters
-    .slice(0, chapterIndex)
-    .reduce((sum, entry) => sum + entry.text.length, 0);
+  const charsBefore = chapters.slice(0, chapterIndex).reduce((sum, entry) => sum + entry.text.length, 0);
   const totalChars = chapters.reduce((sum, entry) => sum + entry.text.length, 0);
   return {
     chapterIndex,
@@ -45,9 +43,7 @@ export function bookCursor(book: RealBookFixture, chapterIndex: number, chapterP
 /** 字符占比换算的整数进度百分比（seed.progressPercent 用）。 */
 export function chapterProgressPercent(book: RealBookFixture, chapterIndex: number): number {
   const chapters = book.epub().chapters;
-  const charsBefore = chapters
-    .slice(0, chapterIndex)
-    .reduce((sum, entry) => sum + entry.text.length, 0);
+  const charsBefore = chapters.slice(0, chapterIndex).reduce((sum, entry) => sum + entry.text.length, 0);
   const totalChars = chapters.reduce((sum, entry) => sum + entry.text.length, 0);
   return Math.round((charsBefore / totalChars) * 100);
 }
@@ -101,8 +97,7 @@ export function bookQuestion(options: BookQuestionOptions): AgentEvalScenario {
   const { book } = options;
   const cursorChapters = options.turns.map((turn) => turn.cursorChapter ?? options.cursorChapter);
   const maxCursorChapter = Math.max(...cursorChapters);
-  const progress =
-    options.progressOverride ?? chapterProgressPercent(book, maxCursorChapter);
+  const progress = options.progressOverride ?? chapterProgressPercent(book, maxCursorChapter);
   const seed: InMemorySeed = {
     ...book.seed(progress, options.status ?? "reading"),
     chapterDigests: book.digestsSeed(options.digestsThrough ?? maxCursorChapter),
@@ -163,14 +158,7 @@ export function bookQuestion(options: BookQuestionOptions): AgentEvalScenario {
     evaluate: async (observation) => {
       const parts: EvalAssessment[] = [evaluateAgentTrace(observation, expectation)];
       if (options.coverage) {
-        parts.push(
-          coverageAssessment(
-            observation,
-            options.coverage.id,
-            options.coverage.words,
-            options.coverage.min,
-          ),
-        );
+        parts.push(coverageAssessment(observation, options.coverage.id, options.coverage.words, options.coverage.min));
       }
       if (options.leakWords?.length) parts.push(leakAssessment(observation, options.leakWords));
       if (options.fence) parts.push(fenceDisciplineAssessment(observation, maxCursorChapter));

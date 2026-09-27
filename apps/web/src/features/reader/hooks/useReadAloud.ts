@@ -15,7 +15,13 @@ import { actorFromEvent, type DomainActor } from "../../../platform/domain-actor
 const log = createLogger("read-aloud");
 
 /** Bind the real voice backend and current navigator to the shared reading domain. */
-export function useReadAloud({ bookId, enabled, current, peekNext, origin = "system" }: {
+export function useReadAloud({
+  bookId,
+  enabled,
+  current,
+  peekNext,
+  origin = "system",
+}: {
   bookId: string | null;
   enabled: boolean;
   current: TextUnitTarget | null;
@@ -25,7 +31,7 @@ export function useReadAloud({ bookId, enabled, current, peekNext, origin = "sys
   const { toast } = useToast();
   const [systemVoiceRevision, setSystemVoiceRevision] = useState(0);
   useEffect(() => {
-    const changed = () => setSystemVoiceRevision(value => value + 1);
+    const changed = () => setSystemVoiceRevision((value) => value + 1);
     window.speechSynthesis?.addEventListener("voiceschanged", changed);
     return () => window.speechSynthesis?.removeEventListener("voiceschanged", changed);
   }, []);
@@ -33,23 +39,42 @@ export function useReadAloud({ bookId, enabled, current, peekNext, origin = "sys
   const resolved = activePluginVoice(providers);
   const provider = resolved?.provider;
   const voiceId = resolved?.voiceId;
-  const voice = useMemo(() => provider && voiceId ? {
-    synthesize: async (text: string) => {
-      const bytes = await provider.synthesize({ text, voiceId });
-      // Web Audio detaches its input. A provider may reuse its own buffer.
-      return bytes instanceof Uint8Array ? bytes.slice().buffer : bytes.slice(0);
-    },
-  } : null, [provider, voiceId]);
-  const [controller] = useState(() => new ReadAloudController({
-    speak: speakText, play: playAudioBytes, systemAvailable: speechAvailable,
-    report: error => log.warn("read aloud degraded or failed", error),
-  }));
+  const voice = useMemo(
+    () =>
+      provider && voiceId
+        ? {
+            synthesize: async (text: string) => {
+              const bytes = await provider.synthesize({ text, voiceId });
+              // Web Audio detaches its input. A provider may reuse its own buffer.
+              return bytes instanceof Uint8Array ? bytes.slice().buffer : bytes.slice(0);
+            },
+          }
+        : null,
+    [provider, voiceId],
+  );
+  const [controller] = useState(
+    () =>
+      new ReadAloudController({
+        speak: speakText,
+        play: playAudioBytes,
+        systemAvailable: speechAvailable,
+        report: (error) => log.warn("read aloud degraded or failed", error),
+      }),
+  );
   const snapshot = useSyncExternalStore(controller.observe, controller.snapshot);
-  const next = useCallback(async (signal: AbortSignal, origin: DomainActor) => {
-    const session = readingRuntime.snapshot();
-    const result = await readingRuntime.stepMode("next", signal, { bookId: bookId ?? undefined, sessionId: session.sessionId ?? undefined }, origin);
-    return result.outcome;
-  }, [bookId]);
+  const next = useCallback(
+    async (signal: AbortSignal, origin: DomainActor) => {
+      const session = readingRuntime.snapshot();
+      const result = await readingRuntime.stepMode(
+        "next",
+        signal,
+        { bookId: bookId ?? undefined, sessionId: session.sessionId ?? undefined },
+        origin,
+      );
+      return result.outcome;
+    },
+    [bookId],
+  );
 
   useEffect(() => {
     controller.update({ enabled, unit: current, voice, next, peekNext }, origin);
@@ -58,25 +83,31 @@ export function useReadAloud({ bookId, enabled, current, peekNext, origin = "sys
   useEffect(() => {
     let sessionId: string | null = null;
     let release: ((origin?: DomainActor) => void) | undefined;
-    const unobserve = readingRuntime.observe(state => {
+    const unobserve = readingRuntime.observe((state) => {
       const id = state.bookId === bookId && state.status === "ready" ? state.sessionId : null;
       if (id === sessionId) return;
       sessionId = id;
       const source = actorFromEvent(state);
-      release?.(source); release = undefined;
+      release?.(source);
+      release = undefined;
       if (id) release = readingRuntime.bindPlayback(id, controller, source);
     });
-    return () => { unobserve(); release?.(); controller.stop(); };
+    return () => {
+      unobserve();
+      release?.();
+      controller.stop();
+    };
   }, [bookId, controller]);
 
   useEffect(() => {
-    if (snapshot.status === "error") toast({ description: describeError({ code: snapshot.errorCode }).body, variant: "destructive" });
+    if (snapshot.status === "error")
+      toast({ description: describeError({ code: snapshot.errorCode }).body, variant: "destructive" });
   }, [snapshot.status, snapshot.errorCode, toast]);
 
   const playing = ["preparing", "playing", "advancing"].includes(snapshot.status);
   const toggle = useCallback(() => {
     if (playing) controller.stop();
-    else void controller.start("user").catch(error => log.warn("read aloud did not start", error));
+    else void controller.start("user").catch((error) => log.warn("read aloud did not start", error));
   }, [playing, controller]);
 
   return { available: speechAvailable() || voice !== null, playing, toggle, snapshot };

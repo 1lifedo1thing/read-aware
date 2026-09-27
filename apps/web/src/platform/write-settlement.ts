@@ -2,7 +2,10 @@
  * cleanup trackers wait on work whose outcome its own caller already observes. */
 export function settled(work: Promise<unknown>): Promise<void> {
   // Not a swallowed failure: `work` itself still rejects for whoever awaits it.
-  return work.then(() => undefined, () => undefined);
+  return work.then(
+    () => undefined,
+    () => undefined,
+  );
 }
 
 /** Tracks dispatched durable writes so shutdown can wait for their real receipts.
@@ -12,7 +15,9 @@ export class WriteSettlement {
 
   track<T>(work: Promise<T>): Promise<T> {
     this.pending.add(work);
-    const done = () => { this.pending.delete(work); };
+    const done = () => {
+      this.pending.delete(work);
+    };
     work.then(done, done);
     return work;
   }
@@ -23,17 +28,21 @@ export class WriteSettlement {
     return this.track(Promise.resolve().then(operation));
   }
 
-  get size(): number { return this.pending.size; }
+  get size(): number {
+    return this.pending.size;
+  }
 
   /** Resolves once every write dispatched before the call has settled, including writes
    * dispatched meanwhile; a failed write does not fail settlement. */
   async settle(signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
     let onAbort: (() => void) | undefined;
-    const aborted = signal && new Promise<never>((_, reject) => {
-      onAbort = () => reject(signal.reason);
-      signal.addEventListener("abort", onAbort, { once: true });
-    });
+    const aborted =
+      signal &&
+      new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason);
+        signal.addEventListener("abort", onAbort, { once: true });
+      });
     try {
       while (this.pending.size) {
         const settled = Promise.allSettled([...this.pending]);

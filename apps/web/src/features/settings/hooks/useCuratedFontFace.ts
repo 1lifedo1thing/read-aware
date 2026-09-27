@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  curatedFontId,
-  type ReaderFontFamily,
-  type ReaderFontWeight,
-} from "../lib/reader-settings";
+import { curatedFontId, type ReaderFontFamily, type ReaderFontWeight } from "../lib/reader-settings";
 import { readerFontWeightsNeeded } from "../lib/reader-css";
 import {
   getCuratedFontProgress,

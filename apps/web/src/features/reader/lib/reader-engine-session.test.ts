@@ -7,8 +7,8 @@ describe("ReaderEngineSession", () => {
   test("runs teardowns once, in registration order, with the retiring origin", () => {
     const session = new ReaderEngineSession<object, string>(key);
     const calls: string[] = [];
-    session.onClose(origin => calls.push(`a:${origin}`));
-    session.onClose(origin => calls.push(`b:${origin}`));
+    session.onClose((origin) => calls.push(`a:${origin}`));
+    session.onClose((origin) => calls.push(`b:${origin}`));
     expect(session.closed).toBe(false);
     session.close("user");
     session.close("system");
@@ -31,7 +31,7 @@ describe("ReaderEngineSession", () => {
     const session = new ReaderEngineSession<object, string>(key);
     session.close("user");
     const calls: Array<string | undefined> = [];
-    session.onClose(origin => calls.push(origin));
+    session.onClose((origin) => calls.push(origin));
     session.onRelease(() => calls.push("released"));
     expect(calls).toEqual([undefined, "released"]);
   });
@@ -39,7 +39,10 @@ describe("ReaderEngineSession", () => {
   test("a throwing teardown does not strand the others", () => {
     const session = new ReaderEngineSession(key);
     const calls: string[] = [];
-    session.onClose(() => { calls.push("first"); throw Error("teardown failed"); });
+    session.onClose(() => {
+      calls.push("first");
+      throw Error("teardown failed");
+    });
     session.onClose(() => calls.push("second"));
     session.onRelease(() => calls.push("resource"));
     expect(() => session.close()).toThrow("teardown failed");

@@ -49,17 +49,10 @@ type Story = StoryObj<typeof meta>;
 
 /** With a couple of plugin contributions available to place. */
 export const WithPlugins: Story = {
-  decorators: [
-    withAtoms(
-      seed(headerActionsAtom, headerActions),
-      seed(selectionActionsAtom, []),
-    ),
-  ],
+  decorators: [withAtoms(seed(headerActionsAtom, headerActions), seed(selectionActionsAtom, []))],
 };
 
 /** A clean install: core items only. */
 export const WithoutPlugins: Story = {
-  decorators: [
-    withAtoms(seed(headerActionsAtom, []), seed(selectionActionsAtom, [])),
-  ],
+  decorators: [withAtoms(seed(headerActionsAtom, []), seed(selectionActionsAtom, []))],
 };

@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  CUSTOM_OPENAI_PROVIDER_ID,
-  LEGACY_CUSTOM_OPENAI_API,
-} from "@read-aware/agent";
+import { CUSTOM_OPENAI_PROVIDER_ID, LEGACY_CUSTOM_OPENAI_API } from "@read-aware/agent";
 import { accountFromConfig } from "./account";
 import { DEFAULT_THINKING_LEVEL } from "../lib/ai-config";
 

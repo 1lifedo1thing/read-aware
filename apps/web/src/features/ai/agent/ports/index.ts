@@ -55,9 +55,14 @@ export function buildRuntimeDeps(): RuntimeDeps {
     transactions: createAgentTransactions(),
     jobs: agentJobs,
     changes: agentChanges,
-    readingAiActions: { enabled: readingAiActions.enabled,
-      run: (action, bookId, signal) => readingAiActions.run(action, bookId, signal, "agent") },
-    schedules: { list: async query => pluginSchedules.list(query), control: (input, signal) => pluginSchedules.control(input, signal, "agent") },
+    readingAiActions: {
+      enabled: readingAiActions.enabled,
+      run: (action, bookId, signal) => readingAiActions.run(action, bookId, signal, "agent"),
+    },
+    schedules: {
+      list: async (query) => pluginSchedules.list(query),
+      control: (input, signal) => pluginSchedules.control(input, signal, "agent"),
+    },
     sync: hostSync,
     maintenance: hostMaintenance,
     diagnostics: hostDiagnostics,
@@ -65,22 +70,43 @@ export function buildRuntimeDeps(): RuntimeDeps {
     downloadResource,
     web: agentWeb,
     images: chatImagePort,
-    conversationControl: { snapshot: conversations.queries.runtime, listThreads: conversations.queries.listThreads,
-      turnRequests: conversations.queries.turnRequests, ...conversations.commands },
+    conversationControl: {
+      snapshot: conversations.queries.runtime,
+      listThreads: conversations.queries.listThreads,
+      turnRequests: conversations.queries.turnRequests,
+      ...conversations.commands,
+    },
     hostIO,
     pluginServices: {
-      list: async (scope, query, signal) => { signal?.throwIfAborted(); return pluginServices.listForAgent(scope, query); },
+      list: async (scope, query, signal) => {
+        signal?.throwIfAborted();
+        return pluginServices.listForAgent(scope, query);
+      },
       call: (scope, request, authorize, signal) => pluginServices.delegate(scope, request, authorize, signal),
     },
     bookGraphTasks: agentBookGraphTasks,
-    bookClassification: { inspect: inspectBookClassification, change: (input, signal) => changeBookClassification(input, "agent", signal) },
+    bookClassification: {
+      inspect: inspectBookClassification,
+      change: (input, signal) => changeBookClassification(input, "agent", signal),
+    },
     memoryManagement: { inspect: inspectMemory, mutate: (input, signal) => mutateMemory(input, "agent", signal) },
     hostCommands: trustedHostCommands("agent"),
     environment: { snapshot: async () => hostEnvironment.snapshot() },
-    operationAvailability: { check: (query, signal) => checkOperationAvailability(query, signal, { textPreparation: { conditions: agentTextPreparationConditions }, graphTasks: agentBookGraphTasks }) },
-    window: { snapshot: signal => hostWindow.snapshot(signal),
-      control: (request, signal) => hostWindow.control(request, signal, "agent") },
-    workspace: { snapshot: async query => workspace.snapshot(query), navigate: (target, revision, signal) => workspace.navigate(target, revision, signal, true, undefined, "agent") },
+    operationAvailability: {
+      check: (query, signal) =>
+        checkOperationAvailability(query, signal, {
+          textPreparation: { conditions: agentTextPreparationConditions },
+          graphTasks: agentBookGraphTasks,
+        }),
+    },
+    window: {
+      snapshot: (signal) => hostWindow.snapshot(signal),
+      control: (request, signal) => hostWindow.control(request, signal, "agent"),
+    },
+    workspace: {
+      snapshot: async (query) => workspace.snapshot(query),
+      navigate: (target, revision, signal) => workspace.navigate(target, revision, signal, true, undefined, "agent"),
+    },
     memoryPolicy,
     readingContextPolicy,
     library: createLibraryPort(),
@@ -97,7 +123,7 @@ export function buildRuntimeDeps(): RuntimeDeps {
     bookMemory: createBookMemoryPort(),
     settings: createSettingsPort(),
     log: createLogger("agent"),
-    extraTools: scope => getPluginAgentTools(scope, interactions),
+    extraTools: (scope) => getPluginAgentTools(scope, interactions),
     extraContext: getPluginAgentContext,
     extraMemoryCandidates: getPluginMemoryCandidates,
   };

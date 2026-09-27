@@ -5,7 +5,11 @@ import { createLogger } from "../../../platform/logger";
 
 const log = createLogger("plugin-views");
 const discard = (view: PluginView | null, transferred?: PluginView) => {
-  try { releasePluginCallbacks(view, transferred); } catch (error) { log.warn("Unconsumed view cleanup failed", error); }
+  try {
+    releasePluginCallbacks(view, transferred);
+  } catch (error) {
+    log.warn("Unconsumed view cleanup failed", error);
+  }
 };
 
 /** Latest-source wins, including replacement registrations with the same key. */
@@ -26,18 +30,23 @@ export function usePluginViewSource(
     if (!live.current) return;
     const request = ++revision.current;
     const loadView = latest.current.load;
-    void Promise.resolve().then(async () => {
-      if (!live.current || request !== revision.current) return;
-      const next = await loadView();
-      if (!live.current || request !== revision.current) { discard(next); return; }
-      const previous = current.current;
-      current.current = next;
-      setView(next);
-      if (previous !== next) discard(previous, next);
-    }).catch(error => {
-      log.error("Plugin root view loading failed", error);
-      if (live.current && request === revision.current) latest.current.onFailure();
-    });
+    void Promise.resolve()
+      .then(async () => {
+        if (!live.current || request !== revision.current) return;
+        const next = await loadView();
+        if (!live.current || request !== revision.current) {
+          discard(next);
+          return;
+        }
+        const previous = current.current;
+        current.current = next;
+        setView(next);
+        if (previous !== next) discard(previous, next);
+      })
+      .catch((error) => {
+        log.error("Plugin root view loading failed", error);
+        if (live.current && request === revision.current) latest.current.onFailure();
+      });
   }, []);
   useEffect(() => {
     live.current = enabled;

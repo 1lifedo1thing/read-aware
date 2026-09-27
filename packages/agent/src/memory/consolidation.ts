@@ -85,12 +85,19 @@ async function judgementChanges(
     .join("\n");
   let parsed: Record<string, unknown> | undefined;
   try {
-    const message = await boundedMemoryComplete(complete)(model, {
-      systemPrompt: CONSOLIDATION_PROMPT,
-      messages: [{ role: "user", content: listing, timestamp: Date.now() }],
-    }, { maxTokens: 4096 });
+    const message = await boundedMemoryComplete(complete)(
+      model,
+      {
+        systemPrompt: CONSOLIDATION_PROMPT,
+        messages: [{ role: "user", content: listing, timestamp: Date.now() }],
+      },
+      { maxTokens: 4096 },
+    );
     if (message.stopReason !== "stop") {
-      log?.warn("memory consolidation judgement did not complete", { stopReason: message.stopReason, error: message.errorMessage });
+      log?.warn("memory consolidation judgement did not complete", {
+        stopReason: message.stopReason,
+        error: message.errorMessage,
+      });
       return { changes: [], succeeded: false };
     }
     parsed = parseJson(messageText(message));
@@ -129,7 +136,8 @@ async function judgementChanges(
     if (!conflict || typeof conflict !== "object") continue;
     const winner = typeof conflict.winner === "string" ? byId.get(conflict.winner) : undefined;
     const loser = typeof conflict.loser === "string" ? byId.get(conflict.loser) : undefined;
-    if (!winner || !loser || winner.id === loser.id || touched.has(loser.id) || touched.has(winner.id) || loser.pinned) continue;
+    if (!winner || !loser || winner.id === loser.id || touched.has(loser.id) || touched.has(winner.id) || loser.pinned)
+      continue;
     changes.push({ type: "supersede", id: loser.id, byId: winner.id });
     touch(loser.id, winner.id);
   }
@@ -175,13 +183,11 @@ export async function runConsolidation(input: RunConsolidationInput): Promise<Co
 
 export async function runConsolidationPass(input: RunConsolidationInput) {
   const now = input.now ?? Date.now();
-  const snapshots = input.snapshots ?? await input.memory.snapshotMemories();
-  const memories = snapshots.map(snapshot => snapshot.memory);
+  const snapshots = input.snapshots ?? (await input.memory.snapshotMemories());
+  const memories = snapshots.map((snapshot) => snapshot.memory);
 
   const decay = decayChanges(memories, now);
-  const forgottenIds = new Set(
-    decay.filter((change) => change.type === "forget").map((change) => change.id),
-  );
+  const forgottenIds = new Set(decay.filter((change) => change.type === "forget").map((change) => change.id));
   const remaining = memories.filter((memory) => !forgottenIds.has(memory.id));
   const judgment = await judgementChanges(remaining, input.complete, input.model, input.log);
   const judged = judgment.changes;

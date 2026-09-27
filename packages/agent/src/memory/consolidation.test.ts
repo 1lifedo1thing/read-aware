@@ -27,39 +27,71 @@ describe("decayChanges", () => {
 
 describe("runConsolidation", () => {
   test("a user correction during model judgement rejects the whole stale plan", async () => {
-    const { deps, stores } = createInMemoryDeps({ memories: [
-      seedMemory({ id: "old", scope: "user", content: "Old preference", importance: 0.6, updatedAt: OLD }),
-      seedMemory({ id: "keep", scope: "user", content: "Preferred wording", updatedAt: FRESH }),
-    ] });
-    await expect(runConsolidation({ memory: deps.memory, model: MODEL, now: NOW, complete: async () => {
-      const snapshot = (await deps.memoryManagement.inspect("old"))!;
-      await deps.memoryManagement.mutate({ op: "correct", memoryId: "old", expectedRevision: snapshot.revision, content: "User correction" });
-      return fauxAssistantMessage(JSON.stringify({ merges: [{ keep: "keep", drop: "old" }] }));
-    } })).rejects.toMatchObject({ code: "memory/conflict" });
+    const { deps, stores } = createInMemoryDeps({
+      memories: [
+        seedMemory({ id: "old", scope: "user", content: "Old preference", importance: 0.6, updatedAt: OLD }),
+        seedMemory({ id: "keep", scope: "user", content: "Preferred wording", updatedAt: FRESH }),
+      ],
+    });
+    await expect(
+      runConsolidation({
+        memory: deps.memory,
+        model: MODEL,
+        now: NOW,
+        complete: async () => {
+          const snapshot = (await deps.memoryManagement.inspect("old"))!;
+          await deps.memoryManagement.mutate({
+            op: "correct",
+            memoryId: "old",
+            expectedRevision: snapshot.revision,
+            content: "User correction",
+          });
+          return fauxAssistantMessage(JSON.stringify({ merges: [{ keep: "keep", drop: "old" }] }));
+        },
+      }),
+    ).rejects.toMatchObject({ code: "memory/conflict" });
     expect(stores.memories[0]).toMatchObject({ content: "User correction", importance: 0.6 });
     expect(stores.memories[0]!.status).not.toBe("superseded");
     expect(stores.memories[1]!.evidenceCount).toBe(1);
   });
 
   test("overlapping model merges never retire their own winner or pinned memory", async () => {
-    const { deps, stores } = createInMemoryDeps({ memories: [
-      seedMemory({ id: "a", scope: "user", content: "A", updatedAt: FRESH }),
-      seedMemory({ id: "b", scope: "user", content: "B", updatedAt: FRESH }),
-      seedMemory({ id: "p", scope: "user", content: "Pinned", pinned: true, updatedAt: FRESH }),
-    ] });
-    const report = await runConsolidation({ memory: deps.memory, model: MODEL, now: NOW, complete: async () => fauxAssistantMessage(JSON.stringify({
-      merges: [null, { keep: "a", drop: "b" }, { keep: "b", drop: "a" }, { keep: "a", drop: "p" }],
-      contradictions: [null], promotions: [null],
-    })) });
+    const { deps, stores } = createInMemoryDeps({
+      memories: [
+        seedMemory({ id: "a", scope: "user", content: "A", updatedAt: FRESH }),
+        seedMemory({ id: "b", scope: "user", content: "B", updatedAt: FRESH }),
+        seedMemory({ id: "p", scope: "user", content: "Pinned", pinned: true, updatedAt: FRESH }),
+      ],
+    });
+    const report = await runConsolidation({
+      memory: deps.memory,
+      model: MODEL,
+      now: NOW,
+      complete: async () =>
+        fauxAssistantMessage(
+          JSON.stringify({
+            merges: [null, { keep: "a", drop: "b" }, { keep: "b", drop: "a" }, { keep: "a", drop: "p" }],
+            contradictions: [null],
+            promotions: [null],
+          }),
+        ),
+    });
     expect(report.merged).toBe(1);
-    expect(stores.memories.find(row => row.id === "a")!.status).not.toBe("superseded");
-    expect(stores.memories.find(row => row.id === "p")!.status).not.toBe("superseded");
+    expect(stores.memories.find((row) => row.id === "a")!.status).not.toBe("superseded");
+    expect(stores.memories.find((row) => row.id === "p")!.status).not.toBe("superseded");
   });
 
   test("reinforcement cannot credit a corrected or forgotten memory from an old extraction", async () => {
-    const { deps, stores } = createInMemoryDeps({ memories: [seedMemory({ id: "m", scope: "user", content: "Original" })] });
+    const { deps, stores } = createInMemoryDeps({
+      memories: [seedMemory({ id: "m", scope: "user", content: "Original" })],
+    });
     const [snapshot] = await deps.memory.snapshotMemories();
-    await deps.memoryManagement.mutate({ op: "correct", memoryId: "m", expectedRevision: snapshot!.revision, content: "Corrected" });
+    await deps.memoryManagement.mutate({
+      op: "correct",
+      memoryId: "m",
+      expectedRevision: snapshot!.revision,
+      content: "Corrected",
+    });
     await expect(deps.memory.reinforceMemory(snapshot!)).rejects.toMatchObject({ code: "memory/conflict" });
     const [fresh] = await deps.memory.snapshotMemories();
     await deps.memory.reinforceMemory(fresh!);
@@ -75,7 +107,13 @@ describe("runConsolidation", () => {
       memories: [
         seedMemory({ id: "m1", scope: "user", content: "偏好深挖", evidenceCount: 2, updatedAt: FRESH }),
         seedMemory({ id: "m2", scope: "user", content: "喜欢刨根问底", evidenceCount: 1, updatedAt: FRESH }),
-        seedMemory({ id: "m3", scope: "book:b1", content: "总是追问概念的历史来源", evidenceCount: 4, updatedAt: FRESH }),
+        seedMemory({
+          id: "m3",
+          scope: "book:b1",
+          content: "总是追问概念的历史来源",
+          evidenceCount: 4,
+          updatedAt: FRESH,
+        }),
         seedMemory({ id: "m4", scope: "book:b1", content: "证据不足的书内观察", evidenceCount: 1, updatedAt: FRESH }),
       ],
     });

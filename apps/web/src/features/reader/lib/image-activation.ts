@@ -25,8 +25,7 @@ function imageSource(element: Element): string | null {
   }
   // SVG <image> (EPUB cover pages wrap the cover this way). foliate rewrites
   // the href to a blob URL; a still-relative one resolves against the section.
-  const href =
-    element.getAttribute("href") ?? element.getAttribute("xlink:href");
+  const href = element.getAttribute("href") ?? element.getAttribute("xlink:href");
   if (!href) return null;
   try {
     return new URL(href, element.ownerDocument.baseURI).toString();

@@ -55,14 +55,7 @@ type SyncStatusRowProps = {
 
 /** The Status row's one-line description speaks with exactly one voice at a
  *  time — a rejected session and a failed cycle use the warning tone. */
-export function SyncStatusRow({
-  status,
-  backlog,
-  movingBookTitle,
-  hint,
-  control,
-  onSyncNow,
-}: SyncStatusRowProps) {
+export function SyncStatusRow({ status, backlog, movingBookTitle, hint, control, onSyncNow }: SyncStatusRowProps) {
   const { t } = useTranslation("settings");
   const syncing = status.state === "syncing";
   const fraction = syncCycleFraction(status);
@@ -93,12 +86,9 @@ export function SyncStatusRow({
                   total: status.progress.blobPartsTotal,
                 },
               )
-            : t(
-                status.progress.blobDirection === "down"
-                  ? "dataSync.progress.bookDown"
-                  : "dataSync.progress.bookUp",
-                { title: movingBookTitle },
-              )),
+            : t(status.progress.blobDirection === "down" ? "dataSync.progress.bookDown" : "dataSync.progress.bookUp", {
+                title: movingBookTitle,
+              })),
       ]
         .filter(Boolean)
         .join(" · ")
@@ -109,8 +99,7 @@ export function SyncStatusRow({
               time: new Date(status.lastSyncAt).toLocaleTimeString(),
             })
           : t("dataSync.syncStatus.never"),
-        pending &&
-          t("dataSync.progress.pending", { events: pending.events, blobs: pending.blobs }),
+        pending && t("dataSync.progress.pending", { events: pending.events, blobs: pending.blobs }),
         hint,
       ]
         .filter(Boolean)
@@ -167,9 +156,7 @@ export function SyncBookBacklogRows({ bookBacklog, overLimit = false }: SyncBook
       title={t("dataSync.books.title")}
       description={
         <span className="block space-y-1.5">
-          {(quotaBlocked || overLimit) && (
-            <span className="block text-red-700">{t("dataSync.books.quotaFull")}</span>
-          )}
+          {(quotaBlocked || overLimit) && <span className="block text-red-700">{t("dataSync.books.quotaFull")}</span>}
           {bookBacklog.map((row) => {
             const state = stateLabel(row);
             return (
@@ -177,9 +164,7 @@ export function SyncBookBacklogRows({ bookBacklog, overLimit = false }: SyncBook
                 <span className="text-fg">{row.title}</span>
                 {row.byteSize != null && ` · ${formatBytes(row.byteSize)}`}
                 {" · "}
-                <span className={state.tone === "error" ? "text-red-700" : undefined}>
-                  {state.text}
-                </span>
+                <span className={state.tone === "error" ? "text-red-700" : undefined}>{state.text}</span>
               </span>
             );
           })}

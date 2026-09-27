@@ -184,7 +184,9 @@ export function DropdownMenu({
           {items.map((item, i) => (
             <button
               key={item.label}
-              ref={(el) => { itemRefs.current[i] = el; }}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
               role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
               aria-checked={item.checked}
               tabIndex={i === activeIndex ? 0 : -1}
@@ -208,9 +210,7 @@ export function DropdownMenu({
               )}
             >
               {item.icon && (
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-fg-subtle">
-                  {item.icon}
-                </span>
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-fg-subtle">{item.icon}</span>
               )}
               <span className="min-w-0 flex-1 truncate">{item.label}</span>
               {item.checked && <Check size={16} aria-hidden="true" className="shrink-0" />}

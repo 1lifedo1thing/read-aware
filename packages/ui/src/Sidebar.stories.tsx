@@ -23,7 +23,9 @@ function SidebarDemo({ side, label, children }: { side?: "left" | "right"; label
       <Sidebar open={open} onClose={() => setOpen(false)} side={side} label={label}>
         <div className="p-6">
           <p className="text-sm text-fg-muted">{children}</p>
-          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Close</Button>
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            Close
+          </Button>
         </div>
       </Sidebar>
     </>
@@ -38,7 +40,11 @@ export const Left: Story = {
     label: "Navigation",
     children: null,
   },
-  render: (args) => <SidebarDemo side={args.side} label="Navigation">Sidebar content</SidebarDemo>,
+  render: (args) => (
+    <SidebarDemo side={args.side} label="Navigation">
+      Sidebar content
+    </SidebarDemo>
+  ),
 };
 
 export const Right: Story = {
@@ -49,5 +55,9 @@ export const Right: Story = {
     label: "Context panel",
     children: null,
   },
-  render: (args) => <SidebarDemo side={args.side} label="Context panel">Context panel</SidebarDemo>,
+  render: (args) => (
+    <SidebarDemo side={args.side} label="Context panel">
+      Context panel
+    </SidebarDemo>
+  ),
 };

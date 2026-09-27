@@ -27,10 +27,7 @@ function score(item: CommandItem, q: string): number | null {
   return null;
 }
 
-function bucket(
-  items: CommandItem[],
-  orderByScore: Map<CommandGroupKey, number> | null,
-): CommandGroup[] {
+function bucket(items: CommandItem[], orderByScore: Map<CommandGroupKey, number> | null): CommandGroup[] {
   const groups = new Map<CommandGroupKey, CommandItem[]>();
   for (const item of items) {
     const list = groups.get(item.group) ?? [];

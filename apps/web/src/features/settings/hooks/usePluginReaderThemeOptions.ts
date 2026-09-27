@@ -23,10 +23,7 @@ export function usePluginReaderThemeOptions(): {
         .filter((theme) => theme.reader)
         .map((theme) => ({
           value: toPluginRef(theme.pluginId, theme.id) as ReaderThemePreference,
-          label:
-            typeof theme.name === "string"
-              ? theme.name
-              : resolvePluginText(theme.name, locale),
+          label: typeof theme.name === "string" ? theme.name : resolvePluginText(theme.name, locale),
         })),
     [pluginThemes, locale],
   );

@@ -171,7 +171,7 @@ export function isRetryable(error: unknown): boolean {
  */
 export function toError(value: unknown): Error {
   if (value instanceof Error) return value;
-  return new Error(typeof value === "string" ? value : JSON.stringify(value) ?? String(value), {
+  return new Error(typeof value === "string" ? value : (JSON.stringify(value) ?? String(value)), {
     cause: value,
   });
 }

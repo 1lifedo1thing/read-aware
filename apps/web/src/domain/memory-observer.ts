@@ -1,37 +1,76 @@
-import { AppError, normalizeMemoryQuery, validateMemoryId, type MemoryObservation, type MemoryObservationQuery, type MemoryObservationResult } from "@read-aware/core";
+import {
+  AppError,
+  normalizeMemoryQuery,
+  validateMemoryId,
+  type MemoryObservation,
+  type MemoryObservationQuery,
+  type MemoryObservationResult,
+} from "@read-aware/core";
 import { observeQuery, type QueryObservationSources } from "./query-observation";
 import { normalizeBookGraphQuery } from "@read-aware/agent";
 import { normalizeUserProfileQuery, normalizeMemoryPageQuery, normalizeProfileInspectionQuery } from "@read-aware/core";
 
 export function normalizeMemoryObservation(input: MemoryObservationQuery): MemoryObservationQuery {
-  const fail = (): never => { throw new AppError("memory/invalid-query", "Invalid memory observation query"); };
+  const fail = (): never => {
+    throw new AppError("memory/invalid-query", "Invalid memory observation query");
+  };
   if (!input || typeof input !== "object" || Array.isArray(input)) return fail();
   if (input.kind === "page") {
-    if (Object.keys(input).some(key => !["kind", "query"].includes(key))) return fail();
+    if (Object.keys(input).some((key) => !["kind", "query"].includes(key))) return fail();
     return { kind: input.kind, query: normalizeMemoryPageQuery(input.query) };
   }
   if (input.kind === "profile") {
-    if (Object.keys(input).some(key => !["kind", "query"].includes(key))) return fail();
+    if (Object.keys(input).some((key) => !["kind", "query"].includes(key))) return fail();
     return { kind: input.kind, query: normalizeUserProfileQuery(input.query) };
   }
   if (input.kind === "profileContext") {
-    if (Object.keys(input).some(key => !["kind", "query"].includes(key))) return fail();
+    if (Object.keys(input).some((key) => !["kind", "query"].includes(key))) return fail();
     return { kind: input.kind, query: normalizeProfileInspectionQuery(input.query) };
   }
-  const keys = input.kind === "search" ? ["kind", "query"] : input.kind === "inspect" ? ["kind", "memoryId"] : input.kind === "graphTask" ? ["kind", "bookId", "taskId"] : input.kind === "classification" || input.kind === "graphTasks" ? ["kind", "bookId"] : ["kind", "bookId", "query"];
-  if (Object.keys(input).some(key => !keys.includes(key))) return fail();
+  const keys =
+    input.kind === "search"
+      ? ["kind", "query"]
+      : input.kind === "inspect"
+        ? ["kind", "memoryId"]
+        : input.kind === "graphTask"
+          ? ["kind", "bookId", "taskId"]
+          : input.kind === "classification" || input.kind === "graphTasks"
+            ? ["kind", "bookId"]
+            : ["kind", "bookId", "query"];
+  if (Object.keys(input).some((key) => !keys.includes(key))) return fail();
   if (input.kind === "search") return { kind: input.kind, query: normalizeMemoryQuery(input.query) };
-  if (input.kind === "inspect") { validateMemoryId(input.memoryId); return { kind: input.kind, memoryId: input.memoryId }; }
+  if (input.kind === "inspect") {
+    validateMemoryId(input.memoryId);
+    return { kind: input.kind, memoryId: input.memoryId };
+  }
   if (input.kind === "graphTask") {
-    if (typeof input.bookId !== "string" || !input.bookId.trim() || input.bookId.length > 256 || typeof input.taskId !== "string" || !input.taskId.trim() || input.taskId.length > 256) return fail();
+    if (
+      typeof input.bookId !== "string" ||
+      !input.bookId.trim() ||
+      input.bookId.length > 256 ||
+      typeof input.taskId !== "string" ||
+      !input.taskId.trim() ||
+      input.taskId.length > 256
+    )
+      return fail();
     return { kind: input.kind, bookId: input.bookId, taskId: input.taskId };
   }
   if (input.kind === "classification" || input.kind === "graphTasks") {
     if (typeof input.bookId !== "string" || !input.bookId.trim() || input.bookId.length > 256) return fail();
     return { kind: input.kind, bookId: input.bookId };
   }
-  if (input.kind !== "bookGraph" || typeof input.bookId !== "string" || !input.bookId.trim() || input.bookId.length > 256) return fail();
-  return { kind: input.kind, bookId: input.bookId, query: normalizeBookGraphQuery(input.query === undefined ? {} : input.query) };
+  if (
+    input.kind !== "bookGraph" ||
+    typeof input.bookId !== "string" ||
+    !input.bookId.trim() ||
+    input.bookId.length > 256
+  )
+    return fail();
+  return {
+    kind: input.kind,
+    bookId: input.bookId,
+    query: normalizeBookGraphQuery(input.query === undefined ? {} : input.query),
+  };
 }
 
 /** Every poll reruns the authorized query. Never cache an unfiltered graph. */
@@ -39,16 +78,31 @@ export class MemoryObserver {
   private count = 0;
   constructor(private readonly deps: { schedule(work: () => void): () => void; report(error: unknown): void }) {}
 
-  observe(input: MemoryObservationQuery, read: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>,
-    handler: (event: MemoryObservation) => unknown, lifetime?: AbortSignal,
-    sources?: (query: MemoryObservationQuery) => QueryObservationSources): () => void {
+  observe(
+    input: MemoryObservationQuery,
+    read: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>,
+    handler: (event: MemoryObservation) => unknown,
+    lifetime?: AbortSignal,
+    sources?: (query: MemoryObservationQuery) => QueryObservationSources,
+  ): () => void {
     const query = normalizeMemoryObservation(input);
     if (typeof handler !== "function") throw new AppError("memory/invalid-query", "Expected an observation callback");
     if (lifetime?.aborted) throw new AppError("memory/cancelled", "Memory observer owner retired");
     if (this.count >= 64) throw new AppError("memory/observer-limit", "Too many memory observers");
     const dependencies = sources?.(query);
     ++this.count;
-    return observeQuery(() => read(structuredClone(query)), handler,
-      { ...this.deps, failureCode: "memory/observation-failed", release: () => { --this.count; } }, lifetime, dependencies);
+    return observeQuery(
+      () => read(structuredClone(query)),
+      handler,
+      {
+        ...this.deps,
+        failureCode: "memory/observation-failed",
+        release: () => {
+          --this.count;
+        },
+      },
+      lifetime,
+      dependencies,
+    );
   }
 }

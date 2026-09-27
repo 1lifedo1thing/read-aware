@@ -46,10 +46,7 @@ function writeState(state: WhatsNewState): void {
  * - 版本变化 → 开一条新提示；
  * - 版本未变 → 沿用未关闭且未过期的提示。
  */
-export function reconcileWhatsNew(
-  currentVersion: string,
-  now: number = Date.now(),
-): { version: string } | null {
+export function reconcileWhatsNew(currentVersion: string, now: number = Date.now()): { version: string } | null {
   const stored = readState();
   if (!stored) {
     writeState({ lastSeenVersion: currentVersion });
@@ -63,12 +60,7 @@ export function reconcileWhatsNew(
     return { version: currentVersion };
   }
   const notice = stored.notice;
-  if (
-    !notice ||
-    notice.dismissed ||
-    notice.version !== currentVersion ||
-    now - notice.shownAt > WHATS_NEW_TTL_MS
-  ) {
+  if (!notice || notice.dismissed || notice.version !== currentVersion || now - notice.shownAt > WHATS_NEW_TTL_MS) {
     return null;
   }
   return { version: notice.version };

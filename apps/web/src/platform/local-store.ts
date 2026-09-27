@@ -1,4 +1,11 @@
-import { actorCause, actorOrigin, causalActor, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
+import {
+  actorCause,
+  actorOrigin,
+  causalActor,
+  copyEventCause,
+  stampEventCause,
+  type DomainActor,
+} from "./domain-actor";
 /**
  * The device-local persistence seam.
  *
@@ -63,7 +70,11 @@ export function onLocalKVWrite(listener: KVWriteListener): () => void {
 }
 function notifyWrite(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): void {
   for (const listener of [...writeListeners]) {
-    try { listener(key, value, origin, actor); } catch (error) { log.error("KV commit observer failed", error); }
+    try {
+      listener(key, value, origin, actor);
+    } catch (error) {
+      log.error("KV commit observer failed", error);
+    }
   }
 }
 
@@ -75,24 +86,39 @@ export function onLocalKVCommit(listener: (commit: KVCommit) => void): () => voi
 }
 function notifyCommit(commit: KVCommit): void {
   for (const listener of [...commitListeners]) {
-    try { listener(copyEventCause(commit, structuredClone(commit))); } catch (error) { log.error("KV transaction observer failed", error); }
+    try {
+      listener(copyEventCause(commit, structuredClone(commit)));
+    } catch (error) {
+      log.error("KV transaction observer failed", error);
+    }
   }
 }
 
 const changeListeners = new Set<(key: string, value: string | null, origin: DomainActor) => void>();
 const changing = new Map<string, object>();
 /** Optimistic changes and rollbacks, for UI and Worker mirrors; not a durable-write feed. */
-export function onLocalKVChange(listener: (key: string, value: string | null, origin: DomainActor) => void): () => void {
+export function onLocalKVChange(
+  listener: (key: string, value: string | null, origin: DomainActor) => void,
+): () => void {
   changeListeners.add(listener);
   return () => changeListeners.delete(listener);
 }
 function notifyChange(key: string, value: string | null, origin: DomainActor = causalActor("system")): void {
-  const notification = {}; changing.set(key, notification);
-  try { for (const listener of [...changeListeners]) {
-    // A reentrant write already delivered the newer value and its own source.
-    if (changing.get(key) !== notification) break;
-    try { listener(key, value, origin); } catch (error) { log.error("KV mirror observer failed", error); }
-  } } finally { if (changing.get(key) === notification) changing.delete(key); }
+  const notification = {};
+  changing.set(key, notification);
+  try {
+    for (const listener of [...changeListeners]) {
+      // A reentrant write already delivered the newer value and its own source.
+      if (changing.get(key) !== notification) break;
+      try {
+        listener(key, value, origin);
+      } catch (error) {
+        log.error("KV mirror observer failed", error);
+      }
+    }
+  } finally {
+    if (changing.get(key) === notification) changing.delete(key);
+  }
 }
 /**
  * Events that must commit in the SAME native transaction as a local KV write.
@@ -103,14 +129,23 @@ function notifyChange(key: string, value: string | null, origin: DomainActor = c
  */
 type KVEventSource = (entries: ReadonlyMap<string, string | null>, actor: DomainActor) => DomainEventDraft[];
 let kvEventSource: KVEventSource | null = null;
-export function setLocalKVEventSource(source: KVEventSource | null): void { kvEventSource = source; }
+export function setLocalKVEventSource(source: KVEventSource | null): void {
+  kvEventSource = source;
+}
 /** The events a local write of `entries` must carry (empty for non-roaming keys). */
-export function localKVEventDrafts(entries: ReadonlyMap<string, string | null>, actor: DomainActor): DomainEventDraft[] {
+export function localKVEventDrafts(
+  entries: ReadonlyMap<string, string | null>,
+  actor: DomainActor,
+): DomainEventDraft[] {
   return kvEventSource?.(entries, actor) ?? [];
 }
 
 /** Persist local entries, joining any required events to one native transaction. */
-async function persistLocalEntries(values: ReadonlyMap<string, string | null>, actor: DomainActor, plain: () => Promise<void>): Promise<void> {
+async function persistLocalEntries(
+  values: ReadonlyMap<string, string | null>,
+  actor: DomainActor,
+  plain: () => Promise<void>,
+): Promise<void> {
   const drafts = localKVEventDrafts(values, actor);
   if (!drafts.length) return plain();
   const events = await mintEventRows(drafts);
@@ -120,7 +155,7 @@ async function persistLocalEntries(values: ReadonlyMap<string, string | null>, a
 }
 
 const writes = new KVWriteQueue({
-  read: key => snapshot?.get(key) ?? null,
+  read: (key) => snapshot?.get(key) ?? null,
   mirror: (key, value, origin) => {
     const previous = snapshot?.get(key) ?? null;
     if (value === null) snapshot?.delete(key);
@@ -128,7 +163,7 @@ const writes = new KVWriteQueue({
     if (value !== previous) notifyChange(key, value, origin);
   },
   persist: (key, value, origin, actor) => {
-    const plain = () => value === null ? invoke<void>("delete_kv", { key }) : invoke<void>("set_kv", { key, value });
+    const plain = () => (value === null ? invoke<void>("delete_kv", { key }) : invoke<void>("set_kv", { key, value }));
     // Remote overlays already came from the log; only local edits publish.
     return origin === "local" ? persistLocalEntries(new Map([[key, value]]), actor, plain) : plain();
   },
@@ -141,14 +176,23 @@ const writes = new KVWriteQueue({
 });
 
 /** Preserve the queue's optimistic and failure contracts before native dispatch. */
-function writeLocal<T>(keys: Iterable<string>, operation: () => T | Promise<T>, owner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<T> {
-  return runObservedDomainWrite(operation, error => {
-    // Synchronous UI setters may have optimistically changed their own atom
-    // even though no queue mutation was admitted. Re-publish current values.
-    for (const key of keys) notifyChange(key, snapshot?.get(key) ?? null);
-    log.warn("KV write admission failed", error);
-    emitAppEvent("local-write-failed", { kind: "kv", code: errorCode(error), owner });
-  }, run);
+function writeLocal<T>(
+  keys: Iterable<string>,
+  operation: () => T | Promise<T>,
+  owner: KVFailureOwner = "store",
+  run: RunDomainWrite = runDomainWrite,
+): Promise<T> {
+  return runObservedDomainWrite(
+    operation,
+    (error) => {
+      // Synchronous UI setters may have optimistically changed their own atom
+      // even though no queue mutation was admitted. Re-publish current values.
+      for (const key of keys) notifyChange(key, snapshot?.get(key) ?? null);
+      log.warn("KV write admission failed", error);
+      emitAppEvent("local-write-failed", { kind: "kv", code: errorCode(error), owner });
+    },
+    run,
+  );
 }
 
 /** A durability barrier for writes already accepted by this process. */
@@ -160,7 +204,9 @@ export async function flushLocalKV(prefix = ""): Promise<void> {
 export function afterLocalKVWrites<T>(operation: () => T | Promise<T>): Promise<T> {
   return isTauri() ? writes.afterPending(operation) : Promise.resolve().then(operation);
 }
-export function hasPendingLocalKVWrites(): boolean { return isTauri() && writes.pending; }
+export function hasPendingLocalKVWrites(): boolean {
+  return isTauri() && writes.pending;
+}
 
 async function loadKvSnapshot(): Promise<Map<string, string>> {
   const all = await invoke<Record<string, string>>("load_kv_all");
@@ -180,7 +226,12 @@ export const localKV = {
       localStorage.setItem(key, value);
       const cause = causalActor(actor ?? "system");
       notifyChange(key, value, cause);
-      notifyCommit(stampEventCause({ entries: [{ key, value }], source: origin, actor: actor === null ? null : actorOrigin(actor) }, cause));
+      notifyCommit(
+        stampEventCause(
+          { entries: [{ key, value }], source: origin, actor: actor === null ? null : actorOrigin(actor) },
+          cause,
+        ),
+      );
       return;
     }
     void writeLocal([key], () => writes.write(key, value, origin, actor));
@@ -192,7 +243,12 @@ export const localKV = {
       localStorage.removeItem(key);
       const cause = causalActor(actor ?? "system");
       notifyChange(key, null, cause);
-      notifyCommit(stampEventCause({ entries: [{ key, value: null }], source: origin, actor: actor === null ? null : actorOrigin(actor) }, cause));
+      notifyCommit(
+        stampEventCause(
+          { entries: [{ key, value: null }], source: origin, actor: actor === null ? null : actorOrigin(actor) },
+          cause,
+        ),
+      );
       return;
     }
     void writeLocal([key], () => writes.write(key, null, origin, actor));
@@ -204,7 +260,12 @@ export const localKV = {
     localStorage.setItem(key, value);
     const cause = causalActor(actor ?? "system");
     notifyChange(key, value, cause);
-    notifyCommit(stampEventCause({ entries: [{ key, value }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, cause));
+    notifyCommit(
+      stampEventCause(
+        { entries: [{ key, value }], source: "local", actor: actor === null ? null : actorOrigin(actor) },
+        cause,
+      ),
+    );
     return Promise.resolve();
   },
   removeItemAsync(key: string, actor: DomainActor | null = null): Promise<void> {
@@ -213,7 +274,12 @@ export const localKV = {
     localStorage.removeItem(key);
     const cause = causalActor(actor ?? "system");
     notifyChange(key, null, cause);
-    notifyCommit(stampEventCause({ entries: [{ key, value: null }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, cause));
+    notifyCommit(
+      stampEventCause(
+        { entries: [{ key, value: null }], source: "local", actor: actor === null ? null : actorOrigin(actor) },
+        cause,
+      ),
+    );
     return Promise.resolve();
   },
 
@@ -244,24 +310,45 @@ export const localKV = {
 
 /** Join host-owned KV metadata to a native domain transaction using the same
  * ordered optimistic mirror and rollback as ordinary KV writes. Desktop only. */
-export function commitLocalKVTransaction(entries: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: DomainActor): Promise<void> {
+export function commitLocalKVTransaction(
+  entries: ReadonlyMap<string, string | null>,
+  persist: () => Promise<void>,
+  actor: DomainActor,
+): Promise<void> {
   if (!isTauri()) return Promise.reject(new AppError("plugin/unavailable", "Native KV transaction requires desktop"));
   const values = new Map(entries);
   return writeLocal(values.keys(), () => writes.batch(values, persist, actor, "local", "caller"), "caller");
 }
 
 /** Host-only multi-record settings commit; never exposes raw KV authority to actors. */
-export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, actor: DomainActor | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<void> {
+export function setLocalKVBatch(
+  entries: ReadonlyMap<string, string | null>,
+  actor: DomainActor | null = null,
+  source: "local" | "restore" = "local",
+  failureOwner: KVFailureOwner = "store",
+  run: RunDomainWrite = runDomainWrite,
+): Promise<void> {
   actorCause(actor ?? undefined);
   if (entries.size === 0) return Promise.resolve();
   const values = new Map(entries);
   if (isTauri()) {
-    return writeLocal(values.keys(), () => writes.batch(values,
-      cause => persistLocalEntries(values, cause, () => invoke("set_kv_batch", { entries: [...values] })), actor, source, failureOwner), failureOwner, run);
+    return writeLocal(
+      values.keys(),
+      () =>
+        writes.batch(
+          values,
+          (cause) => persistLocalEntries(values, cause, () => invoke("set_kv_batch", { entries: [...values] })),
+          actor,
+          source,
+          failureOwner,
+        ),
+      failureOwner,
+      run,
+    );
   }
   // Storybook has no SQLite transaction. Restore its prior records on failure,
   // and do not notify observers until all writes have succeeded.
-  const previous = new Map([...values.keys()].map(key => [key, localStorage.getItem(key)]));
+  const previous = new Map([...values.keys()].map((key) => [key, localStorage.getItem(key)]));
   try {
     for (const [key, value] of values) {
       if (value === null) localStorage.removeItem(key);
@@ -276,7 +363,16 @@ export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, act
   }
   const cause = causalActor(actor ?? "system");
   for (const [key, value] of values) notifyChange(key, value, cause);
-  notifyCommit(stampEventCause({ entries: [...values].map(([key, value]) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, cause));
+  notifyCommit(
+    stampEventCause(
+      {
+        entries: [...values].map(([key, value]) => ({ key, value })),
+        source,
+        actor: actor === null ? null : actorOrigin(actor),
+      },
+      cause,
+    ),
+  );
   return Promise.resolve();
 }
 
@@ -391,33 +487,49 @@ export function restoreLocalKVTransaction(
   const extra = new Map(exact);
   return writes.afterPending(() => {
     const previous = localKV.entries(prefix);
-    const values = new Map([...new Set([...Object.keys(previous), ...Object.keys(replacement)])]
-      .map(suffix => [prefix + suffix, Object.prototype.hasOwnProperty.call(replacement, suffix) ? replacement[suffix]! : null] as const));
+    const values = new Map(
+      [...new Set([...Object.keys(previous), ...Object.keys(replacement)])].map(
+        (suffix) =>
+          [
+            prefix + suffix,
+            Object.prototype.hasOwnProperty.call(replacement, suffix) ? replacement[suffix]! : null,
+          ] as const,
+      ),
+    );
     for (const [key, value] of extra) values.set(key, value);
     return writeLocal(values.keys(), () => writes.replace(values, persist));
   });
 }
 
 /** Atomically replace a namespace, ordered with all accepted KV writes. */
-export async function replaceLocalKVPrefix(
-  prefix: string,
-  entries: Record<string, string>,
-): Promise<void> {
+export async function replaceLocalKVPrefix(prefix: string, entries: Record<string, string>): Promise<void> {
   if (!isTauri()) {
     const previous = localKV.entries(prefix);
-    const values = new Map([...new Set([...Object.keys(previous), ...Object.keys(entries)])]
-      .map(suffix => [prefix + suffix, entries[suffix] ?? null] as const));
+    const values = new Map(
+      [...new Set([...Object.keys(previous), ...Object.keys(entries)])].map(
+        (suffix) => [prefix + suffix, entries[suffix] ?? null] as const,
+      ),
+    );
     for (const [key, value] of values) {
-      if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
     }
     const cause = causalActor("system");
     for (const [key, value] of values) notifyChange(key, value, cause);
-    notifyCommit(stampEventCause({ entries: [...values].map(([key, value]) => ({ key, value })), source: "restore", actor: null }, cause));
+    notifyCommit(
+      stampEventCause(
+        { entries: [...values].map(([key, value]) => ({ key, value })), source: "restore", actor: null },
+        cause,
+      ),
+    );
     return;
   }
 
   const previous = localKV.entries(prefix);
-  const values = new Map([...new Set([...Object.keys(previous), ...Object.keys(entries)])]
-    .map(suffix => [prefix + suffix, entries[suffix] ?? null] as const));
+  const values = new Map(
+    [...new Set([...Object.keys(previous), ...Object.keys(entries)])].map(
+      (suffix) => [prefix + suffix, entries[suffix] ?? null] as const,
+    ),
+  );
   await writeLocal(values.keys(), () => writes.replace(values, () => invoke("replace_kv_prefix", { prefix, entries })));
 }

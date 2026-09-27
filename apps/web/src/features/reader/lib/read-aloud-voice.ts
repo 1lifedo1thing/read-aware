@@ -14,11 +14,7 @@ export type ResolvedPluginVoice = {
   voiceId: string;
 };
 
-export function activePluginVoice(
-  providers: RegisteredVoiceProvider[],
-): ResolvedPluginVoice | null {
+export function activePluginVoice(providers: RegisteredVoiceProvider[]): ResolvedPluginVoice | null {
   const provider = providers.find((entry) => entry.voices.length > 0);
-  return provider
-    ? { provider, voiceId: provider.voices[0].id }
-    : null;
+  return provider ? { provider, voiceId: provider.voices[0].id } : null;
 }

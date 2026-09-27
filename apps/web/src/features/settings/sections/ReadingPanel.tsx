@@ -2,10 +2,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { ChoiceGroup, Stack } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { pluginThemesAtom } from "../../plugins/state/plugin-store";
-import {
-  effectiveReaderSettingsAtom,
-  readerPreferencesAtom,
-} from "../../../state/ui";
+import { effectiveReaderSettingsAtom, readerPreferencesAtom } from "../../../state/ui";
 import { FontField } from "../components/FontField";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
@@ -39,10 +36,7 @@ export function ReadingPanel() {
   const previewPluginFont = useRegisteredPluginFont(effective.fontFamily);
 
   return (
-    <SettingsPage
-      title={t("reading.title")}
-      description={t("reading.description")}
-    >
+    <SettingsPage title={t("reading.title")} description={t("reading.description")}>
       {/* Live preview pinned to the top of the scroll area, so every control
           below shows its effect without scrolling back up. The negative margins
           bleed the opaque backdrop to the panel edges, covering controls that
@@ -113,19 +107,13 @@ export function ReadingPanel() {
         </Stack>
       </SettingsGroup>
 
-      <SettingsGroup
-        title={t("reading.pageColor.title")}
-        description={t("reading.pageColor.description")}
-      >
+      <SettingsGroup title={t("reading.pageColor.title")} description={t("reading.pageColor.description")}>
         <ChoiceGroup
           value={prefs.theme}
           options={[...pageColorOptions(tReader), ...pluginThemeOptions]}
-          onChange={(theme) =>
-            setPrefs(applyReaderThemeSelection(prefs, theme, pluginThemes))
-          }
+          onChange={(theme) => setPrefs(applyReaderThemeSelection(prefs, theme, pluginThemes))}
         />
       </SettingsGroup>
-
     </SettingsPage>
   );
 }
@@ -133,22 +121,14 @@ export function ReadingPanel() {
 function ReadingPreview({ style }: { style: React.CSSProperties }) {
   const { t } = useTranslation("settings");
   return (
-    <div
-      className="overflow-hidden rounded-md border border-border"
-      aria-label={t("reading.previewLabel")}
-    >
+    <div className="overflow-hidden rounded-md border border-border" aria-label={t("reading.previewLabel")}>
       <div className="px-6 py-5 transition-colors" style={style}>
         <blockquote className="m-0">
           <p className="m-0">{t("reading.previewText")}</p>
-          <p
-            className="m-0"
-            style={{ marginBlockStart: "var(--ra-reader-preview-paragraph-spacing)" }}
-          >
+          <p className="m-0" style={{ marginBlockStart: "var(--ra-reader-preview-paragraph-spacing)" }}>
             {t("reading.previewTextSecondary")}
           </p>
-          <footer className="mt-3 font-sans text-caption leading-5 opacity-60">
-            {t("reading.previewSource")}
-          </footer>
+          <footer className="mt-3 font-sans text-caption leading-5 opacity-60">{t("reading.previewSource")}</footer>
         </blockquote>
       </div>
     </div>

@@ -178,17 +178,30 @@ fn backup_export_writes_only_to_the_dialog_grant_of_its_own_window_and_task_once
     let targets = SaveTargets::default();
     let ready = |task_id: &str| {
         let lease = tasks.begin("main", task_id).unwrap();
-        lease.publish(make_snapshot(data.path(), staging.path())).unwrap();
+        lease
+            .publish(make_snapshot(data.path(), staging.path()))
+            .unwrap();
     };
     let destination = out.path().join("backup.age");
     let attempt = |task_id: &str| {
-        write(&tasks, &targets, "main", task_id, password(), &LocalFiles, data.path())
+        write(
+            &tasks,
+            &targets,
+            "main",
+            task_id,
+            password(),
+            &LocalFiles,
+            data.path(),
+        )
     };
 
     // No dialog grant: nothing is written and the ready task is consumed.
     let forged = id();
     ready(&forged);
-    assert_eq!(attempt(&forged).unwrap_err().code, CODE_EXPORT_TARGET_INVALID);
+    assert_eq!(
+        attempt(&forged).unwrap_err().code,
+        CODE_EXPORT_TARGET_INVALID
+    );
     assert!(tasks.is_empty());
 
     // A grant for another window or another task does not authorize this one.
@@ -200,7 +213,10 @@ fn backup_export_writes_only_to_the_dialog_grant_of_its_own_window_and_task_once
     targets
         .bind_session("main", &id(), FilePath::Path(destination.clone()))
         .unwrap();
-    assert_eq!(attempt(&task_id).unwrap_err().code, CODE_EXPORT_TARGET_INVALID);
+    assert_eq!(
+        attempt(&task_id).unwrap_err().code,
+        CODE_EXPORT_TARGET_INVALID
+    );
     assert!(!destination.exists());
 
     // The task's own grant writes once; the grant does not survive the write.
@@ -210,7 +226,9 @@ fn backup_export_writes_only_to_the_dialog_grant_of_its_own_window_and_task_once
         .bind_session("main", &task_id, FilePath::Path(destination.clone()))
         .unwrap();
     attempt(&task_id).unwrap();
-    assert!(std::fs::read(&destination).unwrap().starts_with(b"age-encryption.org/v1\n"));
+    assert!(std::fs::read(&destination)
+        .unwrap()
+        .starts_with(b"age-encryption.org/v1\n"));
     assert_eq!(
         targets.redeem_session("main", &task_id).unwrap_err().code,
         CODE_EXPORT_TARGET_INVALID

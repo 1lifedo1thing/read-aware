@@ -1,5 +1,13 @@
-export type HostUpdatePhase = "idle" | "checking" | "up-to-date" | "available" | "downloading"
-  | "installing" | "permission-required" | "installer-open" | "error";
+export type HostUpdatePhase =
+  | "idle"
+  | "checking"
+  | "up-to-date"
+  | "available"
+  | "downloading"
+  | "installing"
+  | "permission-required"
+  | "installer-open"
+  | "error";
 export type HostUpdateState = {
   phase: HostUpdatePhase;
   currentVersion: string | null;
@@ -7,8 +15,17 @@ export type HostUpdateState = {
   progress: number | null;
   errorStage: "check" | "install" | null;
 };
-export const HOST_MAINTENANCE_SURFACES = ["updates", "diagnostics", "plugins", "backup-import", "backup-export", "delete-data", "ai-connection", "data-location"] as const;
-export type HostMaintenanceSurface = typeof HOST_MAINTENANCE_SURFACES[number];
+export const HOST_MAINTENANCE_SURFACES = [
+  "updates",
+  "diagnostics",
+  "plugins",
+  "backup-import",
+  "backup-export",
+  "delete-data",
+  "ai-connection",
+  "data-location",
+] as const;
+export type HostMaintenanceSurface = (typeof HOST_MAINTENANCE_SURFACES)[number];
 export type BackupAction = "import" | "export";
 export type BackupReceipt = { action: BackupAction; status: "imported" | "exported" | "cancelled" };
 export type ConnectionTestReceipt = { action: "test"; status: "responded" | "empty" | "cancelled" };
@@ -27,5 +44,8 @@ export type HostMaintenancePort = {
   /** Checks the host release feed only. Never downloads, installs or restarts. */
   checkForUpdates(signal?: AbortSignal): Promise<HostMaintenanceSnapshot>;
   /** Reveals mounted host controls, never clicks them. No install, backup or wipe executes. */
-  openSettings(surface: HostMaintenanceSurface, signal?: AbortSignal): Promise<{ status: "opened"; surface: HostMaintenanceSurface }>;
+  openSettings(
+    surface: HostMaintenanceSurface,
+    signal?: AbortSignal,
+  ): Promise<{ status: "opened"; surface: HostMaintenanceSurface }>;
 };

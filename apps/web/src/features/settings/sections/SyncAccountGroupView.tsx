@@ -33,12 +33,7 @@ import { contributionText } from "../../plugins/lib/plugin-i18n";
 import type { SyncAccountInfo } from "../hooks/useSyncAccountInfo";
 import type { useSyncConnection } from "../hooks/useSyncConnection";
 import { SyncConnectDialog } from "./SyncConnectDialog";
-import {
-  formatBytes,
-  SyncBookBacklogRows,
-  SyncDisconnectDialog,
-  SyncStatusRow,
-} from "./SyncConnectedRows";
+import { formatBytes, SyncBookBacklogRows, SyncDisconnectDialog, SyncStatusRow } from "./SyncConnectedRows";
 
 export { formatBytes };
 
@@ -114,15 +109,8 @@ export function SyncAccountGroupView({
 
   if (!supported) {
     return (
-      <SettingsGroup
-        title={t("dataSync.sync")}
-        aside={<PendingBadge>{t("dataSync.desktopBadge")}</PendingBadge>}
-      >
-        <SettingsRow
-          borderless
-          title={t("dataSync.account.title")}
-          description={t("dataSync.account.description")}
-        />
+      <SettingsGroup title={t("dataSync.sync")} aside={<PendingBadge>{t("dataSync.desktopBadge")}</PendingBadge>}>
+        <SettingsRow borderless title={t("dataSync.account.title")} description={t("dataSync.account.description")} />
       </SettingsGroup>
     );
   }
@@ -140,11 +128,7 @@ export function SyncAccountGroupView({
             </Button>
           }
         />
-        <SyncConnectDialog
-          open={connectOpen}
-          onClose={() => onConnectOpenChange(false)}
-          sync={sync}
-        />
+        <SyncConnectDialog open={connectOpen} onClose={() => onConnectOpenChange(false)} sync={sync} />
       </SettingsGroup>
     );
   }
@@ -290,11 +274,7 @@ export function SyncAccountGroupView({
       <SettingsRow title={t("dataSync.e2e.title")} description={t("dataSync.e2e.active")} />
       {/* Re-login for a rejected session: the same connect flow, reached from
           the "sign in again" control above (or a deep-linked token). */}
-      <SyncConnectDialog
-        open={connectOpen}
-        onClose={() => onConnectOpenChange(false)}
-        sync={sync}
-      />
+      <SyncConnectDialog open={connectOpen} onClose={() => onConnectOpenChange(false)} sync={sync} />
       <SyncDisconnectDialog
         open={disconnectOpen}
         busy={sync.busy || deletingAccount}

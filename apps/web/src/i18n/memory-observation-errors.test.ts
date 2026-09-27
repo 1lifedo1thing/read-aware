@@ -7,7 +7,8 @@ test("memory observation failures have localized stable copy in every supported 
   await initI18n("en");
   for (const code of ["memory/observer-limit", "memory/observation-failed"]) {
     const copy = describeError(new AppError(code, "PRIVATE_OBSERVATION"));
-    expect(copy.body).not.toContain("PRIVATE_OBSERVATION"); expect(copy.body).toBeTruthy();
+    expect(copy.body).not.toContain("PRIVATE_OBSERVATION");
+    expect(copy.body).toBeTruthy();
     expect(copy.retryable).toBe(code === "memory/observation-failed");
   }
   for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "de", "fr", "es", "ru"]) {

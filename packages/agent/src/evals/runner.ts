@@ -81,10 +81,7 @@ function rotate<T>(values: T[], offset: number): T[] {
   return [...values.slice(normalized), ...values.slice(0, normalized)];
 }
 
-async function runWithTimeout<T>(
-  timeoutMs: number,
-  run: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
+async function runWithTimeout<T>(timeoutMs: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const task = run(controller.signal);
@@ -100,10 +97,7 @@ async function runWithTimeout<T>(
     if (result !== timeoutMarker) return result;
     // AgentThread normally settles immediately after abort. Give cleanup a
     // bounded grace period so timed-out runs do not overlap the next case.
-    await Promise.race([
-      task.catch(() => undefined),
-      new Promise<void>((resolve) => setTimeout(resolve, 2_000)),
-    ]);
+    await Promise.race([task.catch(() => undefined), new Promise<void>((resolve) => setTimeout(resolve, 2_000))]);
     throw new EvalTimeoutError(timeoutMs);
   } finally {
     if (timeout) clearTimeout(timeout);
@@ -129,17 +123,18 @@ async function executeRun<TObservation, TScenario extends EvalScenario<TObservat
 
   try {
     harnessOutput = await runWithTimeout(input.timeoutMs, (signal) =>
-      input.variant.run(input.scenario, { repetition: input.repetition, signal,
-        capturePartial: snapshot => { capturePartial = snapshot; } }),
+      input.variant.run(input.scenario, {
+        repetition: input.repetition,
+        signal,
+        capturePartial: (snapshot) => {
+          capturePartial = snapshot;
+        },
+      }),
     );
   } catch (error) {
     executionError = error;
     errorStage =
-      error instanceof EvalTimeoutError
-        ? "timeout"
-        : error instanceof EvalStageError
-          ? error.stage
-          : "execution";
+      error instanceof EvalTimeoutError ? "timeout" : error instanceof EvalStageError ? error.stage : "execution";
   }
 
   const finishedAt = new Date();
@@ -162,7 +157,9 @@ async function executeRun<TObservation, TScenario extends EvalScenario<TObservat
     try {
       partial = capturePartial?.();
       if (partial) partialOutput = toJsonValue(partial.observation);
-    } catch { /* Diagnostics must not replace the original execution error. */ }
+    } catch {
+      /* Diagnostics must not replace the original execution error. */
+    }
     return {
       ...base,
       status: "error",
@@ -194,10 +191,7 @@ async function executeRun<TObservation, TScenario extends EvalScenario<TObservat
   }
 }
 
-export async function runEvalSuite<
-  TObservation,
-  TScenario extends EvalScenario<TObservation>,
->(
+export async function runEvalSuite<TObservation, TScenario extends EvalScenario<TObservation>>(
   suite: EvalSuite<TScenario>,
   variants: Array<EvalVariant<TScenario, TObservation>>,
   options: RunEvalSuiteOptions = {},
@@ -210,8 +204,14 @@ export async function runEvalSuite<
   assertPositiveInteger(concurrency, "concurrency");
   if (suite.scenarios.length === 0) throw new Error(`eval suite ${suite.id} has no scenarios`);
   if (variants.length === 0) throw new Error(`eval suite ${suite.id} has no variants`);
-  assertUnique(suite.scenarios.map((scenario) => scenario.id), "scenarios");
-  assertUnique(variants.map((variant) => variant.id), "variants");
+  assertUnique(
+    suite.scenarios.map((scenario) => scenario.id),
+    "scenarios",
+  );
+  assertUnique(
+    variants.map((variant) => variant.id),
+    "variants",
+  );
 
   const definitionHash = fingerprintSuite(
     suite as unknown as EvalSuite<EvalScenario<unknown>>,
@@ -221,9 +221,7 @@ export async function runEvalSuite<
     suiteId: suite.id,
     suiteDisplayName: suite.displayName,
     definitionHash,
-    ...(options.definitionMetadata === undefined
-      ? {}
-      : { definitionMetadata: options.definitionMetadata }),
+    ...(options.definitionMetadata === undefined ? {} : { definitionMetadata: options.definitionMetadata }),
     suiteDescription: suite.description,
     repetitions,
     timeoutMs,
@@ -250,8 +248,7 @@ export async function runEvalSuite<
   // 队列里相邻（时间上仍然贴近，配对比较的时段偏差小），且没有哪个
   // variant 永远排最后吃满时段漂移。配对比较本身按 (scenario, repetition)
   // 事后配对，与执行顺序无关。
-  const units: Array<{ repetition: number; scenario: TScenario; variant: (typeof variants)[number] }> =
-    [];
+  const units: Array<{ repetition: number; scenario: TScenario; variant: (typeof variants)[number] }> = [];
   for (let repetition = 1; repetition <= repetitions; repetition += 1) {
     for (const scenario of suite.scenarios) {
       for (const variant of rotate(variants, repetition - 1)) {
@@ -279,9 +276,7 @@ export async function runEvalSuite<
       await options.hooks?.onRunComplete?.(record);
     }
   };
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, units.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: Math.min(concurrency, units.length) }, () => worker()));
 
   const summary = buildEvalSummary(
     suite.id,

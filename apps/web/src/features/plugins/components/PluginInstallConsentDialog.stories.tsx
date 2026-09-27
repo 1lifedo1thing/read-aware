@@ -23,9 +23,7 @@ const books = [
 
 /** Pairs a manifest with a resolver, as the install gate does. */
 const consent = (next: PluginManifest) =>
-  withAtoms(
-    seed(pluginInstallConsentAtom, { manifest: next, books, resolve: () => {} }),
-  );
+  withAtoms(seed(pluginInstallConsentAtom, { manifest: next, books, resolve: () => {} }));
 
 /**
  * Installation is the trust boundary: this gate states who the plugin is, warns

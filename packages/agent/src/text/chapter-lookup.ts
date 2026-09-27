@@ -26,15 +26,21 @@ export function hrefMatches(left: string, right: string): boolean {
 /** Prefer exact anchors. A file shared by several chapters cannot identify an
  * arbitrary paragraph's chapter: leave it unknown rather than guess the first. */
 export function findChapterByHref<T extends { index: number; hrefs?: readonly string[] }>(
-  toc: readonly T[], href: string,
+  toc: readonly T[],
+  href: string,
 ): T | undefined {
   const fragment = (value: string) => {
     const raw = value.includes("#") ? value.slice(value.indexOf("#") + 1) : "";
-    try { return decodeURIComponent(raw); } catch { return raw; }
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
   };
-  const exact = toc.filter(chapter => chapter.hrefs?.some(candidate =>
-    hrefMatches(candidate, href) && fragment(candidate) === fragment(href)));
+  const exact = toc.filter((chapter) =>
+    chapter.hrefs?.some((candidate) => hrefMatches(candidate, href) && fragment(candidate) === fragment(href)),
+  );
   if (exact.length) return exact.length === 1 ? exact[0] : undefined;
-  const sameFile = toc.filter(chapter => chapter.hrefs?.some(candidate => hrefMatches(candidate, href)));
+  const sameFile = toc.filter((chapter) => chapter.hrefs?.some((candidate) => hrefMatches(candidate, href)));
   return sameFile.length === 1 ? sameFile[0] : undefined;
 }

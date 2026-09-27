@@ -29,15 +29,13 @@ export const RichLookup: Story = {
         senses: [
           {
             partOfSpeech: "noun",
-            definition:
-              "The faculty of making fortunate discoveries by accident; a happy, unplanned finding.",
+            definition: "The faculty of making fortunate discoveries by accident; a happy, unplanned finding.",
             examples: ["Meeting her at the library was pure serendipity."],
           },
           { partOfSpeech: "noun", definition: "An instance of such a discovery.", examples: [] },
         ],
         etymology: "Coined by Horace Walpole in 1754 after 'The Three Princes of Serendip'.",
-        contextualMeaning:
-          "Here it names the pleasant surprise of stumbling onto the right book.",
+        contextualMeaning: "Here it names the pleasant surprise of stumbling onto the right book.",
       },
     },
   },

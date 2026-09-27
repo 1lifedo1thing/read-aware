@@ -60,8 +60,8 @@ fn backup_credentials_opens_production_typescript_vectors_and_binds_slot_key_and
     }
 }
 #[test]
-fn backup_credentials_compares_plaintext_and_prepares_target_keyed_values_without_mutating_history(
-) {
+fn backup_credentials_compares_plaintext_and_prepares_target_keyed_values_without_mutating_history()
+{
     let root = tempfile::tempdir().unwrap();
     let stage = tempfile::tempdir().unwrap();
     let mut target = db(root.path());
@@ -302,7 +302,12 @@ fn backup_credentials_rejects_missing_extra_sync_or_locked_choices_and_cleans_pa
         );
         assert!(!root.path().join("secret.key").exists());
         assert!(!source_dir.exists());
-        assert_eq!(crate::storage::backup_staging::fixture_entries(stage.path()).unwrap().count(), 0);
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(stage.path())
+                .unwrap()
+                .count(),
+            0
+        );
         assert_eq!(
             tx.query_row("SELECT count(*) FROM app_kv", [], |row| row
                 .get::<_, i64>(0))

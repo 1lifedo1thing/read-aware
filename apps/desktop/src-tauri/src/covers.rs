@@ -78,7 +78,10 @@ pub fn normalize_cover(cover: &CoverImage) -> Option<NormalizedCover> {
         return None;
     }
     let fits = width <= COVER_MAX_WIDTH && height <= COVER_MAX_HEIGHT;
-    let keepable = matches!(sniffed, Some("image/jpeg") | Some("image/png") | Some("image/webp"));
+    let keepable = matches!(
+        sniffed,
+        Some("image/jpeg") | Some("image/png") | Some("image/webp")
+    );
     if fits && keepable && cover.bytes.len() <= KEEP_ORIGINAL_MAX_BYTES {
         return Some(NormalizedCover {
             bytes: cover.bytes.clone(),
@@ -108,7 +111,12 @@ pub fn normalize_cover(cover: &CoverImage) -> Option<NormalizedCover> {
     let mut out = Cursor::new(Vec::with_capacity(64 * 1024));
     let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, JPEG_QUALITY);
     encoder
-        .encode(rgb.as_raw(), rgb.width(), rgb.height(), image::ExtendedColorType::Rgb8)
+        .encode(
+            rgb.as_raw(),
+            rgb.width(),
+            rgb.height(),
+            image::ExtendedColorType::Rgb8,
+        )
         .ok()?;
     Some(NormalizedCover {
         bytes: out.into_inner(),
@@ -145,7 +153,9 @@ pub fn cover_from_data_url(data_url: &str) -> Option<CoverImage> {
     if bytes.is_empty() {
         return None;
     }
-    let mime = image_mime(&bytes).map(str::to_owned).unwrap_or_else(|| mime.to_owned());
+    let mime = image_mime(&bytes)
+        .map(str::to_owned)
+        .unwrap_or_else(|| mime.to_owned());
     Some(CoverImage { bytes, mime })
 }
 
@@ -333,7 +343,10 @@ mod tests {
     #[test]
     fn small_originals_are_kept_verbatim() {
         let bytes = png(300, 450);
-        let cover = CoverImage { bytes: bytes.clone(), mime: "image/png".into() };
+        let cover = CoverImage {
+            bytes: bytes.clone(),
+            mime: "image/png".into(),
+        };
         let normalized = normalize_cover(&cover).unwrap();
         assert_eq!(normalized.bytes, bytes);
         assert_eq!(normalized.mime, "image/png");
@@ -341,7 +354,10 @@ mod tests {
 
     #[test]
     fn oversized_covers_shrink_into_the_box_as_jpeg() {
-        let cover = CoverImage { bytes: png(2400, 3600), mime: "image/png".into() };
+        let cover = CoverImage {
+            bytes: png(2400, 3600),
+            mime: "image/png".into(),
+        };
         let normalized = normalize_cover(&cover).unwrap();
         assert_eq!(normalized.mime, "image/jpeg");
         let decoded = image::load_from_memory(&normalized.bytes).unwrap();
@@ -353,7 +369,10 @@ mod tests {
     /// number (debug builds run the codecs at opt-level 3 but not the rest).
     #[test]
     fn normalization_cost_is_reported() {
-        let cover = CoverImage { bytes: png(2400, 3600), mime: "image/png".into() };
+        let cover = CoverImage {
+            bytes: png(2400, 3600),
+            mime: "image/png".into(),
+        };
         let started = std::time::Instant::now();
         let normalized = normalize_cover(&cover).unwrap();
         eprintln!(
@@ -373,14 +392,20 @@ mod tests {
 
     #[test]
     fn undecodable_bytes_are_not_a_cover() {
-        let cover = CoverImage { bytes: b"FONT\0\0\0\0".to_vec(), mime: "font/ttf".into() };
+        let cover = CoverImage {
+            bytes: b"FONT\0\0\0\0".to_vec(),
+            mime: "font/ttf".into(),
+        };
         assert_eq!(normalize_cover(&cover), None);
     }
 
     #[test]
     fn small_svg_passes_through() {
         let svg = b"<svg xmlns='http://www.w3.org/2000/svg'/>".to_vec();
-        let cover = CoverImage { bytes: svg.clone(), mime: "image/svg+xml".into() };
+        let cover = CoverImage {
+            bytes: svg.clone(),
+            mime: "image/svg+xml".into(),
+        };
         let normalized = normalize_cover(&cover).unwrap();
         assert_eq!(normalized.bytes, svg);
         assert_eq!(normalized.mime, "image/svg+xml");

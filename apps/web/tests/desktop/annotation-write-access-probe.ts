@@ -20,9 +20,9 @@ function errorCode(error: unknown): string {
 }
 
 function isNote(snapshot: AnnotationSnapshot | null, bookId: string, body: string): boolean {
-  return snapshot?.annotation.kind === "note"
-    && snapshot.annotation.bookId === bookId
-    && snapshot.annotation.body === body;
+  return (
+    snapshot?.annotation.kind === "note" && snapshot.annotation.bookId === bookId && snapshot.annotation.body === body
+  );
 }
 
 export default {
@@ -34,8 +34,15 @@ export default {
         const createdIds: string[] = [];
         try {
           const input = ctx.services.storage.get<WriteProbeInput>("input");
-          if (!input || !input.targetBookId || !input.otherBookId || input.targetBookId === input.otherBookId
-            || !input.otherNoteId || !input.otherNoteRevision || !input.marker) {
+          if (
+            !input ||
+            !input.targetBookId ||
+            !input.otherBookId ||
+            input.targetBookId === input.otherBookId ||
+            !input.otherNoteId ||
+            !input.otherNoteRevision ||
+            !input.marker
+          ) {
             throw new Error("Two fixture books and a baseline note are required");
           }
           const annotations = ctx.domains.annotations;
@@ -50,18 +57,23 @@ export default {
           }
 
           const before = await annotations.queries.inspect(target.id);
-          if (!isNote(before, input.targetBookId, targetBody)) throw new Error("Created note was not readable in the Worker");
-          const edit = await annotations.commands.applyChanges([{
-            op: "updateNote",
-            annotationId: target.id,
-            expectedRevision: before!.revision,
-            body: targetEditedBody,
-          }]);
+          if (!isNote(before, input.targetBookId, targetBody))
+            throw new Error("Created note was not readable in the Worker");
+          const edit = await annotations.commands.applyChanges([
+            {
+              op: "updateNote",
+              annotationId: target.id,
+              expectedRevision: before!.revision,
+              body: targetEditedBody,
+            },
+          ]);
           const after = await annotations.queries.inspect(target.id);
-          if (!isNote(after, input.targetBookId, targetEditedBody)
-            || edit.changes.length !== 1
-            || edit.changes[0]?.annotationId !== target.id
-            || edit.changes[0]?.revision !== after!.revision) {
+          if (
+            !isNote(after, input.targetBookId, targetEditedBody) ||
+            edit.changes.length !== 1 ||
+            edit.changes[0]?.annotationId !== target.id ||
+            edit.changes[0]?.revision !== after!.revision
+          ) {
             throw new Error("Authorized note edit did not match the persisted CAS receipt");
           }
 
@@ -79,12 +91,14 @@ export default {
 
           let crossEdit: WriteAttempt;
           try {
-            const receipt = await annotations.commands.applyChanges([{
-              op: "updateNote",
-              annotationId: input.otherNoteId,
-              expectedRevision: input.otherNoteRevision,
-              body: `${input.marker} cross edited`,
-            }]);
+            const receipt = await annotations.commands.applyChanges([
+              {
+                op: "updateNote",
+                annotationId: input.otherNoteId,
+                expectedRevision: input.otherNoteRevision,
+                body: `${input.marker} cross edited`,
+              },
+            ]);
             crossEdit = { status: "allowed", annotationId: input.otherNoteId, bookId: input.otherBookId, receipt };
           } catch (error) {
             crossEdit = { status: "rejected", code: errorCode(error) };

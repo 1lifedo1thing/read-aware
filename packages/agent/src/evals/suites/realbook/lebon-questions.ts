@@ -99,9 +99,7 @@ export const lebonQuestionScenarios: AgentEvalScenario[] = [
     coverage: { id: "answer.leader-traits", words: ["威望", "意志", "断言", "重复"], min: 2 },
     noFence: true,
     criteria: { source: "卷二领袖章（#11）— 威望/意志 verified" },
-    rubric: [
-      "Names the levers as the book states them (prestige, will, the means of persuasion) with their interplay",
-    ],
+    rubric: ["Names the levers as the book states them (prestige, will, the means of persuasion) with their interplay"],
   }),
   bookQuestion({
     id: "historical-examples-recital",
@@ -333,7 +331,9 @@ export const lebonQuestionScenarios: AgentEvalScenario[] = [
     coverage: { id: "answer.causes-split", words: ["遥远", "即时", "成因"], min: 2 },
     noFence: true,
     criteria: { structure: "卷二第一二章（#9-10）" },
-    rubric: ["Draws the distinction as drawn (slow soil vs immediate triggers) with one example each from the chapters"],
+    rubric: [
+      "Draws the distinction as drawn (slow soil vs immediate triggers) with one example each from the chapters",
+    ],
   }),
   bookQuestion({
     id: "criminal-crowd-recap",
@@ -363,7 +363,9 @@ export const lebonQuestionScenarios: AgentEvalScenario[] = [
       highlights: stores.annotations
         .filter((annotation) => annotation.kind === "highlight")
         .map((annotation) =>
-          annotation.kind === "highlight" ? { text: annotation.text, color: annotation.color } : { text: "", color: "" },
+          annotation.kind === "highlight"
+            ? { text: annotation.text, color: annotation.color }
+            : { text: "", color: "" },
         ),
     }),
     criteria: { verbatim: "highlight text equals the quoted sentence, color blue" },
@@ -459,6 +461,8 @@ export const lebonQuestionScenarios: AgentEvalScenario[] = [
     },
     noFence: true,
     criteria: { honesty: "framed as general suggestions, not shelf data" },
-    rubric: ["Recommends genuinely adjacent reads (Le Bon's contemporaries and critics) framed as outside-the-shelf knowledge"],
+    rubric: [
+      "Recommends genuinely adjacent reads (Le Bon's contemporaries and critics) framed as outside-the-shelf knowledge",
+    ],
   }),
 ];

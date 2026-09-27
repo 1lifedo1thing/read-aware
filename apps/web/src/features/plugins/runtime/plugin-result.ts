@@ -9,9 +9,13 @@ export async function consumePluginResult<T, R>(
   consume: (value: T) => R | Promise<R>,
 ): Promise<R> {
   const value = await pending;
-  try { return await consume(value); }
-  finally {
-    try { releasePluginCallbacks(value); }
-    catch (error) { log.warn("Plugin result callback cleanup failed", error); }
+  try {
+    return await consume(value);
+  } finally {
+    try {
+      releasePluginCallbacks(value);
+    } catch (error) {
+      log.warn("Plugin result callback cleanup failed", error);
+    }
   }
 }

@@ -35,7 +35,9 @@ export function startModelCatalogRefresh(): () => void {
       }
     }
   };
-  const wake = () => { if (document.visibilityState === "visible") check(); };
+  const wake = () => {
+    if (document.visibilityState === "visible") check();
+  };
   check();
   const timer = window.setInterval(check, 60_000);
   window.addEventListener("online", check);

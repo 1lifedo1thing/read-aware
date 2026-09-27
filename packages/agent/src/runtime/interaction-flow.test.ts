@@ -90,8 +90,12 @@ describe("interaction flow", () => {
         answer: { optionId: "compare", text: "Compare" },
       }),
     );
-    expect(chunks.filter((chunk) => chunk.type === "text").map((chunk) => chunk.text).join(""))
-      .toBe("I will compare them.");
+    expect(
+      chunks
+        .filter((chunk) => chunk.type === "text")
+        .map((chunk) => chunk.text)
+        .join(""),
+    ).toBe("I will compare them.");
     expect(JSON.stringify(secondRound?.messages ?? [])).toContain("Compare");
   });
 });

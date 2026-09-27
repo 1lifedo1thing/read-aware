@@ -1,10 +1,4 @@
-import {
-  ChatCircleDots,
-  Check,
-  Copy,
-  NotePencil,
-  Trash,
-} from "@phosphor-icons/react";
+import { ChatCircleDots, Check, Copy, NotePencil, Trash } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { IconButton, Tooltip } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
@@ -76,8 +70,7 @@ export function ReaderAnnotationMenu({
 
   if (!anchorRect) return null;
 
-  const actionButtonClass =
-    "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg";
+  const actionButtonClass = "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg";
 
   async function handleCopy() {
     await onCopy();
@@ -92,11 +85,7 @@ export function ReaderAnnotationMenu({
   }
 
   return (
-    <div
-      ref={containerRef}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
-    >
+    <div ref={containerRef} aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
       <div
         ref={menuRef}
         className="ra-motion-overlay-pop pointer-events-auto absolute flex items-center gap-0.5 rounded-lg border border-border bg-[var(--ra-main-surface-color)] p-1 shadow-[0_4px_16px_-6px_rgba(28,25,23,0.25)]"

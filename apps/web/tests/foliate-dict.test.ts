@@ -8,7 +8,8 @@ const decoder = new TextDecoder();
 function dictZip(text: string, chunkLength = 4): Blob {
   const bytes = encoder.encode(text);
   const chunks = Array.from({ length: Math.ceil(bytes.length / chunkLength) }, (_, i) =>
-    deflateRawSync(bytes.subarray(i * chunkLength, (i + 1) * chunkLength)));
+    deflateRawSync(bytes.subarray(i * chunkLength, (i + 1) * chunkLength)),
+  );
   const extraLength = 10 + chunks.length * 2;
   const header = new Uint8Array(12 + extraLength);
   const view = new DataView(header.buffer);
@@ -24,15 +25,17 @@ function dictZip(text: string, chunkLength = 4): Blob {
 }
 
 function starIndex(entries: Array<[string, number, number?]>): Blob {
-  return new Blob(entries.map(([word, offset, size]) => {
-    const name = encoder.encode(word);
-    const bytes = new Uint8Array(name.length + (size === undefined ? 5 : 9));
-    bytes.set(name);
-    const view = new DataView(bytes.buffer);
-    view.setUint32(name.length + 1, offset);
-    if (size !== undefined) view.setUint32(name.length + 5, size);
-    return bytes;
-  }));
+  return new Blob(
+    entries.map(([word, offset, size]) => {
+      const name = encoder.encode(word);
+      const bytes = new Uint8Array(name.length + (size === undefined ? 5 : 9));
+      bytes.set(name);
+      const view = new DataView(bytes.buffer);
+      view.setUint32(name.length + 1, offset);
+      if (size !== undefined) view.setUint32(name.length + 5, size);
+      return bytes;
+    }),
+  );
 }
 
 describe("dictionary indexes and compressed ranges", () => {
@@ -50,19 +53,30 @@ describe("dictionary indexes and compressed ranges", () => {
     const dict = new StarDict();
     await dict.loadIfo(new Blob(["StarDict's dict ifo file\nversion=2.4.2\nsametypesequence=m\n"]));
     await dict.loadDict(dictZip("one!two!last"), inflateRawSync);
-    await dict.loadIdx(starIndex([["apple", 0, 4], ["apple", 4, 4], ["pear", 8, 4]]));
+    await dict.loadIdx(
+      starIndex([
+        ["apple", 0, 4],
+        ["apple", 4, 4],
+        ["pear", 8, 4],
+      ]),
+    );
     await dict.loadSyn(starIndex([["fruit", 2]]));
-    expect((await dict.lookup("APPLE")).map(entry => decoder.decode(entry.data[0][1])))
-      .toEqual(["one!", "two!"]);
-    expect((await dict.synonyms("fruit")).map(entry => [entry.word, decoder.decode(entry.data[0][1])]))
-      .toEqual([["pear", "last"]]);
+    expect((await dict.lookup("APPLE")).map((entry) => decoder.decode(entry.data[0][1]))).toEqual(["one!", "two!"]);
+    expect((await dict.synonyms("fruit")).map((entry) => [entry.word, decoder.decode(entry.data[0][1])])).toEqual([
+      ["pear", "last"],
+    ]);
   });
 
   test("ranges span chunks and preserve zero-length entries", async () => {
     const dict = new StarDict();
     await dict.loadIfo(new Blob(["sametypesequence=m"]));
-    await dict.loadDict(dictZip("abcdefghij"), async bytes => inflateRawSync(bytes));
-    await dict.loadIdx(starIndex([["empty", 0, 0], ["middle", 2, 7]]));
+    await dict.loadDict(dictZip("abcdefghij"), async (bytes) => inflateRawSync(bytes));
+    await dict.loadIdx(
+      starIndex([
+        ["empty", 0, 0],
+        ["middle", 2, 7],
+      ]),
+    );
     expect((await dict.lookup("empty"))[0].data[0][1].length).toBe(0);
     expect(decoder.decode((await dict.lookup("middle"))[0].data[0][1])).toBe("cdefghi");
   });

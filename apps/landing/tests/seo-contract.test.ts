@@ -1,17 +1,10 @@
 import { expect, test } from "bun:test";
-import {
-  availableLocales,
-  localeFromPathname,
-  LOCALES,
-  LOCALE_LANG,
-} from "../src/lib/i18n";
+import { availableLocales, localeFromPathname, LOCALES, LOCALE_LANG } from "../src/lib/i18n";
 import { DOWNLOADS } from "../src/lib/releases";
 import { validateManifest } from "../scripts/search-manifest.ts";
 
 const dist = new URL("../dist/", import.meta.url);
-const manifest = validateManifest(
-  await Bun.file(new URL("search-manifest.json", dist)).json(),
-);
+const manifest = validateManifest(await Bun.file(new URL("search-manifest.json", dist)).json());
 const urls = new Set(manifest.pages.map((page) => page.url));
 
 test("every public page has a unique title, description, canonical and resolvable language alternates", async () => {
@@ -19,9 +12,7 @@ test("every public page has a unique title, description, canonical and resolvabl
   expect(urls.size).toBe(117);
   for (const url of urls) {
     const path = new URL(url).pathname;
-    const html = await Bun.file(
-      new URL(`${path.slice(1)}index.html`, dist),
-    ).text();
+    const html = await Bun.file(new URL(`${path.slice(1)}index.html`, dist)).text();
     const title: string[] = [],
       descriptions: string[] = [],
       canonical: string[] = [],
@@ -72,16 +63,13 @@ test("every public page has a unique title, description, canonical and resolvabl
         [...locales.map((l) => LOCALE_LANG[l]), "x-default"].sort(),
       );
     }
-    for (const alternate of alternates)
-      expect(urls.has(alternate.url), `${url}: ${alternate.url}`).toBe(true);
+    for (const alternate of alternates) expect(urls.has(alternate.url), `${url}: ${alternate.url}`).toBe(true);
   }
 });
 
 test("Chinese platform pages have localized navigation, direct assets, FAQs and actual images", async () => {
   for (const platform of ["android", "windows"]) {
-    const html = await Bun.file(
-      new URL(`zh/epub-reader-for-${platform}/index.html`, dist),
-    ).text();
+    const html = await Bun.file(new URL(`zh/epub-reader-for-${platform}/index.html`, dist)).text();
     const primary: string[] = [],
       images: string[] = [],
       faqText: string[] = [],
@@ -121,40 +109,23 @@ test("Chinese platform pages have localized navigation, direct assets, FAQs and 
       expect(faqText.join("")).toContain(question.acceptedAnswer.text);
     }
     for (const src of images)
-      expect(
-        await Bun.file(
-          new URL(
-            new URL(src, "https://readaware.app").pathname.slice(1),
-            dist,
-          ),
-        ).exists(),
-      ).toBe(true);
+      expect(await Bun.file(new URL(new URL(src, "https://readaware.app").pathname.slice(1), dist)).exists()).toBe(
+        true,
+      );
   }
 });
 
 test("all locale privacy and pricing copy acknowledge measurement, AI processing and free sync", async () => {
   for (const locale of LOCALES) {
-    const site = await Bun.file(
-      new URL(`../src/i18n/resources/${locale}.site.json`, import.meta.url),
-    ).json();
-    const docs = await Bun.file(
-      new URL(`../src/i18n/resources/${locale}.docs.json`, import.meta.url),
-    ).json();
+    const site = await Bun.file(new URL(`../src/i18n/resources/${locale}.site.json`, import.meta.url)).json();
+    const docs = await Bun.file(new URL(`../src/i18n/resources/${locale}.docs.json`, import.meta.url)).json();
     expect(site.home.heroTitle).toBe("ReadAware");
     expect(site.home.download.signingNote).toContain("SmartScreen");
     expect(site.pricing.lead).toContain("50");
-    for (const term of [
-      "Cloudflare Workers",
-      "Analytics Engine",
-      "Do Not Track",
-      "Global Privacy Control",
-      "TLS",
-    ])
+    for (const term of ["Cloudflare Workers", "Analytics Engine", "Do Not Track", "Global Privacy Control", "TLS"])
       expect(docs.pages.privacy.body).toContain(term);
     expect(docs.pages.privacy.body).not.toContain("Cloudflare Pages");
-    expect(
-      availableLocales(locale === "en" ? "/privacy/" : `/${locale}/privacy/`),
-    ).toEqual(LOCALES);
+    expect(availableLocales(locale === "en" ? "/privacy/" : `/${locale}/privacy/`)).toEqual(LOCALES);
   }
   const login = await Bun.file(new URL("sync/login/index.html", dist)).text();
   expect(login).not.toContain("cloudflareinsights");

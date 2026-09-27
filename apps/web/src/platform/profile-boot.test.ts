@@ -13,15 +13,25 @@ test("boot retires the summary mirror and attempts native initialization after l
     spyOn(environment, "isTauri").mockReturnValue(true),
     spyOn(ipc, "invoke").mockImplementation(async <T>(command: string): Promise<T> => {
       expect(command).toBe("load_kv_all");
-      return { "read-aware-migrated-v1": "1", "read-aware-migrated-memories-v1": "1", [profile.LEGACY_PROFILE_KEY]: "Legacy" } as T;
+      return {
+        "read-aware-migrated-v1": "1",
+        "read-aware-migrated-memories-v1": "1",
+        [profile.LEGACY_PROFILE_KEY]: "Legacy",
+      } as T;
     }),
-    spyOn(interim, "hydrateInterimProjections").mockImplementation(async () => { order.push("interim"); }),
-    spyOn(secrets, "hydrateSecrets").mockImplementation(async () => { order.push("secrets"); }),
+    spyOn(interim, "hydrateInterimProjections").mockImplementation(async () => {
+      order.push("interim");
+    }),
+    spyOn(secrets, "hydrateSecrets").mockImplementation(async () => {
+      order.push("secrets");
+    }),
     spyOn(profile, "initializeUserProfile").mockImplementation(async () => {
       expect(localKV.getItem(profile.LEGACY_PROFILE_KEY)).toBeNull();
       order.push("profile");
     }),
-    spyOn(genesis, "reconcileGenesisEvents").mockImplementation(async () => { order.push("genesis"); }),
+    spyOn(genesis, "reconcileGenesisEvents").mockImplementation(async () => {
+      order.push("genesis");
+    }),
   ];
   try {
     await hydrateLocalStore();
@@ -29,5 +39,7 @@ test("boot retires the summary mirror and attempts native initialization after l
     expect(localKV.getItem(profile.LEGACY_PROFILE_KEY)).toBeNull();
     await hydrateLocalStore();
     expect(order).toHaveLength(4);
-  } finally { for (const mock of mocks) mock.mockRestore(); }
+  } finally {
+    for (const mock of mocks) mock.mockRestore();
+  }
 });

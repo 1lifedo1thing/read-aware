@@ -9,26 +9,16 @@ import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
 import { SettingsRow } from "../components/SettingsRow";
 import { PendingBadge } from "../components/PendingBadge";
-import {
-  AI_FEATURE_KEYS,
-  type AIPreferences,
-} from "../lib/ai-preferences";
+import { AI_FEATURE_KEYS, type AIPreferences } from "../lib/ai-preferences";
 
 export function AIPanel() {
   const { t } = useTranslation("settings");
   const [prefs, setPrefs] = useAtom(aiPreferencesAtom);
 
   return (
-    <SettingsPage
-      title={t("ai.title")}
-      description={t("ai.description")}
-    >
+    <SettingsPage title={t("ai.title")} description={t("ai.description")}>
       <SettingsGroup title={t("ai.connection")}>
-        <AIConfigPanel
-          advancedContent={
-            <AIAdvancedPreferences prefs={prefs} onChange={setPrefs} />
-          }
-        />
+        <AIConfigPanel advancedContent={<AIAdvancedPreferences prefs={prefs} onChange={setPrefs} />} />
       </SettingsGroup>
       <SettingsGroup title={t("search.title")}>
         <SearchConfigPanel />
@@ -38,22 +28,12 @@ export function AIPanel() {
   );
 }
 
-function AIAdvancedPreferences({
-  prefs,
-  onChange,
-}: {
-  prefs: AIPreferences;
-  onChange: (next: AIPreferences) => void;
-}) {
+function AIAdvancedPreferences({ prefs, onChange }: { prefs: AIPreferences; onChange: (next: AIPreferences) => void }) {
   const { t } = useTranslation("settings");
 
   return (
     <Stack gap="xl">
-      <SettingsGroup
-        headingLevel={4}
-        title={t("ai.features.title")}
-        description={t("ai.features.description")}
-      >
+      <SettingsGroup headingLevel={4} title={t("ai.features.title")} description={t("ai.features.description")}>
         {AI_FEATURE_KEYS.map((key, index) => {
           const label = t(`ai.featureList.${key}.label`);
           return (
@@ -121,11 +101,7 @@ function AIAdvancedPreferences({
         />
       </SettingsGroup>
 
-      <SettingsGroup
-        headingLevel={4}
-        title={t("ai.privacy.title")}
-        description={t("ai.privacy.description")}
-      >
+      <SettingsGroup headingLevel={4} title={t("ai.privacy.title")} description={t("ai.privacy.description")}>
         <SettingsRow
           borderless
           title={t("ai.sendHighlightedText.title")}
@@ -134,9 +110,7 @@ function AIAdvancedPreferences({
             <Toggle
               aria-label={t("ai.sendHighlightedText.title")}
               checked={prefs.sendHighlightedText}
-              onChange={(sendHighlightedText) =>
-                onChange({ ...prefs, sendHighlightedText })
-              }
+              onChange={(sendHighlightedText) => onChange({ ...prefs, sendHighlightedText })}
             />
           }
         />
@@ -147,9 +121,7 @@ function AIAdvancedPreferences({
             <Toggle
               aria-label={t("ai.sendSurroundingContext.title")}
               checked={prefs.sendSurroundingContext}
-              onChange={(sendSurroundingContext) =>
-                onChange({ ...prefs, sendSurroundingContext })
-              }
+              onChange={(sendSurroundingContext) => onChange({ ...prefs, sendSurroundingContext })}
             />
           }
         />

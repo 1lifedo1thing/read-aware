@@ -90,9 +90,7 @@ class ManagedBlobSlice implements DesktopBlobFile {
       length: this.size,
     });
     if (buffer.byteLength !== this.size) {
-      throw new Error(
-        `Managed book file became unavailable while reading ${this.offset}-${this.offset + this.size}.`,
-      );
+      throw new Error(`Managed book file became unavailable while reading ${this.offset}-${this.offset + this.size}.`);
     }
     return buffer;
   }
@@ -142,11 +140,7 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function putBlobChunked(
-  key: string,
-  data: Uint8Array,
-  mimeType?: string,
-): Promise<BlobPutResult> {
+async function putBlobChunked(key: string, data: Uint8Array, mimeType?: string): Promise<BlobPutResult> {
   await invoke("blob_write_open", { key });
   try {
     for (let offset = 0; offset < data.length; offset += BLOB_CHUNK_BYTES) {
@@ -191,13 +185,7 @@ export async function openDesktopBlobFile(
 ): Promise<DesktopBlobFile | null> {
   const info = await invoke<BlobInfo | null>("get_blob_info", { key });
   if (!info || info.byteSize <= 0) return null;
-  return new ManagedBlobSlice(
-    key,
-    name,
-    info.mimeType || fallbackType,
-    0,
-    info.byteSize,
-  );
+  return new ManagedBlobSlice(key, name, info.mimeType || fallbackType, 0, info.byteSize);
 }
 
 /** Remove a blob (bytes + registry row). Missing keys are a no-op. */
@@ -205,18 +193,13 @@ export async function deleteDesktopBlob(key: string): Promise<void> {
   await runDomainWrite(() => invoke("delete_blob", { key }));
 }
 
-
 /** Metadata for a locally-present blob (null while manifest-only or absent). */
 export function getDesktopBlobInfo(key: string): Promise<BlobInfo | null> {
   return invoke<BlobInfo | null>("get_blob_info", { key });
 }
 
 /** Desktop staged upload: raw binary slices through the write session. */
-async function putBlobChunkedRaw(
-  key: string,
-  data: Uint8Array,
-  mimeType?: string,
-): Promise<BlobPutResult> {
+async function putBlobChunkedRaw(key: string, data: Uint8Array, mimeType?: string): Promise<BlobPutResult> {
   await invoke("blob_write_open", { key });
   try {
     for (let offset = 0; offset < data.length; offset += DESKTOP_RAW_CHUNK_BYTES) {

@@ -13,10 +13,7 @@ import type { ChatReference, ChatStreamChunk, ChatTurnRequest } from "./chat-typ
  */
 export function createMockChatTransport(): ChatTransport {
   return {
-    async *sendTurn(
-      request: ChatTurnRequest,
-      signal?: AbortSignal,
-    ): AsyncIterable<ChatStreamChunk> {
+    async *sendTurn(request: ChatTurnRequest, signal?: AbortSignal): AsyncIterable<ChatStreamChunk> {
       yield* streamText(
         "thinking",
         "The reader is asking about this book. Let me check the shelf and their highlights before answering.",
@@ -25,12 +22,7 @@ export function createMockChatTransport(): ChatTransport {
       if (signal?.aborted) return;
 
       yield* toolStep("list_books", undefined, 500, signal);
-      yield* toolStep(
-        "search_book_text",
-        request.message.content.trim() || undefined,
-        650,
-        signal,
-      );
+      yield* toolStep("search_book_text", request.message.content.trim() || undefined, 650, signal);
       if (signal?.aborted) return;
 
       // Interleaving demo: prose → a book-card stack → prose → a word card,
@@ -42,11 +34,7 @@ export function createMockChatTransport(): ChatTransport {
       yield* streamText("text", composeReply(request), signal);
       if (signal?.aborted) return;
       yield { type: "reference", id: crypto.randomUUID(), reference: MOCK_WORD };
-      yield* streamText(
-        "text",
-        "_“Serendipity” above is the kind of word card real lookups produce._",
-        signal,
-      );
+      yield* streamText("text", "_“Serendipity” above is the kind of word card real lookups produce._", signal);
     },
   };
 }
@@ -74,8 +62,7 @@ const MOCK_WORD: ChatReference = {
         senses: [
           {
             partOfSpeech: "noun",
-            definition:
-              "The faculty of making fortunate discoveries by accident; a happy, unplanned finding.",
+            definition: "The faculty of making fortunate discoveries by accident; a happy, unplanned finding.",
             examples: ["Meeting her at the library was pure serendipity."],
           },
           {
@@ -86,8 +73,7 @@ const MOCK_WORD: ChatReference = {
         ],
         etymology:
           "Coined by Horace Walpole in 1754 after 'The Three Princes of Serendip', whose heroes kept making discoveries by accident.",
-        contextualMeaning:
-          "Here it names the pleasant surprise of stumbling onto exactly the right book.",
+        contextualMeaning: "Here it names the pleasant surprise of stumbling onto exactly the right book.",
       },
     },
   ],

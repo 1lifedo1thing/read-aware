@@ -13,9 +13,12 @@ test("retired localOnly values are ignored while independent privacy choices sur
   expect(preferences).not.toHaveProperty("localOnly");
   expect(preferences.features.translate).toBe(true);
   expect(preferences).toMatchObject({
-    buildMemory: false, sendHighlightedText: false,
-    sendSurroundingContext: false, followStreaming: true,
+    buildMemory: false,
+    sendHighlightedText: false,
+    sendSurroundingContext: false,
+    followStreaming: true,
   });
-  expect(JSON.parse(JSON.stringify(normalizeAIPreferences({ ...preferences, ...legacy }))))
-    .not.toHaveProperty("localOnly");
+  expect(JSON.parse(JSON.stringify(normalizeAIPreferences({ ...preferences, ...legacy })))).not.toHaveProperty(
+    "localOnly",
+  );
 });

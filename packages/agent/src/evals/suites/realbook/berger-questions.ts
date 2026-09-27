@@ -158,7 +158,9 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
     retrieval: true,
     noFence: true,
     criteria: { source: "作者背景散见于前言/正文（伯格 #5、贝格尔 #4 均实证）" },
-    rubric: ["Reports the author's actual background as the book presents it, and uses this edition's own name spelling"],
+    rubric: [
+      "Reports the author's actual background as the book presents it, and uses this edition's own name spelling",
+    ],
   }),
   bookQuestion({
     id: "finish-plan",
@@ -249,7 +251,9 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
     cursorChapter: MID,
     turns: [{ text: "说实话我感觉这些方法挺理想化的。真到了职场，老板要答案，你光会提问有什么用？" }],
     noFence: true,
-    criteria: { pushback: "engage the objection with the book's own material (when to ask vs when to answer), no defensiveness" },
+    criteria: {
+      pushback: "engage the objection with the book's own material (when to ask vs when to answer), no defensiveness",
+    },
     rubric: [
       "Takes the challenge seriously: where the book itself draws the ask-vs-answer line, and where the reader's skepticism is fair — a conversation, not a defense brief",
     ],
@@ -265,10 +269,15 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
       { text: "换个问法：按这本书，决策的时候我该问自己什么问题？" },
       { text: "再换个问法：我正犹豫要不要换工作，你别替我决定，给我一套问法。" },
     ],
-    coverage: { id: "answer.paraphrase-consistency", words: ["为什么", "如果", "如何", "选项", "假设", "开放式"], min: 2 },
+    coverage: {
+      id: "answer.paraphrase-consistency",
+      words: ["为什么", "如果", "如何", "选项", "假设", "开放式"],
+      min: 2,
+    },
     noFence: true,
     criteria: {
-      paraphrase: "same intent, three phrasings (abstract/operational/personal) — the third is the real test: methods applied to THIS decision",
+      paraphrase:
+        "same intent, three phrasings (abstract/operational/personal) — the third is the real test: methods applied to THIS decision",
     },
     rubric: [
       "All three answers carry the same substantive method; the third turns it into questions about the reader's actual job change",
@@ -300,7 +309,9 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
     mustContain: ["为什么"],
     noFence: true,
     criteria: { framework: "the why-family's actual payoff as the book states it" },
-    rubric: ["Explains the payoff (seeing/root-cause) as argued, and honestly notes the book's own caveat about interrogation tone"],
+    rubric: [
+      "Explains the payoff (seeing/root-cause) as argued, and honestly notes the book's own caveat about interrogation tone",
+    ],
   }),
   bookQuestion({
     id: "what-if-usage",
@@ -353,7 +364,9 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
       highlights: stores.annotations
         .filter((annotation) => annotation.kind === "highlight")
         .map((annotation) =>
-          annotation.kind === "highlight" ? { text: annotation.text, color: annotation.color } : { text: "", color: "" },
+          annotation.kind === "highlight"
+            ? { text: annotation.text, color: annotation.color }
+            : { text: "", color: "" },
         ),
     }),
     criteria: { verbatim: "highlight text equals the quoted sentence, color green" },
@@ -400,7 +413,8 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
           : {};
       const notes = Array.isArray(state.notes) ? state.notes : [];
       const captured = notes.some(
-        (note) => typeof note.body === "string" && /为什么/.test(note.body) && /如果/.test(note.body) && /如何/.test(note.body),
+        (note) =>
+          typeof note.body === "string" && /为什么/.test(note.body) && /如果/.test(note.body) && /如何/.test(note.body),
       );
       return assessmentFromChecks([
         {

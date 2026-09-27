@@ -26,20 +26,45 @@ async function runChecks(ctx) {
     }
     return "No prototype fetch found";
   });
-  await check("child blob Worker", () => new Promise((resolve, reject) => {
-    let worker;
-    let url;
-    const cleanup = () => { clearTimeout(timer); worker?.terminate(); if (url) URL.revokeObjectURL(url); };
-    const timer = setTimeout(() => { cleanup(); reject(new Error("Child timeout")); }, 3000);
-    try {
-      url = URL.createObjectURL(new Blob([
-        `fetch(${JSON.stringify(`${endpoint}/probe/child-worker`)}).then(r=>r.text()).then(value=>postMessage("NETWORK REACHED: "+value),error=>postMessage(error.name+": "+error.message));`,
-      ], { type: "text/javascript" }));
-      worker = new Worker(url);
-      worker.onmessage = event => { cleanup(); resolve(event.data); };
-      worker.onerror = event => { cleanup(); reject(new Error(event.message || "Child worker error")); };
-    } catch (error) { cleanup(); reject(error); }
-  }));
+  await check(
+    "child blob Worker",
+    () =>
+      new Promise((resolve, reject) => {
+        let worker;
+        let url;
+        const cleanup = () => {
+          clearTimeout(timer);
+          worker?.terminate();
+          if (url) URL.revokeObjectURL(url);
+        };
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("Child timeout"));
+        }, 3000);
+        try {
+          url = URL.createObjectURL(
+            new Blob(
+              [
+                `fetch(${JSON.stringify(`${endpoint}/probe/child-worker`)}).then(r=>r.text()).then(value=>postMessage("NETWORK REACHED: "+value),error=>postMessage(error.name+": "+error.message));`,
+              ],
+              { type: "text/javascript" },
+            ),
+          );
+          worker = new Worker(url);
+          worker.onmessage = (event) => {
+            cleanup();
+            resolve(event.data);
+          };
+          worker.onerror = (event) => {
+            cleanup();
+            reject(new Error(event.message || "Child worker error"));
+          };
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      }),
+  );
   await check("HTTP dynamic module", async () => {
     const module = await import(`${endpoint}/probe/module.js`);
     return `NETWORK REACHED: ${module.probe}`;
@@ -48,14 +73,24 @@ async function runChecks(ctx) {
 }
 
 function view(ctx) {
-  return { kind: "list", title: "Zero-permission sandbox checks", emptyText: "Not run",
+  return {
+    kind: "list",
+    title: "Zero-permission sandbox checks",
+    emptyText: "Not run",
     actions: [{ id: "run", label: "Run loopback checks", run: () => runChecks(ctx) }],
-    items: results.map(({ name, result }, index) => ({ id: String(index), title: name, subtitle: result })) };
+    items: results.map(({ name, result }, index) => ({ id: String(index), title: name, subtitle: result })),
+  };
 }
 
 export default {
   activate(ctx) {
-    ctx.contributions.headerActions.register({ id: "probe", title: "Packaged Sandbox Probe", icon: "shield-check",
-      surface: "shelf", presentation: "page", view: () => view(ctx) });
+    ctx.contributions.headerActions.register({
+      id: "probe",
+      title: "Packaged Sandbox Probe",
+      icon: "shield-check",
+      surface: "shelf",
+      presentation: "page",
+      view: () => view(ctx),
+    });
   },
 };

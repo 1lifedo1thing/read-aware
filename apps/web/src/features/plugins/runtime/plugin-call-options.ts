@@ -76,23 +76,42 @@ export const PLUGIN_CALL_OPTIONS = {
 /** These conditional writes arbitrate cancellation at dispatch, not in the proxy.
  * A deadline or lost realm still leaves the outcome unknown; never retry blindly. */
 export function pluginCallDrainsCancellation(method: string): boolean {
-  return method === "services.jobs.start" || method === "services.jobs.control" || method === "services.transactions.commit" || method === "services.plugins.callService" || method === "domains.memory.commands.decideEntity" || method === "domains.memory.commands.context.capture" || method === "domains.memory.commands.completeOnboarding"
-    || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred"
-    || method === "domains.library.commands.books.importBook" || method === "domains.library.commands.books.importResource"
-    || method === "domains.library.commands.books.startImport"
-    || method === "services.resources.assets.store" || method === "services.resources.assets.delete"
-    || method === "services.resources.openAssociated";
+  return (
+    method === "services.jobs.start" ||
+    method === "services.jobs.control" ||
+    method === "services.transactions.commit" ||
+    method === "services.plugins.callService" ||
+    method === "domains.memory.commands.decideEntity" ||
+    method === "domains.memory.commands.context.capture" ||
+    method === "domains.memory.commands.completeOnboarding" ||
+    method === "services.schedules.defer" ||
+    method === "services.schedules.cancelDeferred" ||
+    method === "domains.library.commands.books.importBook" ||
+    method === "domains.library.commands.books.importResource" ||
+    method === "domains.library.commands.books.startImport" ||
+    method === "services.resources.assets.store" ||
+    method === "services.resources.assets.delete" ||
+    method === "services.resources.openAssociated"
+  );
 }
 
 function position(method: string): number | undefined {
-  return Object.hasOwn(PLUGIN_CALL_OPTIONS, method) ? PLUGIN_CALL_OPTIONS[method as keyof typeof PLUGIN_CALL_OPTIONS] : undefined;
+  return Object.hasOwn(PLUGIN_CALL_OPTIONS, method)
+    ? PLUGIN_CALL_OPTIONS[method as keyof typeof PLUGIN_CALL_OPTIONS]
+    : undefined;
 }
 
 function validate(options: unknown, rawWire = false): PluginCallOptions | undefined {
   if (options === undefined) return undefined;
-  if (!options || typeof options !== "object" || Array.isArray(options)
-    || Object.keys(options).some(key => key !== "signal")
-    || !rawWire && (options as PluginCallOptions).signal !== undefined && !((options as PluginCallOptions).signal instanceof AbortSignal)) {
+  if (
+    !options ||
+    typeof options !== "object" ||
+    Array.isArray(options) ||
+    Object.keys(options).some((key) => key !== "signal") ||
+    (!rawWire &&
+      (options as PluginCallOptions).signal !== undefined &&
+      !((options as PluginCallOptions).signal instanceof AbortSignal))
+  ) {
     throw new AppError("plugin/invalid-argument", "Invalid plugin call options");
   }
   return options as PluginCallOptions;

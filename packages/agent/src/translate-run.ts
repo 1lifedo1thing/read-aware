@@ -30,7 +30,7 @@ const GLOSSARY: Record<TargetLocale, Record<string, string>> = {
     "sentence reader": "逐句阅读",
     "sentence-by-sentence": "逐句",
     "floating bar": "浮动条",
-    "context": "上下文",
+    context: "上下文",
     dictionary: "词典",
     "command palette": "命令面板",
     "local-first": "本地优先",
@@ -54,7 +54,7 @@ const GLOSSARY: Record<TargetLocale, Record<string, string>> = {
     "sentence reader": "文・段落ナビゲーター",
     "sentence-by-sentence": "一文ずつ",
     "floating bar": "フローティングバー",
-    "context": "コンテキスト",
+    context: "コンテキスト",
     dictionary: "辞書",
     "command palette": "コマンドパレット",
     "local-first": "ローカルファースト",
@@ -78,7 +78,7 @@ const GLOSSARY: Record<TargetLocale, Record<string, string>> = {
     "sentence reader": "逐句閱讀",
     "sentence-by-sentence": "逐句",
     "floating bar": "浮動列",
-    "context": "上下文",
+    context: "上下文",
     dictionary: "字典",
     "command palette": "命令面板",
     "local-first": "本地優先",
@@ -194,7 +194,13 @@ function buildPrompt(source: string, target: TargetLocale, style?: string): stri
 }
 
 function parseArgs(argv: string[]) {
-  const args = { file: "", to: [...TARGETS] as TargetLocale[], style: undefined as string | undefined, provider: "deepseek", model: "deepseek-v4-flash" };
+  const args = {
+    file: "",
+    to: [...TARGETS] as TargetLocale[],
+    style: undefined as string | undefined,
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+  };
   const rest = [...argv];
   while (rest.length > 0) {
     const arg = rest.shift()!;
@@ -203,11 +209,7 @@ function parseArgs(argv: string[]) {
       args.to =
         value === "all"
           ? [...TARGETS]
-          : value
-              .split(",")
-              .filter((entry): entry is TargetLocale =>
-                (TARGETS as readonly string[]).includes(entry),
-              );
+          : value.split(",").filter((entry): entry is TargetLocale => (TARGETS as readonly string[]).includes(entry));
     } else if (arg === "--style") args.style = rest.shift();
     else if (arg === "--provider") args.provider = rest.shift() ?? args.provider;
     else if (arg === "--model") args.model = rest.shift() ?? args.model;
@@ -223,10 +225,7 @@ function parseArgs(argv: string[]) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const source =
-  args.file === "-"
-    ? readFileSync(0, "utf8")
-    : readFileSync(args.file, "utf8");
+const source = args.file === "-" ? readFileSync(0, "utf8") : readFileSync(args.file, "utf8");
 
 const { complete, metadata } = resolveJudgeCompletion(args.provider, args.model);
 console.error(`[translate] ${metadata.provider}:${metadata.model} → ${args.to.join(", ")}`);

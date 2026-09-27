@@ -55,7 +55,11 @@ fn starts_with_svg(bytes: &[u8]) -> bool {
 /// Collapse whitespace and drop empties, so a shelf never shows a blank title
 /// that merely looked non-empty in the file.
 pub fn clean(value: impl AsRef<str>) -> Option<String> {
-    let collapsed = value.as_ref().split_whitespace().collect::<Vec<_>>().join(" ");
+    let collapsed = value
+        .as_ref()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     (!collapsed.is_empty()).then_some(collapsed)
 }
 
@@ -114,7 +118,10 @@ mod tests {
 
     #[test]
     fn identifies_images_and_rejects_other_resources() {
-        assert_eq!(image_mime(&[0xff, 0xd8, 0xff, 0xe0, 0, 0]), Some("image/jpeg"));
+        assert_eq!(
+            image_mime(&[0xff, 0xd8, 0xff, 0xe0, 0, 0]),
+            Some("image/jpeg")
+        );
         assert_eq!(image_mime(b"FONT\0\0\0\0"), None);
     }
 

@@ -1,34 +1,21 @@
 import { Component, lazy, Suspense, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowUpRight,
-  BracketsCurly,
-  SquaresFour,
-} from "@phosphor-icons/react";
+import { ArrowUpRight, BracketsCurly, SquaresFour } from "@phosphor-icons/react";
 import { useTranslation } from "react-i18next";
-import {
-  useCapabilityExplorer,
-  useManifestDraft,
-} from "../hooks/useCapabilityExplorer";
+import { useCapabilityExplorer, useManifestDraft } from "../hooks/useCapabilityExplorer";
 import { localizePath, localeFromPathname } from "../lib/i18n";
 import { CapabilityBrowserSlot } from "./PluginDocTools";
 import "./capability-explorer.css";
 
-const PermissionPreviewSlot = lazy(
-  () => import("./PluginPermissionPreviewSlot"),
-);
+const PermissionPreviewSlot = lazy(() => import("./PluginPermissionPreviewSlot"));
 
 export function PluginCapabilitiesPage() {
   const { t } = useTranslation("docs");
   const { search, pathname } = useCapabilityExplorer();
-  const title = t("pages.pluginsCapabilities.body")
-    .split("\n")[0]
-    .replace(/^#\s+/, "");
+  const title = t("pages.pluginsCapabilities.body").split("\n")[0].replace(/^#\s+/, "");
   const locale = localeFromPathname(pathname);
   const manifest = search.view === "manifest";
-  const [manifestSource, setManifestSource] = useManifestDraft(
-    t("sampleManifest"),
-  );
+  const [manifestSource, setManifestSource] = useManifestDraft(t("sampleManifest"));
   return (
     <article className="explorer-page">
       <header className="explorer-heading">
@@ -36,10 +23,7 @@ export function PluginCapabilitiesPage() {
           <h1>{title}</h1>
           <p>{t("explorer.intro")}</p>
         </div>
-        <a
-          className="explorer-guide"
-          href={localizePath("/docs/plugins/develop", locale)}
-        >
+        <a className="explorer-guide" href={localizePath("/docs/plugins/develop", locale)}>
           {t("explorer.buildGuide")}
           <ArrowUpRight size={15} aria-hidden="true" />
         </a>
@@ -68,32 +52,19 @@ export function PluginCapabilitiesPage() {
       </nav>
       {manifest ? (
         <div className="manifest-workspace">
-          <p className="explorer-manifest-intro">
-            {t("explorer.manifestIntro")}
-          </p>
+          <p className="explorer-manifest-intro">{t("explorer.manifestIntro")}</p>
           <EditorBoundary
             fallback={
               <p role="alert">
                 {t("explorer.loadError")}{" "}
-                <button
-                  type="button"
-                  className="explorer-text-button"
-                  onClick={() => window.location.reload()}
-                >
+                <button type="button" className="explorer-text-button" onClick={() => window.location.reload()}>
                   {t("explorer.reload")}
                 </button>
               </p>
             }
           >
-            <Suspense
-              fallback={
-                <p role="status">{t("permissionPreview.inputLabel")}…</p>
-              }
-            >
-              <PermissionPreviewSlot
-                source={manifestSource}
-                onChange={setManifestSource}
-              />
+            <Suspense fallback={<p role="status">{t("permissionPreview.inputLabel")}…</p>}>
+              <PermissionPreviewSlot source={manifestSource} onChange={setManifestSource} />
             </Suspense>
           </EditorBoundary>
         </div>
@@ -111,10 +82,7 @@ export function PluginCapabilitiesPage() {
   );
 }
 
-class EditorBoundary extends Component<
-  { children: ReactNode; fallback: ReactNode },
-  { failed: boolean }
-> {
+class EditorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };

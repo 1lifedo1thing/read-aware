@@ -10,11 +10,7 @@ import { assessmentFromChecks } from "../../assertions";
 import type { AgentEvalScenario } from "../../agent-harness";
 import { realBook } from "../../book-fixtures";
 import { bookQuestion } from "./question-factories";
-import {
-  LEAK_WORDS_CH35,
-  LEAK_WORDS_CH35_LATE,
-  editionFidelityAssessment,
-} from "./karamazov-shared";
+import { LEAK_WORDS_CH35, LEAK_WORDS_CH35_LATE, editionFidelityAssessment } from "./karamazov-shared";
 
 const kara = realBook("karamazov");
 const MID = 35;
@@ -22,8 +18,7 @@ const CH35_LEAKS = [...LEAK_WORDS_CH35, ...LEAK_WORDS_CH35_LATE];
 
 /** 版本保真 + 围栏是全组底线：工厂断言之外统一叠上。 */
 function withFidelity() {
-  return (observation: Parameters<typeof editionFidelityAssessment>[0]) =>
-    editionFidelityAssessment(observation);
+  return (observation: Parameters<typeof editionFidelityAssessment>[0]) => editionFidelityAssessment(observation);
 }
 export const karamazovQuestionScenarios: AgentEvalScenario[] = [
   bookQuestion({
@@ -70,8 +65,7 @@ export const karamazovQuestionScenarios: AgentEvalScenario[] = [
     fence: true,
     extraEvaluate: withFidelity(),
     criteria: {
-      readSide:
-        "仆人/厨子（#5）+ #19 黎萨维塔章交代的身世传闻——这些都在已读面内，可以谈",
+      readSide: "仆人/厨子（#5）+ #19 黎萨维塔章交代的身世传闻——这些都在已读面内，可以谈",
       fenced: "ch35+ 的后续角色与动向不可讲；旷野/石头变成是 ch40 内容标记",
     },
     rubric: [
@@ -212,15 +206,16 @@ export const karamazovQuestionScenarios: AgentEvalScenario[] = [
     tags: ["retrieval", "karamazov", "book"],
     book: kara,
     cursorChapter: MID,
-    turns: [{ text: "我记得前面是不是有句『没有永生，就没有德行』，还说到『无所不可』？这是谁的观点？当时是什么场合？" }],
+    turns: [
+      { text: "我记得前面是不是有句『没有永生，就没有德行』，还说到『无所不可』？这是谁的观点？当时是什么场合？" },
+    ],
     mustContain: ["伊万"],
     retrieval: true,
     leakWords: CH35_LEAKS,
     fence: true,
     extraEvaluate: withFidelity(),
     criteria: {
-      quote:
-        "#15 修道院会面：米乌索夫转述伊万的观点，伊万随后向长老确认；不是另一个译本的网络名句",
+      quote: "#15 修道院会面：米乌索夫转述伊万的观点，伊万随后向长老确认；不是另一个译本的网络名句",
     },
     rubric: [
       "Attributes the idea to Ivan and identifies the monastery meeting where Miusov reports it and Ivan affirms it, rather than inventing the internet-famous wording or a later tavern setting",
@@ -290,9 +285,7 @@ export const karamazovQuestionScenarios: AgentEvalScenario[] = [
           ? (observation.state as { highlights?: Array<{ text?: string; color?: string }> })
           : {};
       const highlights = Array.isArray(state.highlights) ? state.highlights : [];
-      const matched = highlights.some(
-        (entry) => entry?.text === quoted && entry?.color === "yellow",
-      );
+      const matched = highlights.some((entry) => entry?.text === quoted && entry?.color === "yellow");
       return assessmentFromChecks([
         {
           id: "state.highlight-verbatim-yellow",
@@ -331,10 +324,7 @@ export const karamazovQuestionScenarios: AgentEvalScenario[] = [
           : {};
       const notes = Array.isArray(state.notes) ? state.notes : [];
       const captured = notes.some(
-        (note) =>
-          typeof note.body === "string" &&
-          /阿辽沙/.test(note.body) &&
-          /修道院|承受/.test(note.body),
+        (note) => typeof note.body === "string" && /阿辽沙/.test(note.body) && /修道院|承受/.test(note.body),
       );
       return assessmentFromChecks([
         {
@@ -390,7 +380,8 @@ export const karamazovQuestionScenarios: AgentEvalScenario[] = [
     fence: true,
     extraEvaluate: withFidelity(),
     criteria: {
-      honesty: "the shelf holds only this book — recommendations are world knowledge, not shelf data; no card deck of books that are not on the shelf",
+      honesty:
+        "the shelf holds only this book — recommendations are world knowledge, not shelf data; no card deck of books that are not on the shelf",
     },
     rubric: [
       "Offers real follow-up reads clearly framed as general suggestions (Dostoevsky-adjacent), never presented as if pulled from the reader's shelf",

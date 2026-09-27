@@ -56,7 +56,10 @@ function requireCallable(value: unknown, what: string): (...args: unknown[]) => 
 /** Copy an array-like's indexed members. Holes read as `undefined`, as every
  * ES2023 change-array-by-copy method specifies. `ArrayCreate` limits still
  * apply: a length beyond 2^32 - 1 throws the engine's own RangeError. */
-function copyIndexed(value: unknown, method: string): { source: Record<PropertyKey, unknown>; copy: unknown[]; length: number } {
+function copyIndexed(
+  value: unknown,
+  method: string,
+): { source: Record<PropertyKey, unknown>; copy: unknown[]; length: number } {
   const source = toObject(value, method);
   const length = toLength(source.length);
   const copy = new Array<unknown>(length);
@@ -71,14 +74,18 @@ export function promiseWithResolvers<T>(this: PromiseConstructor): PromiseWithRe
   let reject!: (reason?: unknown) => void;
   // NewPromiseCapability(C): the receiver is the constructor, so subclasses
   // get instances of themselves, exactly like the native.
-  const promise = new this<T>((fulfil, fail) => { resolve = fulfil; reject = fail; });
+  const promise = new this<T>((fulfil, fail) => {
+    resolve = fulfil;
+    reject = fail;
+  });
   return { promise, resolve, reject };
 }
 
 // ----- ES2024: Object.groupBy / Map.groupBy -----
 
 export function objectGroupBy<T, K extends PropertyKey>(
-  items: Iterable<T>, keyOf: (item: T, index: number) => K,
+  items: Iterable<T>,
+  keyOf: (item: T, index: number) => K,
 ): Partial<Record<K, T[]>> {
   toObject(items, "Object.groupBy");
   const callback = requireCallable(keyOf, "Object.groupBy callback");
@@ -134,11 +141,15 @@ export function arrayToSpliced<T>(this: unknown, ...args: [start?: number, skipC
   const items = args.slice(2) as T[];
   // Arity matters: `toSpliced()` removes nothing, `toSpliced(n)` removes the
   // rest, `toSpliced(n, undefined)` removes nothing (ToIntegerOrInfinity(undefined) = 0).
-  const skipCount = args.length === 0 ? 0
-    : args.length === 1 ? length - start
-    : Math.min(Math.max(toIntegerOrInfinity(args[1]), 0), length - start);
+  const skipCount =
+    args.length === 0
+      ? 0
+      : args.length === 1
+        ? length - start
+        : Math.min(Math.max(toIntegerOrInfinity(args[1]), 0), length - start);
   const newLength = length + items.length - skipCount;
-  if (newLength > MAX_SAFE_LENGTH) throw new TypeError("Array.prototype.toSpliced result exceeds the maximum array length");
+  if (newLength > MAX_SAFE_LENGTH)
+    throw new TypeError("Array.prototype.toSpliced result exceeds the maximum array length");
   const result = new Array<unknown>(newLength);
   let target = 0;
   for (let index = 0; index < start; index += 1) result[target++] = source[index];
@@ -214,7 +225,10 @@ export function installEcmaScriptPolyfills(globals: PolyfillGlobals): string[] {
   fill(globals.Object, "groupBy", objectGroupBy, "Object.groupBy");
   fill(globals.Map, "groupBy", mapGroupBy, "Map.groupBy");
   const arrayMethods = {
-    toSorted: arrayToSorted, toReversed: arrayToReversed, toSpliced: arrayToSpliced, with: arrayWith,
+    toSorted: arrayToSorted,
+    toReversed: arrayToReversed,
+    toSpliced: arrayToSpliced,
+    with: arrayWith,
   } as const;
   for (const [name, implementation] of Object.entries(arrayMethods)) {
     if (installMissing(globals.Array.prototype, name, implementation)) {
@@ -228,4 +242,6 @@ export function installEcmaScriptPolyfills(globals: PolyfillGlobals): string[] {
 }
 
 /** The names filled in this realm, for the boot log. */
-export const installedPolyfills: readonly string[] = installEcmaScriptPolyfills(globalThis as unknown as PolyfillGlobals);
+export const installedPolyfills: readonly string[] = installEcmaScriptPolyfills(
+  globalThis as unknown as PolyfillGlobals,
+);

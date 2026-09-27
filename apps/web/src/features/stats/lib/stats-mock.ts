@@ -22,8 +22,8 @@ import {
  * histogram so "when you read" looks like a real person's rhythm.
  */
 const HOUR_WEIGHTS = [
-  0.2, 0.1, 0.05, 0.05, 0.05, 0.1, 0.4, 1.0, 1.2, 0.7, 0.5, 0.5,
-  0.9, 0.8, 0.4, 0.4, 0.5, 0.7, 0.9, 1.4, 1.8, 2.0, 1.5, 0.7,
+  0.2, 0.1, 0.05, 0.05, 0.05, 0.1, 0.4, 1.0, 1.2, 0.7, 0.5, 0.5, 0.9, 0.8, 0.4, 0.4, 0.5, 0.7, 0.9, 1.4, 1.8, 2.0, 1.5,
+  0.7,
 ];
 
 const HOUR_WEIGHT_TOTAL = HOUR_WEIGHTS.reduce((a, b) => a + b, 0);
@@ -71,9 +71,7 @@ function seedBook(bookId: string, now: number, profile: SeedProfile): BookReadin
     const forced = offset < profile.streakDays;
     if (!forced && Math.random() > profile.frequency) continue;
 
-    const minutes = Math.round(
-      profile.minMinutes + Math.random() * (profile.maxMinutes - profile.minMinutes),
-    );
+    const minutes = Math.round(profile.minMinutes + Math.random() * (profile.maxMinutes - profile.minMinutes));
     if (minutes <= 0) continue;
     const ms = minutes * 60_000;
 

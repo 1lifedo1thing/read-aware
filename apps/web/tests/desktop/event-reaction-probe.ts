@@ -17,7 +17,8 @@ const plugin: PluginModule = {
     if (ctx.manifest.description === "nullable-observation-reaction") {
       ctx.services.ui.reader!.image!.observe(async (snapshot, delivery) => {
         if (snapshot !== null) throw new Error("Closed snapshot changed");
-        const bound = ctx.withEvent(delivery); await Promise.resolve();
+        const bound = ctx.withEvent(delivery);
+        await Promise.resolve();
         await bound.services.ui.reader!.setPanel!("chat", false);
       });
       return;
@@ -25,8 +26,14 @@ const plugin: PluginModule = {
     if (ctx.manifest.description === "memory-observation-reaction") {
       ctx.domains.memory!.events.observe({ kind: "inspect", memoryId: "m" }, async (snapshot, delivery) => {
         if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Memory snapshot shape changed");
-        const bound = ctx.withEvent(delivery); await Promise.resolve();
-        await bound.domains.memory!.commands!.mutate({ op: "correct", memoryId: "m", expectedRevision: `mem1:${"a".repeat(64)}`, content: "changed" });
+        const bound = ctx.withEvent(delivery);
+        await Promise.resolve();
+        await bound.domains.memory!.commands!.mutate({
+          op: "correct",
+          memoryId: "m",
+          expectedRevision: `mem1:${"a".repeat(64)}`,
+          content: "changed",
+        });
       });
       return;
     }
@@ -35,8 +42,9 @@ const plugin: PluginModule = {
         if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Annotation snapshot shape changed");
         const bound = ctx.withEvent(delivery);
         await Promise.resolve();
-        await bound.domains.annotations!.commands!.applyChanges([{ op: "updateNote", annotationId: "n",
-          expectedRevision: `ann1:${"a".repeat(64)}`, body: "changed" }]);
+        await bound.domains.annotations!.commands!.applyChanges([
+          { op: "updateNote", annotationId: "n", expectedRevision: `ann1:${"a".repeat(64)}`, body: "changed" },
+        ]);
       });
       return;
     }
@@ -49,7 +57,7 @@ const plugin: PluginModule = {
       });
       return;
     }
-    ctx.domains.library!.events.subscribe("book.starred", async event => {
+    ctx.domains.library!.events.subscribe("book.starred", async (event) => {
       const bound = ctx.withEvent(event);
       if (bound.lifecycle !== ctx.lifecycle) throw new Error("Event binding changed activation identity");
       await Promise.resolve();

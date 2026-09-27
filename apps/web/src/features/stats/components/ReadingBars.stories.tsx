@@ -14,20 +14,16 @@ function bars(minutes: number[], labelFor: (index: number) => string): StatsBar[
   }));
 }
 
-const WEEK = bars([40, 25, 0, 62, 31, 12, 48], (i) =>
-  ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-);
+const WEEK = bars([40, 25, 0, 62, 31, 12, 48], (i) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]);
 
 const MONTH = bars(
-  [22, 41, 0, 35, 18, 60, 12, 0, 44, 29, 51, 8, 33, 47, 0, 26, 39, 14, 55, 21,
-    0, 36, 42, 17, 30, 9, 48, 25, 0, 38],
+  [22, 41, 0, 35, 18, 60, 12, 0, 44, 29, 51, 8, 33, 47, 0, 26, 39, 14, 55, 21, 0, 36, 42, 17, 30, 9, 48, 25, 0, 38],
   (i) => `${i + 1}`,
 );
 
 const YEAR = bars(
   [620, 940, 410, 1180, 760, 300, 880, 1420, 690, 1050, 520, 970],
-  (i) =>
-    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i],
+  (i) => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i],
 );
 
 const meta = {

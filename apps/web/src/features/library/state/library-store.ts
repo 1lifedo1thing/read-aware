@@ -16,11 +16,14 @@ import type { Collection, LibraryBook } from "../lib/library-types";
 /** Host-only provenance travels with each projection, outside its JSON data. */
 function libraryProjection<T>() {
   const state = atom<T[]>(stampEventCause([], "system"));
-  return atom(get => get(state), (get, set, update: T[] | ((current: T[]) => T[]), origin: DomainActor = "user") => {
-    const current = get(state);
-    const next = typeof update === "function" ? update(current) : update;
-    if (next !== current) set(state, stampEventCause([...next], causalActor(origin)));
-  });
+  return atom(
+    (get) => get(state),
+    (get, set, update: T[] | ((current: T[]) => T[]), origin: DomainActor = "user") => {
+      const current = get(state);
+      const next = typeof update === "function" ? update(current) : update;
+      if (next !== current) set(state, stampEventCause([...next], causalActor(origin)));
+    },
+  );
 }
 export const libraryBooksAtom = libraryProjection<LibraryBook>();
 export const libraryCollectionsAtom = libraryProjection<Collection>();

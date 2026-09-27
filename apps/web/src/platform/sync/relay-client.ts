@@ -136,9 +136,7 @@ export function createRelayClient(options: RelayClientOptions) {
 
   return {
     async requestMagicLink(email: string, lang?: string): Promise<AuthRequestResponse> {
-      return (await (
-        await json("POST", "/v1/auth/request", { email, lang })
-      ).json()) as AuthRequestResponse;
+      return (await (await json("POST", "/v1/auth/request", { email, lang })).json()) as AuthRequestResponse;
     },
     async verifyMagicLink(token: string): Promise<AuthVerifyResponse> {
       return (await (await json("POST", "/v1/auth/verify", { token })).json()) as AuthVerifyResponse;
@@ -211,13 +209,7 @@ export function createRelayClient(options: RelayClientOptions) {
     /** Sealed bytes + part count the relay holds for `key`; null when absent. */
     async headBlob(key: string): Promise<{ bytes: number; parts: number } | null> {
       try {
-        const res = await request(
-          "HEAD",
-          `/v1/blobs/${encodeURIComponent(key)}`,
-          undefined,
-          undefined,
-          "none",
-        );
+        const res = await request("HEAD", `/v1/blobs/${encodeURIComponent(key)}`, undefined, undefined, "none");
         return {
           bytes: Number(res.headers.get(BLOB_HEAD_BYTES_HEADER) ?? "0"),
           parts: Number(res.headers.get(BLOB_HEAD_PARTS_HEADER) ?? "0"),
@@ -265,13 +257,7 @@ export function createRelayClient(options: RelayClientOptions) {
     },
     async getBlob(key: string): Promise<Uint8Array | null> {
       try {
-        const res = await request(
-          "GET",
-          `/v1/blobs/${encodeURIComponent(key)}`,
-          undefined,
-          undefined,
-          "binary",
-        );
+        const res = await request("GET", `/v1/blobs/${encodeURIComponent(key)}`, undefined, undefined, "binary");
         return new Uint8Array(await res.arrayBuffer());
       } catch (error) {
         if (error instanceof RelayError && error.status === 404) return null;

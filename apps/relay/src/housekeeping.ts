@@ -12,8 +12,5 @@ export async function cleanupRelayStorage(
   rateLimits: Pick<RateLimitStore, "cleanup">,
   nowMs: number,
 ): Promise<void> {
-  await Promise.all([
-    accounts.cleanupExpired(nowMs),
-    rateLimits.cleanup(nowMs - RATE_WINDOW_RETENTION_MS),
-  ]);
+  await Promise.all([accounts.cleanupExpired(nowMs), rateLimits.cleanup(nowMs - RATE_WINDOW_RETENTION_MS)]);
 }

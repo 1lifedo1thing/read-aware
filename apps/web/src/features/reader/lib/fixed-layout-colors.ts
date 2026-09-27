@@ -32,13 +32,16 @@ export type FixedLayoutPageColors = {
   foreground?: string;
 } | null;
 
-const linearize = (value: number) =>
-  value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+const linearize = (value: number) => (value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
 
 /** `#rgb` / `#rgba` / `#rrggbb` / `#rrggbbaa` to 0..1 channels, or null. */
 function hexChannels(color: string): [number, number, number] | null {
   const hex = color.trim().replace(/^#/, "");
-  const expand = (h: string) => h.split("").map((c) => c + c).join("");
+  const expand = (h: string) =>
+    h
+      .split("")
+      .map((c) => c + c)
+      .join("");
   const full =
     hex.length === 3 || hex.length === 4
       ? expand(hex.slice(0, 3))
@@ -46,11 +49,7 @@ function hexChannels(color: string): [number, number, number] | null {
         ? hex.slice(0, 6)
         : null;
   if (full == null || !/^[0-9a-fA-F]{6}$/.test(full)) return null;
-  return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255) as [
-    number,
-    number,
-    number,
-  ];
+  return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255) as [number, number, number];
 }
 
 const hueToChannel = (p: number, q: number, t: number) => {
@@ -74,7 +73,10 @@ function funcChannels(color: string): [number, number, number] | null {
   const match = color.trim().match(/^(rgba?|hsla?)\(([^)]*)\)$/i);
   if (!match) return null;
   // Alpha does not affect which side of the palette a color sits on.
-  const parts = match[2].split("/")[0].split(/[\s,]+/).filter(Boolean);
+  const parts = match[2]
+    .split("/")[0]
+    .split(/[\s,]+/)
+    .filter(Boolean);
   if (parts.length < 3) return null;
   const values = parts.slice(0, 3).map((part) => ({
     value: Number.parseFloat(part),
@@ -83,43 +85,27 @@ function funcChannels(color: string): [number, number, number] | null {
   if (values.some((v) => !Number.isFinite(v.value))) return null;
 
   if (match[1].toLowerCase().startsWith("rgb")) {
-    return values.map((v) => (v.percent ? v.value / 100 : v.value / 255)) as [
-      number,
-      number,
-      number,
-    ];
+    return values.map((v) => (v.percent ? v.value / 100 : v.value / 255)) as [number, number, number];
   }
 
   const hue = values[0].value / 360;
   const saturation = values[1].value / 100;
   const lightness = values[2].value / 100;
   if (saturation === 0) return [lightness, lightness, lightness];
-  const q =
-    lightness < 0.5
-      ? lightness * (1 + saturation)
-      : lightness + saturation - lightness * saturation;
+  const q = lightness < 0.5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation;
   const p = 2 * lightness - q;
-  return [
-    hueToChannel(p, q, hue + 1 / 3),
-    hueToChannel(p, q, hue),
-    hueToChannel(p, q, hue - 1 / 3),
-  ];
+  return [hueToChannel(p, q, hue + 1 / 3), hueToChannel(p, q, hue), hueToChannel(p, q, hue - 1 / 3)];
 }
 
 /** Relative luminance (WCAG) of a palette color, or null if unreadable. */
 function luminance(color: string): number | null {
   const channels = hexChannels(color) ?? funcChannels(color);
   if (!channels) return null;
-  const [r, g, b] = channels
-    .map((c) => Math.min(1, Math.max(0, c)))
-    .map(linearize);
+  const [r, g, b] = channels.map((c) => Math.min(1, Math.max(0, c))).map(linearize);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-export function fixedLayoutPageColors(
-  palette: ReaderPalette,
-  setting: FixedLayoutColor,
-): FixedLayoutPageColors {
+export function fixedLayoutPageColors(palette: ReaderPalette, setting: FixedLayoutColor): FixedLayoutPageColors {
   if (setting === "original") return null;
 
   const paper = luminance(palette.bg);
@@ -131,7 +117,5 @@ export function fixedLayoutPageColors(
   // app is merely a cosmetic miss, so that is the way to be wrong.
   if (paper == null || ink == null) return null;
 
-  return paper < ink
-    ? { background: palette.bg, foreground: palette.text }
-    : { background: palette.bg };
+  return paper < ink ? { background: palette.bg, foreground: palette.text } : { background: palette.bg };
 }

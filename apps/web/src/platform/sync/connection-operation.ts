@@ -36,7 +36,10 @@ function setOperationInFlight(next: boolean, origin: DomainActor): void {
 }
 
 /** Run one credential/account operation; reject rather than queue duplicates. */
-export async function runSyncConnectionOperation<T>(operation: (origin: DomainActor) => Promise<T>, origin: DomainActor = "user"): Promise<T> {
+export async function runSyncConnectionOperation<T>(
+  operation: (origin: DomainActor) => Promise<T>,
+  origin: DomainActor = "user",
+): Promise<T> {
   if (operationInFlight) throw new SyncConnectionBusyError();
   origin = causalActor(origin);
   operationRevision++;

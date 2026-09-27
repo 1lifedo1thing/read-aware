@@ -39,7 +39,10 @@ import { prepareAnnotationSource } from "./annotation-source";
 
 const log = createLogger("annotation-observation");
 const observationDeps = {
-  schedule: (work: () => void) => { const timer = setTimeout(work, 1000); return () => clearTimeout(timer); },
+  schedule: (work: () => void) => {
+    const timer = setTimeout(work, 1000);
+    return () => clearTimeout(timer);
+  },
   report: (error: unknown) => log.warn("Annotation observation failed", error),
 };
 const observer = new AnnotationObserver(observationDeps);
@@ -47,19 +50,33 @@ const observer = new AnnotationObserver(observationDeps);
 const nativeObserver = new AnnotationObserver(observationDeps);
 
 /** Host-only collection surface; this does not enlarge the public Worker query. */
-export function observeAllAnnotations(handler: (event: AnnotationQueryObservation<Annotation[]>) => unknown,
-  lifetime?: AbortSignal): () => void {
-  return nativeObserver.observeSnapshot(() => listAnnotations(), handler, lifetime, annotationObservationSources({ kind: "page" }));
+export function observeAllAnnotations(
+  handler: (event: AnnotationQueryObservation<Annotation[]>) => unknown,
+  lifetime?: AbortSignal,
+): () => void {
+  return nativeObserver.observeSnapshot(
+    () => listAnnotations(),
+    handler,
+    lifetime,
+    annotationObservationSources({ kind: "page" }),
+  );
 }
 
 /** Native surfaces already need the whole book; do not enlarge the public Worker payload contract. */
-export function observeBookAnnotations(bookId: string, handler: (event: AnnotationQueryObservation<Annotation[]>) => unknown,
-  lifetime?: AbortSignal): () => void {
+export function observeBookAnnotations(
+  bookId: string,
+  handler: (event: AnnotationQueryObservation<Annotation[]>) => unknown,
+  lifetime?: AbortSignal,
+): () => void {
   if (typeof bookId !== "string" || !bookId.trim() || bookId.length > 512) {
     throw new AppError("annotations/invalid-input", "A book ID is required");
   }
-  return nativeObserver.observeSnapshot(() => listAnnotations({ bookId }), handler, lifetime,
-    annotationObservationSources({ kind: "page", query: { bookId } }));
+  return nativeObserver.observeSnapshot(
+    () => listAnnotations({ bookId }),
+    handler,
+    lifetime,
+    annotationObservationSources({ kind: "page", query: { bookId } }),
+  );
 }
 
 export function toAnnotationItem(annotation: Annotation): AnnotationItem {
@@ -110,32 +127,34 @@ export type AnnotationQueries = {
   page(input?: AnnotationPageQuery): Promise<AnnotationPage>;
   /** Missing IDs return null; storage failures remain failures. */
   get(annotationId: string): Promise<AnnotationItem | null>;
-  list(filter?: {
-    bookId?: string;
-    kind?: "highlight" | "note" | "ask";
-    query?: string;
-  }): Promise<AnnotationItem[]>;
+  list(filter?: { bookId?: string; kind?: "highlight" | "note" | "ask"; query?: string }): Promise<AnnotationItem[]>;
 };
 
 export type AnnotationCommands = {
   applyChanges(changes: AnnotationMutation[], signal?: AbortSignal): Promise<AnnotationCommitResult>;
-  createHighlight(input: {
-    range?: import("@read-aware/core").BookTextRange;
-    bookId: string;
-    text: string;
-    anchor?: string | null;
-    chapterHref?: string | null;
-    color?: HighlightColor;
-    style?: HighlightStyle;
-  }, signal?: AbortSignal): Promise<HighlightItem>;
-  createNote(input: {
-    range?: import("@read-aware/core").BookTextRange;
-    bookId: string;
-    body: string;
-    quotedText?: string;
-    anchor?: string | null;
-    chapterHref?: string | null;
-  }, signal?: AbortSignal): Promise<NoteItem>;
+  createHighlight(
+    input: {
+      range?: import("@read-aware/core").BookTextRange;
+      bookId: string;
+      text: string;
+      anchor?: string | null;
+      chapterHref?: string | null;
+      color?: HighlightColor;
+      style?: HighlightStyle;
+    },
+    signal?: AbortSignal,
+  ): Promise<HighlightItem>;
+  createNote(
+    input: {
+      range?: import("@read-aware/core").BookTextRange;
+      bookId: string;
+      body: string;
+      quotedText?: string;
+      anchor?: string | null;
+      chapterHref?: string | null;
+    },
+    signal?: AbortSignal,
+  ): Promise<NoteItem>;
   /** Agent-only verb: record a passive trace of a book-thread question. */
   createAsk(input: {
     bookId: string;
@@ -156,7 +175,8 @@ export type AnnotationsDomain = {
 
 export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSignal): AnnotationsDomain {
   const annotationId = (id: string) => {
-    if (typeof id !== "string" || !id.trim() || id.length > 512) throw new AppError("annotations/invalid-input", "A non-empty annotation ID is required");
+    if (typeof id !== "string" || !id.trim() || id.length > 512)
+      throw new AppError("annotations/invalid-input", "A non-empty annotation ID is required");
     return id;
   };
 
@@ -174,8 +194,11 @@ export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSig
       return annotation ? toAnnotationItem(annotation) : null;
     },
     list: async (filter) => {
-      const page = await queries.page(filter ? { bookId: filter.bookId, kind: filter.kind, query: filter.query, limit: 100 } : { limit: 100 });
-      if (page.nextCursor) throw new AppError("annotations/read-budget-exceeded", "Use annotation pages for a larger collection");
+      const page = await queries.page(
+        filter ? { bookId: filter.bookId, kind: filter.kind, query: filter.query, limit: 100 } : { limit: 100 },
+      );
+      if (page.nextCursor)
+        throw new AppError("annotations/read-budget-exceeded", "Use annotation pages for a larger collection");
       return page.items;
     },
   };
@@ -190,7 +213,8 @@ export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSig
       if (input.style !== undefined && input.style !== "highlight" && input.style !== "underline") {
         throw new AppError("annotations/invalid-input", "Unknown highlight style");
       }
-      const source = input.range === undefined ? undefined : await prepareAnnotationSource({ ...input, range: input.range }, signal);
+      const source =
+        input.range === undefined ? undefined : await prepareAnnotationSource({ ...input, range: input.range }, signal);
       signal?.throwIfAborted();
       const highlight = await createHighlight(
         String(input.bookId),
@@ -206,7 +230,10 @@ export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSig
     },
     createNote: async (input, signal = lifetime) => {
       input = { ...input };
-      const source = input.range === undefined ? undefined : await prepareAnnotationSource({ ...input, range: input.range, text: input.quotedText ?? "" }, signal);
+      const source =
+        input.range === undefined
+          ? undefined
+          : await prepareAnnotationSource({ ...input, range: input.range, text: input.quotedText ?? "" }, signal);
       signal?.throwIfAborted();
       const note = await createNote(
         String(input.bookId),
@@ -236,10 +263,19 @@ export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSig
   return {
     queries,
     commands,
-    events: { subscribe: domainSubscribe(ANNOTATION_EVENTS, actorOrigin(origin)),
-      observe: (query, handler) => observer.observe(query, async accepted => accepted.kind === "page"
-        ? { kind: "page", page: await queries.page(accepted.query) }
-        : { kind: "inspect", snapshot: await queries.inspect(accepted.annotationId) }, handler, lifetime,
-        accepted => annotationObservationSources(accepted, origin)) },
+    events: {
+      subscribe: domainSubscribe(ANNOTATION_EVENTS, actorOrigin(origin)),
+      observe: (query, handler) =>
+        observer.observe(
+          query,
+          async (accepted) =>
+            accepted.kind === "page"
+              ? { kind: "page", page: await queries.page(accepted.query) }
+              : { kind: "inspect", snapshot: await queries.inspect(accepted.annotationId) },
+          handler,
+          lifetime,
+          (accepted) => annotationObservationSources(accepted, origin),
+        ),
+    },
   };
 }

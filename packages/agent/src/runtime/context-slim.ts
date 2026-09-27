@@ -15,10 +15,7 @@ interface ToolResultLike {
   content?: Array<{ type: string; text?: string }>;
 }
 
-export function elideStaleToolResults(
-  messages: AgentMessage[],
-  keepChars = KEEP_CHARS,
-): AgentMessage[] {
+export function elideStaleToolResults(messages: AgentMessage[], keepChars = KEEP_CHARS): AgentMessage[] {
   let lastUserIndex = -1;
   for (let i = messages.length - 1; i >= 0; i--) {
     if ((messages[i] as { role?: string }).role === "user") {
@@ -36,7 +33,7 @@ export function elideStaleToolResults(
       (sum, block) => sum + (block.type === "text" ? (block.text?.length ?? 0) : 0),
       0,
     );
-    const hasImages = result.content.some(block => block.type === "image");
+    const hasImages = result.content.some((block) => block.type === "image");
     if (total <= keepChars && !hasImages) return message;
 
     const joined = result.content
@@ -51,11 +48,21 @@ export function elideStaleToolResults(
 }
 
 /** Release pixel payloads from the retained agent state when a turn has ended. */
-export function releaseToolImages(messages: AgentMessage[], note = "[Image input released after this turn; reread its descriptor for visual inspection.]"): AgentMessage[] {
-  return messages.map(message => {
+export function releaseToolImages(
+  messages: AgentMessage[],
+  note = "[Image input released after this turn; reread its descriptor for visual inspection.]",
+): AgentMessage[] {
+  return messages.map((message) => {
     const result = message as ToolResultLike;
-    if ((result.role !== "toolResult" && result.role !== "user") || !Array.isArray(result.content) || !result.content.some(block => block.type === "image")) return message;
-    return { ...message, content: [...result.content.filter(block => block.type !== "image"),
-      { type: "text", text: note }] } as AgentMessage;
+    if (
+      (result.role !== "toolResult" && result.role !== "user") ||
+      !Array.isArray(result.content) ||
+      !result.content.some((block) => block.type === "image")
+    )
+      return message;
+    return {
+      ...message,
+      content: [...result.content.filter((block) => block.type !== "image"), { type: "text", text: note }],
+    } as AgentMessage;
   });
 }

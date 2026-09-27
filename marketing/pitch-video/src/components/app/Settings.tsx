@@ -39,7 +39,15 @@ const CORE: [Icon, string][] = [
 const PLUGIN_SECTIONS = ["RSS Reader", "Sentence Reader", "TTS Voices", "WebDAV Sync"];
 
 /** Dialog: max-w-3xl, h-[min(85vh,42rem)], rounded-md, border, on the main surface. */
-export function SettingsDialog({ height, children, style }: { height: number; children: ReactNode; style?: CSSProperties }) {
+export function SettingsDialog({
+  height,
+  children,
+  style,
+}: {
+  height: number;
+  children: ReactNode;
+  style?: CSSProperties;
+}) {
   return (
     <div
       style={{
@@ -56,8 +64,18 @@ export function SettingsDialog({ height, children, style }: { height: number; ch
         ...style,
       }}
     >
-      <nav style={{ width: 192, flexShrink: 0, padding: 12, borderRight: "1px solid rgba(28,25,23,0.07)", position: "relative" }}>
-        <div style={{ fontFamily: font.appSerif, fontSize: 16, fontWeight: 500, padding: "6px 12px 10px" }}>Settings</div>
+      <nav
+        style={{
+          width: 192,
+          flexShrink: 0,
+          padding: 12,
+          borderRight: "1px solid rgba(28,25,23,0.07)",
+          position: "relative",
+        }}
+      >
+        <div style={{ fontFamily: font.appSerif, fontSize: 16, fontWeight: 500, padding: "6px 12px 10px" }}>
+          Settings
+        </div>
         {CORE.map(([IconC, label]) => (
           <NavRow key={label} icon={IconC} label={label} active={label === "Plugins"} />
         ))}
@@ -167,11 +185,24 @@ export function PluginRow({ plugin, on }: { plugin: InstalledPlugin; on: number 
             </Badge>
           ))}
         </div>
-        {plugin.bookAccess && <div style={{ marginTop: 10, fontSize: 12, color: color.fgSubtle }}>Current grant: All books</div>}
+        {plugin.bookAccess && (
+          <div style={{ marginTop: 10, fontSize: 12, color: color.fgSubtle }}>Current grant: All books</div>
+        )}
       </div>
       <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 4 }}>
         {plugin.bookAccess && (
-          <span style={{ height: 32, padding: "0 16px", display: "flex", alignItems: "center", fontSize: 14, fontWeight: 500, color: color.fgMuted, whiteSpace: "nowrap" }}>
+          <span
+            style={{
+              height: 32,
+              padding: "0 16px",
+              display: "flex",
+              alignItems: "center",
+              fontSize: 14,
+              fontWeight: 500,
+              color: color.fgMuted,
+              whiteSpace: "nowrap",
+            }}
+          >
             Change book access
           </span>
         )}

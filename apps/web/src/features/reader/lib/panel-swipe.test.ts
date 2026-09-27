@@ -1,11 +1,5 @@
 import { expect, test } from "bun:test";
-import {
-  AXIS_LOCK_SLOP_PX,
-  lockSwipe,
-  releaseVelocity,
-  shouldDismiss,
-  swipeOffset,
-} from "./panel-swipe";
+import { AXIS_LOCK_SLOP_PX, lockSwipe, releaseVelocity, shouldDismiss, swipeOffset } from "./panel-swipe";
 
 test("a touch commits to an axis only after the slop", () => {
   expect(lockSwipe(AXIS_LOCK_SLOP_PX - 1, 0, "left", false)).toEqual({ kind: "pending" });
@@ -47,7 +41,14 @@ test("release velocity uses only the recent window", () => {
   expect(releaseVelocity([])).toBe(0);
   expect(releaseVelocity([{ t: 0, at: 0 }])).toBe(0);
   // Only the samples within 80 ms of the last one count: (70 - 10) / 80.
-  expect(releaseVelocity([{ t: 0, at: 0 }, { t: 200, at: 10 }, { t: 240, at: 30 }, { t: 280, at: 70 }])).toBe(0.75);
+  expect(
+    releaseVelocity([
+      { t: 0, at: 0 },
+      { t: 200, at: 10 },
+      { t: 240, at: 30 },
+      { t: 280, at: 70 },
+    ]),
+  ).toBe(0.75);
 });
 
 test("a release dismisses past a share of the width or on a flick, in the travel direction only", () => {

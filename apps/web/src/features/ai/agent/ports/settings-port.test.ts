@@ -9,10 +9,7 @@ import {
   readerOverridesAtom,
   readerPreferencesAtom,
 } from "../../../../state/ui";
-import type {
-  RegisteredHeaderAction,
-  RegisteredPluginTheme,
-} from "../../../plugins/lib/plugin-types";
+import type { RegisteredHeaderAction, RegisteredPluginTheme } from "../../../plugins/lib/plugin-types";
 import {
   headerActionsAtom,
   installedPluginsAtom,
@@ -22,10 +19,7 @@ import {
 } from "../../../plugins/state/plugin-store";
 import type { InstalledPlugin } from "../../../plugins/lib/plugin-types";
 import { readPluginSettingsValues } from "../../../plugins/lib/plugin-settings";
-import {
-  CORE_MENU_DEFAULTS,
-  menuConfigAtom,
-} from "../../../menus/state/menu-config";
+import { CORE_MENU_DEFAULTS, menuConfigAtom } from "../../../menus/state/menu-config";
 import { DEFAULT_AI_PREFERENCES } from "../../../settings/lib/ai-preferences";
 import { DEFAULT_APP_SETTINGS } from "../../../settings/lib/app-settings";
 import { DEFAULT_GENERAL_SETTINGS } from "../../../settings/lib/general-settings";
@@ -72,10 +66,7 @@ const CHROME_ONLY: RegisteredPluginTheme = {
 const storage = new Map<string, string>();
 installFileGlobals({ localStorage: memoryStorage(storage) });
 
-function setting(
-  settings: AgentSettingDescriptor[],
-  path: string,
-): AgentSettingDescriptor {
+function setting(settings: AgentSettingDescriptor[], path: string): AgentSettingDescriptor {
   const match = settings.find((candidate) => candidate.path === path);
   if (!match) throw new Error(`missing setting: ${path}`);
   return match;
@@ -150,11 +141,7 @@ describe("agent settings port", () => {
     expect(readerTheme.options).not.toContainEqual(
       expect.objectContaining({ value: "plugin:editorial-themes:chrome-only" }),
     );
-    expect(readerTheme.supportedTargets).toEqual([
-      "global",
-      "all-books",
-      "book",
-    ]);
+    expect(readerTheme.supportedTargets).toEqual(["global", "all-books", "book"]);
   });
 
   test("applies plugin choices through ordinary path/value operations", async () => {
@@ -173,9 +160,7 @@ describe("agent settings port", () => {
       },
     ]);
 
-    expect(store.get(appSettingsAtom).theme).toBe(
-      "plugin:editorial-themes:gutenberg",
-    );
+    expect(store.get(appSettingsAtom).theme).toBe("plugin:editorial-themes:gutenberg");
     expect(store.get(readerPreferencesAtom)).toMatchObject({
       theme: "plugin:editorial-themes:gutenberg",
       fontFamily: "plugin:editorial-themes:eb-garamond",
@@ -217,20 +202,14 @@ describe("agent settings port", () => {
         target: { kind: "book", bookId: "book-1" },
       },
     ]);
-    expect(store.get(readerPreferencesAtom).fontSize).toBe(
-      DEFAULT_READER_PREFERENCES.fontSize,
-    );
-    expect(store.get(readerOverridesAtom)["book-1"]?.settings.fontSize).toBe(
-      "large",
-    );
+    expect(store.get(readerPreferencesAtom).fontSize).toBe(DEFAULT_READER_PREFERENCES.fontSize);
+    expect(store.get(readerOverridesAtom)["book-1"]?.settings.fontSize).toBe("large");
 
     const bookSnapshot = await port.getSettings({
       section: "reading",
       target: { kind: "book", bookId: "book-1" },
     });
-    expect(setting(bookSnapshot.settings, "reading.fontSize").value).toBe(
-      "large",
-    );
+    expect(setting(bookSnapshot.settings, "reading.fontSize").value).toBe("large");
     expect(bookSnapshot.overrides).toContainEqual(
       expect.objectContaining({ target: { kind: "book", bookId: "book-1" } }),
     );
@@ -243,25 +222,15 @@ describe("agent settings port", () => {
       },
     ]);
     expect(store.get(readerPreferencesAtom).lineSpacing).toBe("relaxed");
-    expect(store.get(readerOverridesAtom)["book-1"]?.settings.lineSpacing).toBe(
-      "relaxed",
-    );
-    expect(store.get(readerOverridesAtom)["book-2"]?.settings.lineSpacing).toBe(
-      "relaxed",
-    );
+    expect(store.get(readerOverridesAtom)["book-1"]?.settings.lineSpacing).toBe("relaxed");
+    expect(store.get(readerOverridesAtom)["book-2"]?.settings.lineSpacing).toBe("relaxed");
   });
 
   test("requires an explicit target for every scoped reading setting", async () => {
-    await expect(
-      createSettingsPort().updateSettings([
-        { path: "reading.fontSize", value: "large" },
-      ]),
-    ).rejects.toThrow(
+    await expect(createSettingsPort().updateSettings([{ path: "reading.fontSize", value: "large" }])).rejects.toThrow(
       "reading.fontSize requires an explicit target: global, all-books, book",
     );
-    expect(getDefaultStore().get(readerPreferencesAtom).fontSize).toBe(
-      DEFAULT_READER_PREFERENCES.fontSize,
-    );
+    expect(getDefaultStore().get(readerPreferencesAtom).fontSize).toBe(DEFAULT_READER_PREFERENCES.fontSize);
   });
 
   test("reports global changes that can be shadowed by book overrides", async () => {
@@ -274,14 +243,10 @@ describe("agent settings port", () => {
     });
     const port = createSettingsPort();
 
-    await port.updateSettings([
-      { path: "reading.theme", value: "light", target: { kind: "global" } },
-    ]);
+    await port.updateSettings([{ path: "reading.theme", value: "light", target: { kind: "global" } }]);
 
     expect(store.get(readerPreferencesAtom).theme).toBe("light");
-    expect(store.get(readerOverridesAtom)["book-1"]?.settings.theme).toBe(
-      "dark",
-    );
+    expect(store.get(readerOverridesAtom)["book-1"]?.settings.theme).toBe("dark");
     const snapshot = await port.getSettings({ section: "reading" });
     expect(snapshot.overrides).toContainEqual({
       target: { kind: "book", bookId: "book-1" },
@@ -331,9 +296,7 @@ describe("agent settings port", () => {
           target: { kind: "book", bookId: " book-1 " },
         },
       ]),
-    ).rejects.toThrow(
-      "duplicate settings change: reading.fontSize@book:book-1",
-    );
+    ).rejects.toThrow("duplicate settings change: reading.fontSize@book:book-1");
     expect(getDefaultStore().get(readerOverridesAtom)).toEqual({});
   });
 
@@ -348,20 +311,13 @@ describe("agent settings port", () => {
     });
 
     const snapshot = await createSettingsPort().getSettings({ section: "ai" });
-    expect(setting(snapshot.settings, "ai.connection.configured").value).toBe(
-      true,
-    );
-    expect(
-      setting(snapshot.settings, "ai.connection.credentialConfigured").value,
-    ).toBe(true);
+    expect(setting(snapshot.settings, "ai.connection.configured").value).toBe(true);
+    expect(setting(snapshot.settings, "ai.connection.credentialConfigured").value).toBe(true);
     expect(setting(snapshot.settings, "ai.connection.provider")).toMatchObject({
       value: "custom",
       writable: false,
     });
-    expect(
-      setting(snapshot.settings, "ai.connection.custom.endpointConfigured")
-        .value,
-    ).toBe(true);
+    expect(setting(snapshot.settings, "ai.connection.custom.endpointConfigured").value).toBe(true);
     const serialized = JSON.stringify(snapshot);
     expect(serialized).not.toContain("secret-test-key");
     expect(serialized).not.toContain("private-gateway.example");
@@ -428,14 +384,12 @@ describe("agent settings port", () => {
     });
     const port = createSettingsPort();
 
-    await expect(
-      port.updateSettings([{ path: "ai.connection.apiKey", value: "stolen" }]),
-    ).rejects.toThrow("unknown or read-only setting");
-    await expect(
-      port.updateSettings([
-        { path: "ai.connection.provider", value: "custom" },
-      ]),
-    ).rejects.toThrow("unknown or read-only setting");
+    await expect(port.updateSettings([{ path: "ai.connection.apiKey", value: "stolen" }])).rejects.toThrow(
+      "unknown or read-only setting",
+    );
+    await expect(port.updateSettings([{ path: "ai.connection.provider", value: "custom" }])).rejects.toThrow(
+      "unknown or read-only setting",
+    );
     expect(getAIConfig()).toMatchObject({
       provider: "openai",
       apiKey: "secret-test-key",
@@ -452,11 +406,7 @@ describe("agent settings port", () => {
 
     const port = createSettingsPort();
     const initial = await port.getSettings({ section: "ai" });
-    expect(
-      initial.settings.some(
-        (candidate) => candidate.path === "ai.connection.fastThinkingLevel",
-      ),
-    ).toBe(false);
+    expect(initial.settings.some((candidate) => candidate.path === "ai.connection.fastThinkingLevel")).toBe(false);
 
     await expect(
       port.updateSettings([
@@ -466,16 +416,10 @@ describe("agent settings port", () => {
     ).rejects.toThrow("unknown or read-only setting");
     expect(getDefaultStore().get(appSettingsAtom).theme).toBe("system");
 
-    await port.updateSettings([
-      { path: "ai.connection.fastModel", value: "gpt-5.5-mini" },
-    ]);
+    await port.updateSettings([{ path: "ai.connection.fastModel", value: "gpt-5.5-mini" }]);
     const separate = await port.getSettings({ section: "ai" });
-    expect(
-      setting(separate.settings, "ai.connection.fastThinkingLevel").value,
-    ).toBe("medium");
-    await port.updateSettings([
-      { path: "ai.connection.fastThinkingLevel", value: "low" },
-    ]);
+    expect(setting(separate.settings, "ai.connection.fastThinkingLevel").value).toBe("medium");
+    await port.updateSettings([{ path: "ai.connection.fastThinkingLevel", value: "low" }]);
     expect(getAIConfig()?.fastThinkingLevel).toBe("low");
   });
 });
@@ -500,15 +444,10 @@ describe("agent menu settings", () => {
     const visible = setting(snapshot.settings, "menus.primaryNav.visible");
     expect(visible.kind).toBe("id-list");
     expect(visible.value).toEqual(["core:library", "core:agent"]);
-    expect(visible.options?.map((option) => option.value)).toContain(
-      "plugin:dictionary:vocabulary",
-    );
+    expect(visible.options?.map((option) => option.value)).toContain("plugin:dictionary:vocabulary");
     // Unplaced plugin destinations resolve into the overflow zone.
     const overflow = setting(snapshot.settings, "menus.primaryNav.overflow");
-    expect(overflow.value).toEqual([
-      "core:stats",
-      "plugin:dictionary:vocabulary",
-    ]);
+    expect(overflow.value).toEqual(["core:stats", "plugin:dictionary:vocabulary"]);
   });
 
   test("hides a destination by writing the visible list without it", async () => {
@@ -539,11 +478,7 @@ describe("agent menu settings", () => {
 
   test("enforces the primary navigation surface rules", async () => {
     const port = createSettingsPort();
-    await expect(
-      port.updateSettings([
-        { path: "menus.primaryNav.visible", value: [] },
-      ]),
-    ).rejects.toThrow(/at least 1/);
+    await expect(port.updateSettings([{ path: "menus.primaryNav.visible", value: [] }])).rejects.toThrow(/at least 1/);
     await expect(
       port.updateSettings([
         {
@@ -618,24 +553,18 @@ describe("agent plugin settings", () => {
     getDefaultStore().set(installedPluginsAtom, [RSS_PLUGIN]);
     const port = createSettingsPort();
 
-    await expect(
-      port.updateSettings([
-        { path: "plugins.rss-reader.articleLimit", value: 500 },
-      ]),
-    ).rejects.toThrow(/at most 100/);
+    await expect(port.updateSettings([{ path: "plugins.rss-reader.articleLimit", value: 500 }])).rejects.toThrow(
+      /at most 100/,
+    );
 
-    const result = await port.updateSettings([
-      { path: "plugins.rss-reader.articleLimit", value: 50 },
-    ]);
+    const result = await port.updateSettings([{ path: "plugins.rss-reader.articleLimit", value: 50 }]);
     expect(result.changed).toHaveLength(1);
     // The same object the plugin reads through its Storage host service.
     expect(readPluginSettingsValues("rss-reader").articleLimit).toBe(50);
   });
 
   test("disabled plugins drop out of the catalog", async () => {
-    getDefaultStore().set(installedPluginsAtom, [
-      { ...RSS_PLUGIN, enabled: false },
-    ]);
+    getDefaultStore().set(installedPluginsAtom, [{ ...RSS_PLUGIN, enabled: false }]);
     const port = createSettingsPort();
     const snapshot = await port.getSettings({ section: "plugins" });
     expect(snapshot.settings).toHaveLength(0);

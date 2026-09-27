@@ -12,10 +12,7 @@ import {
 import type { Id } from "@read-aware/core";
 import { getDefaultStore } from "jotai";
 import { appHttpFetch } from "../../../platform/http-client";
-import {
-  pluginAgentContextProvidersAtom,
-  pluginMemoryCandidateProvidersAtom,
-} from "../../plugins/state/plugin-store";
+import { pluginAgentContextProvidersAtom, pluginMemoryCandidateProvidersAtom } from "../../plugins/state/plugin-store";
 import { getAIConfig, type OpenRouterRoutingConfig } from "../lib/ai-config";
 import { accountFromConfig } from "./account";
 import { buildRuntimeDeps } from "./ports";
@@ -42,9 +39,7 @@ function routingTransform(routing: OpenRouterRoutingConfig | undefined) {
     allow_fallbacks: routing.allowFallbacks !== false,
   };
   return <T extends { provider: string; compat?: object }>(model: T): T =>
-    model.provider === "openrouter"
-      ? { ...model, compat: { ...model.compat, openRouterRouting: preference } }
-      : model;
+    model.provider === "openrouter" ? { ...model, compat: { ...model.compat, openRouterRouting: preference } } : model;
 }
 
 export function getAgentRuntime(): AgentRuntime | null {
@@ -73,13 +68,14 @@ export function getAgentRuntime(): AgentRuntime | null {
 }
 
 /** Clear hidden pi state when the corresponding persisted conversation is removed. */
-export async function discardAgentThread(kind: "book" | "global", id: string, origin: import("../../../platform/domain-actor").DomainActor = "agent"): Promise<void> {
-  const scope: ThreadScope =
-    kind === "book"
-      ? { kind: "book", bookId: id as Id }
-      : { kind: "global", threadId: id };
+export async function discardAgentThread(
+  kind: "book" | "global",
+  id: string,
+  origin: import("../../../platform/domain-actor").DomainActor = "agent",
+): Promise<void> {
+  const scope: ThreadScope = kind === "book" ? { kind: "book", bookId: id as Id } : { kind: "global", threadId: id };
   if (cached) {
-    await cached.runtime.discardThread(scope, key => clearStoredConversationInsights(key, origin));
+    await cached.runtime.discardThread(scope, (key) => clearStoredConversationInsights(key, origin));
   } else {
     await clearStoredConversationInsights(threadScopeKey(scope), origin);
   }

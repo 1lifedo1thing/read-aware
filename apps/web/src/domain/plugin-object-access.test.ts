@@ -14,21 +14,27 @@ test("current grants follow the host reader snapshot for synchronous gates", () 
 
   policy.assertBook("book-a", "read");
   current = { bookId: "book-b", sessionId: "session-b" };
-  expect(() => policy.assertBook("book-a", "read")).toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  expect(() => policy.assertBook("book-a", "read")).toThrow(
+    expect.objectContaining({ code: "plugin/object-access-denied" }),
+  );
   policy.assertBook("book-b", "read");
   expect(policy.filterBooks([{ id: "book-a" }, { id: "book-b" }])).toEqual([{ id: "book-b" }]);
 });
 
 test("fixed book grants reject a different result and never use a query id as a widening hint", () => {
-  const policy = createPluginBookAccessPolicy(
-    { mode: "book", bookId: "book-a" },
-    async () => ({ bookId: "book-a", sessionId: "session-a" }),
-  );
+  const policy = createPluginBookAccessPolicy({ mode: "book", bookId: "book-a" }, async () => ({
+    bookId: "book-a",
+    sessionId: "session-a",
+  }));
 
   policy.assertBook("book-a", "read");
-  expect(() => policy.assertBook("book-b", "read")).toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  expect(() => policy.assertBook("book-b", "read")).toThrow(
+    expect.objectContaining({ code: "plugin/object-access-denied" }),
+  );
   policy.assertReturnedBook("book-a", "result");
-  expect(() => policy.assertReturnedBook("book-b", "result")).toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  expect(() => policy.assertReturnedBook("book-b", "result")).toThrow(
+    expect.objectContaining({ code: "plugin/object-access-denied" }),
+  );
   expect(policy.filterBooks([{ id: "book-a" }, { id: "book-b" }])).toEqual([{ id: "book-a" }]);
 });
 
@@ -38,7 +44,12 @@ test("current fences abort and reject a late result when the book or session cha
   const policy = createPluginBookAccessPolicy(
     { mode: "current" },
     async () => current,
-    handler => { notify = handler; return () => { notify = undefined; }; },
+    (handler) => {
+      notify = handler;
+      return () => {
+        notify = undefined;
+      };
+    },
     () => current,
   );
   const fence = await policy.beginBook("book-a", "read");
@@ -46,7 +57,9 @@ test("current fences abort and reject a late result when the book or session cha
   current = { bookId: "book-b", sessionId: "session-b" };
   notify?.(current);
   expect(fence.signal?.aborted).toBe(true);
-  await expect(fence.assertUnchanged()).rejects.toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  await expect(fence.assertUnchanged()).rejects.toThrow(
+    expect.objectContaining({ code: "plugin/object-access-denied" }),
+  );
   fence.dispose();
   expect(notify).toBeUndefined();
 });
@@ -57,14 +70,21 @@ test("fixed book current operations still fence the live reader without widening
   const policy = createPluginBookAccessPolicy(
     { mode: "book", bookId: "book-a" },
     async () => current,
-    handler => { notify = handler; return () => { notify = undefined; }; },
+    (handler) => {
+      notify = handler;
+      return () => {
+        notify = undefined;
+      };
+    },
     () => current,
   );
   const fence = await policy.beginCurrent("reader.snapshot");
   current = { bookId: "book-b", sessionId: "session-b" };
   notify?.(current);
   expect(fence.signal?.aborted).toBe(true);
-  await expect(fence.assertUnchanged()).rejects.toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  await expect(fence.assertUnchanged()).rejects.toThrow(
+    expect.objectContaining({ code: "plugin/object-access-denied" }),
+  );
   fence.dispose();
 });
 
@@ -78,9 +98,19 @@ test("resource leases follow a current grant after A to B and reject the old boo
   );
   const adapter: ResourceAdapter = {
     pick: async () => [],
-    openBook: async bookId => ({ id: `native-${bookId}`, size: 1, name: `${bookId}.epub`, mimeType: "application/epub+zip" }),
+    openBook: async (bookId) => ({
+      id: `native-${bookId}`,
+      size: 1,
+      name: `${bookId}.epub`,
+      mimeType: "application/epub+zip",
+    }),
     openCover: async () => null,
-    create: async options => ({ id: "native-created", size: 0, name: options.name, mimeType: options.mimeType ?? "application/octet-stream" }),
+    create: async (options) => ({
+      id: "native-created",
+      size: 0,
+      name: options.name,
+      mimeType: options.mimeType ?? "application/octet-stream",
+    }),
     read: async () => new Uint8Array([7]).buffer,
     append: async (_id, offset, bytes) => offset + bytes.length,
     commit: async () => {},
@@ -90,17 +120,28 @@ test("resource leases follow a current grant after A to B and reject the old boo
     imagePreview: async () => new Uint8Array([1]).buffer,
     release: async () => {},
   };
-  const owner = new ResourceOwner(adapter, () => {}, bookId => policy.assertBook(bookId, "resource"), Date.now,
-    (_ref, bookId) => { if (bookId) policy.assertBook(bookId, "resource"); });
+  const owner = new ResourceOwner(
+    adapter,
+    () => {},
+    (bookId) => policy.assertBook(bookId, "resource"),
+    Date.now,
+    (_ref, bookId) => {
+      if (bookId) policy.assertBook(bookId, "resource");
+    },
+  );
   try {
     const a = await owner.openBook("book-a");
     expect(a).not.toBeNull();
     current = { bookId: "book-b", sessionId: "session-b" };
-    await expect(owner.read(a!.id, 0, 1)).rejects.toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+    await expect(owner.read(a!.id, 0, 1)).rejects.toThrow(
+      expect.objectContaining({ code: "plugin/object-access-denied" }),
+    );
     const b = await owner.openBook("book-b");
     expect(b).not.toBeNull();
     expect((await owner.read(b!.id, 0, 1)).eof).toBe(true);
-  } finally { await owner.dispose(); }
+  } finally {
+    await owner.dispose();
+  }
 });
 
 test("reader fences allow an intended same-book reload or close but reject a different book", async () => {
@@ -109,7 +150,12 @@ test("reader fences allow an intended same-book reload or close but reject a dif
   const policy = createPluginBookAccessPolicy(
     { mode: "current" },
     async () => current,
-    handler => { notify = handler; return () => { notify = undefined; }; },
+    (handler) => {
+      notify = handler;
+      return () => {
+        notify = undefined;
+      };
+    },
     () => current,
   );
   const reload = await policy.beginCurrent("reading.reload", { allowSessionChange: true });
@@ -121,24 +167,30 @@ test("reader fences allow an intended same-book reload or close but reject a dif
   current = { bookId: "book-b", sessionId: "session-c" };
   notify?.(current);
   expect(close.signal?.aborted).toBe(true);
-  await expect(close.assertUnchanged()).rejects.toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  await expect(close.assertUnchanged()).rejects.toThrow(
+    expect.objectContaining({ code: "plugin/object-access-denied" }),
+  );
   close.dispose();
 });
 
 test("a close fence accepts the controller's legal transition to no current book", async () => {
   const runtime = new ReadingSessionController();
   const sessionId = runtime.begin("book-a");
-  runtime.attach(sessionId, {
-    navigate: async target => ({ bookId: target.bookId ?? "book-a", contentVersion: "v1", fraction: 0 }),
-    step: async () => ({ bookId: "book-a", contentVersion: "v1", fraction: 0 }),
-  }, { bookId: "book-a", contentVersion: "v1", fraction: 0 });
+  runtime.attach(
+    sessionId,
+    {
+      navigate: async (target) => ({ bookId: target.bookId ?? "book-a", contentVersion: "v1", fraction: 0 }),
+      step: async () => ({ bookId: "book-a", contentVersion: "v1", fraction: 0 }),
+    },
+    { bookId: "book-a", contentVersion: "v1", fraction: 0 },
+  );
   const policy = createPluginBookAccessPolicy(
     { mode: "current" },
     async () => {
       const snapshot = runtime.snapshot();
       return { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
     },
-    handler => runtime.observe(snapshot => handler({ bookId: snapshot.bookId, sessionId: snapshot.sessionId })),
+    (handler) => runtime.observe((snapshot) => handler({ bookId: snapshot.bookId, sessionId: snapshot.sessionId })),
     () => {
       const snapshot = runtime.snapshot();
       return { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
@@ -161,24 +213,30 @@ test("a reload fence follows the real controller shell reopen and checks its loa
   const runtime = new ReadingSessionController();
   const sessionId = runtime.begin("book-a");
   const location = { bookId: "book-a", contentVersion: "v1", fraction: 0 };
-  runtime.attach(sessionId, {
-    navigate: async () => location,
-    step: async () => location,
-  }, location);
+  runtime.attach(
+    sessionId,
+    {
+      navigate: async () => location,
+      step: async () => location,
+    },
+    location,
+  );
   const observed: Array<{ bookId: string | null; sessionId: string | null; status: string; location: unknown }> = [];
-  const offObserved = runtime.observe(snapshot => observed.push({
-    bookId: snapshot.bookId,
-    sessionId: snapshot.sessionId,
-    status: snapshot.status,
-    location: snapshot.location,
-  }));
+  const offObserved = runtime.observe((snapshot) =>
+    observed.push({
+      bookId: snapshot.bookId,
+      sessionId: snapshot.sessionId,
+      status: snapshot.status,
+      location: snapshot.location,
+    }),
+  );
   const policy = createPluginBookAccessPolicy(
     { mode: "current" },
     async () => {
       const snapshot = runtime.snapshot();
       return { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
     },
-    handler => runtime.observe(snapshot => handler({ bookId: snapshot.bookId, sessionId: snapshot.sessionId })),
+    (handler) => runtime.observe((snapshot) => handler({ bookId: snapshot.bookId, sessionId: snapshot.sessionId })),
     () => {
       const snapshot = runtime.snapshot();
       return { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
@@ -197,9 +255,16 @@ test("a reload fence follows the real controller shell reopen and checks its loa
     await fence.assertUnchanged();
     expect(receipt.location.bookId).toBe("book-a");
     expect(receipt.sessionId).not.toBe(sessionId);
-    expect(observed.some(snapshot => snapshot.status === "loading" && snapshot.bookId === "book-a"
-      && snapshot.sessionId !== sessionId && snapshot.location === null)).toBe(true);
-    expect(observed.some(snapshot => snapshot.bookId === null)).toBe(false);
+    expect(
+      observed.some(
+        (snapshot) =>
+          snapshot.status === "loading" &&
+          snapshot.bookId === "book-a" &&
+          snapshot.sessionId !== sessionId &&
+          snapshot.location === null,
+      ),
+    ).toBe(true);
+    expect(observed.some((snapshot) => snapshot.bookId === null)).toBe(false);
   } finally {
     offShell();
     offObserved();

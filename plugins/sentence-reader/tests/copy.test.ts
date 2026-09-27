@@ -11,15 +11,11 @@ describe("Sentence Reader contribution metadata", () => {
   });
 
   test("ships every app locale inside the plugin bundle", () => {
-    expect(Object.keys(sentenceReaderCopy.title.translations ?? {}).sort()).toEqual(
-      TRANSLATED_LOCALES,
-    );
+    expect(Object.keys(sentenceReaderCopy.title.translations ?? {}).sort()).toEqual(TRANSLATED_LOCALES);
     for (const unit of sentenceReaderUnits) {
       expect(Object.keys(unit.label.translations ?? {}).sort()).toEqual(TRANSLATED_LOCALES);
       expect(Object.keys(unit.nextLabel.translations ?? {}).sort()).toEqual(TRANSLATED_LOCALES);
-      expect(Object.keys(unit.previousLabel.translations ?? {}).sort()).toEqual(
-        TRANSLATED_LOCALES,
-      );
+      expect(Object.keys(unit.previousLabel.translations ?? {}).sort()).toEqual(TRANSLATED_LOCALES);
     }
   });
 });

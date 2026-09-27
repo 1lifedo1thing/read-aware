@@ -6,7 +6,11 @@
  * 水化与原话检索，按 turnId 区分本轮与历史；写摘要（insights）归运行时自己。
  */
 import { searchTurnRecords, type ConversationPort, type TurnRecord } from "@read-aware/agent";
-import { clearStoredConversationInsights, getStoredConversationInsights, putStoredConversationInsights } from "../../lib/conversation-insights-store";
+import {
+  clearStoredConversationInsights,
+  getStoredConversationInsights,
+  putStoredConversationInsights,
+} from "../../lib/conversation-insights-store";
 import {
   GLOBAL_CONVERSATION_ID,
   isGlobalThreadId,
@@ -37,11 +41,13 @@ function toTurns(messages: ChatMessage[]): TurnRecord[] {
       role: message.role,
       content: message.content,
       createdAt: message.createdAt,
-      attachments: message.attachments?.filter(attachment => attachment.kind !== "image").map((attachment) => ({
-        text: attachment.text,
-        anchor: attachment.cfiRange ?? undefined,
-        chapter: attachment.chapterHref ?? undefined,
-      })),
+      attachments: message.attachments
+        ?.filter((attachment) => attachment.kind !== "image")
+        .map((attachment) => ({
+          text: attachment.text,
+          anchor: attachment.cfiRange ?? undefined,
+          chapter: attachment.chapterHref ?? undefined,
+        })),
     }));
 }
 
@@ -57,8 +63,12 @@ export function createConversationPort(): ConversationPort {
       for (const [storeId, messages] of Object.entries(all)) {
         const key = storeIdToThreadKey(storeId);
         if (threadKey && key !== threadKey) continue;
-        for (const turn of toTurns(messages)) pool.push({ ...turn, threadKey: key,
-          attachments: includeAttachments === false ? undefined : turn.attachments });
+        for (const turn of toTurns(messages))
+          pool.push({
+            ...turn,
+            threadKey: key,
+            attachments: includeAttachments === false ? undefined : turn.attachments,
+          });
       }
       return searchTurnRecords(pool, queries, limit ?? 20);
     },

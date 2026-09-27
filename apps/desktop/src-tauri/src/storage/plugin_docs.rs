@@ -3,8 +3,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- Plugin documents (migration v10) ---
 
@@ -64,7 +64,15 @@ pub async fn plugin_docs_put(
     .await
 }
 
-pub(crate) fn plugin_docs_put_inner(conn: &Connection, plugin_id: &str, collection: &str, id: &str, json: &str, book_id: Option<String>, anchor: Option<String>) -> Result<(), CommandError> {
+pub(crate) fn plugin_docs_put_inner(
+    conn: &Connection,
+    plugin_id: &str,
+    collection: &str,
+    id: &str,
+    json: &str,
+    book_id: Option<String>,
+    anchor: Option<String>,
+) -> Result<(), CommandError> {
     conn.execute(
         "INSERT INTO plugin_documents
         (plugin_id, collection, id, json, book_id, anchor, updated_at)
@@ -73,8 +81,7 @@ pub(crate) fn plugin_docs_put_inner(conn: &Connection, plugin_id: &str, collecti
         json=excluded.json, book_id=excluded.book_id, anchor=excluded.anchor,
         updated_at=excluded.updated_at",
         params![plugin_id, collection, id, json, book_id, anchor],
-    )
-    ?;
+    )?;
     Ok(())
 }
 
@@ -93,7 +100,12 @@ pub async fn plugin_docs_get(
     .await
 }
 
-pub(crate) fn plugin_docs_get_inner(conn: &Connection, plugin_id: &str, collection: &str, id: &str) -> Result<Option<PluginDocumentRow>, CommandError> {
+pub(crate) fn plugin_docs_get_inner(
+    conn: &Connection,
+    plugin_id: &str,
+    collection: &str,
+    id: &str,
+) -> Result<Option<PluginDocumentRow>, CommandError> {
     match conn.query_row(
         "SELECT id, json, book_id, anchor, updated_at, revision FROM plugin_documents
      WHERE plugin_id = ?1 AND collection = ?2 AND id = ?3",
@@ -121,12 +133,16 @@ pub async fn plugin_docs_delete(
     .await
 }
 
-pub(crate) fn plugin_docs_delete_inner(conn: &Connection, plugin_id: &str, collection: &str, id: &str) -> Result<(), CommandError> {
+pub(crate) fn plugin_docs_delete_inner(
+    conn: &Connection,
+    plugin_id: &str,
+    collection: &str,
+    id: &str,
+) -> Result<(), CommandError> {
     conn.execute(
         "DELETE FROM plugin_documents WHERE plugin_id = ?1 AND collection = ?2 AND id = ?3",
         params![plugin_id, collection, id],
-    )
-    ?;
+    )?;
     Ok(())
 }
 
@@ -147,7 +163,14 @@ pub async fn plugin_docs_list(
     .await
 }
 
-pub(crate) fn plugin_docs_list_inner(conn: &Connection, plugin_id: &str, collection: &str, book_id: Option<String>, limit: Option<i64>, oldest_first: Option<bool>) -> Result<Vec<PluginDocumentRow>, CommandError> {
+pub(crate) fn plugin_docs_list_inner(
+    conn: &Connection,
+    plugin_id: &str,
+    collection: &str,
+    book_id: Option<String>,
+    limit: Option<i64>,
+    oldest_first: Option<bool>,
+) -> Result<Vec<PluginDocumentRow>, CommandError> {
     let order = if oldest_first.unwrap_or(false) {
         "ASC"
     } else {
@@ -165,10 +188,8 @@ pub(crate) fn plugin_docs_list_inner(conn: &Connection, plugin_id: &str, collect
         .query_map(
             params![plugin_id, collection, book_id, limit.unwrap_or(i64::MAX)],
             row_to_plugin_document,
-        )
-        ?
-        .collect::<Result<Vec<_>, _>>()
-        ?;
+        )?
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
@@ -186,13 +207,27 @@ pub async fn plugin_docs_clear(
         tx.execute(
             "DELETE FROM plugin_documents WHERE plugin_id = ?1",
             params![plugin_id],
-        )
-        ?;
-        tx.execute("DELETE FROM plugin_document_generations WHERE plugin_id=?1", params![plugin_id])?;
-        tx.execute("DELETE FROM atomic_receipts WHERE owner=?1", params![format!("plugin:{plugin_id}")])?;
-        tx.execute("DELETE FROM durable_jobs WHERE owner=?1", params![format!("plugin:{plugin_id}")])?;
-        tx.execute("DELETE FROM capability_change_cursors WHERE owner=?1", params![format!("plugin:{plugin_id}")])?;
-        tx.execute("DELETE FROM capability_changes WHERE plugin_id=?1", params![plugin_id])?;
+        )?;
+        tx.execute(
+            "DELETE FROM plugin_document_generations WHERE plugin_id=?1",
+            params![plugin_id],
+        )?;
+        tx.execute(
+            "DELETE FROM atomic_receipts WHERE owner=?1",
+            params![format!("plugin:{plugin_id}")],
+        )?;
+        tx.execute(
+            "DELETE FROM durable_jobs WHERE owner=?1",
+            params![format!("plugin:{plugin_id}")],
+        )?;
+        tx.execute(
+            "DELETE FROM capability_change_cursors WHERE owner=?1",
+            params![format!("plugin:{plugin_id}")],
+        )?;
+        tx.execute(
+            "DELETE FROM capability_changes WHERE plugin_id=?1",
+            params![plugin_id],
+        )?;
         tx.commit()?;
         let dir = app.state::<DataDir>();
         super::plugin_assets::reclaim(&conn, &dir.0, &plugin_id)
@@ -217,13 +252,11 @@ pub(crate) fn plugin_docs_snapshot_inner(
     conn: &Connection,
     plugin_id: &str,
 ) -> Result<Vec<PluginDocumentSnapshotRow>, CommandError> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT collection, id, json, book_id, anchor, updated_at
+    let mut stmt = conn.prepare(
+        "SELECT collection, id, json, book_id, anchor, updated_at
              FROM plugin_documents WHERE plugin_id = ?1
              ORDER BY collection, id",
-        )
-        ?;
+    )?;
     let rows = stmt
         .query_map(params![plugin_id], |row| {
             Ok(PluginDocumentSnapshotRow {
@@ -234,10 +267,8 @@ pub(crate) fn plugin_docs_snapshot_inner(
                 anchor: row.get(4)?,
                 updated_at: row.get(5)?,
             })
-        })
-        ?
-        .collect::<Result<Vec<_>, _>>()
-        ?;
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
@@ -273,8 +304,7 @@ pub(crate) fn replace_plugin_documents(
     tx.execute(
         "DELETE FROM plugin_documents WHERE plugin_id = ?1",
         params![plugin_id],
-    )
-    ?;
+    )?;
     for row in rows {
         tx.execute(
             "INSERT INTO plugin_documents
@@ -289,8 +319,7 @@ pub(crate) fn replace_plugin_documents(
                 row.anchor,
                 row.updated_at
             ],
-        )
-        ?;
+        )?;
     }
     Ok(())
 }
@@ -308,12 +337,10 @@ pub async fn vocabulary_migrate_to_plugin_documents(
         let tx = conn.transaction()?;
         let moved: i64;
         {
-            let mut stmt = tx
-                .prepare(
-                    "SELECT id, term, language, entry_json, context, book_id, book_title, added_at
+            let mut stmt = tx.prepare(
+                "SELECT id, term, language, entry_json, context, book_id, book_title, added_at
                  FROM vocabulary_entries WHERE removed_at IS NULL",
-                )
-                ?;
+            )?;
             let rows = stmt
                 .query_map([], |row| {
                     Ok((
@@ -326,10 +353,8 @@ pub async fn vocabulary_migrate_to_plugin_documents(
                         row.get::<_, Option<String>>(6)?,
                         row.get::<_, String>(7)?,
                     ))
-                })
-                ?
-                .collect::<Result<Vec<_>, _>>()
-                ?;
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
             moved = rows.len() as i64;
             for (id, term, language, entry_json, context, book_id, book_title, added_at) in rows {
                 let entry: Value = serde_json::from_str(&entry_json).unwrap_or(Value::Null);
@@ -346,12 +371,10 @@ pub async fn vocabulary_migrate_to_plugin_documents(
                     (plugin_id, collection, id, json, book_id, anchor, updated_at)
                  VALUES ('dictionary', 'words', ?1, ?2, ?3, NULL, ?4)",
                     params![id, doc.to_string(), book_id, added_at],
-                )
-                ?;
+                )?;
             }
         }
-        tx.execute("DELETE FROM vocabulary_entries", [])
-            ?;
+        tx.execute("DELETE FROM vocabulary_entries", [])?;
         tx.commit()?;
         Ok(moved)
     })

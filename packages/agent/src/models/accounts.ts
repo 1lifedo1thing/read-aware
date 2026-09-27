@@ -2,11 +2,7 @@ import { buildProviderRegistry, type KnownProviderId, type ProviderRegistry } fr
 import type { ResolveModel } from "./roles";
 import { PROVIDER_DEFINITIONS } from "./provider-definitions";
 import { AppError, ERR_AI_NOT_CONFIGURED } from "@read-aware/core";
-import {
-  CUSTOM_OPENAI_PROVIDER_ID,
-  registerCustomOpenAIProvider,
-  type CustomOpenAIApi,
-} from "./custom-openai";
+import { CUSTOM_OPENAI_PROVIDER_ID, registerCustomOpenAIProvider, type CustomOpenAIApi } from "./custom-openai";
 
 /**
  * LLM 账户：一行配置怎么认证（doc §8）。
@@ -45,9 +41,7 @@ export interface ReadAwareAccount {
 
 export type LlmAccount = ApiKeyAccount | CustomOpenAIAccount | ReadAwareAccount;
 
-export function isCustomOpenAIAccount(
-  account: LlmAccount,
-): account is CustomOpenAIAccount {
+export function isCustomOpenAIAccount(account: LlmAccount): account is CustomOpenAIAccount {
   return account.kind === "api-key" && account.provider === CUSTOM_OPENAI_PROVIDER_ID;
 }
 
@@ -101,18 +95,25 @@ export function createModelResolver(
       supportsThinking: false,
     });
   }
-  const providerId =
-    account.kind === "readaware" ? CUSTOM_OPENAI_PROVIDER_ID : account.provider;
+  const providerId = account.kind === "readaware" ? CUSTOM_OPENAI_PROVIDER_ID : account.provider;
   return (role) => {
     const id = roles[role];
     if (!id.trim()) throw new AppError(ERR_AI_NOT_CONFIGURED, "No model selected");
     let model = registry.getModel(providerId, id);
     if (!model) {
-      if (providerId === CUSTOM_OPENAI_PROVIDER_ID) throw new AppError(ERR_AI_NOT_CONFIGURED, "Custom model not registered");
+      if (providerId === CUSTOM_OPENAI_PROVIDER_ID)
+        throw new AppError(ERR_AI_NOT_CONFIGURED, "Custom model not registered");
       const definition = PROVIDER_DEFINITIONS[providerId];
       model = {
-        id, name: id, provider: providerId, api: definition.api, baseUrl: definition.baseUrl,
-        reasoning: false, input: ["text"], contextWindow: 128_000, maxTokens: 8_192,
+        id,
+        name: id,
+        provider: providerId,
+        api: definition.api,
+        baseUrl: definition.baseUrl,
+        reasoning: false,
+        input: ["text"],
+        contextWindow: 128_000,
+        maxTokens: 8_192,
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       };
     }

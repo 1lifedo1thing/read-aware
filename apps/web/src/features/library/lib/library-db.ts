@@ -1,22 +1,19 @@
 import { actorOrigin, type DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
-import { AppError, normalizeBookRemovalCleanupQuery, type BookRemovalCleanupPage, type BookRemovalCleanupQuery } from "@read-aware/core";
+import {
+  AppError,
+  normalizeBookRemovalCleanupQuery,
+  type BookRemovalCleanupPage,
+  type BookRemovalCleanupQuery,
+} from "@read-aware/core";
 import { removeBookBatch, releaseRemovedBookFiles } from "./book-removal";
 import { createLogger } from "../../../platform/logger";
-import {
-  getDesktopBlob,
-  getDesktopBlobInfo,
-  openDesktopBlobFile,
-} from "../../../platform/blob-store";
+import { getDesktopBlob, getDesktopBlobInfo, openDesktopBlobFile } from "../../../platform/blob-store";
 import { commitBoundVirtualBook, type VirtualBookBinding } from "../../plugins/lib/virtual-books";
 import { commitDomainEvents } from "../../../platform/domain-events";
 import { fetchRemoteBlob } from "../../../platform/sync/sync-scheduler";
-import type {
-  Collection,
-  LibraryBook,
-  LibraryBookRow,
-} from "./library-types";
+import type { Collection, LibraryBook, LibraryBookRow } from "./library-types";
 import { withCoverUrl } from "./book-cover-url";
 import { bookMetadataPatch } from "./book-metadata-patch";
 import { isTauri } from "../../../platform/environment";
@@ -61,12 +58,15 @@ async function deleteBookRecords(bookIds: string[], origin?: DomainActor) {
   assertDesktop("Removing books");
   // `book.removed` drops the row and its annotations on apply; the blobs
   // (file + cover) are object-storage content and are released separately.
-  return runDomainWrite(() => removeBookBatch(bookIds, {
-    commit: ids => commitDomainEvents(...ids.map(bookId => ({ type: "book.removed" as const, payload: { bookId }, origin }))),
-    releaseFiles: ids => invoke("library_release_book_files", { ids }),
-    removed: bookId => emitAppEvent("book-removed", { bookId }, origin),
-    warn: error => createLogger("library").warn("Books removed but local file release failed", error),
-  }));
+  return runDomainWrite(() =>
+    removeBookBatch(bookIds, {
+      commit: (ids) =>
+        commitDomainEvents(...ids.map((bookId) => ({ type: "book.removed" as const, payload: { bookId }, origin }))),
+      releaseFiles: (ids) => invoke("library_release_book_files", { ids }),
+      removed: (bookId) => emitAppEvent("book-removed", { bookId }, origin),
+      warn: (error) => createLogger("library").warn("Books removed but local file release failed", error),
+    }),
+  );
 }
 
 async function getAllCollectionRecords(): Promise<Collection[]> {
@@ -97,24 +97,30 @@ export async function addVirtualLibraryBook(
   signal?: AbortSignal,
 ): Promise<LibraryBook> {
   assertDesktop("Adding a virtual book");
-  if (actorOrigin(origin ?? "user") !== `plugin:${input.binding.pluginId}`) throw new AppError("plugin/unavailable", "Virtual book owner mismatch");
+  if (actorOrigin(origin ?? "user") !== `plugin:${input.binding.pluginId}`)
+    throw new AppError("plugin/unavailable", "Virtual book owner mismatch");
   const bookId = crypto.randomUUID();
-  await commitBoundVirtualBook(bookId, input.binding, [
-    {
-      type: "book.imported",
-      payload: {
-        bookId,
-        title: input.title.trim() || "Untitled",
-        author: input.author?.trim() || "",
-        format: "virtual",
-        fileName: "",
-        fileSize: 0,
-        sourceBlobKey: "",
+  await commitBoundVirtualBook(
+    bookId,
+    input.binding,
+    [
+      {
+        type: "book.imported",
+        payload: {
+          bookId,
+          title: input.title.trim() || "Untitled",
+          author: input.author?.trim() || "",
+          format: "virtual",
+          fileName: "",
+          fileSize: 0,
+          sourceBlobKey: "",
+        },
+        origin,
       },
-      origin,
-    },
-    { type: "book.coverExtracted", payload: { bookId, status: "none" }, origin },
-  ], signal);
+      { type: "book.coverExtracted", payload: { bookId, status: "none" }, origin },
+    ],
+    signal,
+  );
   const stored = await getBookRecord(bookId);
   if (!stored) throw new Error("Virtual book was not persisted");
   return stored;
@@ -151,12 +157,7 @@ export async function listLibraryBooks() {
  *                     retrying can genuinely succeed.
  * - `undecodable`     ciphertext came back but this passphrase can't open it.
  */
-export type BookFileMissingReason =
-  | "no-sync"
-  | "not-on-relay"
-  | "unauthenticated"
-  | "unreachable"
-  | "undecodable";
+export type BookFileMissingReason = "no-sync" | "not-on-relay" | "unauthenticated" | "unreachable" | "undecodable";
 
 export type StoredBookFileResult =
   | { status: "ok"; file: BookFileSource }
@@ -164,7 +165,10 @@ export type StoredBookFileResult =
 
 /** Pull a book's bytes off the relay into the local store, mapping the typed
  *  fetch outcome onto the reader-facing missing reasons. */
-async function fetchBookFile(bookId: string, fetchBlob = fetchRemoteBlob): Promise<{ ok: true } | { ok: false; reason: BookFileMissingReason }> {
+async function fetchBookFile(
+  bookId: string,
+  fetchBlob = fetchRemoteBlob,
+): Promise<{ ok: true } | { ok: false; reason: BookFileMissingReason }> {
   const fetched = await fetchBlob(bookFileKey(bookId));
   switch (fetched.outcome) {
     case "fetched":
@@ -202,11 +206,7 @@ export async function openLocalBookFile(book: BookFileRef): Promise<BookFileSour
   if (!isTauri()) return null;
   if (book.format === "pdf") {
     // File-backed so PDFs keep their random-access path.
-    return openDesktopBlobFile(
-      bookFileKey(book.id),
-      book.fileName,
-      book.mimeType || "application/pdf",
-    );
+    return openDesktopBlobFile(bookFileKey(book.id), book.fileName, book.mimeType || "application/pdf");
   }
   const bytes = await getDesktopBlob(bookFileKey(book.id));
   if (!bytes) return null;
@@ -225,9 +225,7 @@ export async function hasLocalBookFile(bookId: string): Promise<boolean> {
  * whole-file blob until they expose the same structural range contract end to
  * end. Falls back to a relay fetch when the bytes are not local.
  */
-export async function resolveStoredBookFile(
-  bookOrId: BookFileRef | string,
-): Promise<StoredBookFileResult> {
+export async function resolveStoredBookFile(bookOrId: BookFileRef | string): Promise<StoredBookFileResult> {
   if (!isTauri()) return { status: "missing", reason: "no-sync" };
   const book = typeof bookOrId === "string" ? await getBookRecord(bookOrId) : bookOrId;
   if (!book) return { status: "missing", reason: "no-sync" };
@@ -239,18 +237,13 @@ export async function resolveStoredBookFile(
   const pulled = await openLocalBookFile(book);
   // A successful fetch that still opens nothing means the local write raced a
   // wipe — treat as unreachable so the user retries rather than re-imports.
-  return pulled
-    ? { status: "ok", file: pulled }
-    : { status: "missing", reason: "unreachable" };
+  return pulled ? { status: "ok", file: pulled } : { status: "missing", reason: "unreachable" };
 }
 
-export async function getStoredBookFile(
-  bookOrId: BookFileRef | string,
-): Promise<BookFileSource | null> {
+export async function getStoredBookFile(bookOrId: BookFileRef | string): Promise<BookFileSource | null> {
   const resolved = await resolveStoredBookFile(bookOrId);
   return resolved.status === "ok" ? resolved.file : null;
 }
-
 
 /**
  * Update user-editable metadata (title/author). Empty input keeps the current
@@ -288,11 +281,7 @@ export async function updateBookMetadata(
  * percentage: this one is sticky, so reading on afterwards does not undo it
  * (see `book.finished` in storage/apply.rs).
  */
-export async function setLibraryBookFinished(
-  bookId: string,
-  finished: boolean,
-  origin?: DomainActor,
-) {
+export async function setLibraryBookFinished(bookId: string, finished: boolean, origin?: DomainActor) {
   const existingBook = await getBookRecord(bookId);
   if (!existingBook) return null;
 
@@ -300,11 +289,7 @@ export async function setLibraryBookFinished(
   return getBookRecord(bookId);
 }
 
-export async function setLibraryBookStarred(
-  bookId: string,
-  starred: boolean,
-  origin?: DomainActor,
-) {
+export async function setLibraryBookStarred(bookId: string, starred: boolean, origin?: DomainActor) {
   const existingBook = await getBookRecord(bookId);
   if (!existingBook) return null;
 
@@ -331,11 +316,7 @@ export async function createCollection(name: string, origin?: DomainActor): Prom
   return collection;
 }
 
-export async function renameCollection(
-  id: string,
-  name: string,
-  origin?: DomainActor,
-): Promise<Collection | null> {
+export async function renameCollection(id: string, name: string, origin?: DomainActor): Promise<Collection | null> {
   const existing = (await getAllCollectionRecords()).find((c) => c.id === id);
   if (!existing) return null;
 
@@ -363,11 +344,7 @@ export async function deleteCollection(id: string, origin?: DomainActor) {
 }
 
 /** Assign a set of books to a collection (or null to ungroup them). */
-export async function setBooksCollection(
-  bookIds: string[],
-  collectionId: string | null,
-  origin?: DomainActor,
-) {
+export async function setBooksCollection(bookIds: string[], collectionId: string | null, origin?: DomainActor) {
   if (bookIds.length === 0) return;
   const idSet = new Set(bookIds);
   const all = await getAllBookRecords();
@@ -396,10 +373,12 @@ export async function removeLibraryBooks(bookIds: string[], origin?: DomainActor
 
 export async function retryLibraryBookFileRelease(bookIds: string[]) {
   assertDesktop("Releasing removed book files");
-  return runDomainWrite(() => releaseRemovedBookFiles(bookIds, {
-    releaseFiles: ids => invoke("library_release_book_files", { ids }),
-    warn: error => createLogger("library").warn("Removed book file release retry failed", error),
-  }));
+  return runDomainWrite(() =>
+    releaseRemovedBookFiles(bookIds, {
+      releaseFiles: (ids) => invoke("library_release_book_files", { ids }),
+      warn: (error) => createLogger("library").warn("Removed book file release retry failed", error),
+    }),
+  );
 }
 
 export async function listLibraryRemovalCleanup(query?: BookRemovalCleanupQuery): Promise<BookRemovalCleanupPage> {
@@ -420,5 +399,6 @@ export async function removeLibraryBook(bookId: string, origin?: DomainActor) {
   const receipt = await deleteBookRecords([bookId], origin);
   // Preserve the existing single-delete error contract. Batch callers get the
   // committed/cleanup distinction and can retry the same IDs explicitly.
-  if (receipt.files.status === "pending") throw new AppError(receipt.files.errorCode, "Book removed but local file release failed");
+  if (receipt.files.status === "pending")
+    throw new AppError(receipt.files.errorCode, "Book removed but local file release failed");
 }

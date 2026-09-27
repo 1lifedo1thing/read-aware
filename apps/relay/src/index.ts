@@ -127,11 +127,7 @@ function portsFromEnv(env: Env, ctx?: { waitUntil(promise: Promise<unknown>): vo
     }),
     magicLink:
       env.RESEND_API_KEY && env.MAIL_FROM
-        ? resendMagicLinkSender(
-            env.RESEND_API_KEY,
-            env.MAIL_FROM,
-            env.APP_ORIGIN ?? "https://readaware.app",
-          )
+        ? resendMagicLinkSender(env.RESEND_API_KEY, env.MAIL_FROM, env.APP_ORIGIN ?? "https://readaware.app")
         : null,
     oauthProviders,
     config: {
@@ -140,8 +136,7 @@ function portsFromEnv(env: Env, ctx?: { waitUntil(promise: Promise<unknown>): vo
       appLinkScheme: env.APP_LINK_SCHEME === "readaware-dev" ? "readaware-dev" : "readaware",
       webAppOrigin: env.WEB_APP_ORIGIN ?? env.APP_ORIGIN ?? DEFAULT_CONFIG.webAppOrigin,
       relayOrigin: env.RELAY_ORIGIN ?? DEFAULT_CONFIG.relayOrigin,
-      maxAccountBlobBytes:
-        Number(env.MAX_ACCOUNT_BLOB_BYTES) || DEFAULT_CONFIG.maxAccountBlobBytes,
+      maxAccountBlobBytes: Number(env.MAX_ACCOUNT_BLOB_BYTES) || DEFAULT_CONFIG.maxAccountBlobBytes,
       maxAccountEvents: Number(env.MAX_ACCOUNT_EVENTS) || DEFAULT_CONFIG.maxAccountEvents,
       adminToken: env.ADMIN_TOKEN ?? null,
     },
@@ -151,11 +146,7 @@ function portsFromEnv(env: Env, ctx?: { waitUntil(promise: Promise<unknown>): vo
 }
 
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: { waitUntil(promise: Promise<unknown>): void },
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: { waitUntil(promise: Promise<unknown>): void }): Promise<Response> {
     return createRelayHandler(portsFromEnv(env, ctx))(request);
   },
   async scheduled(
@@ -164,11 +155,7 @@ export default {
     ctx: { waitUntil(promise: Promise<unknown>): void },
   ): Promise<void> {
     ctx.waitUntil(
-      cleanupRelayStorage(
-        new SqlAccountStore(env.DB),
-        new SqlRateLimitStore(env.DB),
-        controller.scheduledTime,
-      ),
+      cleanupRelayStorage(new SqlAccountStore(env.DB), new SqlRateLimitStore(env.DB), controller.scheduledTime),
     );
   },
 };

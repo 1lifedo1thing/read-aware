@@ -10,15 +10,7 @@ import { collectEvalProvenance, type EvalArtifactProvenance } from "./artifacts"
 import { fingerprintJson, fingerprintSuite } from "./fingerprint";
 import { evalSuites, isEvalSuiteId } from "./suites";
 import type { AgentEvalScenario } from "./agent-harness";
-import type {
-  EvalRunPlan,
-  EvalRunRecord,
-  EvalScenario,
-  EvalSuite,
-  EvalSummary,
-  JsonObject,
-  JsonValue,
-} from "./types";
+import type { EvalRunPlan, EvalRunRecord, EvalScenario, EvalSuite, EvalSummary, JsonObject, JsonValue } from "./types";
 
 interface StoredManifest {
   schemaVersion: number;
@@ -55,9 +47,7 @@ function scoringError(error: unknown) {
   };
 }
 
-export async function rescoreEvalRecords<
-  TScenario extends EvalScenario<never>,
->(
+export async function rescoreEvalRecords<TScenario extends EvalScenario<never>>(
   suite: EvalSuite<TScenario>,
   variantIds: string[],
   records: EvalRunRecord[],
@@ -117,9 +107,7 @@ export async function rescoreEvalBundle(
   options: RescoreBundleOptions = {},
 ): Promise<RescoreResult> {
   const directory = resolve(directoryInput);
-  const manifest = JSON.parse(
-    await readFile(join(directory, "manifest.json"), "utf8"),
-  ) as StoredManifest;
+  const manifest = JSON.parse(await readFile(join(directory, "manifest.json"), "utf8")) as StoredManifest;
   if (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) {
     throw new Error(`unsupported eval artifact schema ${manifest.schemaVersion}`);
   }
@@ -141,10 +129,7 @@ export async function rescoreEvalBundle(
   const definitionMetadata: JsonValue = options.judgeMetadata ?? {
     judge: judge ? "custom" : "none",
   };
-  const definitionHash = fingerprintSuite(
-    suite as unknown as EvalSuite<EvalScenario<unknown>>,
-    definitionMetadata,
-  );
+  const definitionHash = fingerprintSuite(suite as unknown as EvalSuite<EvalScenario<unknown>>, definitionMetadata);
   const currentPlan: EvalRunPlan = {
     ...manifest.plan,
     suiteDisplayName: suite.displayName,
@@ -158,23 +143,15 @@ export async function rescoreEvalBundle(
     })),
   };
   const currentProvenance = await collectEvalProvenance(directory, currentPlan);
-  const originalInputs = new Map(
-    manifest.plan.scenarios.map((scenario) => [scenario.id, scenario.inputHash]),
-  );
+  const originalInputs = new Map(manifest.plan.scenarios.map((scenario) => [scenario.id, scenario.inputHash]));
   const hasOriginalInputHashes = [...originalInputs.values()].every(
     (hash) => typeof hash === "string" && hash.length > 0,
   );
   const scenarioInputs: RescoreCompatibility["scenarioInputs"] = hasOriginalInputHashes
-    ? currentPlan.scenarios.every(
-        (scenario) => originalInputs.get(scenario.id) === scenario.inputHash,
-      )
+    ? currentPlan.scenarios.every((scenario) => originalInputs.get(scenario.id) === scenario.inputHash)
     : "unknown";
-  const compareSource = (
-    key: "fixtureHash" | "promptHash" | "evaluatorHash",
-  ): boolean | "unknown" =>
-    manifest.provenance?.[key] === undefined
-      ? "unknown"
-      : manifest.provenance[key] === currentProvenance[key];
+  const compareSource = (key: "fixtureHash" | "promptHash" | "evaluatorHash"): boolean | "unknown" =>
+    manifest.provenance?.[key] === undefined ? "unknown" : manifest.provenance[key] === currentProvenance[key];
   const fixtureSources = compareSource("fixtureHash");
   const promptSources = compareSource("promptHash");
   const evaluatorSources = compareSource("evaluatorHash");
@@ -184,18 +161,23 @@ export async function rescoreEvalBundle(
     promptSources,
     evaluatorSources,
     comparable:
-      scenarioInputs === true &&
-      fixtureSources === true &&
-      promptSources === true &&
-      evaluatorSources === true,
+      scenarioInputs === true && fixtureSources === true && promptSources === true && evaluatorSources === true,
   };
   const result = await rescoreEvalRecords(suite, variantIds, records, definitionHash);
   const reviews = await readHumanReviews(directory);
   result.summary.quality = summarizeQuality(result.records, reviews);
-  result.summary.qualityByVariant = variantIds.map(variantId => ({ variantId, ...summarizeQuality(result.records.filter(r => r.variantId === variantId), reviews) }));
+  result.summary.qualityByVariant = variantIds.map((variantId) => ({
+    variantId,
+    ...summarizeQuality(
+      result.records.filter((r) => r.variantId === variantId),
+      reviews,
+    ),
+  }));
   result.summary.manualQuality = summarizeQuality(manualReviewRecords(await readManualSessions(directory)), reviews);
-  result.accepted = plannedRunsComplete(manifest.plan, records) && qualityGatePassed(result.summary.quality)
-    && (result.summary.manualQuality.total === 0 || qualityGatePassed(result.summary.manualQuality));
+  result.accepted =
+    plannedRunsComplete(manifest.plan, records) &&
+    qualityGatePassed(result.summary.quality) &&
+    (result.summary.manualQuality.total === 0 || qualityGatePassed(result.summary.manualQuality));
   const createdAt = new Date().toISOString();
   const rescoreId = `${createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}-${randomUUID().slice(0, 8)}`;
   const rescoreDirectory = join(directory, "rescored", rescoreId);
@@ -205,11 +187,7 @@ export async function rescoreEvalBundle(
   const reportPath = join(rescoreDirectory, "report.md");
   const rescoreManifestPath = join(rescoreDirectory, "manifest.json");
   await Promise.all([
-    writeFile(
-      recordsPath,
-      `${result.records.map((record) => JSON.stringify(record)).join("\n")}\n`,
-      "utf8",
-    ),
+    writeFile(recordsPath, `${result.records.map((record) => JSON.stringify(record)).join("\n")}\n`, "utf8"),
     writeFile(summaryPath, `${JSON.stringify(result.summary, null, 2)}\n`, "utf8"),
     writeFile(reportPath, formatEvalReport(result.summary), "utf8"),
     writeFile(

@@ -23,7 +23,6 @@ export const Default: Story = {
 export const Large: Story = {
   args: {
     size: "lg",
-    children:
-      "Supporting material sits in a calm, editorial frame. The emphasis stays on comprehension.",
+    children: "Supporting material sits in a calm, editorial frame. The emphasis stays on comprehension.",
   },
 };

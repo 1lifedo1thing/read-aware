@@ -12,15 +12,7 @@ import { useWindowMaximized } from "../hooks/useWindowMaximized";
 
 const log = createLogger("window-resize");
 
-type Direction =
-  | "East"
-  | "North"
-  | "NorthEast"
-  | "NorthWest"
-  | "South"
-  | "SouthEast"
-  | "SouthWest"
-  | "West";
+type Direction = "East" | "North" | "NorthEast" | "NorthWest" | "South" | "SouthEast" | "SouthWest" | "West";
 
 const EDGE = "5px";
 const CORNER = "10px";

@@ -26,9 +26,7 @@ export function syncCycleFraction(status: SyncStatusSnapshot): number | null {
     // A blob in flight contributes its part fraction, so one big chunked book
     // moves the bar per part instead of freezing until the whole file lands.
     const inFlight =
-      progress.blobKey !== null && progress.blobPartsTotal > 0
-        ? progress.blobPartsDone / progress.blobPartsTotal
-        : 0;
+      progress.blobKey !== null && progress.blobPartsTotal > 0 ? progress.blobPartsDone / progress.blobPartsTotal : 0;
     if (progress.blobsTotal > 0) {
       return Math.min(1, (progress.blobsDone + inFlight) / progress.blobsTotal);
     }

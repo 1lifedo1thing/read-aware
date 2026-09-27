@@ -7,7 +7,16 @@ import { DIGEST_VERSION, extractChapterDigest, mergeCharacterRegistry } from "./
 export type { DigestReport } from "@read-aware/core";
 
 export function unavailableDigestReport(reason: "boundary-unknown" | "no-toc"): DigestReport {
-  return { status: "unavailable", reason, eligible: 0, attempted: 0, digested: 0, remaining: 0, emptyChapters: [], failures: [] };
+  return {
+    status: "unavailable",
+    reason,
+    eligible: 0,
+    attempted: 0,
+    digested: 0,
+    remaining: 0,
+    emptyChapters: [],
+    failures: [],
+  };
 }
 
 export interface DigestMissingChaptersInput {
@@ -25,7 +34,9 @@ export interface DigestMissingChaptersInput {
   onProgress?: (digested: number) => void;
   rebuild?: boolean;
   targets?: readonly number[];
-  preparedDigest?(chapter: number): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
+  preparedDigest?(
+    chapter: number,
+  ): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
   onPlan?: (chapters: number[]) => void | Promise<void>;
   onChapterAttempted?: (chapter: number) => void;
   onChapterCommitted?: (chapter: number) => void;
@@ -34,8 +45,15 @@ export interface DigestMissingChaptersInput {
 }
 
 export function digestExecutionBudget(input: { maxChapters?: number; concurrency?: number }) {
-  const max = input.maxChapters ?? 2, concurrency = input.concurrency ?? 1;
-  if (!Number.isSafeInteger(max) || max < 0 || !Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 16)
+  const max = input.maxChapters ?? 2,
+    concurrency = input.concurrency ?? 1;
+  if (
+    !Number.isSafeInteger(max) ||
+    max < 0 ||
+    !Number.isSafeInteger(concurrency) ||
+    concurrency < 1 ||
+    concurrency > 16
+  )
     throw new AppError("memory/invalid-input", "Invalid digest execution budget");
   return { max, concurrency };
 }
@@ -43,28 +61,54 @@ export function digestExecutionBudget(input: { maxChapters?: number; concurrency
 /** One finite pass. Each selected chapter is attempted once, even after empty/failing predecessors. */
 export async function digestMissingChapters(input: DigestMissingChaptersInput): Promise<DigestReport> {
   const { max, concurrency } = digestExecutionBudget(input);
-  if (!Number.isSafeInteger(input.beforeChapterIndex) || input.beforeChapterIndex < 0) throw new AppError("memory/invalid-input", "Invalid digest chapter boundary");
-  if (input.targets?.some(index => !Number.isSafeInteger(index) || index < 0)) throw new AppError("memory/invalid-input", "Invalid digest targets");
+  if (!Number.isSafeInteger(input.beforeChapterIndex) || input.beforeChapterIndex < 0)
+    throw new AppError("memory/invalid-input", "Invalid digest chapter boundary");
+  if (input.targets?.some((index) => !Number.isSafeInteger(index) || index < 0))
+    throw new AppError("memory/invalid-input", "Invalid digest targets");
   input.signal?.throwIfAborted();
   const sourceVersion = await input.bookText.getSourceVersion?.(input.bookId, input.signal);
-  const [toc, existing] = await Promise.all([input.bookText.getToc(input.bookId), input.bookMemory.listDigests(input.bookId)]);
+  const [toc, existing] = await Promise.all([
+    input.bookText.getToc(input.bookId),
+    input.bookMemory.listDigests(input.bookId),
+  ]);
   input.signal?.throwIfAborted();
-  if (sourceVersion && await input.bookText.getSourceVersion?.(input.bookId, input.signal) !== sourceVersion) throw new AppError("memory/conflict", "Digest source changed during planning");
+  if (sourceVersion && (await input.bookText.getSourceVersion?.(input.bookId, input.signal)) !== sourceVersion)
+    throw new AppError("memory/conflict", "Digest source changed during planning");
   if (!toc.length) return unavailableDigestReport("no-toc");
   const flavor = input.flavor ?? "narrative";
-  const current = new Map(existing.filter(d => (!sourceVersion || d.contentVersion === sourceVersion) && d.digestVersion >= DIGEST_VERSION && (d.flavor ?? "narrative") === flavor).map(d => [d.chapterIndex, d]));
-  const ceiling = Math.min(input.beforeChapterIndex, toc.length), missing: number[] = [];
+  const current = new Map(
+    existing
+      .filter(
+        (d) =>
+          (!sourceVersion || d.contentVersion === sourceVersion) &&
+          d.digestVersion >= DIGEST_VERSION &&
+          (d.flavor ?? "narrative") === flavor,
+      )
+      .map((d) => [d.chapterIndex, d]),
+  );
+  const ceiling = Math.min(input.beforeChapterIndex, toc.length),
+    missing: number[] = [];
   // Retry order puts unattempted work before prior empty/failed chapters, so a small limit cannot starve the tail.
   const targets = input.targets ? [...new Set(input.targets)] : Array.from({ length: ceiling }, (_, index) => index);
   for (const index of targets) if (index < ceiling && (input.rebuild || !current.has(index))) missing.push(index);
   await input.onPlan?.([...missing]);
   input.signal?.throwIfAborted();
   const selected = missing.slice(0, max);
-  const report: DigestReport = { status: missing.length ? "partial" : "complete", eligible: ceiling, attempted: 0, digested: 0,
-    remaining: missing.length, emptyChapters: [], failures: [], ...(missing.length > max ? { reason: "chapter-limit" as const } : {}) };
+  const report: DigestReport = {
+    status: missing.length ? "partial" : "complete",
+    eligible: ceiling,
+    attempted: 0,
+    digested: 0,
+    remaining: missing.length,
+    emptyChapters: [],
+    failures: [],
+    ...(missing.length > max ? { reason: "chapter-limit" as const } : {}),
+  };
   const publish = () => input.onReport?.(structuredClone(report));
   publish();
-  let cursor = 0, fatal: unknown, stopped = false;
+  let cursor = 0,
+    fatal: unknown,
+    stopped = false;
   const worker = async () => {
     while (!stopped) {
       input.signal?.throwIfAborted();
@@ -78,22 +122,46 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
         const snapshot = await input.bookMemory.inspectDigest(input.bookId, index, input.signal);
         input.signal?.throwIfAborted();
         if (!snapshot) throw new AppError("reader/book-not-found", "Digest book disappeared");
-        if (snapshot.flavor !== flavor) throw new AppError("memory/conflict", "Book classification changed before generation");
-        if (sourceVersion && snapshot.contentVersion !== sourceVersion) throw new AppError("memory/conflict", "Digest source changed since planning");
-        const chapter = snapshot.contentVersion && input.bookText.getDigestChapter ? await input.bookText.getDigestChapter(input.bookId, index, snapshot.contentVersion, input.signal) : undefined;
-        const text = input.bookText.getDigestChapter && snapshot.contentVersion ? chapter?.text : await input.bookText.getChapterText(input.bookId, index);
+        if (snapshot.flavor !== flavor)
+          throw new AppError("memory/conflict", "Book classification changed before generation");
+        if (sourceVersion && snapshot.contentVersion !== sourceVersion)
+          throw new AppError("memory/conflict", "Digest source changed since planning");
+        const chapter =
+          snapshot.contentVersion && input.bookText.getDigestChapter
+            ? await input.bookText.getDigestChapter(input.bookId, index, snapshot.contentVersion, input.signal)
+            : undefined;
+        const text =
+          input.bookText.getDigestChapter && snapshot.contentVersion
+            ? chapter?.text
+            : await input.bookText.getChapterText(input.bookId, index);
         input.signal?.throwIfAborted();
         if (stopped) return;
         if (text === undefined) throw new AppError("library/content-unavailable", "Chapter text is unavailable");
-        if (!text.trim()) { report.emptyChapters.push(index); continue; }
+        if (!text.trim()) {
+          report.emptyChapters.push(index);
+          continue;
+        }
         await input.checkChapter?.(index);
         input.signal?.throwIfAborted();
         const prepared = await input.preparedDigest?.(index);
-        const digest = prepared?.digest ?? await extractChapterDigest({ complete: input.complete, model: input.model, chapterIndex: index,
-          chapterHref: chapter?.hrefs?.[0] ?? toc[index]?.hrefs?.[0], chapterTitle: chapter?.title ?? toc[index]?.title, chapterText: text, flavor, signal: input.signal,
-          // A repaired early chapter must not inherit names/aliases revealed later.
-          knownCharacters: mergeCharacterRegistry([...current.values()].filter(d => d.chapterIndex < index && d.contentVersion === snapshot.contentVersion)),
-        });
+        const digest =
+          prepared?.digest ??
+          (await extractChapterDigest({
+            complete: input.complete,
+            model: input.model,
+            chapterIndex: index,
+            chapterHref: chapter?.hrefs?.[0] ?? toc[index]?.hrefs?.[0],
+            chapterTitle: chapter?.title ?? toc[index]?.title,
+            chapterText: text,
+            flavor,
+            signal: input.signal,
+            // A repaired early chapter must not inherit names/aliases revealed later.
+            knownCharacters: mergeCharacterRegistry(
+              [...current.values()].filter(
+                (d) => d.chapterIndex < index && d.contentVersion === snapshot.contentVersion,
+              ),
+            ),
+          }));
         input.signal?.throwIfAborted();
         if (stopped) return;
         if (!digest) throw new AppError("ai/provider", "Nonempty chapter produced no digest");
@@ -101,25 +169,39 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
         input.signal?.throwIfAborted();
         if (snapshot.contentVersion) digest.contentVersion = snapshot.contentVersion;
         await input.bookMemory.saveDigest(input.bookId, digest, prepared?.revision ?? snapshot.revision, input.signal);
-        current.set(index, digest); report.digested++; report.remaining--;
+        current.set(index, digest);
+        report.digested++;
+        report.remaining--;
         input.onChapterCommitted?.(index);
       } catch (error) {
-        if (input.signal?.aborted) { stopped = true; throw error; }
+        if (input.signal?.aborted) {
+          stopped = true;
+          throw error;
+        }
         report.failures.push({ chapterIndex: index, errorCode: errorCode(error) ?? "ai/unknown" });
         input.log?.warn("chapter digest failed; remains pending", { bookId: input.bookId, chapterIndex: index, error });
         continue;
-      } finally { publish(); }
-      try { input.signal?.throwIfAborted(); input.onProgress?.(report.digested); }
-      catch (error) { stopped = true; fatal = error; return; }
+      } finally {
+        publish();
+      }
+      try {
+        input.signal?.throwIfAborted();
+        input.onProgress?.(report.digested);
+      } catch (error) {
+        stopped = true;
+        fatal = error;
+        return;
+      }
     }
   };
   // Do not declare the pass terminal while sibling reads/inference/writes are still running.
   const settled = await Promise.allSettled(Array.from({ length: Math.min(concurrency, selected.length) }, worker));
   input.signal?.throwIfAborted();
   if (stopped) throw fatal;
-  const rejected = settled.find(r => r.status === "rejected");
+  const rejected = settled.find((r) => r.status === "rejected");
   if (rejected?.status === "rejected") throw rejected.reason;
-  report.emptyChapters.sort((a, b) => a - b); report.failures.sort((a, b) => a.chapterIndex - b.chapterIndex);
+  report.emptyChapters.sort((a, b) => a - b);
+  report.failures.sort((a, b) => a.chapterIndex - b.chapterIndex);
   report.status = report.remaining ? "partial" : "complete";
   return report;
 }

@@ -16,28 +16,48 @@ export type KVCommit = {
 export class KVWriteQueue {
   private tail: Promise<void> = Promise.resolve();
   private readonly keys = new Map<string, KeyState>();
-  get pending(): boolean { return this.keys.size > 0; }
+  get pending(): boolean {
+    return this.keys.size > 0;
+  }
 
   readDurable(key: string): string | null {
     const state = this.keys.get(key);
     return state ? state.durable : this.deps.read(key);
   }
 
-  constructor(private readonly deps: {
-    read(key: string): string | null;
-    mirror(key: string, value: string | null, origin: DomainActor): void;
-    persist(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): Promise<void>;
-    committed(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): void;
-    settled?(commit: KVCommit): void;
-    failed(key: string, error: unknown, owner: KVFailureOwner): void;
-  }) {}
+  constructor(
+    private readonly deps: {
+      read(key: string): string | null;
+      mirror(key: string, value: string | null, origin: DomainActor): void;
+      persist(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): Promise<void>;
+      committed(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): void;
+      settled?(commit: KVCommit): void;
+      failed(key: string, error: unknown, owner: KVFailureOwner): void;
+    },
+  ) {}
 
-  write(key: string, value: string | null, origin: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
-    return this.enqueue(new Map([[key, value]]), cause => this.deps.persist(key, value, origin, cause), origin, actor);
+  write(
+    key: string,
+    value: string | null,
+    origin: KVWriteOrigin = "local",
+    actor: DomainActor | null = null,
+  ): Promise<void> {
+    return this.enqueue(
+      new Map([[key, value]]),
+      (cause) => this.deps.persist(key, value, origin, cause),
+      origin,
+      actor,
+    );
   }
 
   /** Atomic user edits publish only after the entire native transaction commits. */
-  batch(values: ReadonlyMap<string, string | null>, persist: (cause: DomainActor) => Promise<void>, actor: DomainActor | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store"): Promise<void> {
+  batch(
+    values: ReadonlyMap<string, string | null>,
+    persist: (cause: DomainActor) => Promise<void>,
+    actor: DomainActor | null = null,
+    source: "local" | "restore" = "local",
+    failureOwner: KVFailureOwner = "store",
+  ): Promise<void> {
     return this.enqueue(values, persist, "local", actor, source, failureOwner);
   }
 
@@ -92,12 +112,25 @@ export class KVWriteQueue {
           if (!state.mutations.length) this.keys.delete(key);
         }
         if (failure) this.deps.failed(entries[0]?.key ?? "replacement", failure.error, failureOwner);
-        else this.deps.settled?.(stampEventCause({ entries: entries.map(({ key, value }) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, cause));
+        else
+          this.deps.settled?.(
+            stampEventCause(
+              {
+                entries: entries.map(({ key, value }) => ({ key, value })),
+                source,
+                actor: actor === null ? null : actorOrigin(actor),
+              },
+              cause,
+            ),
+          );
       }
     });
     for (const { mutation } of entries) mutation.done = done;
     // Keep the queue usable after failures, and observe fire-and-forget facade writes.
-    this.tail = done.then(() => {}, () => {});
+    this.tail = done.then(
+      () => {},
+      () => {},
+    );
     for (const { key, state } of entries) {
       // A synchronous observer may already have queued a newer mutation.
       const latest = state.mutations.at(-1)!;
@@ -109,7 +142,9 @@ export class KVWriteQueue {
   async flush(prefix = ""): Promise<void> {
     const errors: unknown[] = [];
     while (true) {
-      const pending = [...this.keys].filter(([key]) => key.startsWith(prefix)).flatMap(([, state]) => state.mutations.map(m => m.done));
+      const pending = [...this.keys]
+        .filter(([key]) => key.startsWith(prefix))
+        .flatMap(([, state]) => state.mutations.map((m) => m.done));
       if (!pending.length) break;
       const results = await Promise.allSettled(pending);
       for (const result of results) if (result.status === "rejected") errors.push(result.reason);

@@ -16,11 +16,7 @@ import type {
   UserInteractionPort,
 } from "@read-aware/agent";
 import { AppError } from "@read-aware/core";
-import type {
-  PluginAgentScope,
-  RegisteredAgentRetrievalProvider,
-  RegisteredTool,
-} from "../lib/plugin-types";
+import type { PluginAgentScope, RegisteredAgentRetrievalProvider, RegisteredTool } from "../lib/plugin-types";
 import {
   getRegisteredAgentContextProviders,
   getRegisteredAgentRetrievalProviders,
@@ -102,10 +98,7 @@ function pluginScope(scope: ThreadScope): PluginAgentScope {
     : { kind: "global", threadId: scope.threadId };
 }
 
-function supportsScope(
-  contexts: Array<"book" | "global"> | undefined,
-  scope: ThreadScope,
-): boolean {
+function supportsScope(contexts: Array<"book" | "global"> | undefined, scope: ThreadScope): boolean {
   return !contexts || contexts.includes(scope.kind);
 }
 
@@ -118,7 +111,10 @@ function retrievalTool(provider: RegisteredAgentRetrievalProvider, scope: Thread
     execute: async (_toolCallId, raw, signal) => {
       const check = () => {
         signal?.throwIfAborted();
-        if (pluginCallbackOwner(provider.retrieve)?.aborted || !getRegisteredAgentRetrievalProviders().includes(provider)) {
+        if (
+          pluginCallbackOwner(provider.retrieve)?.aborted ||
+          !getRegisteredAgentRetrievalProviders().includes(provider)
+        ) {
           throw new AppError("plugin/unavailable", "Retrieval registration has retired");
         }
       };
@@ -132,26 +128,24 @@ function retrievalTool(provider: RegisteredAgentRetrievalProvider, scope: Thread
         if (scope.kind !== "book") throw pluginObjectAccessDenied("agent retrieval provider global scope");
         provider.assertBookAccess?.(scope.bookId);
       }
-      return consumePluginResult(provider.retrieve({ scope: pluginScope(scope), query, limit }), result => {
+      return consumePluginResult(provider.retrieve({ scope: pluginScope(scope), query, limit }), (result) => {
         check();
         if (provider.bookAccess && provider.bookAccess.mode !== "all" && scope.kind === "book") {
           provider.assertBookAccess?.(scope.bookId);
         }
-        if (!Array.isArray(result)) throw new AppError("plugin/invalid-input", "Retrieval provider did not return a list");
-        const items = result
-          .slice(0, limit)
-          .flatMap((item) => {
-            const content = typeof item?.content === "string"
-              ? item.content.trim().slice(0, MAX_RETRIEVAL_CONTENT)
-              : "";
-            if (!content) return [];
-            return [{
+        if (!Array.isArray(result))
+          throw new AppError("plugin/invalid-input", "Retrieval provider did not return a list");
+        const items = result.slice(0, limit).flatMap((item) => {
+          const content = typeof item?.content === "string" ? item.content.trim().slice(0, MAX_RETRIEVAL_CONTENT) : "";
+          if (!content) return [];
+          return [
+            {
               title: typeof item.title === "string" ? item.title.trim().slice(0, 160) : undefined,
-              location:
-                typeof item.location === "string" ? item.location.trim().slice(0, 240) : undefined,
+              location: typeof item.location === "string" ? item.location.trim().slice(0, 240) : undefined,
               content,
-            }];
-          });
+            },
+          ];
+        });
         return {
           content: [{ type: "text" as const, text: JSON.stringify({ source: provider.pluginName, items }) }],
           details: undefined,
@@ -165,51 +159,65 @@ export function getPluginAgentTools(scope: ThreadScope, interactions?: UserInter
   const tools = getRegisteredPluginTools()
     .filter(actionEnabled)
     .filter((tool) => !tool.contexts || tool.contexts.includes(scope.kind))
-    .map((tool): AgentTool => ({
-    name: pluginToolName(tool),
-    label: tool.label ? contributionText(tool.label) : `${tool.pluginName} · ${tool.name}`,
-    // Provenance stays visible to the model; plugins describe only behavior.
-    description: `[Plugin: ${tool.pluginName}] ${tool.description}`,
-    // pi passes the schema through to the provider without TypeBox runtime
-    // validation, so plain JSON Schema is the honest input type here.
-    parameters: (tool.parameters ?? EMPTY_PARAMETERS) as AgentTool["parameters"],
-    executionMode: tool.approval === "required" ? "sequential" : undefined,
-    execute: async (toolCallId, params, signal, onUpdate) => {
-      signal?.throwIfAborted();
-      if (tool.approval !== undefined && tool.approval !== "required") throw new AppError("plugin/invalid-input", "Invalid tool approval policy");
-      const confirmation = tool.approval === "required"
-        ? await confirmPluginTool({ tool, scope, interactions, toolCallId, params, signal, onUpdate }) : undefined;
-      if (confirmation && !confirmation.approved) return {
-        content: [{ type: "text" as const, text: JSON.stringify({ executed: false, reason: "declined" }) }], details: confirmation.details,
-      };
-      signal?.throwIfAborted();
-      if (tool.bookAccess && tool.bookAccess.mode !== "all") {
-        if (scope.kind !== "book") throw pluginObjectAccessDenied("agent tool global scope");
-        tool.assertBookAccess?.(scope.bookId);
-      }
-      const result = await consumePluginResult(tool.execute(confirmation?.params ?? (params ?? {}) as Record<string, unknown>), clonePluginJsonResult);
-      if (tool.bookAccess && tool.bookAccess.mode !== "all" && scope.kind === "book") {
-        tool.assertBookAccess?.(scope.bookId);
-      }
-      const bookCards = await pluginBookCardResult(result, scope, tool.resolveBookCards, signal);
-      if (bookCards) return {
-        content: [{ type: "text" as const, text: JSON.stringify(bookCards.ack) }],
-        details: { ...confirmation?.details, ...(bookCards.books.length ? { reference: { kind: "books" as const, books: bookCards.books } } : {}) },
-      };
-      const cards = toWordReferences(result);
-      if (cards) {
-        const reference: ReferencePayload = { kind: "words", words: cards.words };
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify(cards.gist) }],
-          details: { ...confirmation?.details, reference },
-        };
-      }
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(result ?? null) }],
-        details: confirmation?.details,
-      };
-    },
-    }));
+    .map(
+      (tool): AgentTool => ({
+        name: pluginToolName(tool),
+        label: tool.label ? contributionText(tool.label) : `${tool.pluginName} · ${tool.name}`,
+        // Provenance stays visible to the model; plugins describe only behavior.
+        description: `[Plugin: ${tool.pluginName}] ${tool.description}`,
+        // pi passes the schema through to the provider without TypeBox runtime
+        // validation, so plain JSON Schema is the honest input type here.
+        parameters: (tool.parameters ?? EMPTY_PARAMETERS) as AgentTool["parameters"],
+        executionMode: tool.approval === "required" ? "sequential" : undefined,
+        execute: async (toolCallId, params, signal, onUpdate) => {
+          signal?.throwIfAborted();
+          if (tool.approval !== undefined && tool.approval !== "required")
+            throw new AppError("plugin/invalid-input", "Invalid tool approval policy");
+          const confirmation =
+            tool.approval === "required"
+              ? await confirmPluginTool({ tool, scope, interactions, toolCallId, params, signal, onUpdate })
+              : undefined;
+          if (confirmation && !confirmation.approved)
+            return {
+              content: [{ type: "text" as const, text: JSON.stringify({ executed: false, reason: "declined" }) }],
+              details: confirmation.details,
+            };
+          signal?.throwIfAborted();
+          if (tool.bookAccess && tool.bookAccess.mode !== "all") {
+            if (scope.kind !== "book") throw pluginObjectAccessDenied("agent tool global scope");
+            tool.assertBookAccess?.(scope.bookId);
+          }
+          const result = await consumePluginResult(
+            tool.execute(confirmation?.params ?? ((params ?? {}) as Record<string, unknown>)),
+            clonePluginJsonResult,
+          );
+          if (tool.bookAccess && tool.bookAccess.mode !== "all" && scope.kind === "book") {
+            tool.assertBookAccess?.(scope.bookId);
+          }
+          const bookCards = await pluginBookCardResult(result, scope, tool.resolveBookCards, signal);
+          if (bookCards)
+            return {
+              content: [{ type: "text" as const, text: JSON.stringify(bookCards.ack) }],
+              details: {
+                ...confirmation?.details,
+                ...(bookCards.books.length ? { reference: { kind: "books" as const, books: bookCards.books } } : {}),
+              },
+            };
+          const cards = toWordReferences(result);
+          if (cards) {
+            const reference: ReferencePayload = { kind: "words", words: cards.words };
+            return {
+              content: [{ type: "text" as const, text: JSON.stringify(cards.gist) }],
+              details: { ...confirmation?.details, reference },
+            };
+          }
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(result ?? null) }],
+            details: confirmation?.details,
+          };
+        },
+      }),
+    );
   const retrieval = getRegisteredAgentRetrievalProviders()
     .filter((provider) => supportsScope(provider.contexts, scope))
     .map((provider) => retrievalTool(provider, scope));
@@ -220,30 +228,37 @@ export async function getPluginAgentContext(
   request: AgentExtensionContextRequest,
 ): Promise<AgentExtensionContextBlock[]> {
   const providers = getRegisteredAgentContextProviders().filter((provider) =>
-    supportsScope(provider.contexts, request.scope)
+    supportsScope(provider.contexts, request.scope),
   );
   const settled = await Promise.allSettled(
     providers.map(async (provider) => {
-      const active = () => !request.signal?.aborted && !pluginCallbackOwner(provider.provide)?.aborted
-        && getRegisteredAgentContextProviders().includes(provider);
+      const active = () =>
+        !request.signal?.aborted &&
+        !pluginCallbackOwner(provider.provide)?.aborted &&
+        getRegisteredAgentContextProviders().includes(provider);
       if (!active()) return [];
       if (provider.bookAccess && provider.bookAccess.mode !== "all") {
         if (request.scope.kind !== "book") throw pluginObjectAccessDenied("agent context provider global scope");
         provider.assertBookAccess?.(request.scope.bookId);
       }
-      return consumePluginResult(provider.provide({
-        scope: pluginScope(request.scope),
-        userText: request.userText,
-      }), blocks => {
-        if (!active()) return [];
-        if (provider.bookAccess && provider.bookAccess.mode !== "all" && request.scope.kind === "book") {
-          provider.assertBookAccess?.(request.scope.bookId);
-        }
-        if (!Array.isArray(blocks)) throw new AppError("plugin/invalid-input", "Context provider did not return a list");
-        return blocks
-          .slice(0, MAX_PROVIDER_CONTEXT_BLOCKS)
-          .map((block) => {
-            if (!block || typeof block.content !== "string" || (block.title !== undefined && typeof block.title !== "string")) {
+      return consumePluginResult(
+        provider.provide({
+          scope: pluginScope(request.scope),
+          userText: request.userText,
+        }),
+        (blocks) => {
+          if (!active()) return [];
+          if (provider.bookAccess && provider.bookAccess.mode !== "all" && request.scope.kind === "book") {
+            provider.assertBookAccess?.(request.scope.bookId);
+          }
+          if (!Array.isArray(blocks))
+            throw new AppError("plugin/invalid-input", "Context provider did not return a list");
+          return blocks.slice(0, MAX_PROVIDER_CONTEXT_BLOCKS).map((block) => {
+            if (
+              !block ||
+              typeof block.content !== "string" ||
+              (block.title !== undefined && typeof block.title !== "string")
+            ) {
               throw new AppError("plugin/invalid-input", "Context provider returned an invalid block");
             }
             return {
@@ -252,14 +267,18 @@ export async function getPluginAgentContext(
               content: block.content,
             };
           });
-      });
+        },
+      );
     }),
   );
   return settled.flatMap((result, index) => {
     if (result.status === "fulfilled") {
       const provider = providers[index]!;
-      return !request.signal?.aborted && !pluginCallbackOwner(provider.provide)?.aborted
-        && getRegisteredAgentContextProviders().includes(provider) ? result.value : [];
+      return !request.signal?.aborted &&
+        !pluginCallbackOwner(provider.provide)?.aborted &&
+        getRegisteredAgentContextProviders().includes(provider)
+        ? result.value
+        : [];
     }
     contextLog.warn("Plugin context provider failed", result.reason);
     return [];
@@ -270,12 +289,10 @@ export async function getPluginMemoryCandidates(
   request: ExternalMemoryCandidateRequest,
 ): Promise<ExternalMemoryCandidate[]> {
   const providers = getRegisteredMemoryCandidateProviders().filter((provider) =>
-    supportsScope(provider.contexts, request.scope)
+    supportsScope(provider.contexts, request.scope),
   );
-  const settled = await Promise.allSettled(
-    providers.map(provider => proposePluginMemories(provider, request)),
-  );
-  return settled.flatMap(result => {
+  const settled = await Promise.allSettled(providers.map((provider) => proposePluginMemories(provider, request)));
+  return settled.flatMap((result) => {
     if (result.status === "fulfilled") return result.value;
     memoryLog.warn("Plugin memory proposal failed", result.reason);
     return [];

@@ -46,10 +46,7 @@ function PendingBookPlaceholder({ layout }: { layout: ShelfLayout }) {
   }
 
   return (
-    <div
-      aria-hidden="true"
-      className="w-full max-w-32 justify-self-start space-y-2.5 sm:max-w-36 lg:max-w-44"
-    >
+    <div aria-hidden="true" className="w-full max-w-32 justify-self-start space-y-2.5 sm:max-w-36 lg:max-w-44">
       <Skeleton variant="rectangular" className="aspect-[2/3] w-full rounded-sm" />
       <Skeleton variant="text" className="w-3/4" />
     </div>
@@ -79,11 +76,7 @@ function SectionBody({
       data={data}
       layout={layout}
       onOpen={() => onOpenCollection?.(data.id)}
-      onDropBooks={
-        onDropBooksOnCollection
-          ? (ids) => onDropBooksOnCollection(data.id, ids)
-          : undefined
-      }
+      onDropBooks={onDropBooksOnCollection ? (ids) => onDropBooksOnCollection(data.id, ids) : undefined}
     />
   ));
 
@@ -91,7 +84,7 @@ function SectionBody({
     return (
       <div className="flex flex-col divide-y divide-border/60">
         {tiles}
-        {books.map((book) => (
+        {books.map((book) =>
           pendingBookIds?.has(book.id) ? (
             <PendingBookPlaceholder key={book.id} layout={layout} />
           ) : (
@@ -108,8 +101,8 @@ function SectionBody({
               onUpdateMetadata={(patch) => onUpdateMetadata?.(book, patch)}
               onToggleSelect={() => onToggleSelect?.(book)}
             />
-          )
-        ))}
+          ),
+        )}
       </div>
     );
   }
@@ -119,7 +112,7 @@ function SectionBody({
     // flowing into new columns on any wider window instead of gaining gutters.
     <div className="grid grid-cols-3 gap-x-4 gap-y-8 sm:grid-cols-4 sm:gap-x-5 md:grid-cols-5 md:gap-x-6 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))]">
       {tiles}
-      {books.map((book) => (
+      {books.map((book) =>
         pendingBookIds?.has(book.id) ? (
           <PendingBookPlaceholder key={book.id} layout={layout} />
         ) : (
@@ -136,8 +129,8 @@ function SectionBody({
             onUpdateMetadata={(patch) => onUpdateMetadata?.(book, patch)}
             onToggleSelect={() => onToggleSelect?.(book)}
           />
-        )
-      ))}
+        ),
+      )}
     </div>
   );
 }
@@ -186,12 +179,7 @@ export function Shelf({
 }: ShelfProps) {
   // Collections lead the first section so they sit in the same grid as the books;
   // when there are no book sections they get a section of their own.
-  const effectiveSections =
-    sections.length > 0
-      ? sections
-      : collections.length > 0
-        ? [{ label: "", books: [] }]
-        : [];
+  const effectiveSections = sections.length > 0 ? sections : collections.length > 0 ? [{ label: "", books: [] }] : [];
 
   return (
     <div className={cn(layout === "list" ? "space-y-8" : "space-y-12", className)}>

@@ -8,17 +8,20 @@
 import { Agent, type AgentEvent, type AgentMessage, type ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
 import type { ThreadChunk } from "../chunks";
-import { AppError, errorCode, ERR_AI_MEMORY_DISABLED, ERR_AI_PROVIDER, profileContextText, type ProfileContext } from "@read-aware/core";
+import {
+  AppError,
+  errorCode,
+  ERR_AI_MEMORY_DISABLED,
+  ERR_AI_PROVIDER,
+  profileContextText,
+  type ProfileContext,
+} from "@read-aware/core";
 import { runMemoryBuild } from "../memory/build-policy";
 import { buildSystemPrompt } from "../context/system-prompt";
 import { extractMemories, extractMemoriesFromTranscript } from "../memory/extraction";
 import { digestBookTick, ensureBookClassification } from "../memory/graph-upkeep";
 import { chapterMemoryPolicy, needsSpoilerProtection } from "../memory/book-memory-policy";
-import {
-  bootstrapSummaryFromHistory,
-  formatTurnsForFolding,
-  updateRollingSummary,
-} from "../memory/rolling-summary";
+import { bootstrapSummaryFromHistory, formatTurnsForFolding, updateRollingSummary } from "../memory/rolling-summary";
 import type { CompleteFn, StreamFn } from "../models/complete";
 import { classifyModelFailure } from "../models/failure";
 import type { ResolveModel } from "../models/roles";
@@ -53,7 +56,13 @@ import {
 import { formatPromptTurn, type ReadingCursor } from "./reading-cursor";
 import { toolResultText } from "./tool-trace";
 import { windowByTurns } from "./windowing";
-import { readingContextCall, permittedReadingCursor, permittedTurnRecords, type ReadingContextCall, type ReadingContextPermissions } from "./reading-context-policy";
+import {
+  readingContextCall,
+  permittedReadingCursor,
+  permittedTurnRecords,
+  type ReadingContextCall,
+  type ReadingContextPermissions,
+} from "./reading-context-policy";
 
 export type SelectionAttachment = TurnAttachment;
 
@@ -92,7 +101,8 @@ interface RetryCheckpoint {
   policyKey?: string;
 }
 
-const retryInputKey = (input: SendTurnInput) => JSON.stringify([input.turnId, input.text, input.attachments, input.images, input.contextImages, input.readingCursor]);
+const retryInputKey = (input: SendTurnInput) =>
+  JSON.stringify([input.turnId, input.text, input.attachments, input.images, input.contextImages, input.readingCursor]);
 
 export interface AgentThreadOptions {
   scope: ThreadScope;
@@ -234,10 +244,7 @@ export class AgentThread {
 
   private loadNarrativeIndex(): Promise<NarrativeBookIndex> | undefined {
     if (this.scope.kind !== "book") return undefined;
-    this.narrativeBookIndex ??= loadNarrativeBookIndex(
-      this.deps.bookText,
-      this.scope.bookId,
-    );
+    this.narrativeBookIndex ??= loadNarrativeBookIndex(this.deps.bookText, this.scope.bookId);
     return this.narrativeBookIndex;
   }
 
@@ -272,10 +279,12 @@ export class AgentThread {
       load(this.deps.conversations.load(this.key), "repair conversation history unavailable"),
     );
     call.assertAllowed();
-    return turnsForModel(permittedTurnRecords(
-      lastTurnTail(historyBeforeTurn(records ?? [], turnId), REBUILD_HISTORY_TURNS),
-      call.permissions,
-    ));
+    return turnsForModel(
+      permittedTurnRecords(
+        lastTurnTail(historyBeforeTurn(records ?? [], turnId), REBUILD_HISTORY_TURNS),
+        call.permissions,
+      ),
+    );
   }
 
   private async repairUnsafeAnswer(input: {
@@ -335,9 +344,7 @@ export class AgentThread {
       allowFuture: this.turnState.spoilerGranted,
     });
     return {
-      answer: candidate.trim() && remaining.length === 0
-        ? candidate
-        : this.fallbackForUnsafeAnswer(input.readerText),
+      answer: candidate.trim() && remaining.length === 0 ? candidate : this.fallbackForUnsafeAnswer(input.readerText),
       usage: message.usage,
       elapsedMs: Math.round(performance.now() - started),
     };
@@ -368,8 +375,12 @@ export class AgentThread {
       transformContext: async (messages) => {
         const context = elideStaleToolResults(windowByTurns(messages, this.maxWindowTurns));
         // Also applies to a retry checkpoint captured with a different model.
-        return this.turnState.modelSupportsImages ? context : releaseToolImages(context,
-          "[Image pixels withheld: the current model does not support image input. Do not claim visual inspection.]");
+        return this.turnState.modelSupportsImages
+          ? context
+          : releaseToolImages(
+              context,
+              "[Image pixels withheld: the current model does not support image input. Do not claim visual inspection.]",
+            );
       },
       // Refresh both discovery and execution context between provider requests,
       // without discarding the conversation or its turn-scoped permissions.
@@ -419,8 +430,7 @@ export class AgentThread {
       memories,
       conversationSummary,
       // 全局线程首次使用且画像为空 → 访谈模式（onboarding 的对话半场，doc §9）
-      onboardingInterview:
-        this.scope.kind === "global" && !profile.curated && agent.state.messages.length === 0,
+      onboardingInterview: this.scope.kind === "global" && !profile.curated && agent.state.messages.length === 0,
     });
     agent.state.systemPrompt = this.transformSystemPrompt
       ? this.transformSystemPrompt(systemPrompt, this.scope)
@@ -441,9 +451,12 @@ export class AgentThread {
     if (this.contextPermissionsKey !== key) this.discardAgent();
     this.contextPermissionsKey = key;
     try {
-      const permitted: SendTurnInput = { ...input, signal: call.signal,
+      const permitted: SendTurnInput = {
+        ...input,
+        signal: call.signal,
         attachments: call.permissions.selection ? input.attachments : undefined,
-        readingCursor: permittedReadingCursor(input.readingCursor, call.permissions) };
+        readingCursor: permittedReadingCursor(input.readingCursor, call.permissions),
+      };
       const emitted: ThreadChunk[] = [];
       for await (const chunk of this.sendPermittedTurn(permitted, input, call, emitted)) {
         call.assertAllowed();
@@ -457,12 +470,19 @@ export class AgentThread {
     }
   }
 
-  private async *sendPermittedTurn(input: SendTurnInput, localInput: SendTurnInput, call: ReadingContextCall, emitted: ThreadChunk[]): AsyncGenerator<ThreadChunk> {
+  private async *sendPermittedTurn(
+    input: SendTurnInput,
+    localInput: SendTurnInput,
+    call: ReadingContextCall,
+    emitted: ThreadChunk[],
+  ): AsyncGenerator<ThreadChunk> {
     if (this.disposed) throw new Error(`thread ${this.key} has been disposed`);
     if (this.busy) throw new Error(`thread ${this.key} is already streaming a turn`);
     this.busy = true;
-    const resume = !input.reset && input.retry && this.retryCheckpoint?.inputKey === retryInputKey(localInput)
-      ? this.retryCheckpoint : undefined;
+    const resume =
+      !input.reset && input.retry && this.retryCheckpoint?.inputKey === retryInputKey(localInput)
+        ? this.retryCheckpoint
+        : undefined;
     if (input.reset || (this.retryCheckpoint && !resume) || (input.retry && !resume)) this.discardAgent();
     this.retryCheckpoint = undefined;
     const queue = new AsyncQueue<AgentEvent | { type: "model-checkpoint"; messages: AgentMessage[] }>();
@@ -486,16 +506,12 @@ export class AgentThread {
     this.turnState.readingContextPermissions = call.permissions;
     try {
       call.assertAllowed();
-      this.turnState.modelSupportsImages = (this.resolveModel("smart").input?.includes("image") ?? false);
+      this.turnState.modelSupportsImages = this.resolveModel("smart").input?.includes("image") ?? false;
       // 游标章节坐标归一：宿主（阅读器）只带 href——抽取章节 index 由 agent 用
       // 自己的权威映射反查（与 read_chapter 同一坐标系）。eval 等直接给 index
       // 的调用方原样通过。围栏与接地装配都以归一后的游标为准。
       let cursor = input.readingCursor;
-      if (
-        this.scope.kind === "book" &&
-        cursor?.chapter !== undefined &&
-        cursor.chapterIndex === undefined
-      ) {
+      if (this.scope.kind === "book" && cursor?.chapter !== undefined && cursor.chapterIndex === undefined) {
         // The TOC only refines the cursor; without it the chapter stays unresolved, as it was.
         const toc = await call.wait(this.deps.bookText.getToc(this.scope.bookId).catch(() => undefined));
         const chapter = toc ? findChapterByHref(toc, cursor.chapter) : undefined;
@@ -517,15 +533,32 @@ export class AgentThread {
         // Upgrade legacy narrative classifications before enforcing a plot fence.
         // Cache the independent verdict through the existing conditional event seam.
         // No source text is sampled when surrounding-text sharing is disabled.
-        if (book && book.status !== "finished" && book.spoilerSensitive === undefined && book.narrativity !== "expository") {
+        if (
+          book &&
+          book.status !== "finished" &&
+          book.spoilerSensitive === undefined &&
+          book.narrativity !== "expository"
+        ) {
           const deadline = new AbortController();
-          const timer = setTimeout(() => deadline.abort(new DOMException("Book classification timed out", "TimeoutError")), 15_000);
+          const timer = setTimeout(
+            () => deadline.abort(new DOMException("Book classification timed out", "TimeoutError")),
+            15_000,
+          );
           const signal = AbortSignal.any([call.signal, deadline.signal]);
           const classificationCall = readingContextCall(this.deps.readingContextPolicy, signal, call.permissions);
           try {
-            await classificationCall.wait(ensureBookClassification({ deps: this.deps, bookId: book.id,
-              model: this.resolveModel("fast"), complete: this.completeFn, signal },
-              call.permissions.surrounding ? cursor?.chapterIndex ?? 0 : 0));
+            await classificationCall.wait(
+              ensureBookClassification(
+                {
+                  deps: this.deps,
+                  bookId: book.id,
+                  model: this.resolveModel("fast"),
+                  complete: this.completeFn,
+                  signal,
+                },
+                call.permissions.surrounding ? (cursor?.chapterIndex ?? 0) : 0,
+              ),
+            );
             book = await call.wait(this.deps.library.getBook(book.id));
           } catch (error) {
             call.assertAllowed();
@@ -537,7 +570,8 @@ export class AgentThread {
         }
         currentBook = book;
         this.turnState.bookMemoryBoundary = chapterMemoryPolicy(book, cursor?.chapterIndex).boundary;
-        narrativeUnfinished = !!book && (book.spoilerSensitive ?? book.narrativity === "narrative") && needsSpoilerProtection(book);
+        narrativeUnfinished =
+          !!book && (book.spoilerSensitive ?? book.narrativity === "narrative") && needsSpoilerProtection(book);
         if (narrativeUnfinished && cursor?.chapterIndex !== undefined) {
           this.turnState.spoilerFence = {
             throughChapterIndex: localInput.readingCursor?.visibleText?.trim()
@@ -553,22 +587,31 @@ export class AgentThread {
       // 装配失败静默降级；叙事书没有章节坐标时宁缺毋滥。
       const groundingContext =
         call.permissions.surrounding && this.scope.kind === "book" && input.attachments?.length
-          ? await call.wait(buildGroundingContext({
-              bookText: this.deps.bookText,
-              bookId: this.scope.bookId,
-              attachments: input.attachments,
-              cursor,
-              narrativeFence: narrativeUnfinished,
-            }))
+          ? await call.wait(
+              buildGroundingContext({
+                bookText: this.deps.bookText,
+                bookId: this.scope.bookId,
+                attachments: input.attachments,
+                cursor,
+                narrativeFence: narrativeUnfinished,
+              }),
+            )
           : undefined;
-      const extensionContext = await call.wait(Promise.resolve(this.deps.extraContext?.({
-        scope: this.scope,
-        userText: input.text,
-        signal: call.signal,
-      }).then(renderExtensionContext).catch((error) => {
-        this.deps.log?.warn("plugin context providers failed", error);
-        return undefined;
-      })));
+      const extensionContext = await call.wait(
+        Promise.resolve(
+          this.deps
+            .extraContext?.({
+              scope: this.scope,
+              userText: input.text,
+              signal: call.signal,
+            })
+            .then(renderExtensionContext)
+            .catch((error) => {
+              this.deps.log?.warn("plugin context providers failed", error);
+              return undefined;
+            }),
+        ),
+      );
       call.assertAllowed();
       const agent = await call.wait(this.ensureAgent(call, input.turnId));
       const profile = await call.wait(this.deps.profile.getProfileContext());
@@ -586,14 +629,24 @@ export class AgentThread {
         // get_recent_turns / search_conversation 拉取。章节未知（选区与阅读位置都没带 href）
         // 不算换章。UI 的连续转录在持久层，不受影响。
         const crossedChapter =
-          turnChapter !== undefined &&
-          this.sessionChapter !== undefined &&
-          turnChapter !== this.sessionChapter;
+          turnChapter !== undefined && this.sessionChapter !== undefined && turnChapter !== this.sessionChapter;
         let contentVersion: string | null = null;
-        try { contentVersion = await call.wait(this.deps.bookText.getSourceVersion?.(this.scope.bookId, call.signal) ?? Promise.resolve(null)); }
-        catch (error) { this.deps.log?.warn("chapter source unavailable; prompt cache must refresh", error); this.sessionMemoryPolicy = undefined; }
-        const policyKey = JSON.stringify({ contentVersion, profile: profileContextText(profile) ?? null, classification: currentBook?.narrativity ?? null, status: currentBook?.status ?? null, chapterIndex: cursor?.chapterIndex ?? null,
-          policy: chapterMemoryPolicy(currentBook, cursor?.chapterIndex) });
+        try {
+          contentVersion = await call.wait(
+            this.deps.bookText.getSourceVersion?.(this.scope.bookId, call.signal) ?? Promise.resolve(null),
+          );
+        } catch (error) {
+          this.deps.log?.warn("chapter source unavailable; prompt cache must refresh", error);
+          this.sessionMemoryPolicy = undefined;
+        }
+        const policyKey = JSON.stringify({
+          contentVersion,
+          profile: profileContextText(profile) ?? null,
+          classification: currentBook?.narrativity ?? null,
+          status: currentBook?.status ?? null,
+          chapterIndex: cursor?.chapterIndex ?? null,
+          policy: chapterMemoryPolicy(currentBook, cursor?.chapterIndex),
+        });
         const newSession = !this.sessionStarted || crossedChapter;
         if (newSession || policyKey !== this.sessionMemoryPolicy) {
           // Ordinary same-chapter turns keep their stable prefix. Classification,
@@ -601,8 +654,15 @@ export class AgentThread {
           // Selection chooses the conversation session, never the reading boundary.
           // Policy changes refresh only the prompt, preserving the conversation.
           const index = cursor?.chapterIndex;
-          const loaded = await call.wait(this.refreshSystemPrompt(agent, profile, { book: currentBook,
-            chapter: index !== undefined && Number.isSafeInteger(index) && index >= 0 ? { index, title: cursor?.chapterTitle } : undefined }));
+          const loaded = await call.wait(
+            this.refreshSystemPrompt(agent, profile, {
+              book: currentBook,
+              chapter:
+                index !== undefined && Number.isSafeInteger(index) && index >= 0
+                  ? { index, title: cursor?.chapterTitle }
+                  : undefined,
+            }),
+          );
           this.sessionMemoryPolicy = loaded ? policyKey : undefined;
         }
         if (newSession) {
@@ -630,7 +690,7 @@ export class AgentThread {
       }
       // Snapshot at the actual provider boundary, before pi appends its response.
       // The event consumer can lag; reading state there would race a fast model.
-      this.checkpointModel = messages => queue.push({ type: "model-checkpoint", messages });
+      this.checkpointModel = (messages) => queue.push({ type: "model-checkpoint", messages });
       unsubscribe = agent.subscribe((event) => queue.push(event));
 
       const onAbort = () => agent.abort();
@@ -640,15 +700,11 @@ export class AgentThread {
       agent.state.tools = buildModelTools(this.scope, this.deps, this.turnState);
 
       const userText = formatUserTurn(input.text, input.attachments);
-      const basePromptText = formatPromptTurn(
-        input.text,
-        input.attachments,
-        cursor,
-        groundingContext,
-      );
-      const withheldNote = localInput.attachments?.length && !call.permissions.selection
-        ? "[host note: The selected passage is withheld by the reader's privacy settings. Do not guess its wording or automatically reconstruct that selection with tools. Ask for a self-contained question when the request depends on the missing passage.]"
-        : undefined;
+      const basePromptText = formatPromptTurn(input.text, input.attachments, cursor, groundingContext);
+      const withheldNote =
+        localInput.attachments?.length && !call.permissions.selection
+          ? "[host note: The selected passage is withheld by the reader's privacy settings. Do not guess its wording or automatically reconstruct that selection with tools. Ask for a self-contained question when the request depends on the missing passage.]"
+          : undefined;
       const promptText = [basePromptText, withheldNote, extensionContext].filter(Boolean).join("\n\n");
       // 宿主在流开始前就把本轮用户消息持久化（retry 的截断可见性依赖这一点）。
       // 带 turnId 时水化已按身份切掉本轮（historyBeforeTurn）；只有不标识轮次的
@@ -656,7 +712,9 @@ export class AgentThread {
       // user 消息属于本轮，丢弃避免问题被喂两遍。
       const tail = agent.state.messages[agent.state.messages.length - 1];
       if (
-        !resume && input.turnId === undefined && tail &&
+        !resume &&
+        input.turnId === undefined &&
+        tail &&
         "role" in tail &&
         tail.role === "user" &&
         typeof tail.content === "string" &&
@@ -665,15 +723,34 @@ export class AgentThread {
         agent.state.messages = agent.state.messages.slice(0, -1);
       }
       const startedAt = resume?.startedAt ?? new Date().toISOString();
-      const imageContent = resume ? [] : await prepareImageInputs([...(input.images ?? []), ...(input.contextImages ?? [])], this.deps, this.turnState, call.signal);
+      const imageContent = resume
+        ? []
+        : await prepareImageInputs(
+            [...(input.images ?? []), ...(input.contextImages ?? [])],
+            this.deps,
+            this.turnState,
+            call.signal,
+          );
       call.assertAllowed();
       input.signal?.addEventListener("abort", onAbort, { once: true });
       let runError: unknown;
       let sawInteraction = resume?.sawInteraction ?? false;
       let sawReference = resume?.sawReference ?? false;
       const runMessageStart = resume?.runMessageStart ?? agent.state.messages.length;
-      const run = (resume ? agent.continue() : imageContent.length
-        ? agent.prompt({ role: "user", timestamp: Date.now(), content: [{ type: "text", text: promptText || "Please examine the attached image(s)." }, ...imageContent] }) : agent.prompt(promptText))
+      const run = (
+        resume
+          ? agent.continue()
+          : imageContent.length
+            ? agent.prompt({
+                role: "user",
+                timestamp: Date.now(),
+                content: [
+                  { type: "text", text: promptText || "Please examine the attached image(s)." },
+                  ...imageContent,
+                ],
+              })
+            : agent.prompt(promptText)
+      )
         .then(() => agent.waitForIdle())
         .catch((error) => {
           runError = error;
@@ -693,9 +770,17 @@ export class AgentThread {
       for await (const event of queue) {
         switch (event.type) {
           case "model-checkpoint":
-            checkpoint = { inputKey: retryInputKey(localInput), messages: event.messages,
-              chunks: emitted.slice(), runMessageStart, startedAt, bufferedText, sawInteraction, sawReference,
-              policyKey: this.sessionMemoryPolicy };
+            checkpoint = {
+              inputKey: retryInputKey(localInput),
+              messages: event.messages,
+              chunks: emitted.slice(),
+              runMessageStart,
+              startedAt,
+              bufferedText,
+              sawInteraction,
+              sawReference,
+              policyKey: this.sessionMemoryPolicy,
+            };
             break;
           case "turn_start":
             round += 1;
@@ -751,9 +836,7 @@ export class AgentThread {
                 output: partialOutput,
               };
             }
-            const interaction = interactionFromToolDetails(
-              partialResult?.details,
-            );
+            const interaction = interactionFromToolDetails(partialResult?.details);
             if (interaction?.phase === "request") {
               sawInteraction = true;
               yield {
@@ -796,15 +879,14 @@ export class AgentThread {
                   answer: interaction.answer,
                 };
               }
-              let reference = referenceFromToolDetails(
-                (event.result as { details?: unknown } | undefined)?.details,
-              );
+              let reference = referenceFromToolDetails((event.result as { details?: unknown } | undefined)?.details);
               // present_books accounts at execution; extension cards join the
               // same per-turn set here, before any reference reaches the UI.
               if (reference?.kind === "books" && event.toolName !== "present_books") {
-                const books = reference.books.filter(book => {
+                const books = reference.books.filter((book) => {
                   if (this.turnState.presentedBookIds.has(book.bookId)) return false;
-                  this.turnState.presentedBookIds.add(book.bookId); return true;
+                  this.turnState.presentedBookIds.add(book.bookId);
+                  return true;
                 });
                 reference = books.length ? { kind: "books", books } : undefined;
               }
@@ -827,8 +909,13 @@ export class AgentThread {
         const failure = classifyModelFailure(runError ?? agent.state.errorMessage);
         // Only model failures are resumable. Abort, policy revocation, tool execution
         // interruption and later persistence failures must rebuild normally.
-        if (failure.retryable && checkpoint && !input.signal?.aborted
-          && agent.state.messages.length === checkpoint.messages.length + 1) this.retryCheckpoint = checkpoint;
+        if (
+          failure.retryable &&
+          checkpoint &&
+          !input.signal?.aborted &&
+          agent.state.messages.length === checkpoint.messages.length + 1
+        )
+          this.retryCheckpoint = checkpoint;
         throw failure;
       }
 
@@ -838,11 +925,7 @@ export class AgentThread {
       const runMessages = agent.state.messages.slice(runMessageStart);
       let answer = lastAssistantText(runMessages);
       if (!answer.trim() && !bufferedText.trim() && !sawReference && !sawInteraction) {
-        throw new AppError(
-          ERR_AI_PROVIDER,
-          "[ai/provider] Model returned an empty response",
-          { retryable: true },
-        );
+        throw new AppError(ERR_AI_PROVIDER, "[ai/provider] Model returned an empty response", { retryable: true });
       }
       let discardUnsafeAgent = false;
       if (narrativeUnfinished) {
@@ -850,9 +933,7 @@ export class AgentThread {
         if (this.turnState.spoilerPermissionDenied && !this.turnState.spoilerGranted) {
           answer = this.fallbackForUnsafeAnswer(input.text);
           discardUnsafeAgent = true;
-          this.deps.log?.warn(
-            "narrative answer replaced after an unauthorized spoiler-tool attempt",
-          );
+          this.deps.log?.warn("narrative answer replaced after an unauthorized spoiler-tool attempt");
           yield { type: "text", text: answer };
         } else {
           const bookIndex = await narrativeIndexPromise?.catch((error) => {
@@ -884,10 +965,7 @@ export class AgentThread {
               book: bookIndex,
               signal: input.signal,
             }).catch((error) => {
-              this.deps.log?.warn(
-                "narrative answer rewrite failed; using deterministic fallback",
-                error,
-              );
+              this.deps.log?.warn("narrative answer rewrite failed; using deterministic fallback", error);
               return {
                 answer: this.fallbackForUnsafeAnswer(input.text),
                 usage: undefined,
@@ -992,7 +1070,7 @@ export class AgentThread {
       scopes: visibleScopes(this.scope),
       limit: 20,
     });
-    const existing = snapshots.map(snapshot => snapshot.memory);
+    const existing = snapshots.map((snapshot) => snapshot.memory);
     const inherited = await extractMemoriesFromTranscript({
       log: deps.log,
       complete: complete,
@@ -1003,11 +1081,15 @@ export class AgentThread {
     });
     if (this.disposed) return summary;
     for (const candidate of inherited.newMemories) {
-      try { await deps.memory.saveMemory({ ...candidate, origin: "extraction", sourceThreadKey: this.key }); }
-      catch (error) { if (errorCode(error) !== "memory/forgotten-suppressed") throw error; deps.log?.warn("Previously forgotten extraction candidate suppressed"); }
+      try {
+        await deps.memory.saveMemory({ ...candidate, origin: "extraction", sourceThreadKey: this.key });
+      } catch (error) {
+        if (errorCode(error) !== "memory/forgotten-suppressed") throw error;
+        deps.log?.warn("Previously forgotten extraction candidate suppressed");
+      }
     }
     for (const id of inherited.reinforcedIds) {
-      const snapshot = snapshots.find(item => item.memory.id === id);
+      const snapshot = snapshots.find((item) => item.memory.id === id);
       if (snapshot) await deps.memory.reinforceMemory(snapshot);
     }
     return summary;
@@ -1030,95 +1112,108 @@ export class AgentThread {
     const previousWork = this.backgroundWork;
     const contextCall = readingContextCall(this.deps.readingContextPolicy, this.lifecycle.signal, permissions);
     // Subscribe when enqueued so an off/on cycle also revokes waiting jobs.
-    this.backgroundWork = runMemoryBuild(this.deps, async operation => {
-      await operation.guard(() => previousWork)();
-      const deps = operation.protect(this.deps);
-      const complete = operation.complete(this.completeFn);
-      if (this.disposed) return;
-      // 领养先于逐轮提炼：先继承的记忆会出现在本轮提炼的已知清单里，
-      // 同一事实不会被写两遍。
-      const previousInsights = await deps.conversations.getInsights(this.key);
-      const bootstrapped =
-        previousInsights === undefined ? await this.adoptLegacyThread(fast, deps, complete, permissions, turnId) : undefined;
-      if (this.disposed) return;
-      const snapshots = await deps.memory.snapshotMemories({
-        scopes: visibleScopes(this.scope),
-        limit: 20,
-      });
-      const existing = snapshots.map(snapshot => snapshot.memory);
-      const result = await extractMemories({
-        log: deps.log,
-        complete,
-        model: fast(),
-        scope: this.scope,
-        userText,
-        assistantText,
-        existing,
-      });
-      if (this.disposed) return;
-      for (const candidate of result.newMemories) {
-        try { await deps.memory.saveMemory({ ...candidate, origin: "extraction", sourceThreadKey: this.key }); }
-        catch (error) { if (errorCode(error) !== "memory/forgotten-suppressed") throw error; deps.log?.warn("Previously forgotten extraction candidate suppressed"); }
-      }
-      for (const id of result.reinforcedIds) {
-        const snapshot = snapshots.find(item => item.memory.id === id);
-        if (snapshot) await deps.memory.reinforceMemory(snapshot);
-      }
-
-      const proposed = await deps.extraMemoryCandidates?.({
-        scope: this.scope,
-        userText,
-        assistantText,
-        signal: operation.signal,
-      }).catch((error) => {
-        deps.log?.warn("plugin memory candidate providers failed", error);
-        return [];
-      });
-      if (!this.disposed && proposed?.length) {
-        await persistExtensionMemory({
-          scope: this.scope,
-          candidates: proposed,
-          sourceThreadKey: this.key,
-          memory: this.deps.memory,
-          operation,
-          log: deps.log,
+    this.backgroundWork = runMemoryBuild(
+      this.deps,
+      async (operation) => {
+        await operation.guard(() => previousWork)();
+        const deps = operation.protect(this.deps);
+        const complete = operation.complete(this.completeFn);
+        if (this.disposed) return;
+        // 领养先于逐轮提炼：先继承的记忆会出现在本轮提炼的已知清单里，
+        // 同一事实不会被写两遍。
+        const previousInsights = await deps.conversations.getInsights(this.key);
+        const bootstrapped =
+          previousInsights === undefined
+            ? await this.adoptLegacyThread(fast, deps, complete, permissions, turnId)
+            : undefined;
+        if (this.disposed) return;
+        const snapshots = await deps.memory.snapshotMemories({
+          scopes: visibleScopes(this.scope),
+          limit: 20,
         });
-      }
-
-      const previous = previousInsights ?? bootstrapped;
-      const summary = await updateRollingSummary({
-        log: deps.log,
-        complete,
-        model: fast(),
-        previous,
-        userText,
-        assistantText,
-      });
-      if (!this.disposed && summary && summary !== previousInsights) {
-        await deps.conversations.putInsights(this.key, summary);
-      }
-
-      // 图谱节拍：书线程每轮顺手补建这本书的纪要欠账。存量用户换新
-      // agent 后从第一条消息起，图随对话逐轮追平——不必等空闲维护循环
-      // （它 5 分钟一拍、只照顾最近打开的书）。账已清时这里是纯读空转。
-      if (!this.disposed && this.scope.kind === "book") {
-        await digestBookTick({
-          deps,
+        const existing = snapshots.map((snapshot) => snapshot.memory);
+        const result = await extractMemories({
+          log: deps.log,
           complete,
           model: fast(),
-          bookId: this.scope.bookId,
-          throughChapterHref: cursorChapterHref,
-          maxChapters: AgentThread.DIGEST_CHAPTERS_PER_TURN,
-          signal: operation.signal,
+          scope: this.scope,
+          userText,
+          assistantText,
+          existing,
         });
-      }
-    }, contextCall.signal)
+        if (this.disposed) return;
+        for (const candidate of result.newMemories) {
+          try {
+            await deps.memory.saveMemory({ ...candidate, origin: "extraction", sourceThreadKey: this.key });
+          } catch (error) {
+            if (errorCode(error) !== "memory/forgotten-suppressed") throw error;
+            deps.log?.warn("Previously forgotten extraction candidate suppressed");
+          }
+        }
+        for (const id of result.reinforcedIds) {
+          const snapshot = snapshots.find((item) => item.memory.id === id);
+          if (snapshot) await deps.memory.reinforceMemory(snapshot);
+        }
+
+        const proposed = await deps
+          .extraMemoryCandidates?.({
+            scope: this.scope,
+            userText,
+            assistantText,
+            signal: operation.signal,
+          })
+          .catch((error) => {
+            deps.log?.warn("plugin memory candidate providers failed", error);
+            return [];
+          });
+        if (!this.disposed && proposed?.length) {
+          await persistExtensionMemory({
+            scope: this.scope,
+            candidates: proposed,
+            sourceThreadKey: this.key,
+            memory: this.deps.memory,
+            operation,
+            log: deps.log,
+          });
+        }
+
+        const previous = previousInsights ?? bootstrapped;
+        const summary = await updateRollingSummary({
+          log: deps.log,
+          complete,
+          model: fast(),
+          previous,
+          userText,
+          assistantText,
+        });
+        if (!this.disposed && summary && summary !== previousInsights) {
+          await deps.conversations.putInsights(this.key, summary);
+        }
+
+        // 图谱节拍：书线程每轮顺手补建这本书的纪要欠账。存量用户换新
+        // agent 后从第一条消息起，图随对话逐轮追平——不必等空闲维护循环
+        // （它 5 分钟一拍、只照顾最近打开的书）。账已清时这里是纯读空转。
+        if (!this.disposed && this.scope.kind === "book") {
+          await digestBookTick({
+            deps,
+            complete,
+            model: fast(),
+            bookId: this.scope.bookId,
+            throughChapterHref: cursorChapterHref,
+            maxChapters: AgentThread.DIGEST_CHAPTERS_PER_TURN,
+            signal: operation.signal,
+          });
+        }
+      },
+      contextCall.signal,
+    )
       .catch((error: unknown) => {
         // Opting out is an expected stop, not a failed background pipeline.
         if (errorCode(error) === ERR_AI_MEMORY_DISABLED) return;
         // 轮后管道失败绝不影响对话，但必须留痕：这一轮的记忆巩固与滚动
         // 摘要没有落下。巩固管道之后会有自己的重试语义。
         this.deps.log?.warn("post-turn pipeline failed; memory/summary skipped this turn", error);
-      }).finally(() => contextCall.dispose());
+      })
+      .finally(() => contextCall.dispose());
   }
 }

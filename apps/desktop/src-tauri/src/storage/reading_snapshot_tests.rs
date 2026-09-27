@@ -42,7 +42,8 @@ fn snapshot_counts_pending_once_across_a_racing_tick_and_flush() {
         20_000,
         (1_000_000, 1_030_000),
         15,
-        Some(position(12, "ch1")));
+        Some(position(12, "ch1")),
+    );
     reading_session_flush_inner(&mut conn, &[flush]).unwrap();
     let second =
         reading_time_snapshot_inner(&mut conn, query(Some("b1"), Some("2026-09-07"), None, 1))
@@ -125,7 +126,8 @@ fn snapshot_is_consistent_while_a_separate_connection_flushes() {
                     1_000,
                     (1_000_000, 1_000_000),
                     15,
-                    None);
+                    None,
+                );
                 reading_session_flush_inner(&mut writer, &[event]).unwrap();
                 std::thread::yield_now();
             }
@@ -147,9 +149,22 @@ fn snapshot_is_consistent_while_a_separate_connection_flushes() {
 #[test]
 fn scoped_history_validates_book_and_projection_and_never_flushes() {
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("a", 1_000, "a", "A"), imported("b", 1_001, "b", "B")]).unwrap();
-    commit_events_inner(&mut conn, &[session_event("s1", 2_000, "a", 5_000, (1_000_000, 1_000_000), 15, None),
-        session_event("s2", 2_001, "b", 10_000, (1_000_000, 1_000_000), 18, None)]).unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[
+            imported("a", 1_000, "a", "A"),
+            imported("b", 1_001, "b", "B"),
+        ],
+    )
+    .unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[
+            session_event("s1", 2_000, "a", 5_000, (1_000_000, 1_000_000), 15, None),
+            session_event("s2", 2_001, "b", 10_000, (1_000_000, 1_000_000), 18, None),
+        ],
+    )
+    .unwrap();
     reading_session_accrue_inner(&conn, "a", "2026-09-07", 15, 9_000, 1_010_000).unwrap();
     let event_count = scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events");
     let one = reading_time_scope_inner(&mut conn, Some("a".into())).unwrap();
@@ -158,10 +173,21 @@ fn scoped_history_validates_book_and_projection_and_never_flushes() {
     assert!(one.daily.iter().all(|row| row.book_id == "a"));
     assert!(one.hourly.iter().all(|row| row.book_id == "a"));
     let all = reading_time_scope_inner(&mut conn, None).unwrap();
-    assert_eq!(all.totals.iter().map(|row| row.total_ms).sum::<i64>(), 15_000);
-    assert_eq!(scalar::<i64>(&conn, "SELECT SUM(ms) FROM reading_sessions_pending"), 9_000);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), event_count);
-    for id in ["missing", " "] { assert!(reading_time_scope_inner(&mut conn, Some(id.into())).is_err()); }
+    assert_eq!(
+        all.totals.iter().map(|row| row.total_ms).sum::<i64>(),
+        15_000
+    );
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT SUM(ms) FROM reading_sessions_pending"),
+        9_000
+    );
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        event_count
+    );
+    for id in ["missing", " "] {
+        assert!(reading_time_scope_inner(&mut conn, Some(id.into())).is_err());
+    }
     set_projections_stale_conn(&conn, true).unwrap();
     assert!(reading_time_scope_inner(&mut conn, None).is_err());
 }

@@ -13,17 +13,7 @@ export type IsoDate = string;
  * "virtual" marks a plugin-provided book: no imported file, content served by
  * a registered content provider at open time.
  */
-export type BookFormat =
-  | "epub"
-  | "mobi"
-  | "azw3"
-  | "fb2"
-  | "cbz"
-  | "cbr"
-  | "txt"
-  | "html"
-  | "pdf"
-  | "virtual";
+export type BookFormat = "epub" | "mobi" | "azw3" | "fb2" | "cbz" | "cbr" | "txt" | "html" | "pdf" | "virtual";
 
 /** Cover-extraction outcome; replaces the old coverChecked + coverUrl pair. */
 export type CoverStatus = "unchecked" | "ready" | "none" | "failed";

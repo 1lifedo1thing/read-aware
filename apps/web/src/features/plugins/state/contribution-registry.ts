@@ -3,7 +3,13 @@ import { createLogger } from "../../../platform/logger";
 import type { ContributionId } from "@read-aware/core";
 import type { ContributionKey } from "../lib/plugin-types";
 import { publishContributionChange, undoContributionReplacement } from "./contribution-activation";
-import { causalActor, copyEventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  causalActor,
+  copyEventCause,
+  mergeEventCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 
 export type ContributionIdentity = {
   key: ContributionKey;
@@ -50,7 +56,10 @@ const selectionOwners = new WeakMap<object, object>();
 /** Host-only selected registration, including its removal source. The cache is
  * updated at publication, so React batching cannot replace an active font's
  * retirement with a later, unrelated registration's cause. */
-export function selectContribution<T extends ContributionIdentity>(entries: PrimitiveAtom<T[]>, key: ContributionKey): ContributionSelection<T> {
+export function selectContribution<T extends ContributionIdentity>(
+  entries: PrimitiveAtom<T[]>,
+  key: ContributionKey,
+): ContributionSelection<T> {
   const select = selectors.get(entries);
   if (!select) throw new Error("Unknown contribution registry");
   return select(key) as ContributionSelection<T>;
@@ -59,7 +68,9 @@ export function selectContribution<T extends ContributionIdentity>(entries: Prim
 /** Registry changes only; observers never receive provider objects or callbacks. */
 export function subscribeContributions(listener: (source: object) => void): () => void {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 function validateIdentity(item: ContributionIdentity): void {
@@ -85,19 +96,27 @@ export function createContributionRegistry<T extends ContributionIdentity>(
   let entries: T[] = [];
   const pending = new Map<object, object>();
   let publishedSources = new Map<ContributionKey, object>();
-  type Selection = ContributionSelection<T> & { update(value: T | null, owner: object | undefined, source: object): void; notify(): void };
+  type Selection = ContributionSelection<T> & {
+    update(value: T | null, owner: object | undefined, source: object): void;
+    notify(): void;
+  };
   const selections = new Map<ContributionKey, WeakRef<Selection>>();
-  selectors.set(entriesAtom, key => {
+  selectors.set(entriesAtom, (key) => {
     const existing = selections.get(key)?.deref();
     if (existing) return existing;
     let owner = publishedOwners.get(key);
     let snapshot = copyEventCause(publishedSources.get(key) ?? stampEventCause({}), {
-      value: store.get(entriesAtom).find(item => item.key === key) ?? null,
+      value: store.get(entriesAtom).find((item) => item.key === key) ?? null,
     });
     const listeners = new Set<() => void>();
     const selection: Selection = {
       getSnapshot: () => snapshot,
-      subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      subscribe: (listener) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
       update: (value, nextOwner, source) => {
         if (snapshot.value === value && owner === nextOwner) return;
         owner = nextOwner;
@@ -108,7 +127,11 @@ export function createContributionRegistry<T extends ContributionIdentity>(
         const current = snapshot;
         for (const listener of [...listeners]) {
           if (snapshot !== current) break;
-          try { listener(); } catch (error) { log.warn("Selected contribution observer failed", error); }
+          try {
+            listener();
+          } catch (error) {
+            log.warn("Selected contribution observer failed", error);
+          }
         }
       },
     };
@@ -116,43 +139,62 @@ export function createContributionRegistry<T extends ContributionIdentity>(
     selections.set(key, new WeakRef(selection));
     return selection;
   });
-  const publish = () => publishContributionChange(entriesAtom, () => {
-    const published = store.get(entriesAtom);
-    const before = new Map(published.map(item => [item.key, item]));
-    const sources: object[] = [];
-    const changedSources = new Map<ContributionKey, object>();
-    for (const item of entries) {
-      if (before.get(item.key) !== item || publishedOwners.get(item.key) !== owners.get(item.key)) {
-        const source = pending.get(owners.get(item.key)!);
-        if (source) { sources.push(source); changedSources.set(item.key, source); }
+  const publish = () =>
+    publishContributionChange(entriesAtom, () => {
+      const published = store.get(entriesAtom);
+      const before = new Map(published.map((item) => [item.key, item]));
+      const sources: object[] = [];
+      const changedSources = new Map<ContributionKey, object>();
+      for (const item of entries) {
+        if (before.get(item.key) !== item || publishedOwners.get(item.key) !== owners.get(item.key)) {
+          const source = pending.get(owners.get(item.key)!);
+          if (source) {
+            sources.push(source);
+            changedSources.set(item.key, source);
+          }
+        }
+        before.delete(item.key);
       }
-      before.delete(item.key);
-    }
-    for (const key of before.keys()) {
-      const source = pending.get(publishedOwners.get(key)!);
-      if (source) { sources.push(source); changedSources.set(key, source); }
-    }
-    const changed = published.length !== entries.length || published.some((item, index) => item !== entries[index]
-      || publishedOwners.get(item.key) !== owners.get(item.key));
-    // Only owners visible in the final delta contribute causes. A failed
-    // nested registration cannot add a fresh branch to a successful parent.
-    const snapshot = mergeEventCauses(sources, [...entries]);
-    publishedSources = new Map(entries.map(item => [item.key, changedSources.get(item.key) ?? publishedSources.get(item.key) ?? snapshot]));
-    const selected: Selection[] = [];
-    for (const [key, reference] of selections) {
-      const selection = reference.deref();
-      if (!selection) { selections.delete(key); continue; }
-      const source = changedSources.get(key);
-      if (source) {
-        selection.update(entries.find(item => item.key === key) ?? null, owners.get(key), source);
-        selected.push(selection);
+      for (const key of before.keys()) {
+        const source = pending.get(publishedOwners.get(key)!);
+        if (source) {
+          sources.push(source);
+          changedSources.set(key, source);
+        }
       }
-    }
-    pending.clear(); publishedOwners = new Map(owners);
-    if (changed) store.set(entriesAtom, snapshot);
-    for (const selection of selected) selection.notify();
-  });
-  const change = (owner: object, source: DomainActor) => { pending.set(owner, stampEventCause({}, source)); publish(); };
+      const changed =
+        published.length !== entries.length ||
+        published.some(
+          (item, index) => item !== entries[index] || publishedOwners.get(item.key) !== owners.get(item.key),
+        );
+      // Only owners visible in the final delta contribute causes. A failed
+      // nested registration cannot add a fresh branch to a successful parent.
+      const snapshot = mergeEventCauses(sources, [...entries]);
+      publishedSources = new Map(
+        entries.map((item) => [item.key, changedSources.get(item.key) ?? publishedSources.get(item.key) ?? snapshot]),
+      );
+      const selected: Selection[] = [];
+      for (const [key, reference] of selections) {
+        const selection = reference.deref();
+        if (!selection) {
+          selections.delete(key);
+          continue;
+        }
+        const source = changedSources.get(key);
+        if (source) {
+          selection.update(entries.find((item) => item.key === key) ?? null, owners.get(key), source);
+          selected.push(selection);
+        }
+      }
+      pending.clear();
+      publishedOwners = new Map(owners);
+      if (changed) store.set(entriesAtom, snapshot);
+      for (const selection of selected) selection.notify();
+    });
+  const change = (owner: object, source: DomainActor) => {
+    pending.set(owner, stampEventCause({}, source));
+    publish();
+  };
   const registry: ContributionRegistry<T> = {
     point,
     atom: entriesAtom,
@@ -161,14 +203,14 @@ export function createContributionRegistry<T extends ContributionIdentity>(
       const origin = causalActor(source);
       const owner = { disposed: false };
       const previousOwner = owners.get(item.key);
-      const previousIndex = entries.findIndex(entry => entry.key === item.key);
+      const previousIndex = entries.findIndex((entry) => entry.key === item.key);
       const previous = entries[previousIndex];
       undoContributionReplacement(() => {
         // Disposal is irreversible: never resurrect an explicitly retired owner.
         if (owners.has(item.key) && owners.get(item.key) !== owner) return;
         pending.delete(owner);
         owners.delete(item.key);
-        entries = entries.filter(entry => entry.key !== item.key);
+        entries = entries.filter((entry) => entry.key !== item.key);
         if (previous && previousOwner && !previousOwner.disposed) {
           owners.set(item.key, previousOwner);
           entries.splice(Math.min(previousIndex, entries.length), 0, previous);
@@ -176,10 +218,7 @@ export function createContributionRegistry<T extends ContributionIdentity>(
         publish();
       });
       owners.set(item.key, owner);
-      entries = [
-        ...entries.filter((entry) => entry.key !== item.key),
-        item,
-      ];
+      entries = [...entries.filter((entry) => entry.key !== item.key), item];
       change(owner, origin);
       return {
         isCurrent: () => !owner.disposed && owners.get(item.key) === owner,
@@ -187,7 +226,10 @@ export function createContributionRegistry<T extends ContributionIdentity>(
           if (owner.disposed) return;
           const retirement = causalActor(source);
           owner.disposed = true;
-          if (owners.get(item.key) !== owner) { change(owner, retirement); return; }
+          if (owners.get(item.key) !== owner) {
+            change(owner, retirement);
+            return;
+          }
           owners.delete(item.key);
           entries = entries.filter((entry) => entry.key !== item.key);
           change(owner, retirement);
@@ -197,7 +239,8 @@ export function createContributionRegistry<T extends ContributionIdentity>(
     list: () => entries,
     find: (predicate) => entries.find(predicate) ?? null,
     update: (key, update, source = "system") => {
-      const origin = causalActor(source), previous = entries;
+      const origin = causalActor(source),
+        previous = entries;
       let updated: T | null = null;
       entries = entries.map((entry) => {
         if (entry.key !== key) return entry;
@@ -217,7 +260,11 @@ export function createContributionRegistry<T extends ContributionIdentity>(
       const source = store.get(entriesAtom);
       for (const notify of [...listeners]) {
         if (store.get(entriesAtom) !== source) break;
-        try { notify(source); } catch (error) { log.warn("Contribution observer failed", error); }
+        try {
+          notify(source);
+        } catch (error) {
+          log.warn("Contribution observer failed", error);
+        }
       }
     });
   }

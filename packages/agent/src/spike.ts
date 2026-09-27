@@ -65,9 +65,7 @@ export async function runPiSpike(
   const stream = models.streamSimple(
     model,
     {
-      messages: [
-        { role: "user", content: "Reply with exactly: PI_SPIKE_OK", timestamp: Date.now() },
-      ],
+      messages: [{ role: "user", content: "Reply with exactly: PI_SPIKE_OK", timestamp: Date.now() }],
     },
     { apiKey: config.apiKey },
   );
@@ -120,9 +118,7 @@ export async function runPiSpike(
   agent.subscribe((event) => {
     agentEvents.push(event.type);
   });
-  await agent.prompt(
-    "How many books are on my shelf? Answer with just the number.",
-  );
+  await agent.prompt("How many books are on my shelf? Answer with just the number.");
   await agent.waitForIdle();
   const agentText = lastAssistantText(agent);
   log(`[spike] B ok — toolCalled=${toolCalled}, answer: ${JSON.stringify(agentText.trim())}`);

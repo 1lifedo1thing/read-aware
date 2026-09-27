@@ -3,7 +3,8 @@ export type BookImportReceipt = { status: "imported" | "duplicate"; book: BookSu
 
 /** Host milestones, not invented byte percentages inside an opaque native stage. */
 export type BookImportPhase = "preparing" | "staging" | "committing";
-export type BookImportRequest = { kind: "resource"; resourceId: string }
+export type BookImportRequest =
+  | { kind: "resource"; resourceId: string }
   | { kind: "file"; fileName: string; data: ArrayBuffer | Uint8Array };
 export type BookImportTaskSnapshot = {
   taskId: string;

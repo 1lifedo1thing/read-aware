@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  normalizeReaderMode,
-  normalizeReaderTextSegments,
-  resolveReaderModeUnit,
-} from "./reader-mode";
+import { normalizeReaderMode, normalizeReaderTextSegments, resolveReaderModeUnit } from "./reader-mode";
 
 const text = (value: string) => ({ default: value });
 
@@ -62,20 +58,14 @@ describe("reader mode contract", () => {
 
   test("rejects unknown mode kinds and malformed registrations", () => {
     expect(() => normalizeReaderMode(null)).toThrow();
-    expect(() => normalizeReaderMode(modeFixture({ kind: "raw-dom" }))).toThrow(
-      "unsupported reader mode kind",
-    );
-    expect(() => normalizeReaderMode(modeFixture({ units: [] }))).toThrow(
-      "at least one unit",
-    );
+    expect(() => normalizeReaderMode(modeFixture({ kind: "raw-dom" }))).toThrow("unsupported reader mode kind");
+    expect(() => normalizeReaderMode(modeFixture({ units: [] }))).toThrow("at least one unit");
   });
 
   test("rejects duplicate units and a default outside the declared set", () => {
     const unit = modeFixture().units[0];
     expect(() => normalizeReaderMode(modeFixture({ units: [unit, unit] }))).toThrow("unique");
-    expect(() => normalizeReaderMode(modeFixture({ defaultUnitId: "page" }))).toThrow(
-      "defaultUnitId",
-    );
+    expect(() => normalizeReaderMode(modeFixture({ defaultUnitId: "page" }))).toThrow("defaultUnitId");
   });
 
   test("rejects missing or empty localized copy", () => {
@@ -90,14 +80,27 @@ describe("reader mode contract", () => {
   });
 
   test("accepts ordered spans and rejects overlaps or out-of-bounds offsets", () => {
-    expect(normalizeReaderTextSegments(
-      [{ start: 0, end: 4 }, { start: 5, end: 8 }],
-      8,
-    )).toEqual([{ start: 0, end: 4 }, { start: 5, end: 8 }]);
-    expect(() => normalizeReaderTextSegments(
-      [{ start: 0, end: 5 }, { start: 4, end: 8 }],
-      8,
-    )).toThrow("invalid or overlapping");
+    expect(
+      normalizeReaderTextSegments(
+        [
+          { start: 0, end: 4 },
+          { start: 5, end: 8 },
+        ],
+        8,
+      ),
+    ).toEqual([
+      { start: 0, end: 4 },
+      { start: 5, end: 8 },
+    ]);
+    expect(() =>
+      normalizeReaderTextSegments(
+        [
+          { start: 0, end: 5 },
+          { start: 4, end: 8 },
+        ],
+        8,
+      ),
+    ).toThrow("invalid or overlapping");
     expect(() => normalizeReaderTextSegments([{ start: 0, end: 9 }], 8)).toThrow();
   });
 });

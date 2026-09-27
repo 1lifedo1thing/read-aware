@@ -81,19 +81,13 @@ describe("Custom OpenAI-compatible models", () => {
   });
 
   test("accepts SDK base URLs and pasted endpoint URLs", () => {
-    expect(
-      normalizeCustomOpenAIBaseUrl(
-        " https://gateway.example/v1/chat/completions/ ",
-      ),
-    ).toBe("https://gateway.example/v1");
-    expect(
-      normalizeCustomOpenAIBaseUrl(
-        "https://gateway.example/v1/responses?api-version=latest#fragment",
-      ),
-    ).toBe("https://gateway.example/v1?api-version=latest");
-    expect(normalizeCustomOpenAIBaseUrl("https://gateway.example/v1/")).toBe(
+    expect(normalizeCustomOpenAIBaseUrl(" https://gateway.example/v1/chat/completions/ ")).toBe(
       "https://gateway.example/v1",
     );
+    expect(normalizeCustomOpenAIBaseUrl("https://gateway.example/v1/responses?api-version=latest#fragment")).toBe(
+      "https://gateway.example/v1?api-version=latest",
+    );
+    expect(normalizeCustomOpenAIBaseUrl("https://gateway.example/v1/")).toBe("https://gateway.example/v1");
   });
 
   test("downlevels tool schemas to the common OpenAPI-compatible subset", () => {
@@ -167,10 +161,7 @@ async function captureRejectedRequest(
         path: new URL(request.url).pathname,
         body: (await request.json()) as Record<string, unknown>,
       };
-      return Response.json(
-        { error: { message: "gateway rejected this request" } },
-        { status: 422 },
-      );
+      return Response.json({ error: { message: "gateway rejected this request" } }, { status: 422 });
     },
   });
   const account: CustomOpenAIAccount = {
@@ -229,9 +220,7 @@ async function withCompletionSse<T>(
 
 describe("Custom OpenAI-compatible wire format", () => {
   test("uses Chat Completions and omits inferred compatibility fields", async () => {
-    const { request, error } = await captureRejectedRequest(
-      "openai-completions",
-    );
+    const { request, error } = await captureRejectedRequest("openai-completions");
 
     expect(request.path).toBe("/v1/chat/completions");
     expect(request.body.model).toBe("gpt-5.6-sol");
@@ -245,9 +234,7 @@ describe("Custom OpenAI-compatible wire format", () => {
   });
 
   test("uses Responses and strips optional first-party fields", async () => {
-    const { request, error } = await captureRejectedRequest(
-      "openai-responses",
-    );
+    const { request, error } = await captureRejectedRequest("openai-responses");
 
     expect(request.path).toBe("/v1/responses");
     expect(request.body.model).toBe("gpt-5.6-sol");
@@ -261,10 +248,7 @@ describe("Custom OpenAI-compatible wire format", () => {
   });
 
   test("sends an explicit output cap with the selected format", async () => {
-    const { request } = await captureRejectedRequest(
-      "openai-completions",
-      4_096,
-    );
+    const { request } = await captureRejectedRequest("openai-completions", 4_096);
 
     expect(request.body.max_tokens).toBe(4_096);
   });
@@ -279,9 +263,7 @@ describe("Custom OpenAI-compatible wire format", () => {
       "",
     ].join("\n");
 
-    const result = await withCompletionSse(body, (account) =>
-      testLlmConnection(account, "gateway-model"),
-    );
+    const result = await withCompletionSse(body, (account) => testLlmConnection(account, "gateway-model"));
 
     expect(result).toBe("ok");
   });
@@ -341,11 +323,7 @@ describe("Custom OpenAI-compatible wire format", () => {
 
     const message = await withCompletionSse(body, async (account) => {
       const registry = buildProviderRegistry();
-      const resolveModel = createModelResolver(
-        account,
-        { smart: "gateway-model", fast: "gateway-model" },
-        registry,
-      );
+      const resolveModel = createModelResolver(account, { smart: "gateway-model", fast: "gateway-model" }, registry);
       const complete = createCompleteFn(registry, account);
       return complete(resolveModel("smart"), {
         messages: [
@@ -384,11 +362,7 @@ describe("Custom OpenAI-compatible wire format", () => {
 
     const message = await withCompletionSse(body, async (account) => {
       const registry = buildProviderRegistry();
-      const resolveModel = createModelResolver(
-        account,
-        { smart: "gateway-model", fast: "gateway-model" },
-        registry,
-      );
+      const resolveModel = createModelResolver(account, { smart: "gateway-model", fast: "gateway-model" }, registry);
       const complete = createCompleteFn(registry, account);
       return complete(resolveModel("smart"), {
         messages: [
@@ -423,11 +397,9 @@ describe("Custom OpenAI-compatible wire format", () => {
       "",
     ].join("\n");
 
-    await expect(
-      withCompletionSse(body, (account) =>
-        testLlmConnection(account, "gateway-model"),
-      ),
-    ).rejects.toThrow("Stream ended without finish_reason");
+    await expect(withCompletionSse(body, (account) => testLlmConnection(account, "gateway-model"))).rejects.toThrow(
+      "Stream ended without finish_reason",
+    );
   });
 
   test("uses the same compatibility adapter in the real agent loop", async () => {
@@ -443,9 +415,33 @@ describe("Custom OpenAI-compatible wire format", () => {
       port: 0,
       async fetch(request) {
         requests.push((await request.json()) as Record<string, unknown>);
-        const discovery = 'data: ' + JSON.stringify({ id: "discover-probe", object: "chat.completion.chunk", model: "gateway-model",
-          choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "load", type: "function", function: {
-            name: "get_host_capabilities", arguments: JSON.stringify({ catalog: "tools", query: "schema_probe" }) } }] }, finish_reason: "tool_calls" }] }) + "\n\ndata: [DONE]\n\n";
+        const discovery =
+          "data: " +
+          JSON.stringify({
+            id: "discover-probe",
+            object: "chat.completion.chunk",
+            model: "gateway-model",
+            choices: [
+              {
+                index: 0,
+                delta: {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      id: "load",
+                      type: "function",
+                      function: {
+                        name: "get_host_capabilities",
+                        arguments: JSON.stringify({ catalog: "tools", query: "schema_probe" }),
+                      },
+                    },
+                  ],
+                },
+                finish_reason: "tool_calls",
+              },
+            ],
+          }) +
+          "\n\ndata: [DONE]\n\n";
         return new Response(requests.length === 1 ? discovery : body, {
           headers: { "Content-Type": "text/event-stream" },
         });
@@ -498,7 +494,7 @@ describe("Custom OpenAI-compatible wire format", () => {
           .join(""),
       ).toBe("ok");
       expect(nativeFetchCalls).toBeGreaterThan(0);
-      const discoveredRequest = requests.find(request => JSON.stringify(request.tools).includes('"schema_probe"'));
+      const discoveredRequest = requests.find((request) => JSON.stringify(request.tools).includes('"schema_probe"'));
       expect(discoveredRequest).toBeDefined();
       const tools = discoveredRequest?.tools as
         | Array<{

@@ -9,12 +9,7 @@
  *
  * Story-only: nothing in the product imports this module.
  */
-import type {
-  PluginAction,
-  PluginBlock,
-  PluginDetailControl,
-  PluginMetadataItem,
-} from "../lib/plugin-types";
+import type { PluginAction, PluginBlock, PluginDetailControl, PluginMetadataItem } from "../lib/plugin-types";
 import type { PluginResultRunner } from "./plugin-view-types";
 
 /** Runs the handler and hands back its result, with no host side effects. */

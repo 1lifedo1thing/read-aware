@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { DocsResource } from "../i18n";
-import {
-  PluginCapabilityBrowser,
-  type PluginCapabilityBrowserCopy,
-} from "./PluginCapabilityBrowser";
+import { PluginCapabilityBrowser, type PluginCapabilityBrowserCopy } from "./PluginCapabilityBrowser";
 
 type BrowserResource = DocsResource["capabilityBrowser"];
 
@@ -12,10 +9,7 @@ function capabilityDescriptions(
   descriptions: BrowserResource["descriptions"],
 ): PluginCapabilityBrowserCopy["descriptions"] {
   return Object.fromEntries(
-    Object.entries(descriptions).map(([key, value]) => [
-      key.replace("__", ":"),
-      value,
-    ]),
+    Object.entries(descriptions).map(([key, value]) => [key.replace("__", ":"), value]),
   ) as PluginCapabilityBrowserCopy["descriptions"];
 }
 

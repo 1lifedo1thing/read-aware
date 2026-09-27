@@ -95,9 +95,7 @@ export function groupPluginTimelineItems(
       if (key === localDateKey(today)) label = labels.today;
       else if (key === localDateKey(yesterday)) label = labels.yesterday;
       else {
-        label = (date.getFullYear() === today.getFullYear()
-          ? currentYearFormatter
-          : otherYearFormatter).format(date);
+        label = (date.getFullYear() === today.getFullYear() ? currentYearFormatter : otherYearFormatter).format(date);
       }
     }
 

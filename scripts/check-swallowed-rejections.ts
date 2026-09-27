@@ -16,13 +16,21 @@ import ts from "typescript";
 
 const SOURCE = /\.(?:[cm]?[jt]sx?)$/;
 /** Generated, vendored or built output: not code this repository writes. */
-const IGNORED = [/(^|\/)dist\//, /^apps\/web\/public\//, /^apps\/web\/foliate-js\/src\/vendor\//, /^apps\/desktop\/src-tauri\//, /routeTree\.gen\.ts$/];
+const IGNORED = [
+  /(^|\/)dist\//,
+  /^apps\/web\/public\//,
+  /^apps\/web\/foliate-js\/src\/vendor\//,
+  /^apps\/desktop\/src-tauri\//,
+  /routeTree\.gen\.ts$/,
+];
 
 type Finding = { file: string; line: number; text: string };
 
 function trackedSources(): string[] {
-  const output = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], { encoding: "utf8" });
-  return output.split("\0").filter(file => SOURCE.test(file) && !IGNORED.some(pattern => pattern.test(file)));
+  const output = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+    encoding: "utf8",
+  });
+  return output.split("\0").filter((file) => SOURCE.test(file) && !IGNORED.some((pattern) => pattern.test(file)));
 }
 
 /** A handler that neither inspects nor reports the failure it receives. */
@@ -31,9 +39,11 @@ function discardsFailure(node: ts.Expression): boolean {
   const body = node.body;
   if (ts.isBlock(body)) return body.statements.length === 0;
   const value = ts.isParenthesizedExpression(body) ? body.expression : body;
-  return (ts.isIdentifier(value) && value.text === "undefined")
-    || value.kind === ts.SyntaxKind.NullKeyword
-    || (ts.isVoidExpression(value) && ts.isLiteralExpression(value.expression));
+  return (
+    (ts.isIdentifier(value) && value.text === "undefined") ||
+    value.kind === ts.SyntaxKind.NullKeyword ||
+    (ts.isVoidExpression(value) && ts.isLiteralExpression(value.expression))
+  );
 }
 
 function rejectionHandler(call: ts.CallExpression): ts.Expression | undefined {
@@ -54,8 +64,15 @@ function hasComment(text: string, start: number, end: number): boolean {
 
 function enclosingStatement(node: ts.Node): ts.Node {
   let current = node;
-  while (current.parent && !ts.isSourceFile(current.parent) && !ts.isBlock(current.parent) && !ts.isModuleBlock(current.parent)
-    && !ts.isCaseClause(current.parent) && !ts.isDefaultClause(current.parent)) current = current.parent;
+  while (
+    current.parent &&
+    !ts.isSourceFile(current.parent) &&
+    !ts.isBlock(current.parent) &&
+    !ts.isModuleBlock(current.parent) &&
+    !ts.isCaseClause(current.parent) &&
+    !ts.isDefaultClause(current.parent)
+  )
+    current = current.parent;
   return current;
 }
 
@@ -79,7 +96,11 @@ function documented(source: ts.SourceFile, call: ts.CallExpression, handler: ts.
 }
 
 export function findSwallowedRejections(file: string, text: string): Finding[] {
-  const kind = file.endsWith("x") ? ts.ScriptKind.TSX : file.endsWith(".ts") || file.endsWith(".mts") || file.endsWith(".cts") ? ts.ScriptKind.TS : ts.ScriptKind.JS;
+  const kind = file.endsWith("x")
+    ? ts.ScriptKind.TSX
+    : file.endsWith(".ts") || file.endsWith(".mts") || file.endsWith(".cts")
+      ? ts.ScriptKind.TS
+      : ts.ScriptKind.JS;
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind);
   const findings: Finding[] = [];
   const visit = (node: ts.Node) => {
@@ -97,10 +118,12 @@ export function findSwallowedRejections(file: string, text: string): Finding[] {
 }
 
 if (import.meta.main) {
-  const findings = trackedSources().flatMap(file => findSwallowedRejections(file, readFileSync(file, "utf8")));
+  const findings = trackedSources().flatMap((file) => findSwallowedRejections(file, readFileSync(file, "utf8")));
   for (const finding of findings) console.error(`${finding.file}:${finding.line}: ${finding.text}`);
   if (findings.length) {
-    console.error(`\n${findings.length} promise rejection(s) discarded without a log or a comment saying why ignoring is correct.`);
+    console.error(
+      `\n${findings.length} promise rejection(s) discarded without a log or a comment saying why ignoring is correct.`,
+    );
     process.exit(1);
   }
   console.log("No silently swallowed promise rejections.");

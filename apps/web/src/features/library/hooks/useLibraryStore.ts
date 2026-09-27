@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
-import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  actorFromEvent,
+  causalActor,
+  ObservationCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 import { onAppEvent } from "../../../platform/app-events";
 import { scheduleCatchUpEnrichment } from "../lib/book-enrichment";
 import { getBookRecord, listCollections, listLibraryBooks } from "../lib/library-db";
@@ -39,68 +45,100 @@ export function useLibraryStore({ reportError }: LibraryStoreOptions) {
   const setCollections = useSetAtom(libraryCollectionsAtom);
   const setLibraryReady = useSetAtom(libraryReadyAtom);
 
-  const reads = useRef({ causes: new ObservationCauses(), needsFull: false, full: false, ids: new Set<string>(), running: null as Promise<void> | null });
+  const reads = useRef({
+    causes: new ObservationCauses(),
+    needsFull: false,
+    full: false,
+    ids: new Set<string>(),
+    running: null as Promise<void> | null,
+  });
   const mounted = useRef(true);
   // Serialize reads. A notification during a query invalidates that sample;
   // resample the full projection with all pending causes before publishing.
-  const refresh = useCallback((bookId: string | null, origin: DomainActor): Promise<void> => {
-    const queue = reads.current;
-    queue.causes.add(stampEventCause({}, causalActor(origin)));
-    if (bookId === null || queue.needsFull) queue.full = true;
-    else queue.ids.add(bookId);
-    if (queue.running) return queue.running;
-    queue.running = (async () => {
-      while (mounted.current && (queue.full || queue.ids.size)) {
-        const full = queue.full, ids = [...queue.ids], revision = queue.causes.revision;
-        queue.full = false; queue.needsFull = false; queue.ids.clear();
-        try {
-          const [loadedBooks, loadedCollections] = full
-            ? await Promise.all([listLibraryBooks(), listCollections()])
-            : [await Promise.all(ids.map(getBookRecord)), null] as const;
-          if (!mounted.current) return;
-          if (revision !== queue.causes.revision) { queue.full = true; continue; }
-          const source = actorFromEvent(queue.causes.take({}));
-          if (loadedCollections) {
-            const books = loadedBooks as LibraryBook[];
-            setBooks(books, source);
-            setCollections(loadedCollections, source);
-            scheduleCatchUpEnrichment(books);
-          } else {
-            setBooks(current => loadedBooks.reduce((result, book, index) =>
-              book ? upsertBook(result, book) : removeBooks(result, [ids[index]!]), current), source);
+  const refresh = useCallback(
+    (bookId: string | null, origin: DomainActor): Promise<void> => {
+      const queue = reads.current;
+      queue.causes.add(stampEventCause({}, causalActor(origin)));
+      if (bookId === null || queue.needsFull) queue.full = true;
+      else queue.ids.add(bookId);
+      if (queue.running) return queue.running;
+      queue.running = (async () => {
+        while (mounted.current && (queue.full || queue.ids.size)) {
+          const full = queue.full,
+            ids = [...queue.ids],
+            revision = queue.causes.revision;
+          queue.full = false;
+          queue.needsFull = false;
+          queue.ids.clear();
+          try {
+            const [loadedBooks, loadedCollections] = full
+              ? await Promise.all([listLibraryBooks(), listCollections()])
+              : ([await Promise.all(ids.map(getBookRecord)), null] as const);
+            if (!mounted.current) return;
+            if (revision !== queue.causes.revision) {
+              queue.full = true;
+              continue;
+            }
+            const source = actorFromEvent(queue.causes.take({}));
+            if (loadedCollections) {
+              const books = loadedBooks as LibraryBook[];
+              setBooks(books, source);
+              setCollections(loadedCollections, source);
+              scheduleCatchUpEnrichment(books);
+            } else {
+              setBooks(
+                (current) =>
+                  loadedBooks.reduce(
+                    (result, book, index) => (book ? upsertBook(result, book) : removeBooks(result, [ids[index]!])),
+                    current,
+                  ),
+                source,
+              );
+            }
+          } catch (error) {
+            if (!mounted.current) return;
+            if (revision !== queue.causes.revision) {
+              queue.full = true;
+              continue;
+            }
+            // Leave causes pending for the next real refresh, without a retry loop.
+            queue.needsFull = true;
+            reportError(error);
           }
-        } catch (error) {
-          if (!mounted.current) return;
-          if (revision !== queue.causes.revision) { queue.full = true; continue; }
-          // Leave causes pending for the next real refresh, without a retry loop.
-          queue.needsFull = true;
-          reportError(error);
+          if (mounted.current) setLibraryReady(true);
         }
-        if (mounted.current) setLibraryReady(true);
-      }
-    })().finally(() => { queue.running = null; });
-    return queue.running;
-  }, [reportError, setBooks, setCollections, setLibraryReady]);
+      })().finally(() => {
+        queue.running = null;
+      });
+      return queue.running;
+    },
+    [reportError, setBooks, setCollections, setLibraryReady],
+  );
   const loadLibrary = useCallback((origin: DomainActor = "system") => refresh(null, origin), [refresh]);
-  const refreshBook = useCallback((bookId: string, origin: DomainActor = "system") => refresh(bookId, origin), [refresh]);
+  const refreshBook = useCallback(
+    (bookId: string, origin: DomainActor = "system") => refresh(bookId, origin),
+    [refresh],
+  );
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   useEffect(() => {
     void loadLibrary();
   }, [loadLibrary]);
 
-  useEffect(() => onAppEvent("library-changed", event => void loadLibrary(actorFromEvent(event))), [loadLibrary]);
+  useEffect(() => onAppEvent("library-changed", (event) => void loadLibrary(actorFromEvent(event))), [loadLibrary]);
   useEffect(
-    () => onAppEvent("book-changed", event => void refreshBook(event.bookId, actorFromEvent(event))),
+    () => onAppEvent("book-changed", (event) => void refreshBook(event.bookId, actorFromEvent(event))),
     [refreshBook],
   );
   useEffect(
     () =>
-      onAppEvent("book-removed", event => {
+      onAppEvent("book-removed", (event) => {
         const source = actorFromEvent(event);
         setBooks((current) => removeBooks(current, [event.bookId]), source);
         if (reads.current.running) void loadLibrary(source);
@@ -116,9 +154,7 @@ export function useLibraryStore({ reportError }: LibraryStoreOptions) {
   const applyOptimisticProgress = useCallback(
     (bookId: string, progress: BookProgress) => {
       const timestamp = new Date().toISOString();
-      setBooks((current) =>
-        patchBook(current, bookId, (book) => createProgressPatch(book, progress, timestamp)),
-      );
+      setBooks((current) => patchBook(current, bookId, (book) => createProgressPatch(book, progress, timestamp)));
     },
     [setBooks],
   );

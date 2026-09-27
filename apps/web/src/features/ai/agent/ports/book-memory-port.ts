@@ -22,12 +22,17 @@ export function createBookMemoryPort(origin: DomainActor = "agent"): BookMemoryP
       if (!isTauri()) return [];
       const contentVersion = await getDigestContentVersion(bookId);
       const rows = await invoke<unknown>("chapter_digests_list", {
-        bookId: String(bookId), contentVersion,
+        bookId: String(bookId),
+        contentVersion,
       });
-      if (await getDigestContentVersion(bookId) !== contentVersion) throw new AppError("memory/conflict", "Digest source changed during read");
-      return decodeChapterDigestRows(rows, bookId).filter(digest => digest.contentVersion === contentVersion && digest.digestVersion >= CHAPTER_DIGEST_VERSION);
+      if ((await getDigestContentVersion(bookId)) !== contentVersion)
+        throw new AppError("memory/conflict", "Digest source changed during read");
+      return decodeChapterDigestRows(rows, bookId).filter(
+        (digest) => digest.contentVersion === contentVersion && digest.digestVersion >= CHAPTER_DIGEST_VERSION,
+      );
     },
     inspectDigest: inspectBookDigest,
-    saveDigest: (bookId, digest, expectedRevision, signal) => saveBookDigest(bookId, digest, expectedRevision, signal, origin),
+    saveDigest: (bookId, digest, expectedRevision, signal) =>
+      saveBookDigest(bookId, digest, expectedRevision, signal, origin),
   };
 }

@@ -1,7 +1,11 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { getDefaultStore } from "jotai";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
-import { installedPluginsAtom, pluginCommandsAtom, voiceProvidersAtom } from "../../src/features/plugins/state/plugin-store";
+import {
+  installedPluginsAtom,
+  pluginCommandsAtom,
+  voiceProvidersAtom,
+} from "../../src/features/plugins/state/plugin-store";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
 import { readingRuntime } from "../../src/domain/reading-runtime";
@@ -18,7 +22,7 @@ let disposables: PluginDisposable[] = [];
 let restoreTts = false;
 async function isolated() {
   const path = (await appDataDir()).replace(/[/\\]$/, "");
-  if (!ISOLATED_PROFILE_SUFFIXES.some(suffix => path.endsWith(suffix))) {
+  if (!ISOLATED_PROFILE_SUFFIXES.some((suffix) => path.endsWith(suffix))) {
     throw new Error("Use the isolated capability-e2e or validation-full2-e2e profile");
   }
   return path;
@@ -27,21 +31,45 @@ async function isolated() {
 export async function preparePlaybackProbe() {
   const dataDir = await isolated();
   if (worker) throw new Error("Clean up the previous playback probe first");
-  restoreTts = getDefaultStore().get(installedPluginsAtom).some(plugin => plugin.manifest.id === "tts" && plugin.enabled);
+  restoreTts = getDefaultStore()
+    .get(installedPluginsAtom)
+    .some((plugin) => plugin.manifest.id === "tts" && plugin.enabled);
   if (restoreTts) await setPluginEnabled("tts", false);
-  const manifest: PluginManifest = { id, name: "Playback diagnostic", version: "1.0.0", schemaVersion: 1, permissions: [],
-    requires: { contributions: { voiceProviders: "^1.0.0", commands: "^1.0.0" } } };
+  const manifest: PluginManifest = {
+    id,
+    name: "Playback diagnostic",
+    version: "1.0.0",
+    schemaVersion: 1,
+    permissions: [],
+    requires: { contributions: { voiceProviders: "^1.0.0", commands: "^1.0.0" } },
+  };
   try {
-    worker = await startPluginWorker(manifest, "0.5.4", disposables, { moduleUrl: new URL("./playback-probe.ts", import.meta.url).href });
-    await worker.checkHealth(); worker.promote();
-    return { dataDir, restoreTts, commands: getDefaultStore().get(pluginCommandsAtom).map(command => `${command.pluginId}:${command.id}`),
-      voices: getDefaultStore().get(voiceProvidersAtom).map(provider => ({ key: provider.key, voices: provider.voices })) };
-  } catch (error) { await cleanupPlaybackProbe(); throw error; }
+    worker = await startPluginWorker(manifest, "0.5.4", disposables, {
+      moduleUrl: new URL("./playback-probe.ts", import.meta.url).href,
+    });
+    await worker.checkHealth();
+    worker.promote();
+    return {
+      dataDir,
+      restoreTts,
+      commands: getDefaultStore()
+        .get(pluginCommandsAtom)
+        .map((command) => `${command.pluginId}:${command.id}`),
+      voices: getDefaultStore()
+        .get(voiceProvidersAtom)
+        .map((provider) => ({ key: provider.key, voices: provider.voices })),
+    };
+  } catch (error) {
+    await cleanupPlaybackProbe();
+    throw error;
+  }
 }
 
 export async function playbackCommand(pluginId: string, commandId: string) {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === pluginId && command.id === commandId);
+  const command = getDefaultStore()
+    .get(pluginCommandsAtom)
+    .find((command) => command.pluginId === pluginId && command.id === commandId);
   if (!command) throw new Error("Playback command not registered");
   await command.run();
   return readingRuntime.snapshot();
@@ -50,7 +78,9 @@ export async function playbackCommand(pluginId: string, commandId: string) {
 /** Runs inside the real Worker and reports the intentional lack of network authority. */
 export async function probeMissingNetworkPermission() {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id && command.id === "network-denied");
+  const command = getDefaultStore()
+    .get(pluginCommandsAtom)
+    .find((command) => command.pluginId === id && command.id === "network-denied");
   if (!command) throw new Error("Network permission probe command not registered");
   const result = await command.run();
   if (typeof result?.toast !== "string" || JSON.parse(result.toast).networkExposed !== false) {
@@ -64,14 +94,25 @@ export async function agentPlayback(action: "start" | "stop") {
   const bookId = readingRuntime.snapshot().bookId;
   if (!bookId) throw new Error("Open the synthetic reading probe book first");
   const tools = buildReaderTools({ kind: "book", bookId }, buildRuntimeDeps());
-  return tools.find(tool => tool.name === "control_read_aloud")!.execute("playback-e2e", { action });
+  return tools.find((tool) => tool.name === "control_read_aloud")!.execute("playback-e2e", { action });
 }
 
 export async function cleanupPlaybackProbe() {
   await isolated();
-  await worker?.terminate(); worker = undefined;
-  for (const disposable of disposables.reverse()) disposable.dispose(); disposables = [];
-  if (restoreTts) { await setPluginEnabled("tts", true); restoreTts = false; }
-  return { remainingCommands: getDefaultStore().get(pluginCommandsAtom).filter(command => command.pluginId === id).length,
-    remainingVoices: getDefaultStore().get(voiceProvidersAtom).filter(provider => provider.pluginId === id).length };
+  await worker?.terminate();
+  worker = undefined;
+  for (const disposable of disposables.reverse()) disposable.dispose();
+  disposables = [];
+  if (restoreTts) {
+    await setPluginEnabled("tts", true);
+    restoreTts = false;
+  }
+  return {
+    remainingCommands: getDefaultStore()
+      .get(pluginCommandsAtom)
+      .filter((command) => command.pluginId === id).length,
+    remainingVoices: getDefaultStore()
+      .get(voiceProvidersAtom)
+      .filter((provider) => provider.pluginId === id).length,
+  };
 }

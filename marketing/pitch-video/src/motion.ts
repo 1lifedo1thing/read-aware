@@ -6,12 +6,7 @@ export const easeInOut = Easing.bezier(0.65, 0, 0.35, 1);
 export const easeIn = Easing.bezier(0.55, 0, 1, 0.45);
 
 /** 0→1 progress of an eased segment that starts at `start` and lasts `duration` frames. */
-export function progress(
-  frame: number,
-  start: number,
-  duration: number,
-  easing: (t: number) => number = easeOut,
-) {
+export function progress(frame: number, start: number, duration: number, easing: (t: number) => number = easeOut) {
   return interpolate(frame, [start, start + duration], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",

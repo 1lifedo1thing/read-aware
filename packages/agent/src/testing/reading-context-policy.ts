@@ -7,7 +7,9 @@ export function contextPolicyState(initial: ReadingContextPermissions) {
     snapshot: () => ({ ...state }),
     subscribe: (listener: () => void) => {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
     set: (next: ReadingContextPermissions) => {
       state = { ...next };

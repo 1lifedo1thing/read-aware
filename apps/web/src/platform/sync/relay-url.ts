@@ -50,12 +50,7 @@ export function defaultRelayUrl(): string {
     // sync call would fail with a misleading decode error. Keeping
     // "localhost" fails honestly (connection refused) instead.
     const pageHost = window.location.hostname;
-    if (
-      pageHost &&
-      pageHost !== "localhost" &&
-      pageHost !== "127.0.0.1" &&
-      !pageHost.endsWith(".localhost")
-    ) {
+    if (pageHost && pageHost !== "localhost" && pageHost !== "127.0.0.1" && !pageHost.endsWith(".localhost")) {
       return developmentRelay(dev.replace("localhost", pageHost));
     }
   }

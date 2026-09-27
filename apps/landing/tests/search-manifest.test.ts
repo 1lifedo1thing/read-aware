@@ -41,9 +41,7 @@ test("rejects private, duplicate, offsite and noncanonical URLs", () => {
   ]) {
     expect(() => validateManifest({ version: 1, pages: [invalid] })).toThrow();
   }
-  expect(() =>
-    validateManifest({ version: 1, pages: [page("/"), page("/")] }),
-  ).toThrow();
+  expect(() => validateManifest({ version: 1, pages: [page("/"), page("/")] })).toThrow();
 });
 test("a failed notification is retried even when the next deploy has identical content", () => {
   const acknowledged: SearchManifest = { version: 1, pages: [page("/"), page("/removed/")] };
@@ -72,11 +70,5 @@ test("content hashes ignore deployment-only bundle changes but catch content, li
   ] as const) {
     expect(await contentHash(html.replace(a, b))).not.toBe(hash);
   }
-  expect(
-    (
-      await Bun.file(
-        new URL(`../public/${INDEXNOW_KEY}.txt`, import.meta.url),
-      ).text()
-    ).trim(),
-  ).toBe(INDEXNOW_KEY);
+  expect((await Bun.file(new URL(`../public/${INDEXNOW_KEY}.txt`, import.meta.url)).text()).trim()).toBe(INDEXNOW_KEY);
 });

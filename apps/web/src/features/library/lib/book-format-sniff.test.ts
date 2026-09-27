@@ -12,13 +12,7 @@ const MOBI_HEADER_LENGTH = 232;
 
 type ExthRecord = { type: number; value: number };
 
-function palmDoc({
-  mobiVersion,
-  exth = [],
-}: {
-  mobiVersion: number;
-  exth?: ExthRecord[];
-}): Uint8Array {
+function palmDoc({ mobiVersion, exth = [] }: { mobiVersion: number; exth?: ExthRecord[] }): Uint8Array {
   const record = buildRecordZero(mobiVersion, exth);
   const numRecords = 2;
   const listBytes = 8 * numRecords;

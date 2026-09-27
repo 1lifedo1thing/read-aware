@@ -6,12 +6,7 @@ import type { RegisteredSelectionAction } from "../lib/plugin-types";
 import { selectionActionsAtom } from "../state/plugin-store";
 import { PluginSelectionCluster } from "./PluginSelectionCluster";
 
-function action(
-  id: string,
-  title: string,
-  icon: string,
-  role?: "lookup",
-): RegisteredSelectionAction {
+function action(id: string, title: string, icon: string, role?: "lookup"): RegisteredSelectionAction {
   return {
     id,
     title,
@@ -82,12 +77,7 @@ type Story = StoryObj<typeof meta>;
  * shows inline and the rest sit behind the overflow.
  */
 export const DefaultPlacement: Story = {
-  decorators: [
-    withAtoms(
-      seed(selectionActionsAtom, actions),
-      seed(menuConfigAtom, layout([], [])),
-    ),
-  ],
+  decorators: [withAtoms(seed(selectionActionsAtom, actions), seed(menuConfigAtom, layout([], [])))],
 };
 
 /** Everything pinned inline — the user promoted all four. */
@@ -95,7 +85,13 @@ export const AllPinned: Story = {
   decorators: [
     withAtoms(
       seed(selectionActionsAtom, actions),
-      seed(menuConfigAtom, layout(actions.map((a) => pluginMenuId(a.key)), [])),
+      seed(
+        menuConfigAtom,
+        layout(
+          actions.map((a) => pluginMenuId(a.key)),
+          [],
+        ),
+      ),
     ),
   ],
 };
@@ -105,7 +101,13 @@ export const AllInOverflow: Story = {
   decorators: [
     withAtoms(
       seed(selectionActionsAtom, actions),
-      seed(menuConfigAtom, layout([], actions.map((a) => pluginMenuId(a.key)))),
+      seed(
+        menuConfigAtom,
+        layout(
+          [],
+          actions.map((a) => pluginMenuId(a.key)),
+        ),
+      ),
     ),
   ],
 };
@@ -126,39 +128,24 @@ export const WithDivider: Story = {
     divider: <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />,
   },
   decorators: [
-    withAtoms(
-      seed(selectionActionsAtom, actions),
-      seed(menuConfigAtom, layout([pluginMenuId(actions[0].key)], [])),
-    ),
+    withAtoms(seed(selectionActionsAtom, actions), seed(menuConfigAtom, layout([pluginMenuId(actions[0].key)], []))),
   ],
 };
 
 /** Bottom-anchored toolbars open the overflow upward instead. */
 export const OverflowOpensUpward: Story = {
   args: { overflowSide: "top" },
-  decorators: [
-    withAtoms(
-      seed(selectionActionsAtom, actions),
-      seed(menuConfigAtom, layout([], [])),
-    ),
-  ],
+  decorators: [withAtoms(seed(selectionActionsAtom, actions), seed(menuConfigAtom, layout([], [])))],
 };
 
 /** No plugin contributes: nothing renders, not even the divider. */
 export const NoContributions: Story = {
   args: { divider: <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" /> },
-  decorators: [
-    withAtoms(seed(selectionActionsAtom, []), seed(menuConfigAtom, layout([], []))),
-  ],
+  decorators: [withAtoms(seed(selectionActionsAtom, []), seed(menuConfigAtom, layout([], [])))],
 };
 
 /** No selection target: the cluster stays silent even with actions registered. */
 export const NoSelectionInput: Story = {
   args: { input: null },
-  decorators: [
-    withAtoms(
-      seed(selectionActionsAtom, actions),
-      seed(menuConfigAtom, layout([], [])),
-    ),
-  ],
+  decorators: [withAtoms(seed(selectionActionsAtom, actions), seed(menuConfigAtom, layout([], [])))],
 };

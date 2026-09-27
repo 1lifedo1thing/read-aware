@@ -1,12 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Id } from "@read-aware/core";
 import type { BookTextHit } from "../ports";
-import {
-  buildGroundingContext,
-  precedingWindow,
-  renderGroundingContext,
-  selectionQueries,
-} from "./grounding-context";
+import { buildGroundingContext, precedingWindow, renderGroundingContext, selectionQueries } from "./grounding-context";
 
 const BOOK_ID = "book-1" as Id;
 
@@ -34,12 +29,7 @@ function bookTextStub(overrides?: {
 }) {
   return {
     getChapterText: async () => overrides?.chapterText ?? CHAPTER,
-    searchText: async (filter: {
-      queries: string[];
-      bookId?: Id;
-      throughChapterIndex?: number;
-      limit?: number;
-    }) => {
+    searchText: async (filter: { queries: string[]; bookId?: Id; throughChapterIndex?: number; limit?: number }) => {
       overrides?.onSearch?.(filter);
       return overrides?.hits ?? [];
     },

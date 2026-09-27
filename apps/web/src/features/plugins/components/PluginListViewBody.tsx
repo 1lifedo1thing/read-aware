@@ -1,27 +1,13 @@
 import { ListBullets } from "@phosphor-icons/react";
 import { Fragment, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
-import {
-  Caption,
-  EmptyState,
-  Eyebrow,
-  ItemList,
-  SearchField,
-  Stack,
-  Tabs,
-  Tag,
-  Tooltip,
-} from "@read-aware/ui";
+import { Caption, EmptyState, Eyebrow, ItemList, SearchField, Stack, Tabs, Tag, Tooltip } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useLocale, useTranslation } from "../../../i18n";
 import { localKV } from "../../../platform/local-store";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { renderPluginIcon } from "../lib/plugin-icons";
 import { PluginVirtualRows, type VirtualRow } from "./PluginVirtualRows";
-import {
-  filterPluginTimelineItems,
-  groupPluginTimelineItems,
-  type PluginTimelineRange,
-} from "../lib/plugin-timeline";
+import { filterPluginTimelineItems, groupPluginTimelineItems, type PluginTimelineRange } from "../lib/plugin-timeline";
 import type { PluginListAccessory, PluginListItem, PluginListView } from "../lib/plugin-types";
 import { PluginActionGroup } from "./PluginActionGroup";
 import { PluginViewPagination } from "./PluginViewPagination";
@@ -48,16 +34,13 @@ type PluginListViewBodyProps = {
 const SEARCH_DEBOUNCE_MS = 200;
 const TIMELINE_RANGES: PluginTimelineRange[] = ["today", "week", "month", "all"];
 
-const timelineStorageKey = (viewStateKey: string) =>
-  `read-aware-plugin-timeline.${viewStateKey}`;
+const timelineStorageKey = (viewStateKey: string) => `read-aware-plugin-timeline.${viewStateKey}`;
 
 /** The remembered range for a view (defaults to "today"), from local storage. */
 function readTimelineRange(viewStateKey: string | undefined): PluginTimelineRange {
   if (!viewStateKey) return "today";
   const stored = localKV.getItem(timelineStorageKey(viewStateKey));
-  return stored && (TIMELINE_RANGES as string[]).includes(stored)
-    ? (stored as PluginTimelineRange)
-    : "today";
+  return stored && (TIMELINE_RANGES as string[]).includes(stored) ? (stored as PluginTimelineRange) : "today";
 }
 
 function accessoryNode(accessory: PluginListAccessory, index: number) {
@@ -146,10 +129,7 @@ export function PluginListViewBody({
         disabled={busy}
         onClick={
           item.onSelect
-            ? () => void onResult(
-                () => item.onSelect!(),
-                { presentation: item.presentation, dialogTitle: item.title },
-              )
+            ? () => void onResult(() => item.onSelect!(), { presentation: item.presentation, dialogTitle: item.title })
             : undefined
         }
       />
@@ -170,15 +150,11 @@ export function PluginListViewBody({
   // mounts every panel, so computing/flattening all four would put every
   // range's rows in the tree even when unseen.
   const activeTimelineRows = (): VirtualRow[] => {
-    const sections = groupPluginTimelineItems(
-      filterPluginTimelineItems(items, range),
-      locale,
-      {
-        today: t("viewer.timeline.today"),
-        yesterday: t("viewer.timeline.yesterday"),
-        unknownDate: t("viewer.timeline.unknownDate"),
-      },
-    );
+    const sections = groupPluginTimelineItems(filterPluginTimelineItems(items, range), locale, {
+      today: t("viewer.timeline.today"),
+      yesterday: t("viewer.timeline.yesterday"),
+      unknownDate: t("viewer.timeline.unknownDate"),
+    });
     const rows: VirtualRow[] = [];
     sections.forEach((section, sectionIndex) => {
       rows.push({
@@ -209,11 +185,7 @@ export function PluginListViewBody({
           content:
             rows.length === 0 ? (
               <EmptyState
-                title={
-                  debouncedQuery.trim()
-                    ? t("viewer.noMatches")
-                    : t("viewer.timeline.noItems")
-                }
+                title={debouncedQuery.trim() ? t("viewer.noMatches") : t("viewer.timeline.noItems")}
                 className="py-10"
               />
             ) : (
@@ -224,13 +196,7 @@ export function PluginListViewBody({
     : [];
 
   const listActions = view.actions?.length ? (
-    <PluginActionGroup
-      actions={view.actions}
-      busy={busy}
-      align="end"
-      display="toolbar"
-      onResult={onResult}
-    />
+    <PluginActionGroup actions={view.actions} busy={busy} align="end" display="toolbar" onResult={onResult} />
   ) : null;
 
   // A go-to box stays put while its long answer scrolls under it: the field is

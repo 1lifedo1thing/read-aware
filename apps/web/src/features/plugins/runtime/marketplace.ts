@@ -34,10 +34,7 @@ const FETCH_TIMEOUT_MS = 8000;
 const MIRROR_KEY = "read-aware-plugin-marketplace-mirror";
 
 /** The configured mirrors with the last-known-good one moved to the front. */
-export function orderMirrors(
-  sources: readonly string[],
-  preferred: string | null,
-): string[] {
+export function orderMirrors(sources: readonly string[], preferred: string | null): string[] {
   if (!preferred || !sources.includes(preferred)) return [...sources];
   return [preferred, ...sources.filter((base) => base !== preferred)];
 }
@@ -104,11 +101,7 @@ async function fetchFilePayload(base: string, name: string): Promise<PluginFileP
 function asEntry(raw: unknown): MarketplaceEntry | null {
   if (typeof raw !== "object" || raw === null) return null;
   const record = raw as Record<string, unknown>;
-  if (
-    typeof record.id !== "string" ||
-    typeof record.name !== "string" ||
-    typeof record.version !== "string"
-  ) {
+  if (typeof record.id !== "string" || typeof record.name !== "string" || typeof record.version !== "string") {
     return null;
   }
   const permissions = Array.isArray(record.permissions)
@@ -122,12 +115,9 @@ function asEntry(raw: unknown): MarketplaceEntry | null {
     version: record.version,
     description: typeof record.description === "string" ? record.description : undefined,
     author: typeof record.author === "string" ? record.author : undefined,
-    minAppVersion:
-      typeof record.minAppVersion === "string" ? record.minAppVersion : undefined,
+    minAppVersion: typeof record.minAppVersion === "string" ? record.minAppVersion : undefined,
     permissions,
-    files: Array.isArray(record.files)
-      ? record.files.filter((f): f is string => typeof f === "string")
-      : undefined,
+    files: Array.isArray(record.files) ? record.files.filter((f): f is string => typeof f === "string") : undefined,
   };
 }
 
@@ -142,9 +132,7 @@ export async function fetchMarketplaceRegistry(): Promise<MarketplaceEntry[]> {
   }
   const list = (parsed as { plugins?: unknown[] }).plugins;
   if (!Array.isArray(list)) throw new Error("registry.json has no plugins array");
-  return list
-    .map(asEntry)
-    .filter((entry): entry is MarketplaceEntry => entry !== null);
+  return list.map(asEntry).filter((entry): entry is MarketplaceEntry => entry !== null);
 }
 
 /**
@@ -160,9 +148,7 @@ export async function prepareMarketplaceInstall(entry: MarketplaceEntry): Promis
   const manifestText = await fetchText(`plugins/${entry.id}/manifest.json`);
   const manifest = parseManifestJson(manifestText);
   if (manifest.id !== entry.id) {
-    throw new PluginManifestError(
-      `marketplace manifest id "${manifest.id}" does not match listing "${entry.id}"`,
-    );
+    throw new PluginManifestError(`marketplace manifest id "${manifest.id}" does not match listing "${entry.id}"`);
   }
   return {
     manifest,

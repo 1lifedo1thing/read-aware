@@ -1,11 +1,5 @@
 import { qualityVerdict, qualitySummaryText } from "./reviews";
-import type {
-  EvalAggregate,
-  EvalComparison,
-  EvalRunRecord,
-  EvalSummary,
-  EvalTokenUsage,
-} from "./types";
+import type { EvalAggregate, EvalComparison, EvalRunRecord, EvalSummary, EvalTokenUsage } from "./types";
 
 function percent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -39,9 +33,7 @@ function aggregateRow(aggregate: EvalAggregate): string {
     fixed(aggregate.meanScore, 3),
     fixed(aggregate.telemetry.meanWallTimeMs, 0),
     tokenSummary(aggregate.telemetry.meanTokens),
-    aggregate.telemetry.meanCostUsd === undefined
-      ? "n/a"
-      : `$${aggregate.telemetry.meanCostUsd.toFixed(6)}`,
+    aggregate.telemetry.meanCostUsd === undefined ? "n/a" : `$${aggregate.telemetry.meanCostUsd.toFixed(6)}`,
   ].join(" | ");
 }
 
@@ -76,9 +68,7 @@ function tagRow(aggregate: EvalAggregate): string {
 }
 
 export function formatEvalReport(summary: EvalSummary): string {
-  const suiteTitle = summary.suiteDisplayName
-    ? `${summary.suiteDisplayName} (${summary.suiteId})`
-    : summary.suiteId;
+  const suiteTitle = summary.suiteDisplayName ? `${summary.suiteDisplayName} (${summary.suiteId})` : summary.suiteId;
   const lines = [
     `# Eval Report: ${suiteTitle}`,
     "",
@@ -90,10 +80,13 @@ export function formatEvalReport(summary: EvalSummary): string {
     "",
     `Diagnostics: ${summary.passed}/${summary.runs} checks passed | ${summary.failed} checks failed | ${summary.errors} errors`,
     "",
-    "## Primary review by variant", "",
+    "## Primary review by variant",
+    "",
     "Variant | Pass | Partial | Fail | Pending | Error",
     "--- | ---: | ---: | ---: | ---: | ---:",
-    ...(summary.qualityByVariant ?? []).map(q => `${q.variantId} | ${q.pass} | ${q.partial} | ${q.fail} | ${q.pending} | ${q.error}`),
+    ...(summary.qualityByVariant ?? []).map(
+      (q) => `${q.variantId} | ${q.pass} | ${q.partial} | ${q.fail} | ${q.pending} | ${q.error}`,
+    ),
     "",
     ...(summary.manualQuality ? [`Freeform reviews: ${qualitySummaryText(summary.manualQuality)}`, ""] : []),
     "## Diagnostic variants",
@@ -120,11 +113,7 @@ export function formatEvalReport(summary: EvalSummary): string {
     );
   }
   if (summary.comparisons.length > 0) {
-    lines.push(
-      "## Diagnostic comparisons",
-      "",
-      ...summary.comparisons.flatMap(comparisonLines),
-    );
+    lines.push("## Diagnostic comparisons", "", ...summary.comparisons.flatMap(comparisonLines));
   }
   return `${lines.join("\n")}\n`;
 }
@@ -133,7 +122,9 @@ export function formatRunLine(record: EvalRunRecord): string {
   const verdict = qualityVerdict(record);
   const label = verdict === "pending" ? "REVIEW PENDING" : verdict.toUpperCase();
   const duration = `${record.telemetry.wallTimeMs.toFixed(0)}ms`;
-  const score = record.assessment ? ` diagnosticScore=${record.assessment.score.toFixed(2)} checks=${record.status}` : "";
+  const score = record.assessment
+    ? ` diagnosticScore=${record.assessment.score.toFixed(2)} checks=${record.status}`
+    : "";
   const error = record.error ? ` ${record.error.stage}: ${record.error.message}` : "";
   return `[${label}] ${record.variantId} / ${record.scenarioId} #${record.repetition} ${duration}${score}${record.assessment?.modelReview ? ` modelOpinion=${record.assessment.modelReview.verdict}` : ""}${error}`;
 }

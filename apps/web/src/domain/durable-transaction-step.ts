@@ -27,7 +27,8 @@ export function durableTransactionStep(session: TransactionSession) {
       return { status: "complete" as const, receipt };
     },
     async reconcile(step: DurableJobStep, attempt: DurableJobAttempt, signal: AbortSignal) {
-      operations(step); frozen(attempt);
+      operations(step);
+      frozen(attempt);
       const receipt = await session.receipt(attempt.dispatchId, signal);
       if (receipt) return { status: "complete" as const, receipt };
       // A missing receipt alone does not prove no write is in flight. Reusing

@@ -15,7 +15,11 @@ type Dependencies = {
   selectDestination(taskId: string): Promise<string | null>;
   /** Includes source preparation and all write fences; resolves only after
    * physical capture and fence release. No password or destination here. */
-  capture(taskId: string, progress: (update: FullBackupProgress) => void, signal?: AbortSignal): Promise<FullBackupCaptureReceipt>;
+  capture(
+    taskId: string,
+    progress: (update: FullBackupProgress) => void,
+    signal?: AbortSignal,
+  ): Promise<FullBackupCaptureReceipt>;
   /** Writes to the destination bound by `selectDestination`, consuming it. */
   write(taskId: string, password: string): Promise<void>;
   /** Also releases an unused destination binding. */
@@ -26,7 +30,11 @@ type Dependencies = {
 /** Host-only task. Actors receive neither passwords, file paths nor task IDs.
  * The native owner holds all plaintext and publishes encrypted output atomically. */
 export function createFullBackupExport(deps: Dependencies) {
-  return async (password: string, signal?: AbortSignal, onProgress?: (update: FullBackupProgress) => void): Promise<boolean> => {
+  return async (
+    password: string,
+    signal?: AbortSignal,
+    onProgress?: (update: FullBackupProgress) => void,
+  ): Promise<boolean> => {
     signal?.throwIfAborted();
     if (!validBackupPassword(password)) {
       throw new AppError("backup/password-policy", "Invalid full backup passphrase length");
@@ -40,16 +48,28 @@ export function createFullBackupExport(deps: Dependencies) {
     }
     // From here the native destination binding exists; every exit cancels.
     let cancelling: Promise<void> | undefined;
-    const cancel = (): Promise<void> => cancelling ??= Promise.resolve().then(() => deps.cancel(taskId))
-      .catch(error => deps.warn("Full backup task cleanup failed", error))
-      .finally(() => { cancelling = undefined; });
-    const abort = () => { void cancel(); };
+    const cancel = (): Promise<void> =>
+      (cancelling ??= Promise.resolve()
+        .then(() => deps.cancel(taskId))
+        .catch((error) => deps.warn("Full backup task cleanup failed", error))
+        .finally(() => {
+          cancelling = undefined;
+        }));
+    const abort = () => {
+      void cancel();
+    };
     const progress = (update: FullBackupProgress) => {
       // An abort IPC can arrive before native capture admission. Retry once
       // native progress proves admission; the final cleanup also retries.
-      if (signal?.aborted) { abort(); return; }
-      try { onProgress?.(update); }
-      catch (error) { deps.warn("Full backup progress observer failed", error); }
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
+      try {
+        onProgress?.(update);
+      } catch (error) {
+        deps.warn("Full backup progress observer failed", error);
+      }
     };
     signal?.addEventListener("abort", abort, { once: true });
     try {

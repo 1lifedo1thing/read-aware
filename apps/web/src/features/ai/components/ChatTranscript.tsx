@@ -84,9 +84,7 @@ export function ChatTranscript({
       (lastPart?.type === "interaction" && lastPart.state !== "pending")) &&
     !streamingParts.some((part) => part.type === "tool" && part.state === "running");
 
-  const liveTurnIndex = liveTurnId
-    ? messages.findIndex((message) => message.id === liveTurnId)
-    : -1;
+  const liveTurnIndex = liveTurnId ? messages.findIndex((message) => message.id === liveTurnId) : -1;
   const settledMessages = liveTurnIndex >= 0 ? messages.slice(0, liveTurnIndex) : messages;
   const liveMessages = liveTurnIndex >= 0 ? messages.slice(liveTurnIndex) : [];
 
@@ -108,7 +106,7 @@ export function ChatTranscript({
             createdAt: "",
           }}
           streaming
-          pendingStatus={awaitingNextRound ? status ?? t("chat.thinking") : undefined}
+          pendingStatus={awaitingNextRound ? (status ?? t("chat.thinking")) : undefined}
         />
       ) : null}
       {!waitingForUser && (streamingParts.length === 0 || (awaitingNextRound && !hasToolActivity)) && (
@@ -128,7 +126,6 @@ export function ChatTranscript({
           Context page); the ScrollArea stays full-width so the scrollbar sits
           at the surface edge. In the reader panel the cap is a no-op. */}
       <div ref={contentRef} className="ra-chat-selectable mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
-
         {settledMessages.map((message) => (
           <ChatMessageItem key={message.id} message={message} onRetry={retryFor(message)} />
         ))}

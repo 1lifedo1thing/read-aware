@@ -62,11 +62,7 @@ describe("suite trend", () => {
       ],
     };
     const current = trendFromSummary(
-      summary([
-        aggregate("steady", 1, 1),
-        aggregate("worse", 0.67, 0.9),
-        aggregate("better", 1, 1),
-      ]),
+      summary([aggregate("steady", 1, 1), aggregate("worse", 0.67, 0.9), aggregate("better", 1, 1)]),
       "deepseek:deepseek-v4-flash",
     );
     const lines = compareTrends(previous, current);

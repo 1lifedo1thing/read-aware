@@ -8,11 +8,7 @@ import { isAndroid } from "../../../platform/environment";
 import { useLocale, useTranslation } from "../../../i18n";
 import { contributionText, resolvePluginText } from "../../plugins/lib/plugin-i18n";
 import { resolveReaderModeUnit } from "../../plugins/lib/reader-mode";
-import {
-  pluginCommandsAtom,
-  selectionActionsAtom,
-  textUnitReaderModeAtom,
-} from "../../plugins/state/plugin-store";
+import { pluginCommandsAtom, selectionActionsAtom, textUnitReaderModeAtom } from "../../plugins/state/plugin-store";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
 import { SettingsRow } from "../components/SettingsRow";
@@ -33,13 +29,7 @@ import {
   type ShortcutId,
 } from "../lib/shortcuts";
 
-const CATEGORIES: ShortcutCategory[] = [
-  "Global",
-  "Reading",
-  "TextUnitMode",
-  "Selection",
-  "Overlays",
-];
+const CATEGORIES: ShortcutCategory[] = ["Global", "Reading", "TextUnitMode", "Selection", "Overlays"];
 
 /** Catalog keys for per-category helper text, shown under the group title where
  *  it helps. Categories without an entry render no description. */
@@ -71,19 +61,22 @@ export function ShortcutsPanel() {
   const lookupAvailable = selectionActions.some((action) => action.role === "lookup");
   const { busy, rebind, reset, resetAll } = useShortcutPreferences();
   // Preference intents report their own failures (toast + log) and resolve to a flag.
-  const capture = useCallback((id: ShortcutId, chord: KeyChord) => { void rebind(id, chord); }, [rebind]);
+  const capture = useCallback(
+    (id: ShortcutId, chord: KeyChord) => {
+      void rebind(id, chord);
+    },
+    [rebind],
+  );
   const { recordingId, startRecording, cancel } = useShortcutRecorder(capture);
-  const activePluginIds = new Set(pluginCommands.map(command => pluginShortcutId(command.key)));
-  const dormant = Object.entries(bindings).filter(([id]) => id.startsWith("plugin:") && !activePluginIds.has(id as `plugin:${string}`));
+  const activePluginIds = new Set(pluginCommands.map((command) => pluginShortcutId(command.key)));
+  const dormant = Object.entries(bindings).filter(
+    ([id]) => id.startsWith("plugin:") && !activePluginIds.has(id as `plugin:${string}`),
+  );
 
   const hasOverrides = Object.keys(bindings).length > 0;
-  const defaultModeUnit = textUnitMode
-    ? resolveReaderModeUnit(textUnitMode, textUnitMode.defaultUnitId)
-    : null;
+  const defaultModeUnit = textUnitMode ? resolveReaderModeUnit(textUnitMode, textUnitMode.defaultUnitId) : null;
 
-  function shortcutLabel(
-    id: ShortcutId | InfoShortcut["id"],
-  ): string {
+  function shortcutLabel(id: ShortcutId | InfoShortcut["id"]): string {
     if (id.startsWith("plugin:")) {
       const command = pluginCommands.find((entry) => pluginShortcutId(entry.key) === id);
       return command ? contributionText(command.title) : id;
@@ -103,32 +96,29 @@ export function ShortcutsPanel() {
   }
 
   function conflictNotice(id: ShortcutId) {
-    const row = rows.find(row => row.id === id);
+    const row = rows.find((row) => row.id === id);
     const conflicts = row ? shortcutConflicts(row, rows) : [];
-    return conflicts.length ? <InlineError compact>{t("shortcuts.conflictInactive", {
-      label: conflicts.map(row => shortcutLabel(row.id)).join(", "),
-    })}</InlineError> : undefined;
+    return conflicts.length ? (
+      <InlineError compact>
+        {t("shortcuts.conflictInactive", {
+          label: conflicts.map((row) => shortcutLabel(row.id)).join(", "),
+        })}
+      </InlineError>
+    ) : undefined;
   }
 
   return (
-    <SettingsPage
-      title={t("shortcuts.title")}
-      description={t("shortcuts.description")}
-    >
+    <SettingsPage title={t("shortcuts.title")} description={t("shortcuts.description")}>
       {CATEGORIES.map((category) => {
         const modeCategoryAvailable = category !== "TextUnitMode" || textUnitMode !== null;
         const editable = modeCategoryAvailable
           ? EDITABLE_SHORTCUTS.filter(
-              (shortcut) =>
-                shortcut.category === category &&
-                (shortcut.id !== "selection-look-up" || lookupAvailable),
+              (shortcut) => shortcut.category === category && (shortcut.id !== "selection-look-up" || lookupAvailable),
             )
           : [];
         const info = INFO_SHORTCUTS.filter(
           (shortcut) =>
-            modeCategoryAvailable &&
-            shortcut.category === category &&
-            (!shortcut.androidOnly || isAndroid()),
+            modeCategoryAvailable && shortcut.category === category && (!shortcut.androidOnly || isAndroid()),
         );
         if (!editable.length && !info.length) return null;
 
@@ -145,11 +135,7 @@ export function ShortcutsPanel() {
               : undefined;
 
         return (
-          <SettingsGroup
-            key={category}
-            title={categoryTitle}
-            description={categoryDescription}
-          >
+          <SettingsGroup key={category} title={categoryTitle} description={categoryDescription}>
             {editable.map((shortcut, index) => {
               const binding = resolveBinding(shortcut.id, bindings);
               const overridden = bindings[shortcut.id] !== undefined;
@@ -187,9 +173,7 @@ export function ShortcutsPanel() {
                               aria-hidden="true"
                               className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-fg-subtle"
                             />
-                            <span className="font-sans text-[13px] text-fg-muted">
-                              {t("shortcuts.recording")}
-                            </span>
+                            <span className="font-sans text-[13px] text-fg-muted">{t("shortcuts.recording")}</span>
                           </span>
                         ) : (
                           <KeyTokens tokens={chordToTokens(binding)} />
@@ -264,16 +248,12 @@ export function ShortcutsPanel() {
                             aria-hidden="true"
                             className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-fg-subtle"
                           />
-                          <span className="font-sans text-[13px] text-fg-muted">
-                            {t("shortcuts.recording")}
-                          </span>
+                          <span className="font-sans text-[13px] text-fg-muted">{t("shortcuts.recording")}</span>
                         </span>
                       ) : binding ? (
                         <KeyTokens tokens={chordToTokens(binding)} />
                       ) : (
-                        <span className="font-sans text-[13px] text-fg-subtle">
-                          {t("shortcuts.notSet")}
-                        </span>
+                        <span className="font-sans text-[13px] text-fg-subtle">{t("shortcuts.notSet")}</span>
                       )}
                     </button>
                     {overridden && !recording && (
@@ -296,13 +276,23 @@ export function ShortcutsPanel() {
       {dormant.length > 0 && (
         <SettingsGroup title={t("shortcuts.unavailable")}>
           {dormant.map(([id, binding], index) => (
-            <SettingsRow key={id} borderless={index === 0} title={<span className="[overflow-wrap:anywhere]">{id.slice(7)}</span>} control={
-              <span className="flex items-center gap-1.5">
-                {binding && <KeyTokens tokens={chordToTokens(binding)} />}
-                <IconButton label={t("shortcuts.reset", { label: id.slice(7) })} size="sm" disabled={busy}
-                  onClick={() => void reset(id as ShortcutId)} icon={<ArrowCounterClockwise size={14} aria-hidden="true" />} />
-              </span>
-            } />
+            <SettingsRow
+              key={id}
+              borderless={index === 0}
+              title={<span className="[overflow-wrap:anywhere]">{id.slice(7)}</span>}
+              control={
+                <span className="flex items-center gap-1.5">
+                  {binding && <KeyTokens tokens={chordToTokens(binding)} />}
+                  <IconButton
+                    label={t("shortcuts.reset", { label: id.slice(7) })}
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void reset(id as ShortcutId)}
+                    icon={<ArrowCounterClockwise size={14} aria-hidden="true" />}
+                  />
+                </span>
+              }
+            />
           ))}
         </SettingsGroup>
       )}

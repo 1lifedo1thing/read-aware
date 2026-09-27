@@ -16,8 +16,14 @@ export type TextUnitStepAdapter = {
 };
 
 /** Traversal policy is independent of renderer layout and plugin segmentation. */
-export async function stepTextUnit(adapter: TextUnitStepAdapter, direction: -1 | 1, signal: AbortSignal): Promise<ReadingModeStepOutcome> {
-  const check = () => { if (signal.aborted) throw signal.reason; };
+export async function stepTextUnit(
+  adapter: TextUnitStepAdapter,
+  direction: -1 | 1,
+  signal: AbortSignal,
+): Promise<ReadingModeStepOutcome> {
+  const check = () => {
+    if (signal.aborted) throw signal.reason;
+  };
   check();
   const resting = adapter.resting();
   if (resting) {
@@ -32,7 +38,8 @@ export async function stepTextUnit(adapter: TextUnitStepAdapter, direction: -1 |
   const visited = new Set<number>();
   while (target < 0 || target >= index.count) {
     check();
-    if (visited.has(index.sectionIndex)) throw new AppError("reader/invalid-target", "Reading section traversal did not advance");
+    if (visited.has(index.sectionIndex))
+      throw new AppError("reader/invalid-target", "Reading section traversal did not advance");
     visited.add(index.sectionIndex);
     const next = adapter.adjacent(index.sectionIndex, direction);
     if (next === null) return direction === 1 ? "end-of-book" : "start-of-book";
@@ -40,7 +47,8 @@ export async function stepTextUnit(adapter: TextUnitStepAdapter, direction: -1 |
     check();
     index = await adapter.index(signal);
     check();
-    if (index.sectionIndex !== next) throw new AppError("reader/target-not-found", "Reader did not enter the requested section");
+    if (index.sectionIndex !== next)
+      throw new AppError("reader/target-not-found", "Reader did not enter the requested section");
     target = direction === 1 ? 0 : index.count - 1;
   }
   const position = index.position(target);

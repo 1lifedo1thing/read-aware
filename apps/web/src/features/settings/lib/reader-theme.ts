@@ -72,10 +72,7 @@ export function resolveReaderPalette(
   pluginThemes: readonly RegisteredPluginTheme[],
 ): ReaderPalette {
   if (isPluginRef(theme)) {
-    return (
-      findPluginReaderTheme(theme, pluginThemes)?.reader?.palette ??
-      BUILTIN_READER_PALETTES.warm
-    );
+    return findPluginReaderTheme(theme, pluginThemes)?.reader?.palette ?? BUILTIN_READER_PALETTES.warm;
   }
   return BUILTIN_READER_PALETTES[theme];
 }

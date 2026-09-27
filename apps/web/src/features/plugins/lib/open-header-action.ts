@@ -3,21 +3,14 @@
  * where an anchored popup can't live: overflow-menu entries and the phone
  * header menu. Fetch errors surface as a toast.
  */
-import {
-  failPluginDialog,
-  openPluginDialog,
-  resolvePluginDialog,
-} from "../state/plugin-store";
+import { failPluginDialog, openPluginDialog, resolvePluginDialog } from "../state/plugin-store";
 import { errorCode } from "@read-aware/core";
 import type { HeaderActionInput, RegisteredHeaderAction } from "./plugin-types";
 import { createLogger } from "../../../platform/logger";
 
 const log = createLogger("plugins");
 
-export async function openHeaderActionDialog(
-  action: RegisteredHeaderAction,
-  input: HeaderActionInput,
-): Promise<void> {
+export async function openHeaderActionDialog(action: RegisteredHeaderAction, input: HeaderActionInput): Promise<void> {
   const requestId = openPluginDialog({
     pluginId: action.pluginId,
     pluginName: action.pluginName,

@@ -1,25 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import {
-  labelFromOpeningWords,
-  linesToParagraphs,
-  splitTextIntoChapters,
-} from "./text-chapters";
+import { labelFromOpeningWords, linesToParagraphs, splitTextIntoChapters } from "./text-chapters";
 import { decodeTextBook } from "./decode-text";
 
-const titles = (text: string) =>
-  splitTextIntoChapters(text).map((chapter) => chapter.title);
+const titles = (text: string) => splitTextIntoChapters(text).map((chapter) => chapter.title);
 
 describe("marked headings", () => {
   test("splits on Chinese chapter headings and keeps the preface", () => {
     const chapters = splitTextIntoChapters(
       ["卷首语", "", "第一章 开端", "正文一", "第二章 承接", "正文二", "第三章 结局", "正文三"].join("\n"),
     );
-    expect(chapters.map((chapter) => chapter.title)).toEqual([
-      undefined,
-      "第一章 开端",
-      "第二章 承接",
-      "第三章 结局",
-    ]);
+    expect(chapters.map((chapter) => chapter.title)).toEqual([undefined, "第一章 开端", "第二章 承接", "第三章 结局"]);
     expect(linesToParagraphs(chapters[1]!.lines)).toEqual(["正文一"]);
   });
 
@@ -60,11 +50,7 @@ describe("marked headings", () => {
 
 describe("numbered headings", () => {
   test("bare numbers, with or without a short title", () => {
-    expect(titles(["01", "a", "02 初遇", "b", "03、别离", "c"].join("\n"))).toEqual([
-      "01",
-      "02 初遇",
-      "03、别离",
-    ]);
+    expect(titles(["01", "a", "02 初遇", "b", "03、别离", "c"].join("\n"))).toEqual(["01", "02 初遇", "03、别离"]);
   });
 
   test("a bare Chinese numeral on its own line is a chapter", () => {
@@ -110,22 +96,16 @@ describe("numbered headings", () => {
       "三、重逢",
     ]);
     // Prose opening with 一 is not a heading, so this file has no structure.
-    expect(
-      splitTextIntoChapters(["一个人走进来", "a", "两个人离开", "b", "三个人回来", "c"].join("\n")),
-    ).toHaveLength(1);
+    expect(splitTextIntoChapters(["一个人走进来", "a", "两个人离开", "b", "三个人回来", "c"].join("\n"))).toHaveLength(
+      1,
+    );
   });
 
   test("a numbered list inside the prose is not chapter numbering", () => {
     // Numbers that restart and repeat do not read like chapters.
-    const text = [
-      "买菜清单如下。",
-      "1. 西红柿",
-      "2. 鸡蛋",
-      "3. 面条",
-      "回来之后又想起：",
-      "1. 酱油",
-      "2. 醋",
-    ].join("\n");
+    const text = ["买菜清单如下。", "1. 西红柿", "2. 鸡蛋", "3. 面条", "回来之后又想起：", "1. 酱油", "2. 醋"].join(
+      "\n",
+    );
     expect(splitTextIntoChapters(text)).toHaveLength(1);
   });
 

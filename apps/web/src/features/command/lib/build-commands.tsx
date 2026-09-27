@@ -16,17 +16,13 @@ import type { ReactNode } from "react";
 import { HOST_SHELF_SORTS, HOST_SHELF_GROUPS, type HostCommandRequest } from "@read-aware/core";
 import type { TFunction } from "i18next";
 import type { Collection, LibraryBook } from "../../library/lib/library-types";
-import type {
-  ShelfLayout,
-  ShelfView,
-} from "../../shelf/lib/shelf-view";
+import type { ShelfLayout, ShelfView } from "../../shelf/lib/shelf-view";
 import type { TopNav } from "../../../state/ui";
 
 export type CommandKind = "action" | "collection" | "book";
 
 /** Stable section identity (kept out of copy so it survives translation). */
-export type CommandGroupKey =
-  "goto" | "shelf" | "collections" | "books" | "plugins";
+export type CommandGroupKey = "goto" | "shelf" | "collections" | "books" | "plugins";
 
 export type CommandItem = {
   id: string;
@@ -42,16 +38,13 @@ export type CommandItem = {
   coverUrl?: string | null;
   disabled?: boolean;
   checked?: boolean;
-} & ({ hostCommand: HostCommandRequest; perform?: never } | { hostCommand?: never; perform: (signal?: AbortSignal) => unknown | Promise<unknown> });
+} & (
+  | { hostCommand: HostCommandRequest; perform?: never }
+  | { hostCommand?: never; perform: (signal?: AbortSignal) => unknown | Promise<unknown> }
+);
 
 /** Fixed section order in the palette. */
-export const GROUP_ORDER: readonly CommandGroupKey[] = [
-  "goto",
-  "shelf",
-  "plugins",
-  "collections",
-  "books",
-];
+export const GROUP_ORDER: readonly CommandGroupKey[] = ["goto", "shelf", "plugins", "collections", "books"];
 
 export type CommandActions = {
   importBook: () => void;
@@ -78,10 +71,7 @@ function recencyTime(book: LibraryBook): number {
  * controls (the layout toggle and the inactive sort/group options only), every
  * collection, and every book. Pure — the UI filters and renders the result.
  */
-export function buildCommands(
-  ctx: CommandContext,
-  t: TFunction<"command">,
-): CommandItem[] {
+export function buildCommands(ctx: CommandContext, t: TFunction<"command">): CommandItem[] {
   const items: CommandItem[] = [];
 
   // ── Go to ────────────────────────────────────────────────────────────────
@@ -148,8 +138,7 @@ export function buildCommands(
     hostCommand: { id: "select" },
   });
 
-  const nextLayout: ShelfLayout =
-    ctx.shelfView.layout === "grid" ? "list" : "grid";
+  const nextLayout: ShelfLayout = ctx.shelfView.layout === "grid" ? "list" : "grid";
   items.push({
     id: `layout-${nextLayout}`,
     kind: "action",
@@ -201,9 +190,7 @@ export function buildCommands(
   }
 
   // ── Books (most recently opened first, so the empty-query default is useful) ─
-  const booksByRecency = [...ctx.books].sort(
-    (a, b) => recencyTime(b) - recencyTime(a),
-  );
+  const booksByRecency = [...ctx.books].sort((a, b) => recencyTime(b) - recencyTime(a));
   for (const book of booksByRecency) {
     items.push({
       id: `book-${book.id}`,

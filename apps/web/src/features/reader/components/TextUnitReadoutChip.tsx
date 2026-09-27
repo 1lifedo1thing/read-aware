@@ -44,8 +44,7 @@ export function TextUnitReadoutChip({
   const float = useDraggableFloat({ containerRef, controlId: "navigator-readouts" });
 
   if (!visible) return null;
-  const progressText =
-    showProgress && progress ? `${progress.ordinal + 1} / ${progress.total}` : null;
+  const progressText = showProgress && progress ? `${progress.ordinal + 1} / ${progress.total}` : null;
   if (!progressText && !sessionElapsed) return null;
 
   return (
@@ -66,27 +65,27 @@ export function TextUnitReadoutChip({
           onClick={() => {
             if (!float.consumeDragClick() && sessionTimer) timer.toggleClock();
           }}
-          aria-label={sessionTimer
-            ? t(timer.showClock ? "textUnitMode.showSessionTime" : "textUnitMode.showCurrentTime")
-            : t("textUnitMode.progress")}
-          title={sessionTimer
-            ? t(timer.showClock ? "textUnitMode.showSessionTime" : "textUnitMode.showCurrentTime")
-            : undefined}
+          aria-label={
+            sessionTimer
+              ? t(timer.showClock ? "textUnitMode.showSessionTime" : "textUnitMode.showCurrentTime")
+              : t("textUnitMode.progress")
+          }
+          title={
+            sessionTimer
+              ? t(timer.showClock ? "textUnitMode.showSessionTime" : "textUnitMode.showCurrentTime")
+              : undefined
+          }
           className={cn(
             "ra-motion-overlay-pop pointer-events-auto h-auto cursor-grab touch-none select-none gap-2 rounded-md border border-border bg-[var(--ra-main-surface-color)] px-2.5 py-1 text-caption font-normal tabular-nums text-fg-muted shadow-[0_4px_16px_-6px_rgba(28,25,23,0.25)]",
             float.dragging && "cursor-grabbing text-fg",
           )}
         >
-          {progressText && (
-            <span aria-label={`${t("textUnitMode.progress")}: ${progressText}`}>
-              {progressText}
-            </span>
-          )}
-          {progressText && sessionElapsed && (
-            <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />
-          )}
+          {progressText && <span aria-label={`${t("textUnitMode.progress")}: ${progressText}`}>{progressText}</span>}
+          {progressText && sessionElapsed && <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />}
           {sessionElapsed && (
-            <span aria-label={`${t(timer.showClock ? "textUnitMode.currentTime" : "textUnitMode.sessionTime")}: ${timeText}`}>
+            <span
+              aria-label={`${t(timer.showClock ? "textUnitMode.currentTime" : "textUnitMode.sessionTime")}: ${timeText}`}
+            >
               {timeText}
             </span>
           )}

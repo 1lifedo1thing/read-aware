@@ -1,6 +1,13 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { AppError, normalizeBookRangeQuery, type BookTextRange, type HighlightColor, type HighlightStyle, type Id } from "@read-aware/core";
+import {
+  AppError,
+  normalizeBookRangeQuery,
+  type BookTextRange,
+  type HighlightColor,
+  type HighlightStyle,
+  type Id,
+} from "@read-aware/core";
 import type { AnnotationItem, RuntimeDeps } from "../ports";
 import type { ThreadScope } from "../thread-scope";
 import { threadScopeKey } from "../thread-scope";
@@ -12,12 +19,7 @@ import type { AgentTurnState } from "./turn-state";
 import { buildAnnotationBatchTool } from "./annotation-batch-tool";
 
 const highlightColorSchema = Type.Union(
-  [
-    Type.Literal("yellow"),
-    Type.Literal("green"),
-    Type.Literal("blue"),
-    Type.Literal("pink"),
-  ],
+  [Type.Literal("yellow"), Type.Literal("green"), Type.Literal("blue"), Type.Literal("pink")],
   { description: "Highlight color" },
 );
 
@@ -33,20 +35,18 @@ function annotationSubject(annotation: AnnotationItem): string {
  * book and source version keeps the exemption tied to this active selection;
  * source validation below still checks the supplied quote.
  */
-async function isCurrentReaderSelection(
-  deps: RuntimeDeps,
-  bookId: string,
-  range: BookTextRange,
-): Promise<boolean> {
+async function isCurrentReaderSelection(deps: RuntimeDeps, bookId: string, range: BookTextRange): Promise<boolean> {
   const session = await deps.reader.getSession();
   const selected = session.selection?.range;
-  return session.status === "ready"
-    && session.bookId === bookId
-    && session.location?.bookId === bookId
-    && session.location.contentVersion === range.contentVersion
-    && selected?.bookId === range.bookId
-    && selected.contentVersion === range.contentVersion
-    && selected.cfi === range.cfi;
+  return (
+    session.status === "ready" &&
+    session.bookId === bookId &&
+    session.location?.bookId === bookId &&
+    session.location.contentVersion === range.contentVersion &&
+    selected?.bookId === range.bookId &&
+    selected.contentVersion === range.contentVersion &&
+    selected.cfi === range.cfi
+  );
 }
 
 export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, state?: AgentTurnState): AgentTool[] {
@@ -54,22 +54,26 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
     name: "create_annotation",
     label: "Create annotation",
     description:
-      "Create a note or a highlight when the user explicitly asks. When the reader asks to note something down (\"记条笔记\", \"note this\", \"帮我记一下\"), THIS is the tool — the note must land in the book's annotation list where the reader can see it; the remember tool (invisible long-term memory) is never a substitute for a requested note. kind=note needs body (quotedText optional); kind=highlight needs text (the exact quoted passage, color optional). For a selected passage or a quoted attachment, first obtain its complete source range from get_reading_session. If no matching active selection exists, find_book_locations must search the entire quoted passage including punctuation; copy the returned range unchanged for both the highlight and its attached note. A match range covers only the query match, not surrounding excerpt text: textQuote cannot extend it. Never shorten the requested passage or rewrite its CFI to make a write succeed. Supply the complete exact source text and do not pass separate anchor/chapterHref with range. The source version and quote are validated and preserved. Unanchored notes are for standalone notes without a requested source attachment; an unanchored write does not fulfill a request to mark or attach a note to a passage and must not be reported as attached. Legacy anchor inputs remain supported. bookId defaults to the current book.",
+      'Create a note or a highlight when the user explicitly asks. When the reader asks to note something down ("记条笔记", "note this", "帮我记一下"), THIS is the tool — the note must land in the book\'s annotation list where the reader can see it; the remember tool (invisible long-term memory) is never a substitute for a requested note. kind=note needs body (quotedText optional); kind=highlight needs text (the exact quoted passage, color optional). For a selected passage or a quoted attachment, first obtain its complete source range from get_reading_session. If no matching active selection exists, find_book_locations must search the entire quoted passage including punctuation; copy the returned range unchanged for both the highlight and its attached note. A match range covers only the query match, not surrounding excerpt text: textQuote cannot extend it. Never shorten the requested passage or rewrite its CFI to make a write succeed. Supply the complete exact source text and do not pass separate anchor/chapterHref with range. The source version and quote are validated and preserved. Unanchored notes are for standalone notes without a requested source attachment; an unanchored write does not fulfill a request to mark or attach a note to a passage and must not be reported as attached. Legacy anchor inputs remain supported. bookId defaults to the current book.',
     parameters: Type.Object({
       kind: Type.Union([Type.Literal("note"), Type.Literal("highlight")], {
         description: "note = the user's own words; highlight = exact book text",
       }),
-      body: Type.Optional(Type.String({ description: "Note body (kind=note). When the user dictates the note text, preserve their words and punctuation exactly; compose or rewrite only when requested." })),
-      text: Type.Optional(
-        Type.String({ description: "Exact quoted book text (kind=highlight)" }),
+      body: Type.Optional(
+        Type.String({
+          description:
+            "Note body (kind=note). When the user dictates the note text, preserve their words and punctuation exactly; compose or rewrite only when requested.",
+        }),
       ),
-      quotedText: Type.Optional(
-        Type.String({ description: "Book text the note refers to (kind=note)" }),
-      ),
+      text: Type.Optional(Type.String({ description: "Exact quoted book text (kind=highlight)" })),
+      quotedText: Type.Optional(Type.String({ description: "Book text the note refers to (kind=note)" })),
       color: Type.Optional(highlightColorSchema),
-      style: Type.Optional(Type.Union([Type.Literal("highlight"), Type.Literal("underline")], {
-        description: "Mark style (kind=highlight); defaults to highlight. Use underline when the user requests underlining.",
-      })),
+      style: Type.Optional(
+        Type.Union([Type.Literal("highlight"), Type.Literal("underline")], {
+          description:
+            "Mark style (kind=highlight); defaults to highlight. Use underline when the user requests underlining.",
+        }),
+      ),
       range: Type.Optional(bookRangeSchema),
       bookId: Type.Optional(Type.String()),
       anchor: Type.Optional(Type.String()),
@@ -78,7 +82,18 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
     executionMode: "sequential",
     execute: async (_id, params, signal) => {
       signal?.throwIfAborted();
-      const { kind, body, text, quotedText, color, style, bookId, anchor, chapterHref, range: rawRange } = params as {
+      const {
+        kind,
+        body,
+        text,
+        quotedText,
+        color,
+        style,
+        bookId,
+        anchor,
+        chapterHref,
+        range: rawRange,
+      } = params as {
         kind: "note" | "highlight";
         range?: BookTextRange;
         body?: string;
@@ -95,43 +110,63 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
       const range = rawRange === undefined ? undefined : normalizeBookRangeQuery({ range: rawRange }).range;
       if (range) {
         if (range.bookId !== target || anchor !== undefined || chapterHref !== undefined) {
-          throw new AppError("annotations/invalid-input", "Range must identify the target book without separate anchor fields");
+          throw new AppError(
+            "annotations/invalid-input",
+            "Range must identify the target book without separate anchor fields",
+          );
         }
-        const activeSelection = scope.kind === "book" && target === scope.bookId
-          && state?.spoilerFence && !state.spoilerGranted
-          ? await isCurrentReaderSelection(deps, target, range)
-          : false;
+        const activeSelection =
+          scope.kind === "book" && target === scope.bookId && state?.spoilerFence && !state.spoilerGranted
+            ? await isCurrentReaderSelection(deps, target, range)
+            : false;
         signal?.throwIfAborted();
-        await deps.bookText.readRange({ range, limit: 2, contextChars: 0,
-          ...(scope.kind === "book" && target === scope.bookId && state?.spoilerFence && !state.spoilerGranted && !activeSelection
-            ? { throughChapterIndex: state.spoilerFence.throughChapterIndex } : {}),
-        }, signal);
+        await deps.bookText.readRange(
+          {
+            range,
+            limit: 2,
+            contextChars: 0,
+            ...(scope.kind === "book" &&
+            target === scope.bookId &&
+            state?.spoilerFence &&
+            !state.spoilerGranted &&
+            !activeSelection
+              ? { throughChapterIndex: state.spoilerFence.throughChapterIndex }
+              : {}),
+          },
+          signal,
+        );
       }
       signal?.throwIfAborted();
       if (kind === "note") {
         if (!body?.trim()) throw new Error("kind=note requires a non-empty body");
         return textResult(
-          await deps.annotations.createNote({
-            bookId: target,
-            body: body.trim(),
-            quotedText: range ? quotedText : quotedText?.trim() || undefined,
-            range,
-            anchor,
-            chapter: chapterHref,
-          }, signal),
+          await deps.annotations.createNote(
+            {
+              bookId: target,
+              body: body.trim(),
+              quotedText: range ? quotedText : quotedText?.trim() || undefined,
+              range,
+              anchor,
+              chapter: chapterHref,
+            },
+            signal,
+          ),
         );
       }
       if (!text?.trim()) throw new Error("kind=highlight requires non-empty text");
       return textResult(
-        await deps.annotations.createHighlight({
-          bookId: target,
-          text: range ? text : text.trim(),
-          range,
-          anchor,
-          chapter: chapterHref,
-          color,
-          style,
-        }, signal),
+        await deps.annotations.createHighlight(
+          {
+            bookId: target,
+            text: range ? text : text.trim(),
+            range,
+            anchor,
+            chapter: chapterHref,
+            color,
+            style,
+          },
+          signal,
+        ),
       );
     },
   };
@@ -162,7 +197,10 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
       });
       const approved = !answer.cancelled && answer.optionId === "approve";
       if (!approved) return { ...textResult({ deleted: false, reason: "User declined." }), details };
-      await deps.annotations.applyChanges([{ op: "remove", annotationId, kind: annotation.kind, expectedRevision: snapshot.revision }], signal);
+      await deps.annotations.applyChanges(
+        [{ op: "remove", annotationId, kind: annotation.kind, expectedRevision: snapshot.revision }],
+        signal,
+      );
       return {
         ...textResult({ deleted: true, annotationId, annotationKind: annotation.kind }),
         details,

@@ -47,36 +47,61 @@ export class PluginNetworkRequests {
     private readonly limits = PLUGIN_NETWORK_LIMITS,
     private readonly received: (bytes: number) => void = () => {},
   ) {
-    signal.addEventListener("abort", () => {
-      for (const entry of this.entries.values()) void this.retire(entry, pluginNetworkAbort(signal.reason));
-    }, { once: true });
+    signal.addEventListener(
+      "abort",
+      () => {
+        for (const entry of this.entries.values()) void this.retire(entry, pluginNetworkAbort(signal.reason));
+      },
+      { once: true },
+    );
   }
 
-  async open(input: RequestInfo | URL, init?: RequestInit, limit = this.limits.maxStreamBytes, retry = false): Promise<PluginNetworkStream> {
+  async open(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+    limit = this.limits.maxStreamBytes,
+    retry = false,
+  ): Promise<PluginNetworkStream> {
     if (this.signal.aborted) throw pluginNetworkAbort(this.signal.reason);
     const initial = new Request(input, init);
     if (initial.signal.aborted) throw pluginNetworkAbort(initial.signal.reason);
-    if (this.entries.size >= this.limits.maxConcurrentRequests || hostRequests >= this.limits.maxHostConcurrentRequests) {
+    if (
+      this.entries.size >= this.limits.maxConcurrentRequests ||
+      hostRequests >= this.limits.maxHostConcurrentRequests
+    ) {
       throw new AppError("plugin/network-busy", "Concurrent network request limit reached", { retryable: true });
     }
     const controller = new AbortController();
     const expiresAt = Date.now() + this.limits.timeoutMs;
     const entry: Entry = {
-      id: crypto.randomUUID(), controller,
+      id: crypto.randomUUID(),
+      controller,
       opening: Promise.resolve().then(() => {
         controller.signal.throwIfAborted();
         return this.request(initial, { signal: controller.signal }, retry);
       }),
-      timer: setTimeout(() => { void this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired")); }, this.limits.timeoutMs),
-      expiresAt, closed: false, offset: 0, received: 0, limit, buffered: new Uint8Array(0), detach: () => {},
+      timer: setTimeout(() => {
+        void this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired"));
+      }, this.limits.timeoutMs),
+      expiresAt,
+      closed: false,
+      offset: 0,
+      received: 0,
+      limit,
+      buffered: new Uint8Array(0),
+      detach: () => {},
     };
-    const abort = () => { void this.retire(entry, pluginNetworkAbort(initial.signal.reason)); };
+    const abort = () => {
+      void this.retire(entry, pluginNetworkAbort(initial.signal.reason));
+    };
     initial.signal.addEventListener("abort", abort, { once: true });
     entry.detach = () => initial.signal.removeEventListener("abort", abort);
     this.entries.set(entry.id, entry);
     hostRequests++;
     let rejectCancelled!: (reason: unknown) => void;
-    const cancelled = new Promise<never>((_, reject) => { rejectCancelled = reject; });
+    const cancelled = new Promise<never>((_, reject) => {
+      rejectCancelled = reject;
+    });
     const stopWaiting = () => rejectCancelled(controller.signal.reason);
     controller.signal.addEventListener("abort", stopWaiting, { once: true });
     if (controller.signal.aborted) stopWaiting();
@@ -87,10 +112,17 @@ export class PluginNetworkRequests {
       // openStream is a separate operation from reads. fetch retains its caller
       // cancellation below, while the stream has explicit close + absolute TTL.
       entry.detach();
-      return { id: entry.id, status: response.status, statusText: response.statusText,
-        url: response.url, redirected: response.redirected, headers: [...response.headers], expiresAt };
+      return {
+        id: entry.id,
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        redirected: response.redirected,
+        headers: [...response.headers],
+        expiresAt,
+      };
     } catch (error) {
-      const failure = entry.closed ? entry.error ?? error : pluginNetworkError(error);
+      const failure = entry.closed ? (entry.error ?? error) : pluginNetworkError(error);
       void this.retire(entry, failure);
       throw failure;
     } finally {
@@ -103,23 +135,32 @@ export class PluginNetworkRequests {
     const info = await this.open(initial, undefined, MAX_PLUGIN_NETWORK_BODY_BYTES, retry);
     const entry = this.entries.get(info.id);
     if (!entry) throw new AppError("plugin/network-closed", "Network response has already closed");
-    const abort = () => { void this.retire(entry, pluginNetworkAbort(initial.signal.reason)); };
+    const abort = () => {
+      void this.retire(entry, pluginNetworkAbort(initial.signal.reason));
+    };
     initial.signal.addEventListener("abort", abort, { once: true });
     entry.detach = () => initial.signal.removeEventListener("abort", abort);
     if (initial.signal.aborted) abort();
     this.assertOpen(entry);
     let offset = 0;
-    const body = entry.reader ? new ReadableStream<Uint8Array>({
-      pull: async controller => {
-        try {
-          const chunk = await this.read(info.id, offset);
-          offset += chunk.bytes.byteLength;
-          if (chunk.done) controller.close();
-          else controller.enqueue(new Uint8Array(chunk.bytes));
-        } catch (error) { controller.error(error); }
-      },
-      cancel: () => this.close(info.id),
-    }, { highWaterMark: 0 }) : null;
+    const body = entry.reader
+      ? new ReadableStream<Uint8Array>(
+          {
+            pull: async (controller) => {
+              try {
+                const chunk = await this.read(info.id, offset);
+                offset += chunk.bytes.byteLength;
+                if (chunk.done) controller.close();
+                else controller.enqueue(new Uint8Array(chunk.bytes));
+              } catch (error) {
+                controller.error(error);
+              }
+            },
+            cancel: () => this.close(info.id),
+          },
+          { highWaterMark: 0 },
+        )
+      : null;
     if (!body) await this.close(info.id);
     const response = new Response(body, { status: info.status, statusText: info.statusText, headers: info.headers });
     Object.defineProperties(response, { url: { value: info.url }, redirected: { value: info.redirected } });
@@ -128,24 +169,48 @@ export class PluginNetworkRequests {
 
   read(id: string, offset: number, maxBytes = 64 * 1024): Promise<PluginNetworkChunk> {
     const entry = this.entries.get(id);
-    if (!entry) return Promise.reject(new AppError("plugin/network-closed", "Network response is closed or belongs to another activation"));
+    if (!entry)
+      return Promise.reject(
+        new AppError("plugin/network-closed", "Network response is closed or belongs to another activation"),
+      );
     try {
       this.assertOpen(entry);
-      if (!Number.isSafeInteger(offset) || offset !== entry.offset || !Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > this.limits.maxChunkBytes) {
-        throw new AppError("plugin/network-read-invalid", "Network reads require the next offset and a valid chunk size");
+      if (
+        !Number.isSafeInteger(offset) ||
+        offset !== entry.offset ||
+        !Number.isSafeInteger(maxBytes) ||
+        maxBytes < 1 ||
+        maxBytes > this.limits.maxChunkBytes
+      ) {
+        throw new AppError(
+          "plugin/network-read-invalid",
+          "Network reads require the next offset and a valid chunk size",
+        );
       }
-      if (entry.read) throw new AppError("plugin/network-busy", "A read is already pending for this response", { retryable: true });
-    } catch (error) { return Promise.reject(error); }
+      if (entry.read)
+        throw new AppError("plugin/network-busy", "A read is already pending for this response", { retryable: true });
+    } catch (error) {
+      return Promise.reject(error);
+    }
     const pending = this.readNext(entry, maxBytes);
     entry.read = pending;
-    void pending.then(() => { entry.read = undefined; }, () => { entry.read = undefined; });
+    void pending.then(
+      () => {
+        entry.read = undefined;
+      },
+      () => {
+        entry.read = undefined;
+      },
+    );
     return pending;
   }
 
   private async readNext(entry: Entry, maxBytes: number): Promise<PluginNetworkChunk> {
     try {
       while (entry.buffered.byteLength === 0) {
-        const next: ReadableStreamReadResult<Uint8Array> = entry.reader ? await entry.reader.read() : { done: true, value: undefined };
+        const next: ReadableStreamReadResult<Uint8Array> = entry.reader
+          ? await entry.reader.read()
+          : { done: true, value: undefined };
         if (!next.done) this.received(next.value.byteLength);
         this.assertOpen(entry);
         if (next.done) {
@@ -166,7 +231,7 @@ export class PluginNetworkRequests {
       entry.offset += size;
       return { offset, bytes: bytes.buffer, done: false };
     } catch (error) {
-      const failure = entry.closed ? entry.error ?? error : pluginNetworkError(error);
+      const failure = entry.closed ? (entry.error ?? error) : pluginNetworkError(error);
       void this.retire(entry, failure);
       throw failure;
     }
@@ -178,7 +243,8 @@ export class PluginNetworkRequests {
   }
 
   private assertOpen(entry: Entry): void {
-    if (!entry.closed && Date.now() >= entry.expiresAt) void this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired"));
+    if (!entry.closed && Date.now() >= entry.expiresAt)
+      void this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired"));
     if (entry.closed) throw entry.error ?? new AppError("plugin/network-closed", "Network response is closed");
     this.signal.throwIfAborted();
     entry.controller.signal.throwIfAborted();
@@ -196,25 +262,27 @@ export class PluginNetworkRequests {
     // cancellation handlers against that released resource a second time.
     if (!completed) entry.controller.abort(entry.error);
     // Keep the slot until even an abort-ignoring native operation has settled.
-    const cleanup = Promise.resolve().then(async () => {
-      // A failed opening is reported to open()'s caller; here only a live body needs releasing.
-      const response = await entry.opening.catch(() => undefined);
-      try {
-        if (!completed) {
-          if (entry.reader) await entry.reader.cancel(entry.error);
-          else await response?.body?.cancel(entry.error);
+    const cleanup = Promise.resolve()
+      .then(async () => {
+        // A failed opening is reported to open()'s caller; here only a live body needs releasing.
+        const response = await entry.opening.catch(() => undefined);
+        try {
+          if (!completed) {
+            if (entry.reader) await entry.reader.cancel(entry.error);
+            else await response?.body?.cancel(entry.error);
+          }
+        } catch {
+          // Aborting native fetch may already have errored and disposed its body.
+        } finally {
+          await entry.read?.catch(() => {}); // Read errors are delivered to their caller.
+          entry.reader?.releaseLock();
         }
-      } catch {
-        // Aborting native fetch may already have errored and disposed its body.
-      } finally {
-        await entry.read?.catch(() => {}); // Read errors are delivered to their caller.
-        entry.reader?.releaseLock();
-      }
-    }).finally(() => {
-      entry.buffered = new Uint8Array(0);
-      this.entries.delete(entry.id);
-      hostRequests--;
-    });
+      })
+      .finally(() => {
+        entry.buffered = new Uint8Array(0);
+        this.entries.delete(entry.id);
+        hostRequests--;
+      });
     entry.cleanup = cleanup;
     this.trackCleanup(cleanup);
     return cleanup;

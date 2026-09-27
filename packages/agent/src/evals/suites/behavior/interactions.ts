@@ -18,10 +18,7 @@ function bookStateAssessment(
   const books = Array.isArray(state.books) ? state.books : [];
   const book = books.find(
     (entry): entry is JsonObject =>
-      entry !== null &&
-      typeof entry === "object" &&
-      !Array.isArray(entry) &&
-      entry.id === bookId,
+      entry !== null && typeof entry === "object" && !Array.isArray(entry) && entry.id === bookId,
   );
   const passed =
     expectation === "absent"
@@ -34,9 +31,7 @@ function bookStateAssessment(
       id: `state.book.${expectation}`,
       category: "state",
       passed,
-      message: passed
-        ? `book state is ${expectation}`
-        : `book state was expected to be ${expectation}`,
+      message: passed ? `book state is ${expectation}` : `book state was expected to be ${expectation}`,
       expected: { bookId, state: expectation },
       actual: books,
     },
@@ -173,9 +168,7 @@ export const interactionsEvalSuite: EvalSuite<AgentEvalScenario> = {
         tools: { required: ["list_books"], noErrors: true },
       },
       criteria: { answerMustContainCjk: true },
-      rubric: [
-        "The entire answer is written in Chinese, apart from untranslatable book titles",
-      ],
+      rubric: ["The entire answer is written in Chinese, apart from untranslatable book titles"],
       evaluate: (observation) => {
         const cjk = /[一-鿿]/.test(observation.answer);
         return combineAssessments(

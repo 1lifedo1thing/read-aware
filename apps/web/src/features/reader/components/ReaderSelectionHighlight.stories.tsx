@@ -48,9 +48,8 @@ const meta = {
         style={{ backgroundColor: page.bg, color: page.text }}
       >
         <p>
-          I was the shadow of the waxwing slain by the false azure in the
-          windowpane; I was the smudge of ashen fluff — and I lived on, flew on,
-          in the reflected sky.
+          I was the shadow of the waxwing slain by the false azure in the windowpane; I was the smudge of ashen fluff —
+          and I lived on, flew on, in the reflected sky.
         </p>
         <Story />
       </div>

@@ -37,10 +37,13 @@ export function ChatMessageItem({
     const hasText = message.content.trim().length > 0;
     return (
       <div className="group/message flex flex-col items-end gap-1.5">
-        {message.attachments?.map((attachment, i) => (
-          attachment.kind === "image" ? <ChatImageAttachment key={i} attachment={attachment} />
-            : <AttachmentChip key={i} attachment={attachment} className="max-w-[90%]" />
-        ))}
+        {message.attachments?.map((attachment, i) =>
+          attachment.kind === "image" ? (
+            <ChatImageAttachment key={i} attachment={attachment} />
+          ) : (
+            <AttachmentChip key={i} attachment={attachment} className="max-w-[90%]" />
+          ),
+        )}
         {/* Your own turn is content too — it sizes with the reply below it,
             not with the chrome. */}
         {hasText && (
@@ -48,11 +51,7 @@ export function ChatMessageItem({
             {message.content}
           </div>
         )}
-        <ChatMessageActions
-          text={hasText ? message.content : undefined}
-          onRetry={onRetry}
-          align="end"
-        />
+        <ChatMessageActions text={hasText ? message.content : undefined} onRetry={onRetry} align="end" />
       </div>
     );
   }
@@ -94,26 +93,16 @@ export function ChatMessageItem({
           return <ChatInteractionPrompt key={part.id} part={part} />;
         }
         if (part.type === "thinking") {
-          return (
-            <ChatThinking
-              key={index}
-              text={part.text}
-              streaming={streaming && part === lastPart}
-            />
-          );
+          return <ChatThinking key={index} text={part.text} streaming={streaming && part === lastPart} />;
         }
         return (
           <div key={index} className="max-w-full">
             <Markdown>{part.text}</Markdown>
-            {streaming && part === lastPart && (
-              <span className="ra-chat-caret" aria-hidden="true" />
-            )}
+            {streaming && part === lastPart && <span className="ra-chat-caret" aria-hidden="true" />}
           </div>
         );
       })}
-      {message.error && (
-        <ChatMessageError code={message.errorCode} onRetry={onRetry} />
-      )}
+      {message.error && <ChatMessageError code={message.errorCode} onRetry={onRetry} />}
       {!streaming && (
         <ChatMessageActions
           text={message.content || undefined}

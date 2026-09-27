@@ -2,11 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { buildProgressMarks, findMarkAt, pageAtFraction } from "./reader-progress";
 import type { TocEntry } from "./reader-types";
 
-const entry = (
-  label: string,
-  fraction: number | undefined,
-  depth = 0,
-): TocEntry => ({
+const entry = (label: string, fraction: number | undefined, depth = 0): TocEntry => ({
   id: label,
   href: `${label}.xhtml`,
   label,
@@ -17,37 +13,25 @@ const entry = (
 
 describe("buildProgressMarks", () => {
   test("sorts marks by position and drops unplaced entries", () => {
-    expect(
-      buildProgressMarks([
-        entry("Two", 0.5),
-        entry("Unplaced", undefined),
-        entry("One", 0.1),
-      ]),
-    ).toEqual([
+    expect(buildProgressMarks([entry("Two", 0.5), entry("Unplaced", undefined), entry("One", 0.1)])).toEqual([
       { fraction: 0.1, label: "One" },
       { fraction: 0.5, label: "Two" },
     ]);
   });
 
   test("chapters sharing a spine file collapse onto the first of them", () => {
-    expect(
-      buildProgressMarks([entry("Chapter I", 0.25), entry("Chapter II", 0.25, 1)]),
-    ).toEqual([{ fraction: 0.25, label: "Chapter I" }]);
+    expect(buildProgressMarks([entry("Chapter I", 0.25), entry("Chapter II", 0.25, 1)])).toEqual([
+      { fraction: 0.25, label: "Chapter I" },
+    ]);
   });
 
   test("clamps fractions the engine reports outside the book", () => {
-    expect(buildProgressMarks([entry("Runaway", 1.0000001)])).toEqual([
-      { fraction: 1, label: "Runaway" },
-    ]);
+    expect(buildProgressMarks([entry("Runaway", 1.0000001)])).toEqual([{ fraction: 1, label: "Runaway" }]);
   });
 });
 
 describe("findMarkAt", () => {
-  const marks = buildProgressMarks([
-    entry("Front matter", 0),
-    entry("One", 0.2),
-    entry("Two", 0.6),
-  ]);
+  const marks = buildProgressMarks([entry("Front matter", 0), entry("One", 0.2), entry("Two", 0.6)]);
 
   test("returns the mark a position falls in", () => {
     expect(findMarkAt(marks, 0.4)?.label).toBe("One");

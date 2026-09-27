@@ -25,37 +25,32 @@ export const Route = createFileRoute("/zh/epub-reader-for-android")({
       <h2>读自己的文件，不必进入书店</h2>
       <p>
         ReadAware 直接读取 EPUB、MOBI、AZW3、FB2、PDF、TXT、HTML、CBZ 和
-        CBR，无需转换格式。书架、划线、笔记和阅读进度保存在设备上；没有广告，也不需要为了打开一本书注册账号。受
-        DRM 保护的书籍不支持导入。
+        CBR，无需转换格式。书架、划线、笔记和阅读进度保存在设备上；没有广告，也不需要为了打开一本书注册账号。受 DRM
+        保护的书籍不支持导入。
       </p>
       <AndroidReaderPlate locale="zh" />
       <h2>安装前先看设备要求</h2>
       <p>
-        当前 APK 适用于 Android 7.0（API 24）及以上的 ARM64 设备，不提供 32 位
-        ARM 或 x86 安装包。旧系统还需要保持 Android System WebView
-        更新；系统版本满足最低要求，并不代表旧 WebView 已支持全部阅读功能。
+        当前 APK 适用于 Android 7.0（API 24）及以上的 ARM64 设备，不提供 32 位 ARM 或 x86 安装包。旧系统还需要保持
+        Android System WebView 更新；系统版本满足最低要求，并不代表旧 WebView 已支持全部阅读功能。
       </p>
       <p>
-        请从<a href={RELEASES_URL}>官方 GitHub Release</a>下载签名
-        APK。打开安装包时，Android
+        请从<a href={RELEASES_URL}>官方 GitHub Release</a>下载签名 APK。打开安装包时，Android
         可能要求允许当前浏览器或文件管理器安装未知来源应用。只为你确认来自官方的安装包启用该权限，安装后可关闭。详细步骤见
         <Link to="/zh/docs/install">安装指南</Link>。
       </p>
       <h2>手机与电脑，接着读同一段</h2>
       <p>
-        可选同步使用端到端加密，传输书籍、批注、笔记和阅读进度。免费账户有 50 MB
-        同步额度，Sync 付费方案扩容；Pro 和 Max 还包含内置
-        AI。请妥善保管加密口令，服务端无法代你恢复。桌面端支持
+        可选同步使用端到端加密，传输书籍、批注、笔记和阅读进度。免费账户有 50 MB 同步额度，Sync 付费方案扩容；Pro 和 Max
+        还包含内置 AI。请妥善保管加密口令，服务端无法代你恢复。桌面端支持
         <Link to="/zh/epub-reader-for-windows">Windows</Link>、macOS 和 Linux。
       </p>
       <h2>本地阅读与远程 AI 分开选择</h2>
       <p>
-        离线阅读不需要订阅。AI 功能需要联网，可自带 API
-        Key，也可使用付费方案的内置
-        AI；相关选文、问题和上下文会发送给模型服务商。自带 Key 不向 ReadAware 付
-        AI 订阅费，但服务商可能收取调用费用。参见
-        <Link to="/zh/pricing">价格与额度</Link>及
-        <Link to="/zh/privacy">隐私政策</Link>。
+        离线阅读不需要订阅。AI 功能需要联网，可自带 API Key，也可使用付费方案的内置
+        AI；相关选文、问题和上下文会发送给模型服务商。自带 Key 不向 ReadAware 付 AI
+        订阅费，但服务商可能收取调用费用。参见
+        <Link to="/zh/pricing">价格与额度</Link>及<Link to="/zh/privacy">隐私政策</Link>。
       </p>
     </TopicPage>
   ),

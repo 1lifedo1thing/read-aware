@@ -100,12 +100,8 @@ export function BookRow({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <span className="block truncate font-serif text-sm font-medium text-fg">
-            {book.title}
-          </span>
-          <span className="mt-0.5 block truncate font-sans text-[13px] text-fg-muted">
-            {book.author}
-          </span>
+          <span className="block truncate font-serif text-sm font-medium text-fg">{book.title}</span>
+          <span className="mt-0.5 block truncate font-sans text-[13px] text-fg-muted">{book.author}</span>
         </div>
         <div className="hidden w-40 shrink-0 sm:block">
           {book.progressPercent > 0 ? (

@@ -58,11 +58,7 @@ function normalizeIpcFailure(command: string, raw: unknown): IpcError {
 }
 
 /** Drop-in replacement for Tauri's `invoke` that never rejects with a bare string. */
-export async function invoke<T>(
-  command: string,
-  args?: InvokeArgs,
-  options?: InvokeOptions,
-): Promise<T> {
+export async function invoke<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<T> {
   try {
     return await tauriInvoke<T>(command, args, options);
   } catch (raw) {

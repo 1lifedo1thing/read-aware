@@ -70,6 +70,7 @@ export function releaseVelocity(samples: ReadonlyArray<{ t: number; at: number }
 export function shouldDismiss(offset: number, velocity: number, extent: number, direction: SwipeDirection): boolean {
   const travel = offset * direction;
   const speed = velocity * direction;
-  return travel > extent * DISMISS_DISTANCE_RATIO
-    || (travel > DISMISS_MIN_TRAVEL_PX && speed > DISMISS_VELOCITY_PX_PER_MS);
+  return (
+    travel > extent * DISMISS_DISTANCE_RATIO || (travel > DISMISS_MIN_TRAVEL_PX && speed > DISMISS_VELOCITY_PX_PER_MS)
+  );
 }

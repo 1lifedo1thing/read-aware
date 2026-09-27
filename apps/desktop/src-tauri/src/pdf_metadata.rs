@@ -126,7 +126,10 @@ pub fn extract_pdf_metadata_from_path(path: &Path) -> Result<BookMetadata, Strin
                 }
                 match page_thumbnail_png(page) {
                     Ok(Some(png)) => {
-                        cover = Some(CoverImage { bytes: png, mime: "image/png".to_owned() });
+                        cover = Some(CoverImage {
+                            bytes: png,
+                            mime: "image/png".to_owned(),
+                        });
                         break;
                     }
                     Ok(None) => {}
@@ -155,7 +158,6 @@ pub fn extract_pdf_metadata_from_path(path: &Path) -> Result<BookMetadata, Strin
 pub fn extract_pdf_metadata_from_path(_path: &Path) -> Result<BookMetadata, String> {
     Ok(BookMetadata::default())
 }
-
 
 #[cfg(all(test, target_os = "macos"))]
 mod tests {

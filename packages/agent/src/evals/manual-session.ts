@@ -55,9 +55,7 @@ function noMemoryComplete(model: Model<Api>, _context: Context): Promise<Assista
  * Interactive qualitative-eval session. It reuses a registered scenario's
  * world state and reading position, but the reviewer supplies every user turn.
  */
-export async function createManualEvalSession(
-  options: ManualEvalSessionOptions,
-): Promise<ManualEvalSession> {
+export async function createManualEvalSession(options: ManualEvalSessionOptions): Promise<ManualEvalSession> {
   const thinkingLevel = options.thinkingLevel ?? "medium";
   const registry = evalProviderRegistry();
   const resolved = resolveEvalModel(registry, options.provider, options.modelId);
@@ -74,11 +72,7 @@ export async function createManualEvalSession(
 
   let activeRound = 0;
   let modelRequests: AgentEvalObservation["modelRequests"] = [];
-  const tracedStreamFn: StreamFn = (
-    model: Model<Api>,
-    modelContext: Context,
-    streamOptions?: SimpleStreamOptions,
-  ) => {
+  const tracedStreamFn: StreamFn = (model: Model<Api>, modelContext: Context, streamOptions?: SimpleStreamOptions) => {
     activeRound += 1;
     modelRequests.push(captureModelRequest(1, activeRound, model, modelContext, streamOptions));
     return baseStreamFn(model, modelContext, streamOptions);
@@ -116,13 +110,16 @@ export async function createManualEvalSession(
       const turn: AgentEvalTurn = {
         text,
         ...(anchorTurn?.readingCursor ? { readingCursor: anchorTurn.readingCursor } : {}),
-        ...(options.inheritSelection && anchorTurn?.attachments?.length
-          ? { attachments: anchorTurn.attachments }
-          : {}),
+        ...(options.inheritSelection && anchorTurn?.attachments?.length ? { attachments: anchorTurn.attachments } : {}),
       };
       const chunks: AgentEvalObservation["turns"][number]["chunks"] = [];
-      const initialState = options.scenario.observeState ? toJsonValue(await options.scenario.observeState(setupContext)) : undefined;
-      const originalSources = structuredClone({ books: setupContext.stores.books, chapters: setupContext.stores.chapters });
+      const initialState = options.scenario.observeState
+        ? toJsonValue(await options.scenario.observeState(setupContext))
+        : undefined;
+      const originalSources = structuredClone({
+        books: setupContext.stores.books,
+        chapters: setupContext.stores.chapters,
+      });
       const startedAt = performance.now();
       // A manual session is a continuing chat: the session plays the host that
       // owns the transcript (ConversationPort), so follow-ups see prior turns.
@@ -132,12 +129,24 @@ export async function createManualEvalSession(
       await thread.flushBackgroundWork();
       const state = await options.scenario.observeState?.(setupContext);
       const observation = buildAgentObservation({
-        turns: [{ input: turn, chunks, stateBefore: initialState, stateAfter: state === undefined ? undefined : toJsonValue(state) }],
+        turns: [
+          {
+            input: turn,
+            chunks,
+            stateBefore: initialState,
+            stateAfter: state === undefined ? undefined : toJsonValue(state),
+          },
+        ],
         modelRequests,
         wallTimeMs: performance.now() - startedAt,
         state,
       });
-      observation.reviewEvidence = captureReviewEvidence({ ...options.scenario, turns: [turn] }, originalSources, observation, initialState);
+      observation.reviewEvidence = captureReviewEvidence(
+        { ...options.scenario, turns: [turn] },
+        originalSources,
+        observation,
+        initialState,
+      );
       return observation;
     },
     dispose: () => {

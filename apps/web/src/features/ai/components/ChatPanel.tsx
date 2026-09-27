@@ -48,8 +48,7 @@ export function ChatPanel({
   useReadingAiSurface(bookId, conversation);
   const askAiRequest = useAtomValue(askAiRequestAtom);
   const lastConsumedIdRef = useRef<string | null>(null);
-  const [pendingAttachment, setPendingAttachment] =
-    useState<ChatSelectionAttachment | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<ChatSelectionAttachment | null>(null);
   const composerRef = useRef<ChatComposerHandle | null>(null);
   const turnRequests = useConversationTurnRequests({ kind: "book", id: bookId }, conversation, composerRef);
   const [transcriptShown, setTranscriptShown] = useState(revealed);

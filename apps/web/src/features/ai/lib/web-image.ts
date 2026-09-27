@@ -16,7 +16,13 @@ export async function loadWebImage(url: string, transport: AgentFetch, signal: A
   const combined = controller.signal;
   try {
     combined.throwIfAborted();
-    const response = await transport(safe, { method: "GET", credentials: "omit", referrerPolicy: "no-referrer", redirect: "error", signal: combined });
+    const response = await transport(safe, {
+      method: "GET",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      redirect: "error",
+      signal: combined,
+    });
     const type = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
     if (!response.ok || !type || !["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"].includes(type)) {
       await response.body?.cancel();
@@ -39,7 +45,9 @@ export async function loadWebImage(url: string, transport: AgentFetch, signal: A
       if (!length) throw new AppError("search/fetch-failed", "Image response is empty");
       return new Blob(parts, { type });
     } finally {
-      await reader.cancel().catch(() => { /* Transfer is already complete or failing. */ });
+      await reader.cancel().catch(() => {
+        /* Transfer is already complete or failing. */
+      });
       reader.releaseLock();
     }
   } finally {

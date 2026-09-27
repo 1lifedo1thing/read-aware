@@ -15,7 +15,11 @@ pub(crate) fn book_context_snapshot_inner(
     book_context_snapshot_versioned(conn, book_id, None)
 }
 
-fn book_context_snapshot_versioned(conn: &mut Connection, book_id: &str, version: Option<&str>) -> Result<Value, CommandError> {
+fn book_context_snapshot_versioned(
+    conn: &mut Connection,
+    book_id: &str,
+    version: Option<&str>,
+) -> Result<Value, CommandError> {
     if book_id.trim().is_empty() || book_id.encode_utf16().count() > 256 || book_id.contains('\0') {
         return Err(invalid());
     }
@@ -52,8 +56,17 @@ fn book_context_snapshot_versioned(conn: &mut Connection, book_id: &str, version
         ));
     }
     let file_version = super::book_digest::file_content_version(&tx, book_id)?;
-    if book.3 != "virtual" && version.is_some() && version != file_version.as_deref() { return Err(CommandError::new("memory/conflict", "Context source changed")); }
-    let version = if book.3 == "virtual" { version } else { file_version.as_deref() };
+    if book.3 != "virtual" && version.is_some() && version != file_version.as_deref() {
+        return Err(CommandError::new(
+            "memory/conflict",
+            "Context source changed",
+        ));
+    }
+    let version = if book.3 == "virtual" {
+        version
+    } else {
+        file_version.as_deref()
+    };
     let scope = format!("book:{book_id}");
     // Bound the complete source set before materializing text, never return a prefix.
     let (count, bytes): (i64, i64) = tx.query_row(
@@ -110,7 +123,11 @@ pub async fn book_context_snapshot(
     super::blocking("book_context_snapshot", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
-        if content_version.is_some() { book_context_snapshot_versioned(&mut conn, &book_id, content_version.as_deref()) } else { book_context_snapshot_inner(&mut conn, &book_id) }
+        if content_version.is_some() {
+            book_context_snapshot_versioned(&mut conn, &book_id, content_version.as_deref())
+        } else {
+            book_context_snapshot_inner(&mut conn, &book_id)
+        }
     })
     .await
 }

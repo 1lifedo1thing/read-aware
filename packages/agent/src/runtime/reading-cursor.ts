@@ -101,9 +101,7 @@ export function formatPromptTurn(
 ): string {
   const authoredTurn = formatUserTurn(content, attachments);
   const anchor = `[host note: reply entirely in ${replyLanguageAnchor(content)}]`;
-  const prefix = [cursor ? formatReadingCursor(cursor) : undefined, groundingContext]
-    .filter(Boolean)
-    .join("\n\n");
+  const prefix = [cursor ? formatReadingCursor(cursor) : undefined, groundingContext].filter(Boolean).join("\n\n");
   if (!prefix) return `${authoredTurn}\n\n${anchor}`;
   return `${prefix}\n\nReader turn:\n${authoredTurn}\n\n${anchor}`;
 }

@@ -13,5 +13,7 @@ export async function applyOnboarding(
   decision: { submissionId: string; expectedRevision: string },
 ) {
   const candidate = normalizeOnboardingChange({ ...decision, ...prepareOnboardingAnswers(answers) });
-  return runMemoryBuild(deps, operation => operation.commit(deps.profile.completeOnboarding)(candidate, operation.signal));
+  return runMemoryBuild(deps, (operation) =>
+    operation.commit(deps.profile.completeOnboarding)(candidate, operation.signal),
+  );
 }

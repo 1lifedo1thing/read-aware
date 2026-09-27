@@ -22,10 +22,19 @@ describe("runPluginContribution", () => {
     const owner = new AbortController();
     const registry = new PluginCallbackRegistry();
     const notices: unknown[] = [];
-    setPluginToastHandler(value => notices.push(value));
+    setPluginToastHandler((value) => notices.push(value));
     let fail!: (reason: unknown) => void;
-    const run = decodePluginCallbacks(registry.encode(() => new Promise((_, reject) => { fail = reject; })),
-      (handle, args) => registry.invoke(handle, args), undefined, owner.signal) as () => Promise<PluginViewResult>;
+    const run = decodePluginCallbacks(
+      registry.encode(
+        () =>
+          new Promise((_, reject) => {
+            fail = reject;
+          }),
+      ),
+      (handle, args) => registry.invoke(handle, args),
+      undefined,
+      owner.signal,
+    ) as () => Promise<PluginViewResult>;
     const pending = runPluginContribution("retired", "Retired", run);
     owner.abort();
     fail(new Error("Worker stopped"));
@@ -37,12 +46,29 @@ describe("runPluginContribution", () => {
   test("closed pending dialog releases late callback graphs without showing their toast", async () => {
     const registry = new PluginCallbackRegistry();
     const notices: unknown[] = [];
-    setPluginToastHandler(value => notices.push(value));
+    setPluginToastHandler((value) => notices.push(value));
     let finish!: (result: PluginViewResult) => void;
-    const completion = runPluginContribution("late", "Late", () => new Promise(resolve => { finish = resolve; }), { presentation: "dialog" });
+    const completion = runPluginContribution(
+      "late",
+      "Late",
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+      { presentation: "dialog" },
+    );
     closePluginDialog(store.get(pluginDialogAtom)!.requestId);
-    const wire = registry.encode({ view: { kind: "detail", content: [], actions: [{ id: "run", label: "Run", run: () => null }] }, toast: "late" });
-    finish(decodePluginCallbacks(wire, (handle, args) => registry.invoke(handle, args), handles => registry.release(handles)) as PluginViewResult);
+    const wire = registry.encode({
+      view: { kind: "detail", content: [], actions: [{ id: "run", label: "Run", run: () => null }] },
+      toast: "late",
+    });
+    finish(
+      decodePluginCallbacks(
+        wire,
+        (handle, args) => registry.invoke(handle, args),
+        (handles) => registry.release(handles),
+      ) as PluginViewResult,
+    );
     await completion;
     expect(registry.size).toBe(0);
     expect(notices).toEqual([]);
@@ -50,9 +76,15 @@ describe("runPluginContribution", () => {
 
   test("dialog owns unrendered results and only its own Worker generation can close it", async () => {
     const registry = new PluginCallbackRegistry();
-    const first = new AbortController(), second = new AbortController();
-    const view = (owner: AbortSignal) => decodePluginCallbacks(registry.encode({ kind: "detail", content: [], actions: [{ id: "run", label: "Run", run: () => null }] }),
-      (handle, args) => registry.invoke(handle, args), handles => registry.release(handles), owner) as PluginView;
+    const first = new AbortController(),
+      second = new AbortController();
+    const view = (owner: AbortSignal) =>
+      decodePluginCallbacks(
+        registry.encode({ kind: "detail", content: [], actions: [{ id: "run", label: "Run", run: () => null }] }),
+        (handle, args) => registry.invoke(handle, args),
+        (handles) => registry.release(handles),
+        owner,
+      ) as PluginView;
     openPluginDialog({ pluginId: "same", pluginName: "Same", view: view(first.signal)! });
     const next = openPluginDialog({ pluginId: "same", pluginName: "Same", view: view(second.signal)! });
     expect(registry.size).toBe(1);
@@ -67,8 +99,17 @@ describe("runPluginContribution", () => {
     const owner = new AbortController();
     const registry = new PluginCallbackRegistry();
     let finish!: (value: PluginViewResult) => void;
-    const run = decodePluginCallbacks(registry.encode(() => new Promise(resolve => { finish = resolve; })),
-      (handle, args) => registry.invoke(handle, args), undefined, owner.signal) as () => Promise<PluginViewResult>;
+    const run = decodePluginCallbacks(
+      registry.encode(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      ),
+      (handle, args) => registry.invoke(handle, args),
+      undefined,
+      owner.signal,
+    ) as () => Promise<PluginViewResult>;
     const pending = runPluginContribution("pending", "Pending", run, { presentation: "dialog" });
     owner.abort();
     expect(store.get(pluginDialogAtom)).toBeNull();
@@ -80,7 +121,10 @@ describe("runPluginContribution", () => {
     const completion = runPluginContribution(
       "dictionary",
       "Dictionary",
-      () => new Promise((resolve) => { finish = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
       { presentation: "dialog" },
     );
 
@@ -102,7 +146,10 @@ describe("runPluginContribution", () => {
     const completion = runPluginContribution(
       "dictionary",
       "Dictionary",
-      () => new Promise((resolve) => { finish = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
       { presentation: "dialog" },
     );
 

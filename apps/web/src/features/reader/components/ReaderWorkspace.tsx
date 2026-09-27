@@ -100,13 +100,14 @@ export function ReaderWorkspace({
   const { effective: readerSettings } = useReaderAppearance(selectedBook.id);
   const themeBg = useReaderPalette(readerSettings.theme).bg;
   const recovery = readerLoadError ? readerRecoveryAction(readerLoadError) : null;
-  const recoveryAction = recovery === "retry"
-    ? { label: t("tryAgain"), onClick: () => onRetryOpen(selectedBook) }
-    : recovery === "import"
-      ? { label: t("fileMissing.reimport"), onClick: onReimportBook }
-      : recovery === "settings"
-        ? { label: t("common:actions.openSettings"), onClick: onOpenSyncSettings }
-        : undefined;
+  const recoveryAction =
+    recovery === "retry"
+      ? { label: t("tryAgain"), onClick: () => onRetryOpen(selectedBook) }
+      : recovery === "import"
+        ? { label: t("fileMissing.reimport"), onClick: onReimportBook }
+        : recovery === "settings"
+          ? { label: t("common:actions.openSettings"), onClick: onOpenSyncSettings }
+          : undefined;
   // Only surface the source loader once opening is genuinely slow, so fast opens
   // show nothing (themed background) instead of a flashed line of text.
   const showSourceLoader = useDelayedFlag(!readerSource && !readerLoadError, 250);
@@ -209,14 +210,16 @@ export function ReaderWorkspace({
             <ReaderFailureView
               title={t("openErrorTitle")}
               bookTitle={selectedBook.title}
-              message={readerLoadError.kind === "generic" ? readerLoadError.message : t(`fileMissing.${readerLoadError.reason}`)}
+              message={
+                readerLoadError.kind === "generic"
+                  ? readerLoadError.message
+                  : t(`fileMissing.${readerLoadError.reason}`)
+              }
               action={recoveryAction}
               onBack={onCloseReader}
             />
           ) : (
-            showSourceLoader && (
-              <Spinner size="md" label={t("opening", { name: selectedBook.title })} />
-            )
+            showSourceLoader && <Spinner size="md" label={t("opening", { name: selectedBook.title })} />
           )}
         </div>
       )}

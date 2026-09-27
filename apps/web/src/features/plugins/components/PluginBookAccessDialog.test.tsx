@@ -17,9 +17,7 @@ test("keeps the access dialog busy while the host publishes the new grant", asyn
     navigator: dom.window.navigator,
     IS_REACT_ACT_ENVIRONMENT: true,
   };
-  const saved = new Map(
-    Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
-  );
+  const saved = new Map(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const [key, value] of Object.entries(globals)) {
     Object.defineProperty(globalThis, key, {
       configurable: true,
@@ -45,7 +43,9 @@ test("keeps the access dialog busy while the host publishes the new grant", asyn
           grant={grant}
           source="user"
           books={books}
-          onClose={() => { closed += 1; }}
+          onClose={() => {
+            closed += 1;
+          }}
           onSubmit={submit}
         />
       </StrictMode>,
@@ -54,28 +54,39 @@ test("keeps the access dialog busy while the host publishes the new grant", asyn
 
   try {
     await initI18n("en");
-    await act(async () => { render({ mode: "all" }); });
+    await act(async () => {
+      render({ mode: "all" });
+    });
     const buttons = () => [...dom.window.document.querySelectorAll<HTMLButtonElement>("button")];
     const save = () => dom.window.document.querySelector<HTMLButtonElement>("button[aria-busy]")!;
     const cancel = () => buttons().find((button) => button.textContent === "Cancel")!;
 
-    await act(async () => { save().click(); });
+    await act(async () => {
+      save().click();
+    });
     expect(save().disabled).toBe(true);
     expect(cancel().disabled).toBe(true);
     expect(save().textContent).toBe("Saving…");
 
     // updatePluginBookAccess publishes the new grant before its restart has
     // settled. That prop change must not clear the in-flight busy state.
-    await act(async () => { render({ mode: "book", bookId: "second" }); });
+    await act(async () => {
+      render({ mode: "book", bookId: "second" });
+    });
     expect(save().disabled).toBe(true);
     expect(cancel().disabled).toBe(true);
     expect(save().textContent).toBe("Saving…");
     expect(closed).toBe(0);
 
-    await act(async () => { pending.resolve(); await pending.promise; });
+    await act(async () => {
+      pending.resolve();
+      await pending.promise;
+    });
     expect(closed).toBe(1);
   } finally {
-    await act(async () => { root.unmount(); });
+    await act(async () => {
+      root.unmount();
+    });
     dom.window.close();
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);

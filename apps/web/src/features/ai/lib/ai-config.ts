@@ -72,12 +72,7 @@ export interface AIConfig {
 }
 
 import { localKV } from "../../../platform/local-store";
-import {
-  deleteSecret,
-  getSecret,
-  setSecret,
-  type SecretKey,
-} from "../../../platform/secret-store";
+import { deleteSecret, getSecret, setSecret, type SecretKey } from "../../../platform/secret-store";
 
 /**
  * One credential slot PER provider — switching providers must never clobber
@@ -130,14 +125,10 @@ type StoredAIConfig = Partial<AIConfig> & {
 export const DEFAULT_THINKING_LEVEL: ThinkingLevel = "medium";
 
 /** 存储层的路由偏好消毒：slug 去空白/小写，空对象归一成 undefined。 */
-function sanitizeOpenRouterRouting(
-  value: OpenRouterRoutingConfig | undefined,
-): OpenRouterRoutingConfig | undefined {
+function sanitizeOpenRouterRouting(value: OpenRouterRoutingConfig | undefined): OpenRouterRoutingConfig | undefined {
   if (!value || typeof value !== "object") return undefined;
   const sort =
-    value.sort === "price" || value.sort === "throughput" || value.sort === "latency"
-      ? value.sort
-      : undefined;
+    value.sort === "price" || value.sort === "throughput" || value.sort === "latency" ? value.sort : undefined;
   const order = Array.isArray(value.order)
     ? value.order
         .map((slug) => String(slug).trim().toLowerCase())
@@ -178,23 +169,18 @@ function readStored(strict = false): StoredAIConfig | null {
  * A provider's remembered settings, falling back to its defaults — what the
  * settings panel shows when the user switches to it.
  */
-export function getStoredProviderSettings(
-  provider: AIProvider,
-): ResolvedProviderSettings {
+export function getStoredProviderSettings(provider: AIProvider): ResolvedProviderSettings {
   const stored = readStored();
   const entry = stored?.models?.[provider];
   const legacy = stored?.provider === provider ? stored : undefined;
   const model = entry?.model ?? legacy?.model ?? DEFAULT_MODELS[provider] ?? "";
   const explicitFastModel = entry?.fastModel ?? legacy?.fastModel;
-  const hasSeparateFastModel = Boolean(
-    explicitFastModel && explicitFastModel !== model,
-  );
+  const hasSeparateFastModel = Boolean(explicitFastModel && explicitFastModel !== model);
   // Missing thinking fields in a remembered config mean the old implicit Off
   // default. A provider the user has never configured gets the new Medium
   // default instead, so existing users do not silently incur extra usage.
   const thinkingDefault = entry || legacy ? "off" : DEFAULT_THINKING_LEVEL;
-  const thinkingLevel =
-    entry?.thinkingLevel ?? legacy?.thinkingLevel ?? thinkingDefault;
+  const thinkingLevel = entry?.thinkingLevel ?? legacy?.thinkingLevel ?? thinkingDefault;
   const storedCustomApi = entry?.customApi ?? legacy?.customApi;
   // Existing Custom configurations used Responses implicitly. Preserve that
   // behavior; only a never-configured Custom provider starts on the more
@@ -206,23 +192,16 @@ export function getStoredProviderSettings(
       : DEFAULT_CUSTOM_OPENAI_API;
   return {
     model,
-    openRouterRouting:
-      provider === "openrouter"
-        ? sanitizeOpenRouterRouting(entry?.openRouterRouting)
-        : undefined,
+    openRouterRouting: provider === "openrouter" ? sanitizeOpenRouterRouting(entry?.openRouterRouting) : undefined,
     fastModel: hasSeparateFastModel ? (explicitFastModel ?? model) : model,
     thinkingLevel,
     fastThinkingLevel: hasSeparateFastModel
-      ? entry?.fastThinkingLevel ?? legacy?.fastThinkingLevel ?? thinkingDefault
+      ? (entry?.fastThinkingLevel ?? legacy?.fastThinkingLevel ?? thinkingDefault)
       : thinkingLevel,
     customBaseUrl: entry?.customBaseUrl ?? legacy?.customBaseUrl ?? "",
     customApi,
-    customSupportsThinking: Boolean(
-      entry?.customSupportsThinking ?? legacy?.customSupportsThinking,
-    ),
-    customMaxOutputTokens: positiveInteger(
-      entry?.customMaxOutputTokens ?? legacy?.customMaxOutputTokens,
-    ),
+    customSupportsThinking: Boolean(entry?.customSupportsThinking ?? legacy?.customSupportsThinking),
+    customMaxOutputTokens: positiveInteger(entry?.customMaxOutputTokens ?? legacy?.customMaxOutputTokens),
   };
 }
 
@@ -286,8 +265,7 @@ export function encodeAIConfig(config: AIConfig): string {
   const resolvedCustomMaxOutputTokens = positiveInteger(customMaxOutputTokens);
   // Merge this provider's settings into the map; other providers keep theirs.
   const models = { ...readStored()?.models };
-  const resolvedRouting =
-    provider === "openrouter" ? sanitizeOpenRouterRouting(openRouterRouting) : undefined;
+  const resolvedRouting = provider === "openrouter" ? sanitizeOpenRouterRouting(openRouterRouting) : undefined;
   models[provider] = {
     model,
     ...(resolvedRouting ? { openRouterRouting: resolvedRouting } : {}),
@@ -295,21 +273,13 @@ export function encodeAIConfig(config: AIConfig): string {
     // Persist Off explicitly now that new providers default to Medium. This
     // keeps a deliberate opt-out stable across provider switches and reloads.
     thinkingLevel: resolvedThinkingLevel,
-    fastThinkingLevel: hasSeparateFastModel
-      ? fastThinkingLevel ?? DEFAULT_THINKING_LEVEL
-      : resolvedThinkingLevel,
+    fastThinkingLevel: hasSeparateFastModel ? (fastThinkingLevel ?? DEFAULT_THINKING_LEVEL) : resolvedThinkingLevel,
     ...(provider === "custom"
       ? {
-          ...(customBaseUrl
-            ? { customBaseUrl: normalizeCustomOpenAIBaseUrl(customBaseUrl) }
-            : {}),
-          customApi: isCustomOpenAIApi(customApi)
-            ? customApi
-            : DEFAULT_CUSTOM_OPENAI_API,
+          ...(customBaseUrl ? { customBaseUrl: normalizeCustomOpenAIBaseUrl(customBaseUrl) } : {}),
+          customApi: isCustomOpenAIApi(customApi) ? customApi : DEFAULT_CUSTOM_OPENAI_API,
           customSupportsThinking: Boolean(customSupportsThinking),
-          ...(resolvedCustomMaxOutputTokens
-            ? { customMaxOutputTokens: resolvedCustomMaxOutputTokens }
-            : {}),
+          ...(resolvedCustomMaxOutputTokens ? { customMaxOutputTokens: resolvedCustomMaxOutputTokens } : {}),
         }
       : {}),
   };
@@ -345,20 +315,29 @@ export function clearAIConfig(origin: DomainActor = "user"): void {
 // A new BYO setup stays unselected until the user chooses a remote model.
 export const DEFAULT_MODELS: Record<AIProvider, string> = {
   readaware: DEFAULT_READAWARE_MODEL,
-  openai: "", anthropic: "", openrouter: "", zai: "", "zai-coding-cn": "",
-  google: "", deepseek: "", xai: "", groq: "", mistral: "", moonshotai: "",
-  "ollama-cloud": "", custom: "",
+  openai: "",
+  anthropic: "",
+  openrouter: "",
+  zai: "",
+  "zai-coding-cn": "",
+  google: "",
+  deepseek: "",
+  xai: "",
+  groq: "",
+  mistral: "",
+  moonshotai: "",
+  "ollama-cloud": "",
+  custom: "",
 };
 
 export type { ThinkingLevel };
 
-export const THINKING_LEVELS: ThinkingLevel[] = [
-  "off", "minimal", "low", "medium", "high", "xhigh", "max",
-];
+export const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 // A first-party service contract, not a BYO discovery list.
 export const SUBSCRIPTION_MODELS = READAWARE_MODEL_IDS.map((id) => ({
-  label: id, value: id,
+  label: id,
+  value: id,
 }));
 
 export const PROVIDER_LABELS: Record<AIProvider, string> = {

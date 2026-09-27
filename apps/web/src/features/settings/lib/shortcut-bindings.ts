@@ -34,7 +34,8 @@ export function normalizeShortcutBindings(parsed: unknown): ShortcutBindings {
   const result: ShortcutBindings = {};
   for (const [storedId, chord] of Object.entries(parsed)) {
     const id = LEGACY_IDS[storedId] ?? (storedId as ShortcutId);
-    if (!EDITABLE_SHORTCUTS.some(shortcut => shortcut.id === id) && !(id.startsWith("plugin:") && id.length > 7)) continue;
+    if (!EDITABLE_SHORTCUTS.some((shortcut) => shortcut.id === id) && !(id.startsWith("plugin:") && id.length > 7))
+      continue;
     if (!isChord(chord)) continue;
     if (LEGACY_IDS[storedId]) {
       if (result[id] === undefined) result[id] = chord;

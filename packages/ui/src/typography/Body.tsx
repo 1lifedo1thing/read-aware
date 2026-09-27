@@ -13,21 +13,7 @@ type BodyProps<T extends ElementType = "p"> = {
   size?: BodySize;
 } & Omit<ComponentPropsWithRef<T>, "as" | "size">;
 
-export function Body<T extends ElementType = "p">({
-  as,
-  size = "base",
-  className,
-  ...props
-}: BodyProps<T>) {
+export function Body<T extends ElementType = "p">({ as, size = "base", className, ...props }: BodyProps<T>) {
   const Tag = (as || "p") as ElementType;
-  return (
-    <Tag
-      className={cn(
-        "font-sans leading-body text-fg",
-        sizeClasses[size],
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <Tag className={cn("font-sans leading-body text-fg", sizeClasses[size], className)} {...props} />;
 }

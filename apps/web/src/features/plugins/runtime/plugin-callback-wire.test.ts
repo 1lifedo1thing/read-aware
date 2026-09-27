@@ -1,15 +1,32 @@
 import { expect, test } from "bun:test";
-import { decodePluginCallbacks, observePluginCallbackOwners, PluginCallbackRegistry, releasePluginCallbacks, type PluginCallbackWire } from "./plugin-callback-wire";
+import {
+  decodePluginCallbacks,
+  observePluginCallbackOwners,
+  PluginCallbackRegistry,
+  releasePluginCallbacks,
+  type PluginCallbackWire,
+} from "./plugin-callback-wire";
 
 test("overlapping owner watches using the same callback remain independently disposable", () => {
-  const owner = new AbortController(), registry = new PluginCallbackRegistry();
-  const view = decodePluginCallbacks(registry.encode({ kind: "markdown", markdown: "No callbacks" }), () => null, undefined, owner.signal);
+  const owner = new AbortController(),
+    registry = new PluginCallbackRegistry();
+  const view = decodePluginCallbacks(
+    registry.encode({ kind: "markdown", markdown: "No callbacks" }),
+    () => null,
+    undefined,
+    owner.signal,
+  );
   let retired = 0;
-  const close = () => { retired++; };
+  const close = () => {
+    retired++;
+  };
   const first = observePluginCallbackOwners(view, close);
   const second = observePluginCallbackOwners(view, close);
-  first(); first(); owner.abort();
-  expect(retired).toBe(1); second();
+  first();
+  first();
+  owner.abort();
+  expect(retired).toBe(1);
+  second();
 });
 
 function roundtrip<T>(registry: PluginCallbackRegistry, value: T): T {
@@ -23,10 +40,17 @@ test("returned graph ownership releases aliases once without retiring other resu
   const raw = { fn, map: new Map<unknown, unknown>([[fn, fn]]), self: null as unknown };
   raw.self = raw;
   let releases = 0;
-  const decode = () => decodePluginCallbacks(structuredClone(registry.encode(raw)),
-    (handle, args) => registry.invoke(handle, args),
-    handles => { releases += handles.length; registry.release(handles); }) as typeof raw;
-  const first = decode(), second = decode();
+  const decode = () =>
+    decodePluginCallbacks(
+      structuredClone(registry.encode(raw)),
+      (handle, args) => registry.invoke(handle, args),
+      (handles) => {
+        releases += handles.length;
+        registry.release(handles);
+      },
+    ) as typeof raw;
+  const first = decode(),
+    second = decode();
   releasePluginCallbacks(first);
   releasePluginCallbacks(first);
   expect(releases).toBe(1);
@@ -42,7 +66,9 @@ test("returned graph ownership releases aliases once without retiring other resu
 test("business objects cannot become callbacks or disposal instructions", () => {
   const registry = new PluginCallbackRegistry();
   const value = {
-    __fn: "h1", __disposable: "d1", data: { callbacks: [{ ref: {}, handle: "h1" }] },
+    __fn: "h1",
+    __disposable: "d1",
+    data: { callbacks: [{ ref: {}, handle: "h1" }] },
     actual: (text: string) => text.toUpperCase(),
   };
   const received = roundtrip(registry, value);
@@ -59,7 +85,8 @@ test("identity metadata supports cycles, repeated functions, map keys and sets",
   const value = { self: null as unknown, fn, same: fn, map: new Map<unknown, unknown>(), set: new Set<unknown>() };
   value.self = value;
   value.map.set(fn, value);
-  value.set.add(fn); value.set.add(value);
+  value.set.add(fn);
+  value.set.add(value);
   const received = roundtrip(registry, value);
   expect(received.self).toBe(received);
   expect(received.fn).toBe(received.same);
@@ -79,7 +106,8 @@ test("null-prototype records, sparse arrays and special keys remain inert data",
   const array = new Array(4);
   array[2] = record;
   const received = roundtrip(registry, array);
-  expect(received.length).toBe(4); expect(0 in received).toBe(false);
+  expect(received.length).toBe(4);
+  expect(0 in received).toBe(false);
   expect(Object.hasOwn(received[2], "__proto__")).toBe(true);
   expect(Object.getPrototypeOf(received[2])).toBe(Object.prototype);
   expect(received[2].run()).toBe(7);
@@ -102,23 +130,25 @@ test("each encoding has an independent lifetime, and release is idempotent", () 
   const fn = () => 9;
   const first = registry.encode(fn);
   const second = registry.encode(fn);
-  registry.release(first.callbacks.map(entry => entry.handle));
-  registry.release(first.callbacks.map(entry => entry.handle));
+  registry.release(first.callbacks.map((entry) => entry.handle));
+  registry.release(first.callbacks.map((entry) => entry.handle));
   expect(registry.size).toBe(1);
   expect(() => registry.invoke(first.callbacks[0].handle, [])).toThrow("released");
   expect(registry.invoke(second.callbacks[0].handle, [])).toBe(9);
-  registry.clear(); expect(registry.size).toBe(0);
+  registry.clear();
+  expect(registry.size).toBe(0);
 });
 
 test("encoding and postMessage clone failures roll back all staged callbacks", () => {
   const registry = new PluginCallbackRegistry();
   expect(() => registry.encode({ run: () => 1, invalid: Symbol() })).toThrow();
   expect(registry.size).toBe(0);
-  expect(() => registry.send({ run: () => 1, invalid: new WeakMap() }, wire => structuredClone(wire))).toThrow();
+  expect(() => registry.send({ run: () => 1, invalid: new WeakMap() }, (wire) => structuredClone(wire))).toThrow();
   expect(registry.size).toBe(0);
-  for (let i = 0; i < 5000; i++) registry.send({ run: () => i }, wire => {
-    registry.release(wire.callbacks.map(entry => entry.handle));
-  });
+  for (let i = 0; i < 5000; i++)
+    registry.send({ run: () => i }, (wire) => {
+      registry.release(wire.callbacks.map((entry) => entry.handle));
+    });
   expect(registry.size).toBe(0);
 });
 
@@ -127,9 +157,20 @@ test("malformed or detached callback metadata is rejected without invoking code"
   const cases: PluginCallbackWire[] = [
     { data: {}, callbacks: [{ ref, handle: "h1" }] },
     { data: ref, callbacks: [{ ref, handle: "constructor" }] },
-    { data: ref, callbacks: [{ ref, handle: "h1" }, { ref, handle: "h2" }] },
+    {
+      data: ref,
+      callbacks: [
+        { ref, handle: "h1" },
+        { ref, handle: "h2" },
+      ],
+    },
   ];
-  for (const wire of cases) expect(() => decodePluginCallbacks(wire, () => { throw new Error("must not invoke"); })).toThrow("Invalid plugin callback payload");
+  for (const wire of cases)
+    expect(() =>
+      decodePluginCallbacks(wire, () => {
+        throw new Error("must not invoke");
+      }),
+    ).toThrow("Invalid plugin callback payload");
 });
 
 test("graph depth and callback quotas fail deterministically without partial retention", () => {
@@ -138,6 +179,8 @@ test("graph depth and callback quotas fail deterministically without partial ret
   for (let i = 0; i < 150; i++) nested = { nested };
   expect(() => registry.encode({ run: () => 1, nested })).toThrow();
   expect(registry.size).toBe(0);
-  expect(() => registry.encode(Array.from({ length: 100_001 }, (_, index) => () => index))).toThrow("callback capacity");
+  expect(() => registry.encode(Array.from({ length: 100_001 }, (_, index) => () => index))).toThrow(
+    "callback capacity",
+  );
   expect(registry.size).toBe(0);
 });

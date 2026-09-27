@@ -59,17 +59,16 @@ function RootErrorBoundary() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-6 text-center">
       <div className="max-w-md space-y-3">
-        <p className="text-[11px] font-medium text-fg-subtle">
-          ReadAware
-        </p>
-        <h1 className="font-serif text-3xl leading-display text-fg">
-          {t("error.title")}
-        </h1>
-        <p className="text-sm leading-6 text-fg-muted">
-          {t("error.body")}
-        </p>
+        <p className="text-[11px] font-medium text-fg-subtle">ReadAware</p>
+        <h1 className="font-serif text-3xl leading-display text-fg">{t("error.title")}</h1>
+        <p className="text-sm leading-6 text-fg-muted">{t("error.body")}</p>
         <div className="pt-2">
-          <Button size="sm" onClick={() => { window.location.assign("/"); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              window.location.assign("/");
+            }}
+          >
             {t("common:actions.backToLibrary")}
           </Button>
         </div>
@@ -90,17 +89,16 @@ function RootNotFound() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-6 text-center">
       <div className="max-w-md space-y-3">
-        <p className="text-[11px] font-medium text-fg-subtle">
-          ReadAware
-        </p>
-        <h1 className="font-serif text-3xl leading-display text-fg">
-          {t("notFound.title")}
-        </h1>
-        <p className="text-sm leading-6 text-fg-muted">
-          {t("notFound.body")}
-        </p>
+        <p className="text-[11px] font-medium text-fg-subtle">ReadAware</p>
+        <h1 className="font-serif text-3xl leading-display text-fg">{t("notFound.title")}</h1>
+        <p className="text-sm leading-6 text-fg-muted">{t("notFound.body")}</p>
         <div className="pt-2">
-          <Button size="sm" onClick={() => { void router.navigate({ to: "/" }); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              void router.navigate({ to: "/" });
+            }}
+          >
             {t("common:actions.backToLibrary")}
           </Button>
         </div>

@@ -8,9 +8,20 @@ export function operationCall(name: string, args: Record<string, unknown> = {}) 
     if (entry) return { name: family.name, arguments: { request: { operation: entry[0], ...args } } };
   }
   if (name === "get_navigation_toc") return { name: "get_toc", arguments: { ...args, view: "navigation" } };
-  if (name === "edit_annotation") return { name: "apply_annotation_changes", arguments: { changes: [
-    { annotationId: args.annotationId, expectedRevision: args.expectedRevision,
-      ...(args.body !== undefined ? { op: "updateNote", body: args.body } : { op: "recolorHighlight", color: args.color }) },
-  ] } };
+  if (name === "edit_annotation")
+    return {
+      name: "apply_annotation_changes",
+      arguments: {
+        changes: [
+          {
+            annotationId: args.annotationId,
+            expectedRevision: args.expectedRevision,
+            ...(args.body !== undefined
+              ? { op: "updateNote", body: args.body }
+              : { op: "recolorHighlight", color: args.color }),
+          },
+        ],
+      },
+    };
   return { name, arguments: args };
 }

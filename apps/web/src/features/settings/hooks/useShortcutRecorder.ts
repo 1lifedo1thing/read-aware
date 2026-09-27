@@ -16,9 +16,7 @@ type Recorder = {
  * fire app shortcuts. Esc cancels; a lone modifier keeps waiting; any other
  * chord is reported via `onCapture` and ends the recording.
  */
-export function useShortcutRecorder(
-  onCapture: (id: ShortcutId, chord: KeyChord) => void,
-): Recorder {
+export function useShortcutRecorder(onCapture: (id: ShortcutId, chord: KeyChord) => void): Recorder {
   const [recordingId, setRecordingId] = useState<ShortcutId | null>(null);
 
   const cancel = useCallback(() => setRecordingId(null), []);

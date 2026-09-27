@@ -28,7 +28,7 @@ import { readingVisibleText } from "../lib/reading-visible-text";
 import { readingPagePosition } from "../lib/reading-pagination";
 import { relocateDismissesShell } from "../lib/shell-dismissal";
 import type { LoadedBook, ReadingCursor, TocEntry } from "../lib/reader-types";
-import { retainBook } from '../lib/book-lifetime';
+import { retainBook } from "../lib/book-lifetime";
 import {
   createFoliateView,
   createFootnoteHandler,
@@ -47,11 +47,7 @@ import {
   type FoliateShowAnnotationDetail,
   type FoliateView,
 } from "../lib/foliate-engine";
-import {
-  applyHighlights,
-  applyNotes,
-  registerHighlightDrawing,
-} from "../lib/highlight-renderer";
+import { applyHighlights, applyNotes, registerHighlightDrawing } from "../lib/highlight-renderer";
 import { parseBookFile } from "../lib/parse-book";
 import { ensureUsableToc } from "../lib/toc-synthesis";
 import { useReadAloud } from "../hooks/useReadAloud";
@@ -81,20 +77,14 @@ import { ReaderHoldMenu } from "./ReaderHoldMenu";
 import { useReaderHoldMenu } from "../hooks/useReaderHoldMenu";
 import { useTextUnitHoldActions } from "../hooks/useTextUnitHoldActions";
 import { resolveDrawnRangeTap } from "../lib/content-tap";
-import {
-  forwardKeyDownToApp,
-  isEditableKeyTarget,
-} from "../../../platform/app-keydown";
+import { forwardKeyDownToApp, isEditableKeyTarget } from "../../../platform/app-keydown";
 import { subscribeWheelPhaseEdges } from "../../../platform/wheel-phase";
 import { useDelayedFlag } from "../hooks/useDelayedFlag";
 import { useReaderTypography } from "../hooks/useReaderTypography";
 import { useReaderEngineLoadSource } from "../hooks/useReaderEngineLoadSource";
 import { useReaderPagination } from "../hooks/useReaderPagination";
 import { useReaderTextActions } from "../hooks/useReaderTextActions";
-import {
-  computeReaderMaxInlineSize,
-  readerLayoutSpacing,
-} from "../../settings/lib/reader-css";
+import { computeReaderMaxInlineSize, readerLayoutSpacing } from "../../settings/lib/reader-css";
 import { useReaderPalette } from "../../settings/hooks/useReaderPalette";
 import type { ReaderSettings, ReadingMode } from "../../settings/lib/reader-settings";
 import { DEFAULT_READER_SETTINGS } from "../../settings/lib/reader-settings";
@@ -105,23 +95,38 @@ import { readingRuntime } from "../../../domain/reading-runtime";
 import { useReferencePreview } from "../hooks/useReferencePreview";
 import { attachReadingEngine, waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
-import { acknowledgeReadingSelection, readingInputContext, readingNativeInput, readingSelectionFeedback } from "../lib/reading-document-input";
+import {
+  acknowledgeReadingSelection,
+  readingInputContext,
+  readingNativeInput,
+  readingSelectionFeedback,
+} from "../lib/reading-document-input";
 import { captureReadingSelection, type SelectionContentIdentity } from "../lib/selection-range";
 import { useSelectionRender } from "../hooks/useSelectionRender";
 import { useReaderViewportResize } from "../hooks/useReaderViewportResize";
 import { createReadingSelectionAdapter } from "../lib/reading-selection-adapter";
 import { createReadingEmphasisAdapter } from "../lib/reading-emphasis-adapter";
 import { readingEmphasis } from "../../../domain/reading-emphasis";
-import { fileContentVersion, virtualContentVersion, registerActiveBookContent } from "../../library/lib/book-content-source";
-import { assertContentNotInvalidated, contentInvalidationRevision, virtualSourceRevision } from "../../library/lib/content-invalidation";
-import type {
-  RegisteredReaderMode,
-} from "../../plugins/lib/plugin-types";
+import {
+  fileContentVersion,
+  virtualContentVersion,
+  registerActiveBookContent,
+} from "../../library/lib/book-content-source";
+import {
+  assertContentNotInvalidated,
+  contentInvalidationRevision,
+  virtualSourceRevision,
+} from "../../library/lib/content-invalidation";
+import type { RegisteredReaderMode } from "../../plugins/lib/plugin-types";
 import { detectBookLanguage } from "../lib/book-language";
 import { rememberReaderBookLanguage } from "../../settings/lib/reader-languages";
 import { getReaderPreferences, readerPreferencesForLanguage } from "../../settings/lib/reader-settings";
 import { getReaderOverrides } from "../../settings/lib/reader-overrides";
-import { prepareReaderChapterStarts, markReaderChapterStarts, normalizeReaderTextSizes } from "../lib/reader-document-layout";
+import {
+  prepareReaderChapterStarts,
+  markReaderChapterStarts,
+  normalizeReaderTextSizes,
+} from "../lib/reader-document-layout";
 import { framePointAnchorInRoot, measureSectionToRoot, visibleFrameRectInRoot } from "../lib/frame-geometry";
 import type { ReaderEngineSession } from "../lib/reader-engine-session";
 import { useReaderEngineSession } from "../hooks/useReaderEngineSession";
@@ -273,15 +278,7 @@ type ShellTapIntent = {
   startY: number;
 };
 
-const INTERACTIVE_TAGS = new Set([
-  "a",
-  "button",
-  "input",
-  "textarea",
-  "select",
-  "label",
-  "summary",
-]);
+const INTERACTIVE_TAGS = new Set(["a", "button", "input", "textarea", "select", "label", "summary"]);
 
 /**
  * Whether a tap landed on (or inside) an interactive element. The target comes
@@ -400,7 +397,9 @@ export function FoliateReaderView({
     ? readerSettings.fixedLayoutReadingMode
     : readerSettings.readingMode;
   const readingModeRef = useRef(readingMode);
-  useEffect(() => { readingModeRef.current = readingMode; }, [readingMode]);
+  useEffect(() => {
+    readingModeRef.current = readingMode;
+  }, [readingMode]);
   const engineLoadSource = useReaderEngineLoadSource(initialBook, selectedBook?.id, readingMode, readerSettings);
 
   // Reader-shell auto-dismissal state. `shellScrollAccumRef` is the signed
@@ -427,25 +426,29 @@ export function FoliateReaderView({
   // book. (`useReaderPagination` takes its shell-dismissal callback as a ref,
   // so that one prop is still mirrored.)
   const onContentScrollRef = useRef(onContentScroll);
-  useEffect(() => { onContentScrollRef.current = onContentScroll; }, [onContentScroll]);
+  useEffect(() => {
+    onContentScrollRef.current = onContentScroll;
+  }, [onContentScroll]);
   const sessionTimerActivityRef = useRef<(() => void) | null>(null);
   const emitContentClick = useEffectEvent(() => onContentClick?.());
   const emitReadingActivity = useEffectEvent(() => {
     onReadingActivity?.();
     sessionTimerActivityRef.current?.();
   });
-  const emitLocation = useEffectEvent((location: {
-    current: number;
-    total: number;
-    fraction: number;
-    progress: ReaderProgress;
-    cursor: ReadingCursor;
-  }) => {
-    onPageChange?.(location.current, location.total);
-    onFractionChange?.(location.fraction);
-    onProgressChange?.(location.progress);
-    onReadingCursorChange?.(location.cursor);
-  });
+  const emitLocation = useEffectEvent(
+    (location: {
+      current: number;
+      total: number;
+      fraction: number;
+      progress: ReaderProgress;
+      cursor: ReadingCursor;
+    }) => {
+      onPageChange?.(location.current, location.total);
+      onFractionChange?.(location.fraction);
+      onProgressChange?.(location.progress);
+      onReadingCursorChange?.(location.cursor);
+    },
+  );
   const emitTocChange = useEffectEvent((entries: TocEntry[]) => onTocChange?.(entries));
   const emitCurrentChapterChange = useEffectEvent((href: string | null) => onCurrentChapterChange?.(href));
   const emitBookReady = useEffectEvent((book: FoliateBook) => onBookReady?.(book));
@@ -479,9 +482,7 @@ export function FoliateReaderView({
       completionExitTimerRef.current = null;
     }, COMPLETION_FADE_MS);
   }, []);
-  const [declaredFinished, setDeclaredFinished] = useState(
-    selectedBook?.readingStatus === "finished",
-  );
+  const [declaredFinished, setDeclaredFinished] = useState(selectedBook?.readingStatus === "finished");
   /**
    * Whether this reading session already asked the agent to look back. Kept
    * here rather than on the completion screen because that screen unmounts when
@@ -512,7 +513,6 @@ export function FoliateReaderView({
     anchorRect: SelectionOverlayRect;
   } | null>(null);
 
-
   // "Ask AI about this" hands a passage to the note panel's chat (a sibling
   // component) via this atom; the shell reveals the Chat tab and the chat panel
   // adopts the passage. Whether the action is offered follows the user's
@@ -521,7 +521,10 @@ export function FoliateReaderView({
 
   // Footnote popover: the engine loads + extracts the note into an off-screen
   // staging view; we read its text and show it in the popover.
-  const { footnote, setFootnote, closeFootnote, beginNativeFootnote } = useReferencePreview(selectedBook?.id, t("footnote.note"));
+  const { footnote, setFootnote, closeFootnote, beginNativeFootnote } = useReferencePreview(
+    selectedBook?.id,
+    t("footnote.note"),
+  );
   const footnoteHandlerRef = useRef<FoliateFootnoteHandler | null>(null);
   const footnoteAnchorRectRef = useRef<SelectionOverlayRect | null>(null);
   const footnoteStageRef = useRef<HTMLDivElement | null>(null);
@@ -538,7 +541,7 @@ export function FoliateReaderView({
   const toggleUnitMenuAt = useEffectEvent((doc: Document, clientX: number, clientY: number) => {
     const mapping = measureSectionToRoot(doc, readerRootRef.current);
     if (!mapping) return;
-    setUnitMenuAnchor((open) => open ? null : framePointAnchorInRoot({ x: clientX, y: clientY }, mapping));
+    setUnitMenuAnchor((open) => (open ? null : framePointAnchorInRoot({ x: clientX, y: clientY }, mapping)));
   });
 
   /** Map an in-book element's rect to reader-viewport coords for anchoring. */
@@ -546,10 +549,7 @@ export function FoliateReaderView({
     const mapping = measureSectionToRoot(el.ownerDocument, readerRootRef.current);
     if (!mapping) return null;
     const rect = el.getBoundingClientRect();
-    return visibleFrameRectInRoot(
-      { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-      mapping,
-    );
+    return visibleFrameRectInRoot({ left: rect.left, top: rect.top, width: rect.width, height: rect.height }, mapping);
   }, []);
 
   // Wire the footnote engine once: it turns footnote-reference clicks into a
@@ -580,13 +580,16 @@ export function FoliateReaderView({
         .trim();
       // Done with the engine's view — detach it from the stage and tear it down.
       footnoteStageRef.current?.replaceChildren();
-      void detail.view.close().catch(error => log.warn('Could not close footnote view', error));
+      void detail.view.close().catch((error) => log.warn("Could not close footnote view", error));
       if (!text) return;
-      setFootnote({
-        anchorRect: footnoteAnchorRectRef.current,
-        label: footnoteLabel(detail.type, tRef.current),
-        text,
-      }, detail.requestId);
+      setFootnote(
+        {
+          anchorRect: footnoteAnchorRectRef.current,
+          label: footnoteLabel(detail.type, tRef.current),
+          text,
+        },
+        detail.requestId,
+      );
     };
 
     void createFootnoteHandler().then((created) => {
@@ -620,18 +623,26 @@ export function FoliateReaderView({
     layoutForReadingMode,
   });
 
-  useEffect(() => { loadedBookRef.current = initialBook; }, [initialBook]);
-  useEffect(() => { tocEntriesRef.current = tocEntries; }, [tocEntries]);
-  useEffect(() => { emitTocChange(tocEntries); }, [tocEntries]);
-  useEffect(() => { currentChapterHrefRef.current = currentChapterHref; }, [currentChapterHref]);
-  useEffect(() => { emitCurrentChapterChange(currentChapterHref); }, [currentChapterHref]);
+  useEffect(() => {
+    loadedBookRef.current = initialBook;
+  }, [initialBook]);
+  useEffect(() => {
+    tocEntriesRef.current = tocEntries;
+  }, [tocEntries]);
+  useEffect(() => {
+    emitTocChange(tocEntries);
+  }, [tocEntries]);
+  useEffect(() => {
+    currentChapterHrefRef.current = currentChapterHref;
+  }, [currentChapterHref]);
+  useEffect(() => {
+    emitCurrentChapterChange(currentChapterHref);
+  }, [currentChapterHref]);
 
   useEffect(() => {
     lastLocationTargetRef.current = initialProgress?.cfi ?? initialProgress?.href ?? null;
     initialFractionRef.current =
-      initialProgress?.progressPercent != null
-        ? Math.max(0, Math.min(1, initialProgress.progressPercent / 100))
-        : 0;
+      initialProgress?.progressPercent != null ? Math.max(0, Math.min(1, initialProgress.progressPercent / 100)) : 0;
   }, [initialProgress?.cfi, initialProgress?.href, initialProgress?.progressPercent]);
 
   const clearNativeSelection = useCallback((origin: DomainActor) => {
@@ -655,20 +666,23 @@ export function FoliateReaderView({
     }
   }, []);
 
-  const clearSelection = useCallback((source: DomainActor = "user") => {
-    const origin = causalActor(source);
-    cancelPendingShellOpen();
-    clearNativeSelection(origin);
-    selectionRef.current = null;
-    suppressContentClickRef.current = false;
-    if (suppressContentClickTimeoutRef.current != null) {
-      window.clearTimeout(suppressContentClickTimeoutRef.current);
-      suppressContentClickTimeoutRef.current = null;
-    }
-    setSelection(null);
-    const identity = selectionContentRef.current;
-    if (identity) readingRuntime.selectionChanged(identity.sessionId, null, origin);
-  }, [cancelPendingShellOpen, clearNativeSelection]);
+  const clearSelection = useCallback(
+    (source: DomainActor = "user") => {
+      const origin = causalActor(source);
+      cancelPendingShellOpen();
+      clearNativeSelection(origin);
+      selectionRef.current = null;
+      suppressContentClickRef.current = false;
+      if (suppressContentClickTimeoutRef.current != null) {
+        window.clearTimeout(suppressContentClickTimeoutRef.current);
+        suppressContentClickTimeoutRef.current = null;
+      }
+      setSelection(null);
+      const identity = selectionContentRef.current;
+      if (identity) readingRuntime.selectionChanged(identity.sessionId, null, origin);
+    },
+    [cancelPendingShellOpen, clearNativeSelection],
+  );
 
   const {
     isCrossing,
@@ -702,151 +716,174 @@ export function FoliateReaderView({
     }, SELECTION_CLICK_SUPPRESSION_MS);
   }, [cancelPendingShellOpen]);
 
-  const captureSelectionFromDoc = useCallback((
-    doc: Document,
-    index: number,
-    { suppressContentClick = false, origin: source = "user" }: { suppressContentClick?: boolean; origin?: DomainActor } = {},
-  ) => {
-    const origin = causalActor(source);
-    const view = viewRef.current;
-    // Check ownership before even clearing an invalid selection: an unloaded
-    // iframe's late event must not dismiss the replacement reader's selection.
-    if (!view?.renderer?.getContents().some(content => content.index === index && content.doc === doc)) return false;
-    const win = doc.defaultView;
-    const selectionInDoc = win?.getSelection?.() ?? doc.getSelection?.() ?? null;
-    const mapping = measureSectionToRoot(doc, readerRootRef.current);
-    if (!mapping || !selectionInDoc) {
-      clearSelection(origin);
-      return false;
-    }
+  const captureSelectionFromDoc = useCallback(
+    (
+      doc: Document,
+      index: number,
+      {
+        suppressContentClick = false,
+        origin: source = "user",
+      }: { suppressContentClick?: boolean; origin?: DomainActor } = {},
+    ) => {
+      const origin = causalActor(source);
+      const view = viewRef.current;
+      // Check ownership before even clearing an invalid selection: an unloaded
+      // iframe's late event must not dismiss the replacement reader's selection.
+      if (!view?.renderer?.getContents().some((content) => content.index === index && content.doc === doc))
+        return false;
+      const win = doc.defaultView;
+      const selectionInDoc = win?.getSelection?.() ?? doc.getSelection?.() ?? null;
+      const mapping = measureSectionToRoot(doc, readerRootRef.current);
+      if (!mapping || !selectionInDoc) {
+        clearSelection(origin);
+        return false;
+      }
 
-    const text = getNormalizedSelectionText(selectionInDoc);
-    if (!text || selectionInDoc.rangeCount === 0) {
-      clearSelection(origin);
-      return false;
-    }
+      const text = getNormalizedSelectionText(selectionInDoc);
+      if (!text || selectionInDoc.rangeCount === 0) {
+        clearSelection(origin);
+        return false;
+      }
 
-    const range = selectionInDoc.getRangeAt(0);
-    if (range.collapsed) {
-      clearSelection(origin);
-      return false;
-    }
+      const range = selectionInDoc.getRangeAt(0);
+      if (range.collapsed) {
+        clearSelection(origin);
+        return false;
+      }
 
-    clearNativeSelectionRef.current = origin => {
-      (win?.getSelection?.() ?? doc.getSelection?.())?.removeAllRanges();
+      clearNativeSelectionRef.current = (origin) => {
+        (win?.getSelection?.() ?? doc.getSelection?.())?.removeAllRanges();
+        acknowledgeReadingSelection(doc, origin);
+      };
+
+      const rects = getSelectionOverlayRects(range)
+        .map((rect) => visibleFrameRectInRoot(rect, mapping))
+        .filter((rect): rect is SelectionOverlayRect => rect != null);
+
+      if (rects.length === 0) {
+        clearSelection(origin);
+        return false;
+      }
+
+      let cfiRange: string | null = null;
+      try {
+        cfiRange = view.getCFI(index, range);
+      } catch {
+        cfiRange = null;
+      }
+
+      const identity = selectionContentRef.current;
+      const captured = captureReadingSelection(identity, view, index, range, text);
+      const nextSelection: ReaderSelectionState = {
+        anchorRect: rects[rects.length - 1] ?? null,
+        appearance: "selection",
+        cfiRange,
+        chapterHref: currentChapterHrefRef.current,
+        rects,
+        text,
+        context: getSelectionContext(range, text),
+        captured,
+      };
+
+      setActiveAnnotation(null);
+      selectionRef.current = nextSelection;
+      setSelection(nextSelection);
       acknowledgeReadingSelection(doc, origin);
-    };
+      if (identity) readingRuntime.selectionChanged(identity.sessionId, captured, origin);
+      if (suppressContentClick) armContentClickSuppression();
+      // iOS：原生选中菜单会和 app 的选择菜单叠成双份（#10）。捕获完成后立刻
+      // 清掉原生选区——菜单没了依附；高亮由 ReaderSelectionHighlight 自绘补回。
+      if (isIOS()) clearNativeSelectionRef.current?.(origin);
 
-    const rects = getSelectionOverlayRects(range)
-      .map((rect) => visibleFrameRectInRoot(rect, mapping))
-      .filter((rect): rect is SelectionOverlayRect => rect != null);
-
-    if (rects.length === 0) {
-      clearSelection(origin);
-      return false;
-    }
-
-    let cfiRange: string | null = null;
-    try {
-      cfiRange = view.getCFI(index, range);
-    } catch {
-      cfiRange = null;
-    }
-
-    const identity = selectionContentRef.current;
-    const captured = captureReadingSelection(identity, view, index, range, text);
-    const nextSelection: ReaderSelectionState = {
-      anchorRect: rects[rects.length - 1] ?? null,
-      appearance: "selection",
-      cfiRange,
-      chapterHref: currentChapterHrefRef.current,
-      rects,
-      text,
-      context: getSelectionContext(range, text),
-      captured,
-    };
-
-    setActiveAnnotation(null);
-    selectionRef.current = nextSelection;
-    setSelection(nextSelection);
-    acknowledgeReadingSelection(doc, origin);
-    if (identity) readingRuntime.selectionChanged(identity.sessionId, captured, origin);
-    if (suppressContentClick) armContentClickSuppression();
-    // iOS：原生选中菜单会和 app 的选择菜单叠成双份（#10）。捕获完成后立刻
-    // 清掉原生选区——菜单没了依附；高亮由 ReaderSelectionHighlight 自绘补回。
-    if (isIOS()) clearNativeSelectionRef.current?.(origin);
-
-    return true;
-  }, [armContentClickSuppression, clearSelection]);
+      return true;
+    },
+    [armContentClickSuppression, clearSelection],
+  );
 
   // ----- chapter navigation (refs so stable across renders) -----------------
 
-  const goToChapter = useCallback(async (href: string) => {
-    const view = viewRef.current;
-    if (!view) return;
-    try {
-      setError(null);
-      clearSelection();
-      if (selectedBookId && readingRuntime.snapshot().bookId === selectedBookId) {
-        await readingRuntime.navigate({ bookId: selectedBookId, href });
-      } else await view.goTo(href);
-    } catch (nextError) {
-      setError(describeReaderFailure(nextError));
-    }
-  }, [clearSelection, describeReaderFailure, selectedBookId]);
+  const goToChapter = useCallback(
+    async (href: string) => {
+      const view = viewRef.current;
+      if (!view) return;
+      try {
+        setError(null);
+        clearSelection();
+        if (selectedBookId && readingRuntime.snapshot().bookId === selectedBookId) {
+          await readingRuntime.navigate({ bookId: selectedBookId, href });
+        } else await view.goTo(href);
+      } catch (nextError) {
+        setError(describeReaderFailure(nextError));
+      }
+    },
+    [clearSelection, describeReaderFailure, selectedBookId],
+  );
 
-  const revisitFromCompletion = useCallback((cfiRange: string) => {
-    const view = viewRef.current;
-    const sessionId = readingRuntime.snapshot().sessionId;
-    dismissCompletion();
-    if (completionRevisitTimerRef.current != null) window.clearTimeout(completionRevisitTimerRef.current);
-    // Keep the fade, but never apply an old completion card to a replacement book.
-    completionRevisitTimerRef.current = window.setTimeout(() => {
-      completionRevisitTimerRef.current = null;
-      if (viewRef.current === view && readingRuntime.snapshot().sessionId === sessionId) void goToChapter(cfiRange);
-    }, COMPLETION_FADE_MS);
-  }, [dismissCompletion, goToChapter]);
+  const revisitFromCompletion = useCallback(
+    (cfiRange: string) => {
+      const view = viewRef.current;
+      const sessionId = readingRuntime.snapshot().sessionId;
+      dismissCompletion();
+      if (completionRevisitTimerRef.current != null) window.clearTimeout(completionRevisitTimerRef.current);
+      // Keep the fade, but never apply an old completion card to a replacement book.
+      completionRevisitTimerRef.current = window.setTimeout(() => {
+        completionRevisitTimerRef.current = null;
+        if (viewRef.current === view && readingRuntime.snapshot().sessionId === sessionId) void goToChapter(cfiRange);
+      }, COMPLETION_FADE_MS);
+    },
+    [dismissCompletion, goToChapter],
+  );
 
   /** Jump to a position in the book by fraction — the header progress bar's
    *  scrub target. The engine maps it back through its section sizes, so the
    *  landing spot matches the fraction it reports while reading. Behind the
    *  cross-fade: the scrub lands wherever the reader was not looking, and a
    *  hard swap of the page reads as a glitch. */
-  const goToFraction = useCallback(async (fraction: number) => {
-    const view = viewRef.current;
-    if (!view) return;
-    setError(null);
-    clearSelection();
-    // The relocate this lands is a jump the user asked for from the header, not
-    // a page turn away from it — it must not take the chrome down with it.
-    suppressShellDismissRef.current = true;
-    await crossTo(async () => {
-      try {
-        const target = Math.min(1, Math.max(0, fraction));
-        if (selectedBookId && readingRuntime.snapshot().bookId === selectedBookId) {
-          await readingRuntime.navigate({ bookId: selectedBookId, fraction: target });
-        } else await viewRef.current?.goToFraction(target);
-      } catch (nextError) {
-        setError(describeReaderFailure(nextError));
-      }
-    });
-    suppressShellDismissRef.current = false;
-  }, [clearSelection, crossTo, describeReaderFailure, selectedBookId]);
-
-  const goToAdjacentChapter = useCallback(async (direction: -1 | 1) => {
-    const session = readingRuntime.snapshot();
-    if (selectedBookId && session.bookId === selectedBookId && session.sessionId) {
+  const goToFraction = useCallback(
+    async (fraction: number) => {
+      const view = viewRef.current;
+      if (!view) return;
       setError(null);
       clearSelection();
-      try {
-        await readingRuntime.step(direction === 1 ? "next-chapter" : "previous-chapter", undefined,
-          { bookId: selectedBookId, sessionId: session.sessionId });
-      } catch (error) { setError(describeReaderFailure(error)); }
-    } else {
-      const next = adjacentTocEntry(tocEntriesRef.current, currentChapterHrefRef.current, direction);
-      if (next) await goToChapter(next.href);
-    }
-  }, [clearSelection, describeReaderFailure, goToChapter, selectedBookId]);
+      // The relocate this lands is a jump the user asked for from the header, not
+      // a page turn away from it — it must not take the chrome down with it.
+      suppressShellDismissRef.current = true;
+      await crossTo(async () => {
+        try {
+          const target = Math.min(1, Math.max(0, fraction));
+          if (selectedBookId && readingRuntime.snapshot().bookId === selectedBookId) {
+            await readingRuntime.navigate({ bookId: selectedBookId, fraction: target });
+          } else await viewRef.current?.goToFraction(target);
+        } catch (nextError) {
+          setError(describeReaderFailure(nextError));
+        }
+      });
+      suppressShellDismissRef.current = false;
+    },
+    [clearSelection, crossTo, describeReaderFailure, selectedBookId],
+  );
+
+  const goToAdjacentChapter = useCallback(
+    async (direction: -1 | 1) => {
+      const session = readingRuntime.snapshot();
+      if (selectedBookId && session.bookId === selectedBookId && session.sessionId) {
+        setError(null);
+        clearSelection();
+        try {
+          await readingRuntime.step(direction === 1 ? "next-chapter" : "previous-chapter", undefined, {
+            bookId: selectedBookId,
+            sessionId: session.sessionId,
+          });
+        } catch (error) {
+          setError(describeReaderFailure(error));
+        }
+      } else {
+        const next = adjacentTocEntry(tocEntriesRef.current, currentChapterHrefRef.current, direction);
+        if (next) await goToChapter(next.href);
+      }
+    },
+    [clearSelection, describeReaderFailure, goToChapter, selectedBookId],
+  );
 
   // ----- plugin-defined text-unit mode ----------------------------------------
 
@@ -856,7 +893,9 @@ export function FoliateReaderView({
   const textUnitModeSuspended = textUnitModeActive && textUnitMode === null;
 
   const emitFixedLayoutChange = useEffectEvent((fixedLayout: boolean) => onFixedLayoutChange?.(fixedLayout));
-  useEffect(() => { emitFixedLayoutChange(isFixedLayout); }, [isFixedLayout]);
+  useEffect(() => {
+    emitFixedLayoutChange(isFixedLayout);
+  }, [isFixedLayout]);
   const emitTextUnitModeStep = useEffectEvent(() => onTextUnitModeStep?.());
 
   // Host behavior settings (step unit, tap-to-advance, scroll-to-step, bar
@@ -876,9 +915,7 @@ export function FoliateReaderView({
       ? persistedModeState.unitId
       : null;
   const preferredUnitId = modeRequest?.unitId ?? prefsUnitId ?? persistedUnitId;
-  const resolvedModeUnit = textUnitMode
-    ? resolveReaderModeUnit(textUnitMode, preferredUnitId)
-    : null;
+  const resolvedModeUnit = textUnitMode ? resolveReaderModeUnit(textUnitMode, preferredUnitId) : null;
   const activeUnitId = resolvedModeUnit?.id ?? preferredUnitId ?? "mode-unavailable";
   useEffect(() => {
     if (modeController || !textUnitMode || !resolvedModeUnit) return;
@@ -908,24 +945,51 @@ export function FoliateReaderView({
     readerRootRef,
     veilColor: readerPalette.bg,
   });
-  useEffect(() => modeController?.bindPositionWaiter(textUnitNavigator.waitForPosition), [modeController, textUnitNavigator.waitForPosition]);
-  useEffect(() => modeController?.bindStepper(textUnitNavigator.stepNative), [modeController, textUnitNavigator.stepNative]);
+  useEffect(
+    () => modeController?.bindPositionWaiter(textUnitNavigator.waitForPosition),
+    [modeController, textUnitNavigator.waitForPosition],
+  );
+  useEffect(
+    () => modeController?.bindStepper(textUnitNavigator.stepNative),
+    [modeController, textUnitNavigator.stepNative],
+  );
   // Feedback is keyed on where the position points; a new object for the same place is not news.
   const navigatorPosition = useEffectEvent(() => textUnitNavigator.position);
   useEffect(() => {
-    modeController?.feedback(textUnitNavigator.configurationRevision, textUnitMode?.key ?? null, activeUnitId, {
-      status: textUnitNavigator.status, errorCode: textUnitNavigator.errorCode,
-      progress: textUnitNavigator.progress, cfiRange: textUnitNavigator.current?.cfiRange ?? null,
-      position: navigatorPosition(),
-    }, textUnitNavigator.origin);
-  }, [modeController, textUnitMode, activeUnitId, textUnitNavigator.configurationRevision,
-    textUnitNavigator.status, textUnitNavigator.errorCode, textUnitNavigator.progress, textUnitNavigator.current,
-    textUnitNavigator.position?.location.cfi, textUnitNavigator.position?.location.contentVersion, textUnitNavigator.origin]);
+    modeController?.feedback(
+      textUnitNavigator.configurationRevision,
+      textUnitMode?.key ?? null,
+      activeUnitId,
+      {
+        status: textUnitNavigator.status,
+        errorCode: textUnitNavigator.errorCode,
+        progress: textUnitNavigator.progress,
+        cfiRange: textUnitNavigator.current?.cfiRange ?? null,
+        position: navigatorPosition(),
+      },
+      textUnitNavigator.origin,
+    );
+  }, [
+    modeController,
+    textUnitMode,
+    activeUnitId,
+    textUnitNavigator.configurationRevision,
+    textUnitNavigator.status,
+    textUnitNavigator.errorCode,
+    textUnitNavigator.progress,
+    textUnitNavigator.current,
+    textUnitNavigator.position?.location.cfi,
+    textUnitNavigator.position?.location.contentVersion,
+    textUnitNavigator.origin,
+  ]);
   const readAloud = useReadAloud({
     bookId: selectedBook?.id ?? null,
     enabled: textUnitModeEngineActive,
     current: textUnitNavigator.current,
-    origin: modeRequest && modeRequest.revision !== textUnitNavigator.configurationRevision ? modeRequest.origin : textUnitNavigator.origin,
+    origin:
+      modeRequest && modeRequest.revision !== textUnitNavigator.configurationRevision
+        ? modeRequest.origin
+        : textUnitNavigator.origin,
     peekNext: textUnitNavigator.peekNext,
   });
   const {
@@ -964,10 +1028,13 @@ export function FoliateReaderView({
   // 导航条的面板直达按钮：意图 atom 由 session（点亮 chrome）与
   // ReaderShellOverlay（打开目标面板）各自消费。
   const dispatchPanelIntent = useSetAtom(readerPanelIntentAtom);
-  const openReaderPanel = useCallback((panel: ReaderPanelKind) => {
-    const id = selectedBook?.id;
-    if (id) dispatchPanelIntent(createReaderPanelIntent(id, panel));
-  }, [dispatchPanelIntent, selectedBook?.id]);
+  const openReaderPanel = useCallback(
+    (panel: ReaderPanelKind) => {
+      const id = selectedBook?.id;
+      if (id) dispatchPanelIntent(createReaderPanelIntent(id, panel));
+    },
+    [dispatchPanelIntent, selectedBook?.id],
+  );
 
   // ── Touch: the hold menu stands in for the navigator bar ──────────────────
   // A finger held on the page opens the resting unit's actions where it
@@ -983,19 +1050,32 @@ export function FoliateReaderView({
     returnPending: textUnitNavigator.hasReturnPoint,
     canAnnotate: textUnitNavigator.status === "ready" && textUnitNavigator.current?.cfiRange != null,
     askAiEnabled,
-    readAloud: { available: readAloud.available, playing: readAloud.playing,
-      canStart: readAloud.snapshot.unavailableReason === null, toggle: readAloud.toggle },
+    readAloud: {
+      available: readAloud.available,
+      playing: readAloud.playing,
+      canStart: readAloud.snapshot.unavailableReason === null,
+      toggle: readAloud.toggle,
+    },
     pluginInput: pluginInputForSource("navigator"),
     on: {
-      highlight: () => { void handleNavigatorMark("highlight"); },
-      underline: () => { void handleNavigatorMark("underline"); },
+      highlight: () => {
+        void handleNavigatorMark("highlight");
+      },
+      underline: () => {
+        void handleNavigatorMark("underline");
+      },
       addNote: handleNavigatorAddNote,
       askAI: handleNavigatorAskAI,
-      copy: () => { void copyTargetText(textUnitNavigator.current?.text ?? ""); },
+      copy: () => {
+        void copyTargetText(textUnitNavigator.current?.text ?? "");
+      },
       prev: textUnitNavigator.prev,
       next: textUnitNavigator.next,
       returnToCurrent: textUnitNavigator.returnToCurrent,
-      unitChange: (unitId) => { if (onModeUnitChange) onModeUnitChange(unitId); else patchTextUnitModeSettings({ unitId }); },
+      unitChange: (unitId) => {
+        if (onModeUnitChange) onModeUnitChange(unitId);
+        else patchTextUnitModeSettings({ unitId });
+      },
       openPanel: openReaderPanel,
       exit: () => onExitTextUnitMode?.(),
     },
@@ -1006,14 +1086,17 @@ export function FoliateReaderView({
     enabled: textUnitModeEngineActive && coarsePointer,
     readerRootRef,
     menuRef: holdMenuRowRef,
-    liveDocuments: () => viewRef.current?.renderer?.getContents().map(content => content.doc) ?? [],
-    run: index => holdActionsRef.current[index]?.run(),
+    liveDocuments: () => viewRef.current?.renderer?.getContents().map((content) => content.doc) ?? [],
+    run: (index) => holdActionsRef.current[index]?.run(),
     itemCount: holdContent.actions.length + 1,
   });
   // Touch: the tap on the resting sentence opens the hold menu where the
   // finger landed (or closes it when it is already open).
   const toggleHoldMenuAt = useEffectEvent((doc: Document, clientX: number, clientY: number) => {
-    if (holdMenu.isOpen()) { holdMenu.close(); return; }
+    if (holdMenu.isOpen()) {
+      holdMenu.close();
+      return;
+    }
     const mapping = measureSectionToRoot(doc, readerRootRef.current);
     const anchor = mapping ? framePointAnchorInRoot({ x: clientX, y: clientY }, mapping) : null;
     if (anchor) holdMenu.openAt({ x: anchor.left, y: anchor.top });
@@ -1038,7 +1121,7 @@ export function FoliateReaderView({
   // note editor is deliberately spared: auto-closing it would discard whatever
   // the user has typed.
   const textUnitTargetKey = textUnitNavigator.current
-    ? textUnitNavigator.current.cfiRange ?? textUnitNavigator.current.text
+    ? (textUnitNavigator.current.cfiRange ?? textUnitNavigator.current.text)
     : null;
   const previousTextUnitTargetKeyRef = useRef(textUnitTargetKey);
   useEffect(() => {
@@ -1136,10 +1219,7 @@ export function FoliateReaderView({
   const handleWheelEvent = useEffectEvent((event: WheelEvent) => {
     const gestures = wheelGesturesRef.current;
     if (!gestures) return;
-    if (
-      readingModeRef.current !== "scroll" &&
-      Math.abs(event.deltaX) > Math.abs(event.deltaY)
-    ) {
+    if (readingModeRef.current !== "scroll" && Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
       // Without preventDefault the webview may read the swipe as overscroll
       // or a history-navigation gesture.
       if (event.cancelable) event.preventDefault();
@@ -1183,14 +1263,11 @@ export function FoliateReaderView({
   // own page-drag handling. The returned handlers read the mode's gesture
   // policy at event time, so a tracker outlives settings changes.
   const createTouchNavHandlers = useEffectEvent(() => {
-    let touch: { startX: number; startY: number; lastY: number; stepped: boolean } | null =
-      null;
+    let touch: { startX: number; startY: number; lastY: number; stepped: boolean } | null = null;
     return {
       onTouchStart: (event: TouchEvent) => {
         const point = event.touches.length === 1 ? event.touches[0] : null;
-        touch = point
-          ? { startX: point.screenX, startY: point.screenY, lastY: point.screenY, stepped: false }
-          : null;
+        touch = point ? { startX: point.screenX, startY: point.screenY, lastY: point.screenY, stepped: false } : null;
       },
       onTouchMove: (event: TouchEvent) => {
         if (!touch || event.touches.length !== 1) return;
@@ -1203,10 +1280,7 @@ export function FoliateReaderView({
           if (touch.stepped) return;
           const travelY = touch.startY - point.screenY;
           const travelX = touch.startX - point.screenX;
-          if (
-            Math.abs(travelY) < TOUCH_STEP_THRESHOLD_PX ||
-            Math.abs(travelY) <= Math.abs(travelX)
-          ) {
+          if (Math.abs(travelY) < TOUCH_STEP_THRESHOLD_PX || Math.abs(travelY) <= Math.abs(travelX)) {
             return;
           }
           touch.stepped = true;
@@ -1386,8 +1460,15 @@ export function FoliateReaderView({
   const handleSectionClick = useEffectEvent((doc: Document, index: number, event: MouseEvent) => {
     // The click a touch synthesizes after a hold gesture is not a tap; and
     // while the hold menu rests open, a tap on the page only dismisses it.
-    if (holdMenu.consumeClick()) { cancelPendingShellOpen(); return; }
-    if (holdMenu.isOpen()) { holdMenu.close(); cancelPendingShellOpen(); return; }
+    if (holdMenu.consumeClick()) {
+      cancelPendingShellOpen();
+      return;
+    }
+    if (holdMenu.isOpen()) {
+      holdMenu.close();
+      cancelPendingShellOpen();
+      return;
+    }
     // Tapping an existing mark opens its recolor menu (via `show-annotation`);
     // skip the tap-to-toggle-shell handling so the two don't fight.
     const hit = viewRef.current?.renderer
@@ -1478,11 +1559,7 @@ export function FoliateReaderView({
       pendingShellToggleTimerRef.current = null;
       if (selectionRef.current) return;
       const liveSelection = doc.defaultView?.getSelection?.();
-      if (
-        liveSelection &&
-        liveSelection.rangeCount > 0 &&
-        !liveSelection.getRangeAt(0).collapsed
-      ) {
+      if (liveSelection && liveSelection.rangeCount > 0 && !liveSelection.getRangeAt(0).collapsed) {
         return;
       }
       emitContentClick();
@@ -1515,7 +1592,7 @@ export function FoliateReaderView({
     doc.addEventListener("wheel", bumpReadingActivity, activityOptions);
     doc.addEventListener("scroll", bumpReadingActivity, activityOptions);
 
-    doc.addEventListener("keydown", event => handleReaderKeyDown(event));
+    doc.addEventListener("keydown", (event) => handleReaderKeyDown(event));
 
     // Fixed-layout page turns by horizontal swipe. The refs are read at
     // gesture time, not attach time: layout detection can land after the
@@ -1529,9 +1606,7 @@ export function FoliateReaderView({
         (event) => {
           const touch = event.touches[0];
           swipeStart =
-            event.touches.length === 1 && touch
-              ? { x: touch.screenX, y: touch.screenY, at: Date.now() }
-              : null;
+            event.touches.length === 1 && touch ? { x: touch.screenX, y: touch.screenY, at: Date.now() } : null;
         },
         { passive: true },
       );
@@ -1553,8 +1628,7 @@ export function FoliateReaderView({
           // Visual direction: swiping the content leftwards reveals the page
           // on the right, and vice versa — correct under RTL too.
           const view = viewRef.current;
-          void (dx < 0 ? view?.goRight() : view?.goLeft())
-            ?.catch(error => setError(describeReaderFailure(error)));
+          void (dx < 0 ? view?.goRight() : view?.goLeft())?.catch((error) => setError(describeReaderFailure(error)));
         },
         { passive: true },
       );
@@ -1567,19 +1641,20 @@ export function FoliateReaderView({
     // dragging a handle keeps deferring it, releasing re-anchors the menu.
     if (hasCoarsePointer()) {
       let settleTimer: number | null = null;
-      doc.addEventListener("selectionchange", event => {
+      doc.addEventListener("selectionchange", (event) => {
         if (settleTimer != null) window.clearTimeout(settleTimer);
         const feedback = readingSelectionFeedback(doc, event);
-        if (feedback.handled) { settleTimer = null; return; }
+        if (feedback.handled) {
+          settleTimer = null;
+          return;
+        }
         settleTimer = window.setTimeout(() => {
           settleTimer = null;
-          if (!feedback.current() || !viewRef.current?.renderer?.getContents().some(content => content.doc === doc)) return;
+          if (!feedback.current() || !viewRef.current?.renderer?.getContents().some((content) => content.doc === doc))
+            return;
           const sel = doc.getSelection?.();
           const hasSelection =
-            !!sel &&
-            sel.rangeCount > 0 &&
-            !sel.getRangeAt(0).collapsed &&
-            getNormalizedSelectionText(sel).length > 0;
+            !!sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed && getNormalizedSelectionText(sel).length > 0;
           if (hasSelection) {
             captureSelectionFromDoc(doc, index, { suppressContentClick: true, origin: feedback.origin });
           } else if (selectionRef.current) {
@@ -1591,25 +1666,29 @@ export function FoliateReaderView({
       });
     }
 
-    doc.addEventListener("pointerdown", (event) => {
-      cancelPendingShellOpen();
-      const hadSelection = !!selectionRef.current;
-      shellTapIntentRef.current = {
-        eligible: event.isPrimary && event.button === 0,
-        moved: false,
-        pointerType: event.pointerType,
-        startedAt: performance.now(),
-        startedWithSelection: hadSelection,
-        startX: event.clientX,
-        startY: event.clientY,
-      };
-      if (hadSelection) {
-        clearSelection();
-        armContentClickSuppression();
-        return;
-      }
-      suppressContentClickRef.current = false;
-    }, true);
+    doc.addEventListener(
+      "pointerdown",
+      (event) => {
+        cancelPendingShellOpen();
+        const hadSelection = !!selectionRef.current;
+        shellTapIntentRef.current = {
+          eligible: event.isPrimary && event.button === 0,
+          moved: false,
+          pointerType: event.pointerType,
+          startedAt: performance.now(),
+          startedWithSelection: hadSelection,
+          startX: event.clientX,
+          startY: event.clientY,
+        };
+        if (hadSelection) {
+          clearSelection();
+          armContentClickSuppression();
+          return;
+        }
+        suppressContentClickRef.current = false;
+      },
+      true,
+    );
 
     // While tap-to-advance is on, rapid stepping clicks must not turn into a
     // word-selecting double-click (selection is mousedown's default action at
@@ -1617,61 +1696,73 @@ export function FoliateReaderView({
     // a user mark), where single clicks don't step anyway (the click handler's
     // hit test routes them to menus), so double-click keeps selecting words
     // there. Drag and long-press selection still work everywhere.
-    doc.addEventListener("mousedown", (event) => {
-      const gestures = textUnitGestures();
-      if (!gestures.active || !gestures.tapToAdvance) return;
-      if (event.detail <= 1) return;
-      const hit = viewRef.current?.renderer
-        ?.getContents?.()
-        .find((content) => content.index === index)
-        ?.overlayer?.hitTest({ x: event.clientX, y: event.clientY });
-      if (hit && hit[0]) return;
-      event.preventDefault();
-    }, true);
+    doc.addEventListener(
+      "mousedown",
+      (event) => {
+        const gestures = textUnitGestures();
+        if (!gestures.active || !gestures.tapToAdvance) return;
+        if (event.detail <= 1) return;
+        const hit = viewRef.current?.renderer
+          ?.getContents?.()
+          .find((content) => content.index === index)
+          ?.overlayer?.hitTest({ x: event.clientX, y: event.clientY });
+        if (hit && hit[0]) return;
+        event.preventDefault();
+      },
+      true,
+    );
 
-    doc.addEventListener("pointermove", (event) => {
-      const intent = shellTapIntentRef.current;
-      if (!intent?.eligible || intent.moved) return;
-      if (
-        Math.abs(event.clientX - intent.startX) > SHELL_TAP_MAX_MOVE_PX ||
-        Math.abs(event.clientY - intent.startY) > SHELL_TAP_MAX_MOVE_PX
-      ) {
-        intent.moved = true;
-        intent.eligible = false;
-      }
-    }, true);
+    doc.addEventListener(
+      "pointermove",
+      (event) => {
+        const intent = shellTapIntentRef.current;
+        if (!intent?.eligible || intent.moved) return;
+        if (
+          Math.abs(event.clientX - intent.startX) > SHELL_TAP_MAX_MOVE_PX ||
+          Math.abs(event.clientY - intent.startY) > SHELL_TAP_MAX_MOVE_PX
+        ) {
+          intent.moved = true;
+          intent.eligible = false;
+        }
+      },
+      true,
+    );
 
-    doc.addEventListener("pointercancel", () => {
-      shellTapIntentRef.current = null;
-      cancelPendingShellOpen();
-    }, true);
-
-    doc.addEventListener("pointerup", () => {
-      const intent = shellTapIntentRef.current;
-      shellTapIntentRef.current = null;
-
-      const sel = doc.defaultView?.getSelection?.() ?? doc.getSelection?.() ?? null;
-      const hasSelection =
-        !!sel &&
-        sel.rangeCount > 0 &&
-        !sel.getRangeAt(0).collapsed &&
-        getNormalizedSelectionText(sel).length > 0;
-
-      if (hasSelection) {
-        captureSelectionFromDoc(doc, index, { suppressContentClick: true });
-        shouldOpenShellOnClickRef.current = false;
-        return;
-      }
-
-      if (intent?.eligible) {
-        const wasQuickTap = performance.now() - intent.startedAt <= SHELL_TAP_MAX_DURATION_MS;
-        shouldOpenShellOnClickRef.current =
-          wasQuickTap && !intent.startedWithSelection && !selectionRef.current;
-        shellTapPointerRef.current = intent.pointerType;
-      } else {
+    doc.addEventListener(
+      "pointercancel",
+      () => {
+        shellTapIntentRef.current = null;
         cancelPendingShellOpen();
-      }
-    }, true);
+      },
+      true,
+    );
+
+    doc.addEventListener(
+      "pointerup",
+      () => {
+        const intent = shellTapIntentRef.current;
+        shellTapIntentRef.current = null;
+
+        const sel = doc.defaultView?.getSelection?.() ?? doc.getSelection?.() ?? null;
+        const hasSelection =
+          !!sel && sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed && getNormalizedSelectionText(sel).length > 0;
+
+        if (hasSelection) {
+          captureSelectionFromDoc(doc, index, { suppressContentClick: true });
+          shouldOpenShellOnClickRef.current = false;
+          return;
+        }
+
+        if (intent?.eligible) {
+          const wasQuickTap = performance.now() - intent.startedAt <= SHELL_TAP_MAX_DURATION_MS;
+          shouldOpenShellOnClickRef.current = wasQuickTap && !intent.startedWithSelection && !selectionRef.current;
+          shellTapPointerRef.current = intent.pointerType;
+        } else {
+          cancelPendingShellOpen();
+        }
+      },
+      true,
+    );
 
     // 掌阅式内联脚注（<img zy-footnote="注文" class="epub-footnote">）：注文
     // 就在属性里 —— 点击直接进现有的脚注弹层。链接式 noteref 走 foliate 的
@@ -1680,13 +1771,9 @@ export function FoliateReaderView({
       "click",
       (event) => {
         const target = event.target instanceof Element ? event.target : null;
-        const marker = target?.closest?.(
-          "img[zy-footnote], img.epub-footnote, img.zhangyue-footnote",
-        );
+        const marker = target?.closest?.("img[zy-footnote], img.epub-footnote, img.zhangyue-footnote");
         if (!marker) return;
-        const text = (
-          marker.getAttribute("zy-footnote") ?? marker.getAttribute("alt") ?? ""
-        ).trim();
+        const text = (marker.getAttribute("zy-footnote") ?? marker.getAttribute("alt") ?? "").trim();
         if (!text) return;
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -1711,7 +1798,7 @@ export function FoliateReaderView({
         const image = resolveActivatedImage(event.target);
         if (!image) return;
         const identity = selectionContentRef.current;
-        if (!identity?.view.renderer?.getContents().some(content => content.doc === doc)) return;
+        if (!identity?.view.renderer?.getContents().some((content) => content.doc === doc)) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         cancelPendingShellToggle();
@@ -1721,7 +1808,7 @@ export function FoliateReaderView({
       true,
     );
 
-    doc.addEventListener("click", event => handleSectionClick(doc, index, event), true);
+    doc.addEventListener("click", (event) => handleSectionClick(doc, index, event), true);
 
     // A double-click selects a word; cancel the toggle its first click queued so
     // the shell doesn't flash up while you're selecting.
@@ -1730,20 +1817,20 @@ export function FoliateReaderView({
     // A native intra-section scroll (anchor jump, focus) should still drop a live
     // selection; shell dismissal is driven by the wheel-distance accumulator and
     // the relocate page check, not by the raw scroll event.
-    doc.addEventListener("scroll", event => {
-      if (!viewRef.current?.renderer?.getContents().some(content => content.doc === doc)) return;
-      clearSelection(readingRenderActor(readingInputContext(event)));
-    }, true);
+    doc.addEventListener(
+      "scroll",
+      (event) => {
+        if (!viewRef.current?.renderer?.getContents().some((content) => content.doc === doc)) return;
+        clearSelection(readingRenderActor(readingInputContext(event)));
+      },
+      true,
+    );
 
     // Wheel routing (see handleWheelEvent): trackpad page turns in paginated
     // layouts, scroll-to-step while the navigator claims the wheel, and in
     // continuous-scroll mode the section-boundary bridge + the shell's
     // scroll-distance dismissal. Non-passive: the first two must preventDefault.
-    doc.addEventListener(
-      "wheel",
-      (event) => handleWheelEvent(event),
-      { passive: false },
-    );
+    doc.addEventListener("wheel", (event) => handleWheelEvent(event), { passive: false });
 
     // Touch counterpart (see createTouchNavHandlers): without it, touch could
     // never cross into the adjacent chapter in scroll mode, and swipe-to-step
@@ -1780,7 +1867,13 @@ export function FoliateReaderView({
     };
   }, []);
 
-  useReaderViewportResize({ viewportRef, viewRef, selectionRef, clearSelection, applyMaxInlineSize: applyReaderMaxInlineSize });
+  useReaderViewportResize({
+    viewportRef,
+    viewRef,
+    selectionRef,
+    clearSelection,
+    applyMaxInlineSize: applyReaderMaxInlineSize,
+  });
 
   // Bridge wheel and click events that land on the empty area *outside* the
   // iframe content. In scrolled mode the foliate engine sizes the section's
@@ -1877,9 +1970,7 @@ export function FoliateReaderView({
   // Tapping a mark anchors the recolor/remove menu over it; tapping a note
   // marker opens that note for reading/editing.
   const showAnnotation = useEffectEvent((detail: FoliateShowAnnotationDetail) => {
-    const highlight = highlightsRef.current.find(
-      (item) => item.cfiRange === detail.value,
-    );
+    const highlight = highlightsRef.current.find((item) => item.cfiRange === detail.value);
     if (!highlight) {
       const note = notesRef.current.find((item) => item.cfiRange === detail.value);
       if (note) {
@@ -1926,16 +2017,19 @@ export function FoliateReaderView({
     let releaseBook: (() => Promise<void>) | undefined;
     const runtimeSession = readingRuntime.snapshot();
     const sessionId = runtimeSession.bookId === selectedBook?.id ? runtimeSession.sessionId : null;
-    const openingActor = engineLoadSource.current?.origin ?? (sessionId ? readingRuntime.openingActor(sessionId) : causalActor("system"));
+    const openingActor =
+      engineLoadSource.current?.origin ?? (sessionId ? readingRuntime.openingActor(sessionId) : causalActor("system"));
     const openingContext = readingRenderContext(openingActor);
     // Bindings are undone with the retiring actor, or the opening one when
     // the retirement has no cause of its own.
     const defer = (teardown: (origin: DomainActor) => void) =>
-      session.onClose(origin => teardown(origin ?? openingActor));
+      session.onClose((origin) => teardown(origin ?? openingActor));
     const retainParsedBook = (parsed: FoliateBook) => {
       const release = retainBook(parsed);
       releaseBook = release;
-      session.onRelease(() => { void release().catch(error => log.warn('Could not close parsed book', error)); });
+      session.onRelease(() => {
+        void release().catch((error) => log.warn("Could not close parsed book", error));
+      });
     };
     session.onRelease(() => {
       highlightsRef.current = [];
@@ -1961,7 +2055,7 @@ export function FoliateReaderView({
         view = await createFoliateView();
         const createdView = view;
         session.onRelease(() => {
-          void createdView.close().catch(error => log.warn('Could not close reader', error));
+          void createdView.close().catch((error) => log.warn("Could not close reader", error));
           createdView.remove();
           if (viewRef.current === createdView) viewRef.current = null;
         });
@@ -1981,9 +2075,7 @@ export function FoliateReaderView({
           // foliate-conforming object — no file, no parser.
           const provider = resolveContentProvider(initialBook.virtual);
           if (!provider) {
-            throw new Error(
-              "The plugin providing this book is disabled or uninstalled.",
-            );
+            throw new Error("The plugin providing this book is disabled or uninstalled.");
           }
           const content = await provider.load(initialBook.virtual.key);
           if (resolveContentProvider(initialBook.virtual) !== provider) {
@@ -1996,9 +2088,10 @@ export function FoliateReaderView({
         } else {
           const source = initialBook.file;
           if (!source) throw new Error("Missing book file.");
-          const file = typeof source.name === "string"
-            ? source
-            : new File([await source.arrayBuffer()], initialBook.fileName, { type: source.type });
+          const file =
+            typeof source.name === "string"
+              ? source
+              : new File([await source.arrayBuffer()], initialBook.fileName, { type: source.type });
           // Parse first, then repair a deficient nav BEFORE the view opens —
           // foliate builds its TOC progress (relocate's tocItem) from book.toc
           // at open time, so the synthesized map has to be in place already.
@@ -2017,16 +2110,36 @@ export function FoliateReaderView({
           // Seed the very first stylesheet before React's shared-language update
           // arrives. Book overrides still win; opening must not flash the fallback font.
           const override = getReaderOverrides()[selectedBook.id];
-          const font = override?.scope === "book" ? override.settings : readerPreferencesForLanguage(getReaderPreferences(), language);
-          if (readerSettingsRef.current.fontFamily !== font.fontFamily || readerSettingsRef.current.fontWeight !== font.fontWeight) {
-            readerSettingsRef.current = stampEventCause({ ...readerSettingsRef.current, fontFamily: font.fontFamily, fontWeight: font.fontWeight }, openingActor);
+          const font =
+            override?.scope === "book"
+              ? override.settings
+              : readerPreferencesForLanguage(getReaderPreferences(), language);
+          if (
+            readerSettingsRef.current.fontFamily !== font.fontFamily ||
+            readerSettingsRef.current.fontWeight !== font.fontWeight
+          ) {
+            readerSettingsRef.current = stampEventCause(
+              { ...readerSettingsRef.current, fontFamily: font.fontFamily, fontWeight: font.fontWeight },
+              openingActor,
+            );
           }
         }
-        if (selectedBook && sessionId) defer(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
+        if (selectedBook && sessionId)
+          defer(
+            registerActiveBookContent(
+              selectedBook.id,
+              parsedBook,
+              contentVersion,
+              contentProvider,
+              invalidation,
+              initialBook.virtual?.key,
+            ),
+          );
         const chapterStarts = await prepareReaderChapterStarts(parsedBook);
         if (session.closed) return;
-        // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
-        if (selectedBook) currentTextUnitNavigator().handleContentVersion(selectedBook.id, contentVersion, openingActor);
+        if (selectedBook)
+          // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
+          currentTextUnitNavigator().handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);
         if (session.closed) return;
         if (view.renderer) view.renderer.inputBridge = readingNativeInput;
@@ -2044,23 +2157,32 @@ export function FoliateReaderView({
         // Before the first navigation, so the opening render already draws the
         // page in the reader's palette instead of flashing white and redrawing.
         if (fixedLayout) applyReaderPageColors(readerSettingsRef.current, view.renderer, openingActor);
-        if (fixedLayout && view.renderer && 'setLayout' in view.renderer) {
+        if (fixedLayout && view.renderer && "setLayout" in view.renderer) {
           // WebKit may defer custom-element attribute reactions until after the
           // first navigation. Configure fixed layout atomically so that first
           // paint cannot race against the old, paired-spread model.
           view.renderer.setLayout(flow, maxColumnCount, openingContext);
         } else {
-          if (view.renderer && "setLayoutAttributes" in view.renderer) view.renderer.setLayoutAttributes({
-            flow, "max-column-count": String(maxColumnCount),
-          }, openingContext);
+          if (view.renderer && "setLayoutAttributes" in view.renderer)
+            view.renderer.setLayoutAttributes(
+              {
+                flow,
+                "max-column-count": String(maxColumnCount),
+              },
+              openingContext,
+            );
         }
         if (fixedLayout && view.renderer) {
           // Every finished page raster keeps the busy signal fresh while the
           // stack prerenders around a scrolling reader.
           const rendererTarget = view.renderer;
           const onRendered = (event: Event) => {
-            if (!session.closed && sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "render" },
-              readingRenderActor((event as CustomEvent<object>).detail, openingActor));
+            if (!session.closed && sessionId)
+              emitAppEvent(
+                "reader-demand-activity",
+                { sessionId, reason: "render" },
+                readingRenderActor((event as CustomEvent<object>).detail, openingActor),
+              );
           };
           rendererTarget.addEventListener("rendered", onRendered);
           defer(() => rendererTarget.removeEventListener("rendered", onRendered));
@@ -2074,10 +2196,15 @@ export function FoliateReaderView({
           const effectiveColumns = width > height ? maxColumnCount : 1;
           const margins = readerSettingsRef.current.pageMargins;
           const { gap, margin } = readerLayoutSpacing(margins, readingMode);
-          if (view.renderer && "setLayoutAttributes" in view.renderer) view.renderer.setLayoutAttributes({
-            gap, margin,
-            "max-inline-size": `${computeReaderMaxInlineSize(width, margins, effectiveColumns)}px`,
-          }, openingContext);
+          if (view.renderer && "setLayoutAttributes" in view.renderer)
+            view.renderer.setLayoutAttributes(
+              {
+                gap,
+                margin,
+                "max-inline-size": `${computeReaderMaxInlineSize(width, margins, effectiveColumns)}px`,
+              },
+              openingContext,
+            );
         }
         void injectReaderStyles(readerSettingsRef.current, view.renderer, openingActor);
         // Glide page turns / arrow-key scrolls instead of snapping (unless motion
@@ -2086,14 +2213,16 @@ export function FoliateReaderView({
 
         let entries = flattenToc(book?.toc ?? []);
         if (!session.closed) setTocEntries(entries);
-        void attachTocFractions(view, entries).then(resolved => {
-          if (session.closed) return;
-          entries = resolved;
-          setTocEntries(resolved);
-        }).catch(error => log.warn('Could not prepare chapter marks', error));
+        void attachTocFractions(view, entries)
+          .then((resolved) => {
+            if (session.closed) return;
+            entries = resolved;
+            setTocEntries(resolved);
+          })
+          .catch((error) => log.warn("Could not prepare chapter marks", error));
 
         const onRelocate = (event: Event) => {
-          if (!view || session.closed || sessionId && readingRuntime.snapshot().sessionId !== sessionId) return;
+          if (!view || session.closed || (sessionId && readingRuntime.snapshot().sessionId !== sessionId)) return;
           // Tell background pipelines (text extraction) the reader is busy —
           // the page being read must win the PDF worker and the blob channel.
           const detail = (event as CustomEvent<FoliateRelocateDetail>).detail;
@@ -2106,8 +2235,7 @@ export function FoliateReaderView({
           const cfi = detail.cfi ?? null;
           const href = detail.tocItem?.href ?? null;
           const activeTocIndex = findTocIndexForHref(entries, href);
-          const chapterTitle =
-            detail.tocItem?.label?.trim() || entries[activeTocIndex]?.label?.trim() || undefined;
+          const chapterTitle = detail.tocItem?.label?.trim() || entries[activeTocIndex]?.label?.trim() || undefined;
           const chapterProgress = chapterProgressAt(entries, href, fraction);
           const visibleText = normalizeReadingCursorText(readingVisibleText(view).text);
           lastLocationTargetRef.current = cfi ?? href;
@@ -2202,16 +2330,27 @@ export function FoliateReaderView({
         };
 
         // Footnote/endnote references open the popover; other links navigate.
-        const nativeLinks = sessionId && selectedBook ? createNativeLinkNavigator(readingRuntime,
-          { sessionId, bookId: selectedBook.id, contentVersion }, error => setError(describeReaderFailure(error)),
-          () => { setError(null); clearSelection(); }) : null;
+        const nativeLinks =
+          sessionId && selectedBook
+            ? createNativeLinkNavigator(
+                readingRuntime,
+                { sessionId, bookId: selectedBook.id, contentVersion },
+                (error) => setError(describeReaderFailure(error)),
+                () => {
+                  setError(null);
+                  clearSelection();
+                },
+              )
+            : null;
         if (nativeLinks) defer(nativeLinks.dispose);
         const onLink = (event: Event) => {
           const detail = (event as CustomEvent<FoliateLinkDetail>).detail;
           if (detail?.a) footnoteAnchorRectRef.current = anchorRectForElement(detail.a);
           const handler = footnoteHandlerRef.current;
-          if (handler && book) void handler.handle(book, event as CustomEvent<FoliateLinkDetail>, beginNativeFootnote())
-            ?.catch(error => log.warn('Could not render footnote', error));
+          if (handler && book)
+            void handler
+              .handle(book, event as CustomEvent<FoliateLinkDetail>, beginNativeFootnote())
+              ?.catch((error) => log.warn("Could not render footnote", error));
           void nativeLinks?.handle(event as CustomEvent<FoliateLinkDetail>);
         };
 
@@ -2241,13 +2380,15 @@ export function FoliateReaderView({
         if (session.closed) return;
         if (selectedBook) {
           try {
-            defer(observeReaderAnnotations(selectedBook.id, view, highlightsRef, notesRef, items => {
-              setActiveAnnotation(current => {
-                if (!current) return null;
-                const next = items.find(item => item.id === current.highlight.id);
-                return next && JSON.stringify(next) === JSON.stringify(current.highlight) ? current : null;
-              });
-            }));
+            defer(
+              observeReaderAnnotations(selectedBook.id, view, highlightsRef, notesRef, (items) => {
+                setActiveAnnotation((current) => {
+                  if (!current) return null;
+                  const next = items.find((item) => item.id === current.highlight.id);
+                  return next && JSON.stringify(next) === JSON.stringify(current.highlight) ? current : null;
+                });
+              }),
+            );
           } catch (error) {
             // Reading remains usable; the annotations panel has its own retry/error surface.
             log.warn("Could not observe reader annotations", error);
@@ -2255,8 +2396,13 @@ export function FoliateReaderView({
         }
 
         const resetPosition = initialBook.resetPosition && resetPositionSourceRef.current !== initialBook;
-        await restoreReadingPosition(view, { virtual: !!initialBook.virtual, reset: !!resetPosition,
-          target: lastLocationTargetRef.current, fraction: initialFractionRef.current, context: openingContext });
+        await restoreReadingPosition(view, {
+          virtual: !!initialBook.virtual,
+          reset: !!resetPosition,
+          target: lastLocationTargetRef.current,
+          fraction: initialFractionRef.current,
+          context: openingContext,
+        });
         if (view) {
           applyHighlights(view, highlightsRef.current);
           applyNotes(view, notesRef.current, highlightsRef.current);
@@ -2269,17 +2415,34 @@ export function FoliateReaderView({
         if (resetPosition) resetPositionSourceRef.current = initialBook;
         if (sessionId && selectedBook) {
           const emphasis = await createReadingEmphasisAdapter(view);
-          if (session.closed) { emphasis.retire(); return; }
+          if (session.closed) {
+            emphasis.retire();
+            return;
+          }
           defer(() => emphasis.retire());
           assertContentNotInvalidated(selectedBook.id, invalidation);
-          const sourceRevision = contentProvider ? virtualSourceRevision(selectedBook.id, contentProvider, initialBook.virtual!.key) : contentVersion;
-          if (!session.closed) defer(attachReadingEngine(view, sessionId, selectedBook.id, contentVersion, sourceRevision, openingActor));
+          const sourceRevision = contentProvider
+            ? virtualSourceRevision(selectedBook.id, contentProvider, initialBook.virtual!.key)
+            : contentVersion;
+          if (!session.closed)
+            defer(attachReadingEngine(view, sessionId, selectedBook.id, contentVersion, sourceRevision, openingActor));
           const identity = { view, sessionId, bookId: selectedBook.id, contentVersion };
           selectionContentRef.current = identity;
-          defer(readingRuntime.bindSelection(sessionId, createReadingSelectionAdapter(view,
-            () => selectionRef.current, (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }), clearSelection, selectionRender), openingActor));
+          defer(
+            readingRuntime.bindSelection(
+              sessionId,
+              createReadingSelectionAdapter(
+                view,
+                () => selectionRef.current,
+                (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }),
+                clearSelection,
+                selectionRender,
+              ),
+              openingActor,
+            ),
+          );
           defer(readingEmphasis.bind(sessionId, selectedBook.id, contentVersion, emphasis));
-          defer(origin => {
+          defer((origin) => {
             if (selectionContentRef.current !== identity) return;
             selectionContentRef.current = null;
             readingRuntime.selectionChanged(sessionId, null, origin);
@@ -2290,8 +2453,8 @@ export function FoliateReaderView({
       } catch (nextError) {
         if (sessionId && !session.closed) readingRuntime.fail(sessionId, nextError, openingActor);
         if (!session.closed) setError(describeReaderFailure(nextError, "load"));
-        await view?.close().catch(error => log.warn('Could not close failed reader', error));
-        await releaseBook?.().catch(error => log.warn('Could not close failed book', error));
+        await view?.close().catch((error) => log.warn("Could not close failed reader", error));
+        await releaseBook?.().catch((error) => log.warn("Could not close failed book", error));
       } finally {
         if (!session.closed) setIsLoading(false);
       }
@@ -2331,8 +2494,7 @@ export function FoliateReaderView({
 
   // Spreads leave the page edges clear; wheel, swipe and keyboard turn pages.
   // Single-page mode retains its explicit edge controls.
-  const showPageTurnControls =
-    readingMode === "paginated-single" && !isLoading && !error;
+  const showPageTurnControls = readingMode === "paginated-single" && !isLoading && !error;
 
   return (
     <section ref={readerRootRef} className="relative h-full w-full overflow-hidden">
@@ -2357,7 +2519,9 @@ export function FoliateReaderView({
       <ReaderSelectionMenu
         selection={selection}
         onCopy={() => copyTargetText(selectionRef.current?.text ?? "")}
-        onHighlight={() => { void handleHighlight(); }}
+        onHighlight={() => {
+          void handleHighlight();
+        }}
         onUnderline={handleUnderline}
         onAddNote={handleAddNote}
         onAskAI={handleAskAI}
@@ -2421,15 +2585,26 @@ export function FoliateReaderView({
           canStep={textUnitNavigator.status === "ready" || textUnitNavigator.status === "empty"}
           tapToAdvance={textUnitModeSettings.tapToAdvance}
           unitId={activeUnitId}
-          onUnitChange={(unitId) => onModeUnitChange ? onModeUnitChange(unitId) : patchTextUnitModeSettings({ unitId })}
+          onUnitChange={(unitId) =>
+            onModeUnitChange ? onModeUnitChange(unitId) : patchTextUnitModeSettings({ unitId })
+          }
           onOpenPanel={openReaderPanel}
           onPrev={textUnitNavigator.prev}
           onNext={textUnitNavigator.next}
           onReturnToCurrent={textUnitNavigator.returnToCurrent}
           canAnnotate={textUnitNavigator.status === "ready" && textUnitNavigator.current?.cfiRange != null}
-          onHighlight={() => { setUnitMenuAnchor(null); void handleNavigatorMark("highlight"); }}
-          onUnderline={() => { setUnitMenuAnchor(null); void handleNavigatorMark("underline"); }}
-          onAddNote={() => { setUnitMenuAnchor(null); handleNavigatorAddNote(); }}
+          onHighlight={() => {
+            setUnitMenuAnchor(null);
+            void handleNavigatorMark("highlight");
+          }}
+          onUnderline={() => {
+            setUnitMenuAnchor(null);
+            void handleNavigatorMark("underline");
+          }}
+          onAddNote={() => {
+            setUnitMenuAnchor(null);
+            handleNavigatorAddNote();
+          }}
           onExit={() => onExitTextUnitMode?.()}
           readAloudAvailable={readAloud.available}
           readAloudPlaying={readAloud.playing}
@@ -2472,7 +2647,7 @@ export function FoliateReaderView({
           lifetime={lightboxImage.lifetime}
           src={lightboxImage.src}
           alt={lightboxImage.alt}
-          onClose={origin => closeLightbox(origin, lightboxImage.id)}
+          onClose={(origin) => closeLightbox(origin, lightboxImage.id)}
         />
       )}
       <ReaderAnnotationMenu
@@ -2501,9 +2676,13 @@ export function FoliateReaderView({
           title={t(error.kind === "load" ? "openErrorTitle" : "navigationErrorTitle")}
           bookTitle={selectedBook?.title ?? initialBook?.fileName}
           message={error.message}
-          action={error.kind === "navigation"
-            ? { label: t("continueReading"), onClick: () => setError(null) }
-            : error.retryable && onRetryOpen ? { label: t("tryAgain"), onClick: onRetryOpen } : undefined}
+          action={
+            error.kind === "navigation"
+              ? { label: t("continueReading"), onClick: () => setError(null) }
+              : error.retryable && onRetryOpen
+                ? { label: t("tryAgain"), onClick: onRetryOpen }
+                : undefined
+          }
           onBack={onCloseReader}
         />
       )}
@@ -2514,7 +2693,7 @@ export function FoliateReaderView({
         isSaving={noteEditor.isSaving}
         selectedText={noteEditor.target?.text || ""}
         initialContent={noteEditor.current?.content || ""}
-        onSave={content => void noteEditor.save(content)}
+        onSave={(content) => void noteEditor.save(content)}
         onCancel={noteEditor.close}
         isEditing={!!noteEditor.current}
       />
@@ -2535,7 +2714,6 @@ export function FoliateReaderView({
           onDismiss={dismissCompletion}
         />
       ) : null}
-
     </section>
   );
 }

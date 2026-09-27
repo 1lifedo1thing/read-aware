@@ -76,7 +76,10 @@ function clearInlineMotion(el: HTMLElement): void {
  * held, faded out, until React commits the closed state, and only then is the
  * inline motion cleared without a transition (see the layout effect below).
  */
-export function usePanelSwipeDismiss<T extends HTMLElement>(ref: RefObject<T | null>, { open, enabled, exit, onDismiss }: Options): void {
+export function usePanelSwipeDismiss<T extends HTMLElement>(
+  ref: RefObject<T | null>,
+  { open, enabled, exit, onDismiss }: Options,
+): void {
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
   const awaitingClose = useRef(false);
@@ -102,8 +105,8 @@ export function usePanelSwipeDismiss<T extends HTMLElement>(ref: RefObject<T | n
     let settling = false;
 
     const touchOf = (event: TouchEvent, id: number) =>
-      Array.from(event.changedTouches).find((touch) => touch.identifier === id)
-      ?? Array.from(event.touches).find((touch) => touch.identifier === id);
+      Array.from(event.changedTouches).find((touch) => touch.identifier === id) ??
+      Array.from(event.touches).find((touch) => touch.identifier === id);
 
     const settle = (to: number, done: () => void) => {
       // Already there (released at rest, or dragged fully out): no transition
@@ -166,8 +169,10 @@ export function usePanelSwipeDismiss<T extends HTMLElement>(ref: RefObject<T | n
         // The edge back swipe wins over the sheet's content, as it does in
         // iOS; an ordinary drag yields to text entry, selections and
         // anything that scrolls sideways under the finger.
-        if (lock.kind === "release" || (lock.kind === "drag"
-          && (current.guarded || scrollsHorizontally(current.target, el, dx)))) {
+        if (
+          lock.kind === "release" ||
+          (lock.kind === "drag" && (current.guarded || scrollsHorizontally(current.target, el, dx)))
+        ) {
           gesture = null;
           return;
         }
@@ -189,8 +194,9 @@ export function usePanelSwipeDismiss<T extends HTMLElement>(ref: RefObject<T | n
       gesture = null;
       if (current.lock.kind !== "edge-back" && current.lock.kind !== "drag") return;
       const { direction } = current.lock;
-      const leave = event.type === "touchend"
-        && shouldDismiss(current.offset, releaseVelocity(current.samples), current.width, direction);
+      const leave =
+        event.type === "touchend" &&
+        shouldDismiss(current.offset, releaseVelocity(current.samples), current.width, direction);
       if (!leave) {
         settle(0, () => clearInlineMotion(el));
         return;

@@ -7,8 +7,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 pub(crate) fn row_to_event(row: &rusqlite::Row) -> rusqlite::Result<EventRow> {
     let payload_str: String = row.get("payload_json")?;
@@ -70,31 +70,29 @@ pub(crate) fn insert_event_row_with_seq(
     let payload = serde_json::to_string(&ev.payload)?;
     // `?4` (HLC wall ms) is reused to derive created_at when the caller
     // didn't stamp one.
-    let inserted = tx
-        .execute(
-            "INSERT OR IGNORE INTO domain_events
+    let inserted = tx.execute(
+        "INSERT OR IGNORE INTO domain_events
                 (id, type, schema_version, hlc_wall_ms, hlc_counter, hlc_device,
                  aggregate_type, aggregate_id, payload_json, actor_id, origin, created_at)
              VALUES (?1, ?2, COALESCE(?3, 1), ?4, ?5, ?6, ?7, ?8, ?9,
                      COALESCE(?10, 'local'),
                      COALESCE(?11, 'user'),
                      COALESCE(?12, strftime('%Y-%m-%dT%H:%M:%fZ', ?4 / 1000.0, 'unixepoch')))",
-            params![
-                ev.id,
-                ev.event_type,
-                ev.schema_version,
-                ev.hlc.wall_ms,
-                ev.hlc.counter,
-                ev.hlc.device_id,
-                ev.aggregate_type,
-                ev.aggregate_id,
-                payload,
-                ev.actor_id,
-                ev.origin,
-                ev.created_at,
-            ],
-        )
-        ?;
+        params![
+            ev.id,
+            ev.event_type,
+            ev.schema_version,
+            ev.hlc.wall_ms,
+            ev.hlc.counter,
+            ev.hlc.device_id,
+            ev.aggregate_type,
+            ev.aggregate_id,
+            payload,
+            ev.actor_id,
+            ev.origin,
+            ev.created_at,
+        ],
+    )?;
     // Locally-appended events enter the push outbox; ignored duplicates
     // (already logged, possibly already pushed) must not re-enter it.
     if inserted > 0 && source == EventSource::Local {
@@ -102,8 +100,7 @@ pub(crate) fn insert_event_row_with_seq(
             "INSERT OR IGNORE INTO event_sync_state (event_id, updated_at)
              VALUES (?1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
             params![ev.id],
-        )
-        ?;
+        )?;
     }
     if let Some(seq) = remote_seq {
         tx.execute(
@@ -118,13 +115,15 @@ pub(crate) fn insert_event_row_with_seq(
                 last_error = NULL,
                 updated_at = excluded.updated_at",
             params![ev.id, seq.to_string()],
-        )
-        ?;
+        )?;
     }
     Ok(inserted > 0)
 }
 
-pub(crate) fn append_events_inner(conn: &mut Connection, events: &[EventRow]) -> Result<(), CommandError> {
+pub(crate) fn append_events_inner(
+    conn: &mut Connection,
+    events: &[EventRow],
+) -> Result<(), CommandError> {
     let tx = conn.transaction()?;
     for ev in events {
         insert_event_row(&tx, ev, EventSource::Local)?;
@@ -270,7 +269,9 @@ pub(crate) fn apply_remote_events_inner(
 ) -> Result<MergeReport, CommandError> {
     if let Some(s) = seqs {
         if s.len() != events.len() {
-            return Err(CommandError::internal("apply_remote_events: events and seqs differ in length"));
+            return Err(CommandError::internal(
+                "apply_remote_events: events and seqs differ in length",
+            ));
         }
     }
     let tx = conn.transaction()?;
@@ -355,7 +356,10 @@ fn set_projections_stale(tx: &Transaction<'_>, stale: bool) -> Result<(), Comman
     set_projections_stale_conn(tx, stale)
 }
 
-pub(crate) fn set_projections_stale_conn(conn: &Connection, stale: bool) -> Result<(), CommandError> {
+pub(crate) fn set_projections_stale_conn(
+    conn: &Connection,
+    stale: bool,
+) -> Result<(), CommandError> {
     conn.execute(
         "INSERT INTO sync_profile (id, projections_stale, updated_at)
          VALUES (1, ?1, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -363,8 +367,7 @@ pub(crate) fn set_projections_stale_conn(conn: &Connection, stale: bool) -> Resu
             projections_stale = excluded.projections_stale,
             updated_at = excluded.updated_at",
         params![stale as i64],
-    )
-    ?;
+    )?;
     Ok(())
 }
 
@@ -387,7 +390,9 @@ pub(crate) fn stage_remote_events_inner(
 ) -> Result<usize, CommandError> {
     if let Some(s) = seqs {
         if s.len() != events.len() {
-            return Err(CommandError::internal("stage_remote_events: events and seqs differ in length"));
+            return Err(CommandError::internal(
+                "stage_remote_events: events and seqs differ in length",
+            ));
         }
     }
     let tx = conn.transaction()?;
@@ -503,11 +508,9 @@ pub async fn list_event_aggregate_ids(
          WHERE aggregate_id IS NOT NULL AND type IN ({placeholders})"
         );
         let mut stmt = conn.prepare(&sql)?;
-        let iter = stmt
-            .query_map(rusqlite::params_from_iter(types.iter()), |row| {
-                row.get::<_, String>(0)
-            })
-            ?;
+        let iter = stmt.query_map(rusqlite::params_from_iter(types.iter()), |row| {
+            row.get::<_, String>(0)
+        })?;
         let mut out = Vec::new();
         for r in iter {
             out.push(r?);
@@ -515,9 +518,13 @@ pub async fn list_event_aggregate_ids(
         if types.iter().any(|kind| kind == "memory.promoted") {
             // Onboarding seeds have one compound creation event. Their receipt
             // survives checkpoints and prevents genesis from minting them again.
-            let mut seeds = conn.prepare("SELECT DISTINCT value FROM onboarding_receipts, json_each(memory_ids_json)")?;
+            let mut seeds = conn.prepare(
+                "SELECT DISTINCT value FROM onboarding_receipts, json_each(memory_ids_json)",
+            )?;
             let rows = seeds.query_map([], |row| row.get::<_, String>(0))?;
-            for id in rows { out.push(id?); }
+            for id in rows {
+                out.push(id?);
+            }
         }
         Ok(out)
     })
@@ -563,7 +570,8 @@ where
                       ORDER BY hlc_wall_ms, hlc_counter, hlc_device
                       LIMIT ?4",
                 )?;
-                let iter = stmt.query_map(params![wall, counter, device, page as i64], row_to_event)?;
+                let iter =
+                    stmt.query_map(params![wall, counter, device, page as i64], row_to_event)?;
                 iter.collect::<rusqlite::Result<Vec<_>>>()?
             }
             None => {
@@ -592,12 +600,13 @@ where
     Ok(total)
 }
 
-fn derived_row_counts(tx: &Transaction<'_>) -> Result<std::collections::BTreeMap<String, i64>, CommandError> {
+fn derived_row_counts(
+    tx: &Transaction<'_>,
+) -> Result<std::collections::BTreeMap<String, i64>, CommandError> {
     let mut rows = std::collections::BTreeMap::new();
     for table in apply::DERIVED_TABLES {
-        let count: i64 = tx
-            .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))
-            ?;
+        let count: i64 =
+            tx.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0))?;
         rows.insert((*table).to_string(), count);
     }
     Ok(rows)
@@ -611,8 +620,7 @@ fn derived_row_counts(tx: &Transaction<'_>) -> Result<std::collections::BTreeMap
 /// merges go through `replay_projections`, which starts from a checkpoint.
 pub(crate) fn replay_into(tx: &Transaction<'_>) -> Result<RebuildReport, CommandError> {
     for table in apply::DERIVED_TABLES {
-        tx.execute(&format!("DELETE FROM {table}"), [])
-            ?;
+        tx.execute(&format!("DELETE FROM {table}"), [])?;
     }
     let mut applied = 0usize;
     let replayed = for_each_event_after(tx, None, |ev| {
@@ -696,7 +704,9 @@ pub async fn rebuild_projections(app: AppHandle) -> Result<RebuildReport, Comman
     .map_err(|e| format!("rebuild_projections task failed: {e}"))?
 }
 
-pub(crate) fn rebuild_projections_inner(conn: &mut Connection) -> Result<RebuildReport, CommandError> {
+pub(crate) fn rebuild_projections_inner(
+    conn: &mut Connection,
+) -> Result<RebuildReport, CommandError> {
     require_complete_log(conn)?;
     let tx = conn.transaction()?;
     let report = replay_into(&tx)?;
@@ -762,10 +772,7 @@ pub(crate) fn snapshot_table(
             if spec.local_columns.contains(&name.as_str()) {
                 continue;
             }
-            obj.insert(
-                name.clone(),
-                value_to_json(row.get_ref(i)?),
-            );
+            obj.insert(name.clone(), value_to_json(row.get_ref(i)?));
         }
         *out.entry(Value::Object(obj).to_string()).or_insert(0) += 1;
     }

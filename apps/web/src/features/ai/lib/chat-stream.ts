@@ -1,8 +1,4 @@
-import type {
-  ChatAssistantPart,
-  ChatReference,
-  ChatStreamChunk,
-} from "./chat-types";
+import type { ChatAssistantPart, ChatReference, ChatStreamChunk } from "./chat-types";
 
 /**
  * "Never present the same item twice in one reply" is a stated tool rule, but
@@ -10,10 +6,7 @@ import type {
  * the mechanical guarantee: drop items already shown by an earlier reference
  * part of the same turn; a fully-duplicate stack appends nothing.
  */
-function dedupeReference(
-  parts: ChatAssistantPart[],
-  reference: ChatReference,
-): ChatReference | undefined {
+function dedupeReference(parts: ChatAssistantPart[], reference: ChatReference): ChatReference | undefined {
   const seen = new Set<string>();
   for (const part of parts) {
     if (part.type !== "reference") continue;
@@ -32,12 +25,10 @@ function dedupeReference(
     return books.length > 0 ? { kind: "books", books } : undefined;
   }
   if (reference.kind === "web-images") {
-    const images = reference.images.filter(image => !seen.has(`image:${image.url}`));
+    const images = reference.images.filter((image) => !seen.has(`image:${image.url}`));
     return images.length ? { kind: "web-images", images } : undefined;
   }
-  const words = reference.words.filter(
-    (word) => !seen.has(`word:${word.language} ${word.term.toLowerCase()}`),
-  );
+  const words = reference.words.filter((word) => !seen.has(`word:${word.language} ${word.term.toLowerCase()}`));
   return words.length > 0 ? { kind: "words", words } : undefined;
 }
 
@@ -46,10 +37,7 @@ function dedupeReference(
  * part timeline the UI renders. Immutable — every call returns a fresh array
  * (with the touched part copied) so it can back a React state update directly.
  */
-export function appendStreamChunk(
-  parts: ChatAssistantPart[],
-  chunk: ChatStreamChunk,
-): ChatAssistantPart[] {
+export function appendStreamChunk(parts: ChatAssistantPart[], chunk: ChatStreamChunk): ChatAssistantPart[] {
   switch (chunk.type) {
     case "text": {
       const last = parts[parts.length - 1];
@@ -68,10 +56,12 @@ export function appendStreamChunk(
       // so it still streams in the right place instead of stacking repeated
       // "Thought process" rows around every tool call.
       const priorThoughts = parts.filter(
-        (part): part is Extract<ChatAssistantPart, { type: "thinking" }> =>
-          part.type === "thinking",
+        (part): part is Extract<ChatAssistantPart, { type: "thinking" }> => part.type === "thinking",
       );
-      const priorText = priorThoughts.map((part) => part.text.trim()).filter(Boolean).join("\n\n");
+      const priorText = priorThoughts
+        .map((part) => part.text.trim())
+        .filter(Boolean)
+        .join("\n\n");
       const withoutThoughts = parts.filter((part) => part.type !== "thinking");
       return [
         ...withoutThoughts,
@@ -165,10 +155,7 @@ function dedupeThinkingParagraphs(text: string): string {
 }
 
 /** Collapse provider/tool-round reasoning runs into one turn-level disclosure. */
-export function consolidateThinkingParts(
-  parts: ChatAssistantPart[],
-  dedupe = false,
-): ChatAssistantPart[] {
+export function consolidateThinkingParts(parts: ChatAssistantPart[], dedupe = false): ChatAssistantPart[] {
   let lastThinkingIndex = -1;
   for (let index = parts.length - 1; index >= 0; index--) {
     if (parts[index]?.type === "thinking") {
@@ -178,9 +165,7 @@ export function consolidateThinkingParts(
   }
   if (lastThinkingIndex < 0) return parts;
   const text = parts
-    .filter((part): part is Extract<ChatAssistantPart, { type: "thinking" }> =>
-      part.type === "thinking",
-    )
+    .filter((part): part is Extract<ChatAssistantPart, { type: "thinking" }> => part.type === "thinking")
     .map((part) => part.text.trim())
     .filter(Boolean)
     .join("\n\n");

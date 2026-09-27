@@ -54,10 +54,7 @@ describe("presentBookStats", () => {
 
   test("keeps only the most recent active days", () => {
     const daily = Object.fromEntries(
-      Array.from({ length: 30 }, (_, i) => [
-        `2026-07-${String(i + 1).padStart(2, "0")}`,
-        60_000,
-      ]),
+      Array.from({ length: 30 }, (_, i) => [`2026-07-${String(i + 1).padStart(2, "0")}`, 60_000]),
     );
     const presented = presentBookStats({ ...stats, daily });
     const days = Object.keys(presented.recentDailyReadingTime);

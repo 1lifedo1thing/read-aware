@@ -8,9 +8,7 @@ import type { EvalRunPlan, EvalRunRecord, EvalSummary } from "./types";
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
-  );
+  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
 describe("eval artifact store", () => {
@@ -70,10 +68,7 @@ describe("eval artifact store", () => {
     await store.writeSummary(summary, "# report\n");
 
     const manifest = await readFile(join(store.directory, "manifest.json"), "utf8");
-    const run = await readFile(
-      join(store.directory, "runs", "baseline", "cursor", "1.json"),
-      "utf8",
-    );
+    const run = await readFile(join(store.directory, "runs", "baseline", "cursor", "1.json"), "utf8");
     const index = await readFile(join(store.directory, "runs.jsonl"), "utf8");
     expect(manifest).toContain('"schemaVersion": 2');
     expect(manifest).toContain('"provenance"');

@@ -76,9 +76,7 @@ export function useWhatsNewDialog(): {
   }, [close, setSettingsOpen, setSettingsSection]);
   const search = state ? getSearchConfig() : null;
 
-  const codename = state
-    ? (state.entry?.codename ?? versionCodename(state.version))
-    : null;
+  const codename = state ? (state.entry?.codename ?? versionCodename(state.version)) : null;
   return {
     version: state?.version ?? null,
     codename,

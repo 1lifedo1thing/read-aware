@@ -63,8 +63,7 @@ export type InfoShortcut = {
 /** Overrides keyed by shortcut id; a missing id falls back to its default. */
 export type ShortcutBindings = Partial<Record<ShortcutId, KeyChord>>;
 
-export type ShortcutCategory =
-  "Global" | "Reading" | "TextUnitMode" | "Selection" | "Overlays";
+export type ShortcutCategory = "Global" | "Reading" | "TextUnitMode" | "Selection" | "Overlays";
 
 /**
  * The rebindable shortcuts. Defaults are the keys the app shipped with; the
@@ -167,10 +166,7 @@ export function defaultBinding(id: BuiltinShortcutId): KeyChord {
 }
 
 /** The live binding for a built-in action: the user's override, or the default. */
-export function resolveBinding(
-  id: BuiltinShortcutId,
-  bindings: ShortcutBindings,
-): KeyChord {
+export function resolveBinding(id: BuiltinShortcutId, bindings: ShortcutBindings): KeyChord {
   return bindings[id] ?? defaultBinding(id);
 }
 
@@ -187,8 +183,7 @@ export function resolvePluginBinding(
 }
 
 const isSingleChar = (key: string) => key.length === 1;
-const normalizeKey = (key: string) =>
-  isSingleChar(key) ? key.toLowerCase() : key;
+const normalizeKey = (key: string) => (isSingleChar(key) ? key.toLowerCase() : key);
 
 const MODIFIER_KEYS = new Set(["Control", "Meta", "Shift", "Alt", "AltGraph"]);
 
@@ -203,10 +198,7 @@ export function chordFromEvent(event: KeyboardEvent): KeyChord | null {
 }
 
 /** Whether a keydown matches a chord exactly — modifiers must match too. */
-export function chordMatchesEvent(
-  chord: KeyChord,
-  event: KeyboardEvent,
-): boolean {
+export function chordMatchesEvent(chord: KeyChord, event: KeyboardEvent): boolean {
   return (
     !!chord.mod === (event.metaKey || event.ctrlKey) &&
     !!chord.alt === event.altKey &&
@@ -217,12 +209,7 @@ export function chordMatchesEvent(
 
 /** Canonical string for equality / conflict detection. */
 export function chordSignature(chord: KeyChord): string {
-  return [
-    chord.mod && "mod",
-    chord.alt && "alt",
-    chord.shift && "shift",
-    chord.key.toLowerCase(),
-  ]
+  return [chord.mod && "mod", chord.alt && "alt", chord.shift && "shift", chord.key.toLowerCase()]
     .filter(Boolean)
     .join("+");
 }
@@ -251,9 +238,6 @@ export function chordToTokens(chord: KeyChord): string[] {
   if (chord.mod) tokens.push(mac ? "⌘" : "Ctrl");
   if (chord.alt) tokens.push(mac ? "⌥" : "Alt");
   if (chord.shift) tokens.push(mac ? "⇧" : "Shift");
-  tokens.push(
-    KEY_LABELS[chord.key] ??
-      (isSingleChar(chord.key) ? chord.key.toUpperCase() : chord.key),
-  );
+  tokens.push(KEY_LABELS[chord.key] ?? (isSingleChar(chord.key) ? chord.key.toUpperCase() : chord.key));
   return tokens;
 }

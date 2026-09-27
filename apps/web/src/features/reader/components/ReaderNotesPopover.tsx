@@ -99,8 +99,17 @@ export function ReaderNotesPopover({
   );
 }
 
-type ReaderNotesContentProps = Pick<ReaderNotesPopoverProps,
-  "annotations" | "loadFailed" | "loadErrorCode" | "isLoading" | "onRetryLoad" | "tocEntries" | "onNavigate" | "onDelete"> & {
+type ReaderNotesContentProps = Pick<
+  ReaderNotesPopoverProps,
+  | "annotations"
+  | "loadFailed"
+  | "loadErrorCode"
+  | "isLoading"
+  | "onRetryLoad"
+  | "tocEntries"
+  | "onNavigate"
+  | "onDelete"
+> & {
   /** Show the "Notes" eyebrow and count; a host with its own title omits it. */
   heading?: boolean;
 };
@@ -126,26 +135,31 @@ export function ReaderNotesContent({
 
   return (
     <>
-      {heading && <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
-        <Eyebrow as="span">{t("notes")}</Eyebrow>
-        <span className="text-xs tabular-nums text-fg-subtle">
-          {loadFailed || isLoading ? null : formatNumber(annotations.length)}
-        </span>
-      </div>}
+      {heading && (
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
+          <Eyebrow as="span">{t("notes")}</Eyebrow>
+          <span className="text-xs tabular-nums text-fg-subtle">
+            {loadFailed || isLoading ? null : formatNumber(annotations.length)}
+          </span>
+        </div>
+      )}
 
       {loadFailed ? (
         <div className="px-4 py-6">
-          <InlineError onRetry={failure?.retryable ? onRetryLoad : undefined} retryLabel={t("common:errorBoundary.retry")}>
+          <InlineError
+            onRetry={failure?.retryable ? onRetryLoad : undefined}
+            retryLabel={t("common:errorBoundary.retry")}
+          >
             {failure?.body ?? t("common:errors.generic")}
           </InlineError>
         </div>
       ) : isLoading ? (
-        <div className="flex justify-center px-4 py-8"><Spinner size="sm" /></div>
+        <div className="flex justify-center px-4 py-8">
+          <Spinner size="sm" />
+        </div>
       ) : annotations.length === 0 ? (
         <div className="px-4 py-8">
-          <Body className="text-center text-sm text-fg-muted">
-            {t("emptyNotes")}
-          </Body>
+          <Body className="text-center text-sm text-fg-muted">{t("emptyNotes")}</Body>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">

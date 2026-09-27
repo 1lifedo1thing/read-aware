@@ -46,14 +46,10 @@ export function TopicPage({
     latest: (tag: string) => t("home.download.latest", { tag }),
     downloadFor: (name: string) => t("home.download.downloadFor", { name }),
   };
-  const freeLine = release.tag
-    ? t("home.freeLineWithTag", { tag: release.tag })
-    : t("home.freeLine");
+  const freeLine = release.tag ? t("home.freeLineWithTag", { tag: release.tag }) : t("home.freeLine");
   const pathname = useLocation({ select: (location) => location.pathname });
   const currentPath = pathname.replace(/\/$/, "") || "/";
-  const siblings = topicPagesForLocale(locale).filter(
-    (page) => page.path !== currentPath,
-  );
+  const siblings = topicPagesForLocale(locale).filter((page) => page.path !== currentPath);
 
   return (
     <div className="min-h-screen bg-paper text-fg">
@@ -66,18 +62,14 @@ export function TopicPage({
               <h1 className="text-balance text-[2rem] font-normal leading-[1.15] tracking-normal sm:text-[2.6rem]">
                 {title}
               </h1>
-              <p className="mt-5 text-[1.125rem] leading-[1.75] text-fg">
-                {lead}
-              </p>
+              <p className="mt-5 text-[1.125rem] leading-[1.75] text-fg">{lead}</p>
               <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
                 <DownloadMenu
                   downloads={release.downloads}
                   platform={platform ?? release.platform}
                   strings={downloadStrings}
                 />
-                <span className="text-[0.9375rem] text-fg-muted">
-                  {freeLine}
-                </span>
+                <span className="text-[0.9375rem] text-fg-muted">{freeLine}</span>
               </div>
             </header>
 
@@ -89,16 +81,9 @@ export function TopicPage({
               </h2>
               <dl className="mt-4">
                 {faqs.map(({ question, answer }, index) => (
-                  <div
-                    key={question}
-                    className={
-                      index === 0 ? "py-4" : "border-t border-border py-4"
-                    }
-                  >
+                  <div key={question} className={index === 0 ? "py-4" : "border-t border-border py-4"}>
                     <dt className="text-[1.0625rem] font-medium">{question}</dt>
-                    <dd className="mt-1.5 text-[1.0625rem] leading-[1.7] text-fg-muted">
-                      {answer}
-                    </dd>
+                    <dd className="mt-1.5 text-[1.0625rem] leading-[1.7] text-fg-muted">{answer}</dd>
                   </div>
                 ))}
               </dl>
@@ -106,16 +91,11 @@ export function TopicPage({
             </section>
 
             <p className="mt-12 text-[0.9375rem] leading-[1.9] text-fg-muted">
-              {locale === "zh"
-                ? "进一步了解 ReadAware："
-                : "More about ReadAware: "}
+              {locale === "zh" ? "进一步了解 ReadAware：" : "More about ReadAware: "}
               {siblings.map((page, index) => (
                 <span key={page.path}>
                   {index > 0 && " · "}
-                  <Link
-                    to={page.path}
-                    className="underline underline-offset-4 transition-colors hover:text-fg"
-                  >
+                  <Link to={page.path} className="underline underline-offset-4 transition-colors hover:text-fg">
                     {page.label}
                   </Link>
                 </span>

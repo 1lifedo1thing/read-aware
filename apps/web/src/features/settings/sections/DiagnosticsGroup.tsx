@@ -34,10 +34,7 @@ export function DiagnosticsGroup() {
 
   return (
     <>
-      <SettingsGroup
-        title={t("about.diagnostics.title")}
-        description={t("about.diagnostics.description")}
-      >
+      <SettingsGroup title={t("about.diagnostics.title")} description={t("about.diagnostics.description")}>
         <SettingsRow
           borderless
           title={t("about.diagnostics.exportRow.title")}
@@ -59,12 +56,7 @@ export function DiagnosticsGroup() {
           title={t("about.diagnostics.reportRow.title")}
           description={t("about.diagnostics.reportRow.description")}
           control={
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={report !== null}
-              onClick={() => open("send")}
-            >
+            <Button variant="outline" size="sm" disabled={report !== null} onClick={() => open("send")}>
               {report?.step === "assembling" && report.action === "send" && <Spinner size="sm" />}
               {t("about.diagnostics.reportRow.button")}
             </Button>
@@ -82,7 +74,11 @@ export function DiagnosticsGroup() {
           />
         )}
       </SettingsGroup>
-      {isTauri() && <SettingsGroup title={t("about.diagnostics.repair.title")}><ProjectionRepair /></SettingsGroup>}
+      {isTauri() && (
+        <SettingsGroup title={t("about.diagnostics.repair.title")}>
+          <ProjectionRepair />
+        </SettingsGroup>
+      )}
 
       <Dialog
         open={report !== null}
@@ -91,9 +87,7 @@ export function DiagnosticsGroup() {
       >
         {report?.step === "sent" ? (
           <div className="space-y-4">
-            <p className="text-sm leading-6 text-fg-muted">
-              {t("about.diagnostics.sentBody")}
-            </p>
+            <p className="text-sm leading-6 text-fg-muted">{t("about.diagnostics.sentBody")}</p>
             <p className="select-all break-all rounded-md border border-border bg-fill px-3 py-2 font-mono text-xs text-fg">
               {report.reportId}
             </p>
@@ -104,29 +98,20 @@ export function DiagnosticsGroup() {
             </div>
           </div>
         ) : report?.step === "assembling" ? (
-          <div className="flex justify-center py-6"><Spinner /></div>
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
         ) : report ? (
           <div className="space-y-4">
-            <p className="text-sm leading-6 text-fg-muted">
-              {t("about.diagnostics.previewBody")}
-            </p>
+            <p className="text-sm leading-6 text-fg-muted">{t("about.diagnostics.previewBody")}</p>
             <pre className="max-h-64 overflow-auto rounded-md border border-border bg-fill px-3 py-2 font-mono text-xs leading-5 text-fg-muted">
               {JSON.stringify(report.bundle, null, 2)}
             </pre>
             <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={report.step === "working"}
-                onClick={close}
-              >
+              <Button variant="ghost" size="sm" disabled={report.step === "working"} onClick={close}>
                 {t("about.diagnostics.cancel")}
               </Button>
-              <Button
-                size="sm"
-                disabled={report.step === "working"}
-                onClick={() => void confirm()}
-              >
+              <Button size="sm" disabled={report.step === "working"} onClick={() => void confirm()}>
                 {report.step === "working" && <Spinner size="sm" />}
                 {t(report.action === "export" ? "about.diagnostics.exportRow.button" : "about.diagnostics.send")}
               </Button>

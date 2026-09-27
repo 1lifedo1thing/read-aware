@@ -28,7 +28,11 @@ export function ReaderFailureView({ title, bookTitle, message, action, onBack }:
           <Body className="text-sm leading-6 text-fg-muted">{message}</Body>
         </InlineError>
         <div className="flex flex-wrap items-center gap-3">
-          {action && <Button autoFocus onClick={action.onClick}>{action.label}</Button>}
+          {action && (
+            <Button autoFocus onClick={action.onClick}>
+              {action.label}
+            </Button>
+          )}
           {onBack && (
             <Button autoFocus={!action} variant={action ? "outline" : "solid"} onClick={onBack}>
               {t("backToLibrary")}

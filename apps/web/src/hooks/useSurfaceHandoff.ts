@@ -83,7 +83,10 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
     setShelfHandoff("idle");
     let resolve!: () => void;
     let reject!: (error: unknown) => void;
-    const promise = new Promise<void>((yes, no) => { resolve = yes; reject = no; });
+    const promise = new Promise<void>((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
     const closing = { promise, reject };
     closingRef.current = closing;
     // UI event handlers do not await; persistence errors are presented by
@@ -91,11 +94,13 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
     void promise.catch(() => {});
     const finish = () => {
       closeTimeoutRef.current = null;
-      void closeReader().then(resolve, reject).finally(() => {
-        if (closingRef.current !== closing) return;
-        closingRef.current = null;
-        setReaderExiting(false);
-      });
+      void closeReader()
+        .then(resolve, reject)
+        .finally(() => {
+          if (closingRef.current !== closing) return;
+          closingRef.current = null;
+          setReaderExiting(false);
+        });
     };
     if (prefersReducedMotion()) finish();
     else {
@@ -107,8 +112,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
 
   // The first relocate populates the page counters; a load failure shows the
   // error surface. Either counts as "the reader has something to show".
-  const readerHasRendered =
-    reader.readerFailed || reader.currentPage > 0 || reader.totalPages > 0;
+  const readerHasRendered = reader.readerFailed || reader.currentPage > 0 || reader.totalPages > 0;
 
   // Holding → fading. The rAF loop is the FAST path: once the reader is
   // eligible and frames flow smoothly again, fade immediately. The timeout is
@@ -124,13 +128,8 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
     }
 
     const heldFor = performance.now() - holdStartRef.current;
-    const untilEligible = readerHasRendered
-      ? 0
-      : Math.max(0, RENDER_SIGNAL_TIMEOUT_MS - heldFor);
-    const failsafeDelay = Math.min(
-      untilEligible + ELIGIBLE_GRACE_MS,
-      Math.max(0, HOLD_HARD_CAP_MS - heldFor),
-    );
+    const untilEligible = readerHasRendered ? 0 : Math.max(0, RENDER_SIGNAL_TIMEOUT_MS - heldFor);
+    const failsafeDelay = Math.min(untilEligible + ELIGIBLE_GRACE_MS, Math.max(0, HOLD_HARD_CAP_MS - heldFor));
     const failsafe = window.setTimeout(() => setShelfHandoff("fading"), failsafeDelay);
 
     let rafId = 0;
@@ -141,9 +140,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
       if (cancelled) return;
       smoothFrames = now - lastFrameAt < SMOOTH_FRAME_MS ? smoothFrames + 1 : 0;
       lastFrameAt = now;
-      const eligible =
-        readerHasRendered ||
-        now - holdStartRef.current > RENDER_SIGNAL_TIMEOUT_MS;
+      const eligible = readerHasRendered || now - holdStartRef.current > RENDER_SIGNAL_TIMEOUT_MS;
       if (eligible && smoothFrames >= SMOOTH_FRAMES_REQUIRED) {
         setShelfHandoff("fading");
         return;

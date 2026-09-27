@@ -33,9 +33,15 @@ describe("buildCommands", () => {
     ctx.books = [{ id: "b-1", title: "Book", updatedAt: "2026-09-10" }] as never;
     ctx.collections = [{ id: "c-1", name: "Collection", createdAt: "2026-09-10" }];
     const commands = buildCommands(ctx, t);
-    expect(commands.find(c => c.id === "book-b-1")?.hostCommand).toEqual({ id: "open-book", args: { bookId: "b-1" } });
-    expect(commands.find(c => c.id === "collection-c-1")?.hostCommand).toEqual({ id: "open-collection", args: { collectionId: "c-1" } });
-    expect(commands.filter(c => c.id !== "import").every(c => c.hostCommand && !c.perform)).toBe(true);
-    expect(commands.find(c => c.id === "import")?.perform).toBe(noop);
+    expect(commands.find((c) => c.id === "book-b-1")?.hostCommand).toEqual({
+      id: "open-book",
+      args: { bookId: "b-1" },
+    });
+    expect(commands.find((c) => c.id === "collection-c-1")?.hostCommand).toEqual({
+      id: "open-collection",
+      args: { collectionId: "c-1" },
+    });
+    expect(commands.filter((c) => c.id !== "import").every((c) => c.hostCommand && !c.perform)).toBe(true);
+    expect(commands.find((c) => c.id === "import")?.perform).toBe(noop);
   });
 });

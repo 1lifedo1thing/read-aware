@@ -19,21 +19,33 @@ const BOOK_SLUGS = realBookSlugs();
 const allSuites = Object.values(evalSuites) as EvalSuite<AgentEvalScenario>[];
 
 function behaviorObservation(overrides: Partial<AgentEvalObservation>): AgentEvalObservation {
-  return { turns: [], answer: "已完成。", thinking: "", tools: [], interactions: [], modelRequests: [],
-    telemetry: { wallTimeMs: 1 }, ...overrides };
+  return {
+    turns: [],
+    answer: "已完成。",
+    thinking: "",
+    tools: [],
+    interactions: [],
+    modelRequests: [],
+    telemetry: { wallTimeMs: 1 },
+    ...overrides,
+  };
 }
 
 describe("behavior acceptance boundaries", () => {
   test("a highlight claim without a create receipt remains a failed annotation task", async () => {
     const scenario = evalSuites.annotations.scenarios.find((s) => s.id === "highlight-verbatim-text")!;
-    const assessment = await scenario.evaluate(behaviorObservation({
-      answer: "Done — I highlighted the stopped-clock sentence.",
-      state: [{
-        kind: "highlight",
-        text: "Mara notices the brass clock stopped at nine minutes past two, wet footprints leading nowhere, and an unopened letter on the desk.",
-      }],
-      tools: [],
-    }));
+    const assessment = await scenario.evaluate(
+      behaviorObservation({
+        answer: "Done — I highlighted the stopped-clock sentence.",
+        state: [
+          {
+            kind: "highlight",
+            text: "Mara notices the brass clock stopped at nine minutes past two, wet footprints leading nowhere, and an unopened letter on the desk.",
+          },
+        ],
+        tools: [],
+      }),
+    );
     expect(assessment.passed).toBe(false);
     expect(assessment.checks.find((check) => check.id === "tool.required.create_annotation")?.passed).toBe(false);
   });
@@ -42,15 +54,19 @@ describe("behavior acceptance boundaries", () => {
     const scenario = evalSuites.annotations.scenarios.find((s) => s.id === "note-on-request")!;
     const exactBody = "the bolted doors make the housekeeper the only person who could stage this.";
     const receipt = { turn: 1, id: "note", name: "create_annotation", isError: false };
-    const exact = await scenario.evaluate(behaviorObservation({
-      tools: [receipt],
-      state: [{ kind: "note", body: exactBody }],
-    }));
+    const exact = await scenario.evaluate(
+      behaviorObservation({
+        tools: [receipt],
+        state: [{ kind: "note", body: exactBody }],
+      }),
+    );
     expect(exact.passed).toBe(true);
-    const truncated = await scenario.evaluate(behaviorObservation({
-      tools: [receipt],
-      state: [{ kind: "note", body: exactBody.slice(0, -1) }],
-    }));
+    const truncated = await scenario.evaluate(
+      behaviorObservation({
+        tools: [receipt],
+        state: [{ kind: "note", body: exactBody.slice(0, -1) }],
+      }),
+    );
     expect(truncated.passed).toBe(false);
     expect(truncated.checks.find((check) => check.id === "state.note-body-preserved")?.passed).toBe(false);
   });
@@ -75,7 +91,7 @@ describe("behavior acceptance boundaries", () => {
   });
 
   test("selected highlight must preserve the selection even when adjacent text is verbatim", async () => {
-    const scenario = evalSuites.refactoring.scenarios.find(s => s.id === "refactoring-annotate-verbatim")!;
+    const scenario = evalSuites.refactoring.scenarios.find((s) => s.id === "refactoring-annotate-verbatim")!;
     const selected = scenario.turns[0]!.attachments![0]!.text;
     const visible = scenario.turns[0]!.readingCursor!.visibleText!;
     expect(visible).not.toBe(selected);
@@ -92,18 +108,20 @@ describe("behavior acceptance boundaries", () => {
       await context.deps.annotations.createHighlight({ bookId, text, range });
       await context.deps.annotations.createNote({ bookId, quotedText: text, body: "这里值得回头再读。", range });
       return behaviorObservation({
-        tools: [{ turn: 1, id: "highlight", name: "create_annotation", args: { kind: "highlight", text }, isError: false }],
+        tools: [
+          { turn: 1, id: "highlight", name: "create_annotation", args: { kind: "highlight", text }, isError: false },
+        ],
         state: toJsonValue(await scenario.observeState!(context)),
       });
     };
     expect((await scenario.evaluate(await observation(selected))).passed).toBe(true);
     const wider = await scenario.evaluate(await observation(visible));
-    expect(wider.checks.find(check => check.id === "state.highlight-selection-boundary")?.passed).toBe(false);
+    expect(wider.checks.find((check) => check.id === "state.highlight-selection-boundary")?.passed).toBe(false);
   });
 
   test("active annotation selections expose the complete source range matching each attachment", async () => {
     for (const suite of allSuites) {
-      for (const scenario of suite.scenarios.filter(entry => entry.id.endsWith("-annotate-verbatim"))) {
+      for (const scenario of suite.scenarios.filter((entry) => entry.id.endsWith("-annotate-verbatim"))) {
         const context = createInMemoryDeps(scenario.seed);
         await scenario.setup?.(context);
         const session = await context.deps.reader.getSession();
@@ -122,40 +140,46 @@ describe("behavior acceptance boundaries", () => {
   });
 
   test("memory correction accepts conditional edits only when the active user state contains the correction", async () => {
-    const scenario = evalSuites.personalization.scenarios.find(s => s.id === "memory-update-correction")!;
-    const output = behaviorObservation({ tools: [{ turn: 1, id: "correct", name: "manage_memory", args: { action: "correct" }, isError: false }],
-      state: { memories: [{ scope: "user", content: "现在玩 Factorio", status: "active" }] } });
+    const scenario = evalSuites.personalization.scenarios.find((s) => s.id === "memory-update-correction")!;
+    const output = behaviorObservation({
+      tools: [{ turn: 1, id: "correct", name: "manage_memory", args: { action: "correct" }, isError: false }],
+      state: { memories: [{ scope: "user", content: "现在玩 Factorio", status: "active" }] },
+    });
     expect((await scenario.evaluate(output)).passed).toBe(true);
     for (const memory of [
       { scope: "user", content: "仍玩 Minecraft", status: "active" },
       { scope: "book:other", content: "Factorio", status: "active" },
       { scope: "user", content: "Factorio", status: "forgotten" },
-    ]) expect((await scenario.evaluate({ ...output, state: { memories: [memory] } })).passed).toBe(false);
+    ])
+      expect((await scenario.evaluate({ ...output, state: { memories: [memory] } })).passed).toBe(false);
     expect((await scenario.evaluate({ ...output, state: { saved: [{ content: "Factorio" }] } })).passed).toBe(false);
   });
 
   test("a translated memory answer still requires evidence from the requested book", async () => {
-    const scenario = evalSuites.memory.scenarios.find(s => s.id === "global-thread-book-memory-search")!;
-    const tool = { turn: 1, id: "search", name: "search_memory", args: { bookId: "eval-memory-book" },
-      output: JSON.stringify({ items: [{ id: "memory-book-lighthouse", scope: "book:eval-memory-book" }] }), isError: false };
+    const scenario = evalSuites.memory.scenarios.find((s) => s.id === "global-thread-book-memory-search")!;
+    const tool = {
+      turn: 1,
+      id: "search",
+      name: "search_memory",
+      args: { bookId: "eval-memory-book" },
+      output: JSON.stringify({ items: [{ id: "memory-book-lighthouse", scope: "book:eval-memory-book" }] }),
+      isError: false,
+    };
     const output = behaviorObservation({ answer: "你把灯塔看守人的作息看作注意力的隐喻。", tools: [tool] });
     expect((await scenario.evaluate(output)).passed).toBe(true);
-    expect((await scenario.evaluate({ ...output, tools: [{ ...tool, args: { bookId: "another-book" } }] })).passed).toBe(false);
-    expect((await scenario.evaluate({ ...output, tools: [{ ...tool, output: "{\"items\":[]}" }] })).passed).toBe(false);
+    expect(
+      (await scenario.evaluate({ ...output, tools: [{ ...tool, args: { bookId: "another-book" } }] })).passed,
+    ).toBe(false);
+    expect((await scenario.evaluate({ ...output, tools: [{ ...tool, output: '{"items":[]}' }] })).passed).toBe(false);
     expect((await scenario.evaluate({ ...output, answer: "你喜欢晚上读书。" })).passed).toBe(false);
   });
 });
 
 describe("eval suite registry", () => {
   test("every suite belongs to exactly one group and the registry is their union", () => {
-    const groupMembers = [
-      ...suiteIdsOfGroup("behavior"),
-      ...suiteIdsOfGroup("realbook"),
-    ];
+    const groupMembers = [...suiteIdsOfGroup("behavior"), ...suiteIdsOfGroup("realbook")];
     expect(groupMembers.length).toBe(new Set(groupMembers).size);
-    expect([...groupMembers].sort()).toEqual(
-      [...Object.keys(evalSuites)].sort() as typeof groupMembers,
-    );
+    expect([...groupMembers].sort()).toEqual([...Object.keys(evalSuites)].sort() as typeof groupMembers);
   });
 
   test("group suite ids all resolve to registered suites", () => {
@@ -217,11 +241,12 @@ describe("eval suite registry", () => {
   test("declared leak markers are absent from TOC titles and boundary-safe text", () => {
     const violations: string[] = [];
     const normalize = (text: string) =>
-      text.normalize("NFKC").toLocaleLowerCase().replace(/[\p{White_Space}\p{Punctuation}\p{Symbol}]/gu, "");
+      text
+        .normalize("NFKC")
+        .toLocaleLowerCase()
+        .replace(/[\p{White_Space}\p{Punctuation}\p{Symbol}]/gu, "");
 
-    const realbookSuites = Object.values(
-      evalSuiteGroups.realbook.suites,
-    ) as EvalSuite<AgentEvalScenario>[];
+    const realbookSuites = Object.values(evalSuiteGroups.realbook.suites) as EvalSuite<AgentEvalScenario>[];
     for (const suite of realbookSuites) {
       for (const scenario of suite.scenarios) {
         const input = scenario.input as Record<string, unknown>;
@@ -235,7 +260,10 @@ describe("eval suite registry", () => {
         const toc = normalize(chapters.map((chapter) => chapter.title ?? "").join("\n"));
         const boundary = policy.boundaryChapter ?? -1;
         const safeChapterText = normalize(
-          chapters.slice(0, Math.max(0, boundary)).map((chapter) => chapter.text).join("\n"),
+          chapters
+            .slice(0, Math.max(0, boundary))
+            .map((chapter) => chapter.text)
+            .join("\n"),
         );
         const turns = (input.turns ?? []) as Array<{
           readingCursor?: { chapterIndex?: number; visibleText?: string };

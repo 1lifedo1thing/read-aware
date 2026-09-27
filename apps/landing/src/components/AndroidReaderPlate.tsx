@@ -1,15 +1,8 @@
-export function AndroidReaderPlate({
-  locale = "en",
-}: {
-  locale?: "en" | "zh";
-}) {
+export function AndroidReaderPlate({ locale = "en" }: { locale?: "en" | "zh" }) {
   return (
     <figure className="mx-auto my-10 max-w-80">
       <picture>
-        <source
-          media="(prefers-color-scheme: dark)"
-          srcSet="/screenshots/android-reader-dark.png"
-        />
+        <source media="(prefers-color-scheme: dark)" srcSet="/screenshots/android-reader-dark.png" />
         <img
           src="/screenshots/android-reader-light.png"
           alt={

@@ -4,8 +4,22 @@ import { Checkbox, ChoiceGroup, Toggle } from "@read-aware/ui";
 
 test("boolean and choice controls associate visible errors with their input/group", () => {
   for (const element of [
-    <Checkbox key="checkbox" label="Delete" description="Selected items" error="Confirm first" checked={false} onChange={() => {}} />,
-    <ChoiceGroup key="choice" label="Color" error="Conflict" value="yellow" options={[{ value: "yellow", label: "Yellow" }]} onChange={() => {}} />,
+    <Checkbox
+      key="checkbox"
+      label="Delete"
+      description="Selected items"
+      error="Confirm first"
+      checked={false}
+      onChange={() => {}}
+    />,
+    <ChoiceGroup
+      key="choice"
+      label="Color"
+      error="Conflict"
+      value="yellow"
+      options={[{ value: "yellow", label: "Yellow" }]}
+      onChange={() => {}}
+    />,
     <Toggle key="toggle" aria-label="Enable" error="Unavailable" checked={false} onChange={() => {}} />,
   ]) {
     const html = renderToStaticMarkup(element);
@@ -18,7 +32,9 @@ test("boolean and choice controls associate visible errors with their input/grou
 });
 
 test("valid controls do not retain invalid states and checkbox external descriptions compose", () => {
-  expect(renderToStaticMarkup(<ChoiceGroup value="a" options={[]} onChange={() => {}} />)).not.toContain("aria-invalid");
+  expect(renderToStaticMarkup(<ChoiceGroup value="a" options={[]} onChange={() => {}} />)).not.toContain(
+    "aria-invalid",
+  );
   expect(renderToStaticMarkup(<Toggle checked={false} onChange={() => {}} />)).not.toContain("aria-invalid");
   const html = renderToStaticMarkup(<Checkbox label="Delete" aria-describedby="external" error="Required" />);
   expect(html).toMatch(/aria-describedby="external [^"]+-error"/);

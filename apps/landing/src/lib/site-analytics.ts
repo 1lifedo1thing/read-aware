@@ -1,10 +1,4 @@
-import {
-  analyticsAllowed,
-  canonicalPath,
-  DOWNLOAD_ASSETS,
-  EVENT_PATH,
-  type SiteEvent,
-} from "./site-events";
+import { analyticsAllowed, canonicalPath, DOWNLOAD_ASSETS, EVENT_PATH, type SiteEvent } from "./site-events";
 import { resolveAttribution } from "./site-attribution";
 import { CURRENT_RELEASE_TAG } from "./releases";
 
@@ -16,8 +10,7 @@ export function startSiteAnalytics(paths: readonly string[]): void {
     analyticsAllowed(
       new URL(location.href),
       navigator.doNotTrack,
-      (navigator as Navigator & { globalPrivacyControl?: boolean })
-        .globalPrivacyControl === true,
+      (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true,
     );
   if (!allowed()) return;
   const pages = new Set(paths.map(canonicalPath));
@@ -39,13 +32,7 @@ export function startSiteAnalytics(paths: readonly string[]): void {
     // Storage may be disabled; attribution still works for this document.
   }
   const url = new URL(location.href);
-  const { attribution: current, fresh } = resolveAttribution(
-    saved,
-    url,
-    document.referrer,
-    pages,
-    Date.now(),
-  );
+  const { attribution: current, fresh } = resolveAttribution(saved, url, document.referrer, pages, Date.now());
   try {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(current));
   } catch {
@@ -83,22 +70,12 @@ export function startSiteAnalytics(paths: readonly string[]): void {
       release: CURRENT_RELEASE_TAG,
     });
   const onClick = (event: MouseEvent) => {
-    if (
-      !event.isTrusted ||
-      event.button > 1 ||
-      (event.type === "click" && event.button !== 0)
-    )
-      return;
-    const anchor = event
-      .composedPath()
-      .find((el): el is HTMLAnchorElement => el instanceof HTMLAnchorElement);
+    if (!event.isTrusted || event.button > 1 || (event.type === "click" && event.button !== 0)) return;
+    const anchor = event.composedPath().find((el): el is HTMLAnchorElement => el instanceof HTMLAnchorElement);
     const asset = DOWNLOAD_ASSETS.find((asset) => asset.url === anchor?.href);
     const page = canonicalPath(location.pathname);
     if (!asset || !pages.has(page)) return;
-    const active =
-      Date.now() < current.expires
-        ? current
-        : { source: "direct" as const, landing: page };
+    const active = Date.now() < current.expires ? current : { source: "direct" as const, landing: page };
     send({
       version: 1,
       event: "download",

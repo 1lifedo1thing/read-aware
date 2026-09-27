@@ -10,17 +10,14 @@
 
 import { afterLocalKVWrites, localKV, onLocalKVCommit, setLocalKVBatch } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
-import {
-  readPluginSettingsValues,
-  pluginSettingsKey,
-} from "../../plugins/lib/plugin-settings";
+import { readPluginSettingsValues, pluginSettingsKey } from "../../plugins/lib/plugin-settings";
 import type { PluginFormValues } from "@read-aware/plugin-types";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 const log = createLogger("reading-mode-state");
 function observedWrite(write: Promise<void>): Promise<void> {
   // Native UI/background callers can ignore the receipt; actor commands retain it.
-  void write.catch(error => log.warn("Reading mode state was not saved", error));
+  void write.catch((error) => log.warn("Reading mode state was not saved", error));
   return write;
 }
 
@@ -85,8 +82,10 @@ export function normalizeTextUnitModeState(value: unknown): PersistedTextUnitMod
     active: parsed.active === true,
     resting:
       resting &&
-        Number.isSafeInteger(resting.sectionIndex) && resting.sectionIndex! >= 0 &&
-        Number.isSafeInteger(resting.ordinal) && resting.ordinal! >= 0
+      Number.isSafeInteger(resting.sectionIndex) &&
+      resting.sectionIndex! >= 0 &&
+      Number.isSafeInteger(resting.ordinal) &&
+      resting.ordinal! >= 0
         ? {
             sectionIndex: resting.sectionIndex!,
             ordinal: resting.ordinal!,
@@ -95,7 +94,8 @@ export function normalizeTextUnitModeState(value: unknown): PersistedTextUnitMod
         : null,
     modeKey: validModeKey(parsed.modeKey),
     unitId,
-    contentVersion: typeof parsed.contentVersion === "string" && parsed.contentVersion.length > 0 ? parsed.contentVersion : null,
+    contentVersion:
+      typeof parsed.contentVersion === "string" && parsed.contentVersion.length > 0 ? parsed.contentVersion : null,
   };
 }
 
@@ -116,7 +116,9 @@ export function isTextUnitModeStateCompatible(
   unitId: string,
   contentVersion: string | null,
 ): boolean {
-  return Boolean(contentVersion && state.contentVersion === contentVersion && state.modeKey === modeKey && state.unitId === unitId);
+  return Boolean(
+    contentVersion && state.contentVersion === contentVersion && state.modeKey === modeKey && state.unitId === unitId,
+  );
 }
 
 export function writeTextUnitModeState(
@@ -136,12 +138,19 @@ export function writeTextUnitModeState(
 }
 
 /** One configuration intent cannot leave the book and provider preference disagreeing. */
-function configurationEntries(bookId: string, state: PersistedTextUnitModeState, persistUnit: boolean, entries = new Map<string, string | null>()): Map<string, string | null> {
+function configurationEntries(
+  bookId: string,
+  state: PersistedTextUnitModeState,
+  persistUnit: boolean,
+  entries = new Map<string, string | null>(),
+): Map<string, string | null> {
   entries.set(textUnitModeStateKey(bookId), JSON.stringify(state));
   if (persistUnit && state.modeKey && state.unitId) {
     const pluginId = pluginIdOfModeKey(state.modeKey);
     const current = modeSettingsWithLegacy(state.modeKey);
-    const values = entries.has(pluginSettingsKey(pluginId)) ? JSON.parse(entries.get(pluginSettingsKey(pluginId)) ?? "{}") as PluginFormValues : current.values;
+    const values = entries.has(pluginSettingsKey(pluginId))
+      ? (JSON.parse(entries.get(pluginSettingsKey(pluginId)) ?? "{}") as PluginFormValues)
+      : current.values;
     const consumeLegacy = current.consumeLegacy;
     if (consumeLegacy || values.unitId !== state.unitId) {
       entries.set(pluginSettingsKey(pluginId), JSON.stringify({ ...values, unitId: state.unitId }));
@@ -153,33 +162,61 @@ function configurationEntries(bookId: string, state: PersistedTextUnitModeState,
 
 /** Configuration compensation is scoped to an unfinished request and its own preference write. */
 export class ReadingModeConfigurationWrites {
-  private previous: { revision: number; key: string; before: string | null; written: string; valid: boolean; dispose(): void } | undefined;
+  private previous:
+    | { revision: number; key: string; before: string | null; written: string; valid: boolean; dispose(): void }
+    | undefined;
 
   constructor(private readonly confirmed: (revision: number) => boolean) {}
 
-  async write(revision: number, bookId: string, state: PersistedTextUnitModeState, persistUnit: boolean, origin: DomainActor = "system"): Promise<void> {
+  async write(
+    revision: number,
+    bookId: string,
+    state: PersistedTextUnitModeState,
+    persistUnit: boolean,
+    origin: DomainActor = "system",
+  ): Promise<void> {
     origin = causalActor(origin);
     const old = this.previous;
     const entries = new Map<string, string | null>();
-    if (old && !this.confirmed(old.revision) && old.valid && localKV.getItem(old.key) === old.written) entries.set(old.key, old.before);
+    if (old && !this.confirmed(old.revision) && old.valid && localKV.getItem(old.key) === old.written)
+      entries.set(old.key, old.before);
     configurationEntries(bookId, state, persistUnit, entries);
     const key = state.modeKey ? pluginSettingsKey(pluginIdOfModeKey(state.modeKey)) : null;
     const written = key ? entries.get(key) : undefined;
     let next: typeof this.previous;
     if (key && written && persistUnit) {
       // If a successor targets the same plugin, its rollback target predates the abandoned write.
-      const before = old?.key === key && entries.has(old.key) && old.valid && !this.confirmed(old.revision) && localKV.getItem(old.key) === old.written ? old.before : localKV.getItem(key);
+      const before =
+        old?.key === key &&
+        entries.has(old.key) &&
+        old.valid &&
+        !this.confirmed(old.revision) &&
+        localKV.getItem(old.key) === old.written
+          ? old.before
+          : localKV.getItem(key);
       const restored = JSON.parse(written) as PluginFormValues;
-      const prior = before ? JSON.parse(before) as PluginFormValues : {};
-      if ("unitId" in prior) restored.unitId = prior.unitId; else delete restored.unitId;
-      next = { revision, key, before: Object.keys(restored).length ? JSON.stringify(restored) : null, written, valid: true, dispose: () => {} };
+      const prior = before ? (JSON.parse(before) as PluginFormValues) : {};
+      if ("unitId" in prior) restored.unitId = prior.unitId;
+      else delete restored.unitId;
+      next = {
+        revision,
+        key,
+        before: Object.keys(restored).length ? JSON.stringify(restored) : null,
+        written,
+        valid: true,
+        dispose: () => {},
+      };
       let ownCommit = true;
       const owned = next;
-      owned.dispose = onLocalKVCommit(commit => {
-        const entry = commit.entries.find(entry => entry.key === key);
+      owned.dispose = onLocalKVCommit((commit) => {
+        const entry = commit.entries.find((entry) => entry.key === key);
         if (!entry) return;
-        if (ownCommit && entry.value === written) { ownCommit = false; return; }
-        owned.valid = false; owned.dispose();
+        if (ownCommit && entry.value === written) {
+          ownCommit = false;
+          return;
+        }
+        owned.valid = false;
+        owned.dispose();
       });
     }
     this.previous = next; // Publish before dispatch: a queued successor can run at the native receipt microtask.
@@ -187,11 +224,16 @@ export class ReadingModeConfigurationWrites {
       await observedWrite(setLocalKVBatch(entries, origin));
       old?.dispose();
     } catch (error) {
-      next?.dispose(); if (this.previous === next) this.previous = old; throw error;
+      next?.dispose();
+      if (this.previous === next) this.previous = old;
+      throw error;
     }
   }
 
-  release(): void { this.previous?.dispose(); this.previous = undefined; }
+  release(): void {
+    this.previous?.dispose();
+    this.previous = undefined;
+  }
 }
 
 /**
@@ -248,8 +290,7 @@ function modeSettingsWithLegacy(modeKey: string): { values: PluginFormValues; co
     const merged = { ...values };
     if (!("tapToAdvance" in merged)) merged.tapToAdvance = legacy.tapToAdvance !== false;
     if (!("scrollToStep" in merged)) merged.scrollToStep = legacy.scrollToStep === true;
-    const legacyUnitId =
-      validUnitId(legacy.unitId) ?? validUnitId(legacy.granularity) ?? LEGACY_DEFAULT_UNIT_ID;
+    const legacyUnitId = validUnitId(legacy.unitId) ?? validUnitId(legacy.granularity) ?? LEGACY_DEFAULT_UNIT_ID;
     if (!("unitId" in merged)) {
       merged.unitId = legacyUnitId;
     }
@@ -267,14 +308,10 @@ export function readTextUnitModeSettings(modeKey: string | null): TextUnitModeSe
   const defaults = DEFAULT_TEXT_UNIT_MODE_SETTINGS;
   return {
     unitId: validUnitId(stored.unitId),
-    tapToAdvance:
-      typeof stored.tapToAdvance === "boolean" ? stored.tapToAdvance : defaults.tapToAdvance,
-    scrollToStep:
-      typeof stored.scrollToStep === "boolean" ? stored.scrollToStep : defaults.scrollToStep,
-    showProgress:
-      typeof stored.showProgress === "boolean" ? stored.showProgress : defaults.showProgress,
-    sessionTimer:
-      typeof stored.sessionTimer === "boolean" ? stored.sessionTimer : defaults.sessionTimer,
+    tapToAdvance: typeof stored.tapToAdvance === "boolean" ? stored.tapToAdvance : defaults.tapToAdvance,
+    scrollToStep: typeof stored.scrollToStep === "boolean" ? stored.scrollToStep : defaults.scrollToStep,
+    showProgress: typeof stored.showProgress === "boolean" ? stored.showProgress : defaults.showProgress,
+    sessionTimer: typeof stored.sessionTimer === "boolean" ? stored.sessionTimer : defaults.sessionTimer,
   };
 }
 
@@ -285,16 +322,20 @@ export function updateTextUnitModeSettings(
   origin: DomainActor = "user",
 ): Promise<void> {
   origin = causalActor(origin);
-  return observedWrite(afterLocalKVWrites(() => {
-    const { values: merged, consumeLegacy } = modeSettingsWithLegacy(modeKey);
-    for (const [id, value] of Object.entries(patch)) {
-      if (value === null) delete merged[id];
-      else if (value !== undefined) merged[id] = value;
-    }
-    const entries = new Map<string, string | null>([[pluginSettingsKey(pluginIdOfModeKey(modeKey)), JSON.stringify(merged)]]);
-    if (consumeLegacy) entries.set(LEGACY_BEHAVIOR_PREFS_KEY, null);
-    return setLocalKVBatch(entries, origin);
-  }));
+  return observedWrite(
+    afterLocalKVWrites(() => {
+      const { values: merged, consumeLegacy } = modeSettingsWithLegacy(modeKey);
+      for (const [id, value] of Object.entries(patch)) {
+        if (value === null) delete merged[id];
+        else if (value !== undefined) merged[id] = value;
+      }
+      const entries = new Map<string, string | null>([
+        [pluginSettingsKey(pluginIdOfModeKey(modeKey)), JSON.stringify(merged)],
+      ]);
+      if (consumeLegacy) entries.set(LEGACY_BEHAVIOR_PREFS_KEY, null);
+      return setLocalKVBatch(entries, origin);
+    }),
+  );
 }
 
 /** Center of a floating control, as fractions of the reader viewport (0..1). */

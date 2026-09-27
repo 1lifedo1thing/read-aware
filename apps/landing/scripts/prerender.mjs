@@ -20,9 +20,7 @@ import { contentHash, validateManifest } from "./search-manifest.ts";
 const appDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(appDir, "dist");
 
-const { render, staticPaths } = await import(
-  join(appDir, "dist-ssr", "entry-server.js")
-);
+const { render, staticPaths } = await import(join(appDir, "dist-ssr", "entry-server.js"));
 
 const template = await readFile(join(distDir, "index.html"), "utf8");
 const paths = staticPaths();
@@ -31,8 +29,7 @@ const pathSet = new Set(paths);
 const SITE_ORIGIN = "https://readaware.app";
 const SITE_NAME = "ReadAware";
 const OG_IMAGE = `${SITE_ORIGIN}/og.jpg`;
-const OG_IMAGE_ALT =
-  "The ReadAware library — a grid of book covers across many languages and formats.";
+const OG_IMAGE_ALT = "The ReadAware library — a grid of book covers across many languages and formats.";
 const DOWNLOAD_URL = "https://github.com/ahpxex/read-aware/releases/latest";
 const GITHUB_URL = "https://github.com/ahpxex/read-aware";
 const DISCORD_URL = "https://discord.gg/whDrKXwHWU";
@@ -58,12 +55,7 @@ const SITE_RESOURCES = Object.fromEntries(
   await Promise.all(
     LOCALES.map(async ({ locale }) => [
       locale,
-      JSON.parse(
-        await readFile(
-          join(appDir, "src", "i18n", "resources", `${locale}.site.json`),
-          "utf8",
-        ),
-      ),
+      JSON.parse(await readFile(join(appDir, "src", "i18n", "resources", `${locale}.site.json`), "utf8")),
     ]),
   ),
 );
@@ -94,10 +86,7 @@ const CHANGELOG = SITE_RESOURCES.en.changelog.entries.map((entry, index) => ({
 
 function localeOf(routePath) {
   return (
-    LOCALES.find(
-      ({ prefix }) =>
-        prefix && (routePath === prefix || routePath.startsWith(`${prefix}/`)),
-    ) ?? LOCALES[0]
+    LOCALES.find(({ prefix }) => prefix && (routePath === prefix || routePath.startsWith(`${prefix}/`))) ?? LOCALES[0]
   );
 }
 
@@ -143,11 +132,7 @@ function decodeEntities(value) {
 }
 
 function escapeAttr(value) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function escapeXml(value) {
@@ -159,12 +144,9 @@ function alternateLinks(routePath) {
   const variants = localeVariants(routePath);
   if (variants.length < 2) return "";
   const links = variants.map(
-    (entry) =>
-      `<link rel="alternate" hreflang="${entry.hreflang}" href="${canonicalUrl(entry.path)}" />`,
+    (entry) => `<link rel="alternate" hreflang="${entry.hreflang}" href="${canonicalUrl(entry.path)}" />`,
   );
-  links.push(
-    `<link rel="alternate" hreflang="x-default" href="${canonicalUrl(basePathOf(routePath))}" />`,
-  );
+  links.push(`<link rel="alternate" hreflang="x-default" href="${canonicalUrl(basePathOf(routePath))}" />`);
   return links.join("\n    ");
 }
 
@@ -266,11 +248,8 @@ for (const routePath of paths) {
   // it sits in the body markup; lift them into the document head so parsers
   // and previews see per-page metadata, and drop the in-body copies.
   const title = body.match(/<title[^>]*>([\s\S]*?)<\/title>/)?.[1] ?? "";
-  const description =
-    body.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/)?.[1] ?? "";
-  body = body
-    .replace(/<title[^>]*>[\s\S]*?<\/title>/g, "")
-    .replace(/<meta[^>]*name="description"[^>]*>/g, "");
+  const description = body.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"/)?.[1] ?? "";
+  body = body.replace(/<title[^>]*>[\s\S]*?<\/title>/g, "").replace(/<meta[^>]*name="description"[^>]*>/g, "");
 
   let html = template.replace('<div id="root"></div>', () => {
     return `<div id="root">${body}</div>`;
@@ -298,21 +277,14 @@ for (const routePath of paths) {
     `<link rel="alternate" type="application/rss+xml" title="${escapeAttr(`${SITE_NAME} Blog`)}" href="${FEED_URL}" />`,
     alternateLinks(routePath),
     socialTags(routePath, plainTitle, plainDescription),
-    post
-      ? `<meta property="article:published_time" content="${post.date}" />`
-      : "",
+    post ? `<meta property="article:published_time" content="${post.date}" />` : "",
     post ? blogPostingJsonLd(routePath, plainTitle, plainDescription, post) : "",
-    isHomepage(routePath)
-      ? softwareApplicationJsonLd(routePath, plainDescription)
-      : "",
+    isHomepage(routePath) ? softwareApplicationJsonLd(routePath, plainDescription) : "",
     isHomepage(routePath) ? organizationJsonLd() : "",
   ].filter(Boolean);
   html = html.replace("</head>", () => `    ${headTags.join("\n    ")}\n  </head>`);
 
-  const outFile =
-    routePath === "/"
-      ? join(distDir, "index.html")
-      : join(distDir, routePath.slice(1), "index.html");
+  const outFile = routePath === "/" ? join(distDir, "index.html") : join(distDir, routePath.slice(1), "index.html");
   await mkdir(dirname(outFile), { recursive: true });
   await writeFile(outFile, html);
   searchPages.push({ url: canonicalUrl(routePath), hash: await contentHash(html) });
@@ -333,12 +305,7 @@ const sitemapEntries = paths.map((routePath) => {
           ),
           `    <xhtml:link rel="alternate" hreflang="x-default" href="${escapeXml(canonicalUrl(basePathOf(routePath)))}"/>`,
         ];
-  return [
-    "  <url>",
-    `    <loc>${escapeXml(canonicalUrl(routePath))}</loc>`,
-    ...links,
-    "  </url>",
-  ].join("\n");
+  return ["  <url>", `    <loc>${escapeXml(canonicalUrl(routePath))}</loc>`, ...links, "  </url>"].join("\n");
 });
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',
@@ -349,7 +316,10 @@ const sitemap = [
 ].join("\n");
 await writeFile(join(distDir, "sitemap.xml"), sitemap);
 console.log(`wrote sitemap.xml (${paths.length} URLs)`);
-await writeFile(join(distDir, "search-manifest.json"), JSON.stringify(validateManifest({ version: 1, pages: searchPages })));
+await writeFile(
+  join(distDir, "search-manifest.json"),
+  JSON.stringify(validateManifest({ version: 1, pages: searchPages })),
+);
 
 // Workers Static Assets' automatic directory redirect is temporary (307),
 // while the Pages deployment this replaces used a permanent 308. Keep that
@@ -357,9 +327,7 @@ await writeFile(join(distDir, "search-manifest.json"), JSON.stringify(validateMa
 // sync-login trampoline. Future routes join this list automatically.
 const redirects = [
   "# Generated by scripts/prerender.mjs — do not edit dist/_redirects.",
-  ...paths.filter((routePath) => routePath !== "/").map(
-    (routePath) => `${routePath} ${routePath}/ 308`,
-  ),
+  ...paths.filter((routePath) => routePath !== "/").map((routePath) => `${routePath} ${routePath}/ 308`),
   "/sync/login /sync/login/ 308",
   "",
 ].join("\n");

@@ -20,9 +20,7 @@ export function ContentTypographyPreview() {
             {t("appearance.contentType.previewQuestion")}
           </div>
         </div>
-        <p className="ra-content-type m-0 text-fg">
-          {t("appearance.contentType.previewAnswer")}
-        </p>
+        <p className="ra-content-type m-0 text-fg">{t("appearance.contentType.previewAnswer")}</p>
       </div>
     </div>
   );

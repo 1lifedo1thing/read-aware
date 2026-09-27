@@ -6,10 +6,7 @@
  */
 import { useEffect } from "react";
 import { getDefaultStore } from "jotai";
-import {
-  isEditableKeyTarget,
-  subscribeToAppKeyDown,
-} from "../../../platform/app-keydown";
+import { isEditableKeyTarget, subscribeToAppKeyDown } from "../../../platform/app-keydown";
 import { pluginShortcutId } from "../../settings/lib/shortcuts";
 import { appShortcutForEvent } from "../../settings/lib/shortcut-dispatch";
 import { runPluginContribution } from "../lib/run-result";
@@ -21,7 +18,9 @@ export function usePluginCommandShortcuts(): void {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.defaultPrevented || event.isComposing || isEditableKeyTarget(event.target)) return;
       const shortcut = appShortcutForEvent(event);
-      const command = getDefaultStore().get(pluginCommandsAtom).find(command => pluginShortcutId(command.key) === shortcut);
+      const command = getDefaultStore()
+        .get(pluginCommandsAtom)
+        .find((command) => pluginShortcutId(command.key) === shortcut);
       if (command) {
         event.preventDefault();
         if (!actionEnabled(command)) return;

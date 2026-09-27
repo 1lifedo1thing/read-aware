@@ -8,7 +8,13 @@ import { describeError } from "../../../i18n/describe-error";
 import { initI18n } from "../../../i18n";
 
 const revision = "a".repeat(32);
-const change: PluginDocumentChange = { kind: "put", collection: "words", id: "hello", expectedRevision: null, data: { word: "hello" } };
+const change: PluginDocumentChange = {
+  kind: "put",
+  collection: "words",
+  id: "hello",
+  expectedRevision: null,
+  data: { word: "hello" },
+};
 
 test("document service failures have explicit localized copy without blind retry", async () => {
   await initI18n("en");
@@ -25,33 +31,73 @@ test("document service failures have explicit localized copy without blind retry
 });
 
 test("document batches validate before dispatch and freeze JSON, identity and provenance", () => {
-  const output = normalizeDocumentChanges([change, { kind: "check", collection: "feeds", id: "f", expectedRevision: revision }]);
-  expect(output).toEqual([
-    { kind: "put", collection: "words", id: "hello", expectedRevision: null, json: '{"word":"hello"}', bookId: undefined, anchor: undefined },
+  const output = normalizeDocumentChanges([
+    change,
     { kind: "check", collection: "feeds", id: "f", expectedRevision: revision },
   ]);
-  for (const changes of [[], [change, change], [{ ...change, expectedRevision: undefined }], [{ ...change, collection: "../other" }],
-    [{ ...change, id: "" }], [{ ...change, data: 1n }], [{ ...change, data: () => {} }], [{ ...change, expectedRevision: "bad" }],
-    Array.from({ length: 101 }, (_, i) => ({ ...change, id: String(i) }))]) {
+  expect(output).toEqual([
+    {
+      kind: "put",
+      collection: "words",
+      id: "hello",
+      expectedRevision: null,
+      json: '{"word":"hello"}',
+      bookId: undefined,
+      anchor: undefined,
+    },
+    { kind: "check", collection: "feeds", id: "f", expectedRevision: revision },
+  ]);
+  for (const changes of [
+    [],
+    [change, change],
+    [{ ...change, expectedRevision: undefined }],
+    [{ ...change, collection: "../other" }],
+    [{ ...change, id: "" }],
+    [{ ...change, data: 1n }],
+    [{ ...change, data: () => {} }],
+    [{ ...change, expectedRevision: "bad" }],
+    Array.from({ length: 101 }, (_, i) => ({ ...change, id: String(i) })),
+  ]) {
     expect(() => normalizeDocumentChanges(changes as PluginDocumentChange[])).toThrow();
   }
   expect(() => normalizeDocumentChanges([{ ...change, data: "x".repeat(4 * 1024 * 1024) }])).toThrow("byte budget");
-  expect(() => normalizeDocumentChanges(Array.from({ length: 3 }, (_, i) => ({ ...change, id: String(i), data: "x".repeat(3 * 1024 * 1024) })))).toThrow("byte budget");
+  expect(() =>
+    normalizeDocumentChanges(
+      Array.from({ length: 3 }, (_, i) => ({ ...change, id: String(i), data: "x".repeat(3 * 1024 * 1024) })),
+    ),
+  ).toThrow("byte budget");
 });
 
 test("private document context projects page data, conflict and corruption without crossing namespaces", async () => {
   const lifecycle = new PluginLifecycleController([]);
   lifecycle.promote();
   const docs = createPluginDocuments("owner", lifecycle);
-  const invoke = spyOn(ipc, "invoke").mockResolvedValue({ status: "ready", items: [{ id: "hello", json: '{"word":"hello"}', updatedAt: "now", revision }], nextCursor: "cursor" });
+  const invoke = spyOn(ipc, "invoke").mockResolvedValue({
+    status: "ready",
+    items: [{ id: "hello", json: '{"word":"hello"}', updatedAt: "now", revision }],
+    nextCursor: "cursor",
+  });
   try {
-    expect(await docs.collection("words").page()).toEqual({ status: "ready", items: [{ id: "hello", data: { word: "hello" }, updatedAt: "now", revision, bookId: undefined, anchor: undefined }], nextCursor: "cursor" });
-    expect(invoke).toHaveBeenLastCalledWith("plugin_docs_page", { pluginId: "owner", collection: "words", query: { limit: 50, bookId: undefined, oldestFirst: undefined, cursor: undefined } });
+    expect(await docs.collection("words").page()).toEqual({
+      status: "ready",
+      items: [
+        { id: "hello", data: { word: "hello" }, updatedAt: "now", revision, bookId: undefined, anchor: undefined },
+      ],
+      nextCursor: "cursor",
+    });
+    expect(invoke).toHaveBeenLastCalledWith("plugin_docs_page", {
+      pluginId: "owner",
+      collection: "words",
+      query: { limit: 50, bookId: undefined, oldestFirst: undefined, cursor: undefined },
+    });
     invoke.mockResolvedValue({ status: "stale-cursor" });
     expect(await docs.collection("words").page({ cursor: "cursor" })).toEqual({ status: "stale-cursor" });
     invoke.mockResolvedValue({ status: "conflict", index: 0 });
     expect(await docs.applyDocuments([change])).toEqual({ status: "conflict", index: 0 });
-    expect(invoke.mock.calls.at(-1)?.[1]).toMatchObject({ pluginId: "owner", changes: [{ collection: "words", json: '{"word":"hello"}', expectedRevision: null }] });
+    expect(invoke.mock.calls.at(-1)?.[1]).toMatchObject({
+      pluginId: "owner",
+      changes: [{ collection: "words", json: '{"word":"hello"}', expectedRevision: null }],
+    });
     invoke.mockResolvedValue({ id: "broken", json: "bad", updatedAt: "now", revision });
     await expect(docs.collection("words").get("broken")).rejects.toMatchObject({ code: "db/error" });
     expect(() => docs.collection("words").page({ limit: 201 })).toThrow();
@@ -59,7 +105,11 @@ test("private document context projects page data, conflict and corruption witho
     for (const query of ["x".repeat(1025), "中".repeat(342), "bad\nquery", 1]) {
       expect(() => docs.collection("words").page({ query } as never)).toThrow();
     }
-  } finally { lifecycle.stop(); await lifecycle.drainCleanups(); invoke.mockRestore(); }
+  } finally {
+    lifecycle.stop();
+    await lifecycle.drainCleanups();
+    invoke.mockRestore();
+  }
 });
 
 test("accepted document transactions drain on retirement; activation cannot write, migration can", async () => {
@@ -67,7 +117,12 @@ test("accepted document transactions drain on retirement; activation cannot writ
   const docs = createPluginDocuments("owner", lifecycle);
   const invoke = spyOn(ipc, "invoke");
   let finish!: (value: unknown) => void;
-  invoke.mockImplementation(() => new Promise(resolve => { finish = resolve; }) as never);
+  invoke.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }) as never,
+  );
   try {
     expect(() => docs.applyDocuments([change])).toThrow("activating");
     expect(invoke).not.toHaveBeenCalled();
@@ -75,31 +130,58 @@ test("accepted document transactions drain on retirement; activation cannot writ
     const write = docs.applyDocuments([change]);
     lifecycle.stop();
     let drained = false;
-    const drain = lifecycle.drainStorageWrites().then(() => { drained = true; });
-    await Promise.resolve(); expect(drained).toBe(false);
+    const drain = lifecycle.drainStorageWrites().then(() => {
+      drained = true;
+    });
+    await Promise.resolve();
+    expect(drained).toBe(false);
     expect(() => docs.applyDocuments([change])).toThrow("stopped");
     expect(() => docs.collection("words").page()).toThrow("stop");
     finish({ status: "applied", documents: [{ collection: "words", id: "hello", revision }] });
     expect((await write).status).toBe("applied");
-    await drain; expect(drained).toBe(true);
-  } finally { invoke.mockRestore(); }
+    await drain;
+    expect(drained).toBe(true);
+  } finally {
+    invoke.mockRestore();
+  }
 });
 
 test("document observation snapshots its validated query and preserves private namespace", async () => {
-  const lifecycle = new PluginLifecycleController([]), docs = createPluginDocuments("owner", lifecycle);
+  const lifecycle = new PluginLifecycleController([]),
+    docs = createPluginDocuments("owner", lifecycle);
   const invoke = spyOn(ipc, "invoke").mockResolvedValue({ status: "stale-cursor" });
-  const events: unknown[] = [], filter = { bookId: "book", cursor: "seen", limit: 3, query: "École 中文" };
+  const events: unknown[] = [],
+    filter = { bookId: "book", cursor: "seen", limit: 3, query: "École 中文" };
   try {
-    for (const query of [{ kind: "page", collection: "../other" }, { kind: "get", collection: "words", id: "" },
-      { kind: "page", collection: "words", filter: { limit: 201 } }, { kind: "get", collection: "words", id: "word", pluginId: "other" }]) {
+    for (const query of [
+      { kind: "page", collection: "../other" },
+      { kind: "get", collection: "words", id: "" },
+      { kind: "page", collection: "words", filter: { limit: 201 } },
+      { kind: "get", collection: "words", id: "word", pluginId: "other" },
+    ]) {
       expect(() => docs.observeDocuments(query as never, () => {})).toThrow();
     }
-    const handle = docs.observeDocuments({ kind: "page", collection: "words", filter }, event => { events.push(event); });
-    filter.bookId = "changed"; filter.cursor = "new"; filter.query = "changed";
-    expect(invoke).not.toHaveBeenCalled(); lifecycle.promote();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(invoke).toHaveBeenCalledWith("plugin_docs_page", { pluginId: "owner", collection: "words", query: { bookId: "book", cursor: "seen", limit: 3, oldestFirst: undefined, query: "École 中文" } });
-    expect(events).toEqual([{ sequence: 1, status: "ready", result: { kind: "page", page: { status: "stale-cursor" } } }]);
+    const handle = docs.observeDocuments({ kind: "page", collection: "words", filter }, (event) => {
+      events.push(event);
+    });
+    filter.bookId = "changed";
+    filter.cursor = "new";
+    filter.query = "changed";
+    expect(invoke).not.toHaveBeenCalled();
+    lifecycle.promote();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(invoke).toHaveBeenCalledWith("plugin_docs_page", {
+      pluginId: "owner",
+      collection: "words",
+      query: { bookId: "book", cursor: "seen", limit: 3, oldestFirst: undefined, query: "École 中文" },
+    });
+    expect(events).toEqual([
+      { sequence: 1, status: "ready", result: { kind: "page", page: { status: "stale-cursor" } } },
+    ]);
     handle.dispose();
-  } finally { lifecycle.stop(); await lifecycle.drainCleanups(); invoke.mockRestore(); }
+  } finally {
+    lifecycle.stop();
+    await lifecycle.drainCleanups();
+    invoke.mockRestore();
+  }
 });

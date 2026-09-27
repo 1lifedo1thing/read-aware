@@ -14,11 +14,7 @@ import { cn } from "@read-aware/ui/cn";
 import { useLocale, useTranslation } from "../../../i18n";
 import { resolvePluginText } from "../../plugins/lib/plugin-i18n";
 import { renderPluginIcon } from "../../plugins/lib/plugin-icons";
-import {
-  headerActionsAtom,
-  selectionActionsAtom,
-  textUnitReaderModeAtom,
-} from "../../plugins/state/plugin-store";
+import { headerActionsAtom, selectionActionsAtom, textUnitReaderModeAtom } from "../../plugins/state/plugin-store";
 import { CORE_MENU_ITEMS } from "../lib/menu-registry";
 import {
   menuConfigAtom,
@@ -71,9 +67,7 @@ export function MenuSurfaceEditor({ surface }: { surface: MenuSurface }) {
     locked: false,
   }));
   const coreItems: EditorItem[] = CORE_MENU_ITEMS[surface]
-    .filter((meta) =>
-      meta.id !== "core:navigator" || textUnitReaderMode !== null,
-    )
+    .filter((meta) => meta.id !== "core:navigator" || textUnitReaderMode !== null)
     .map((meta) => ({
       id: meta.id,
       label:
@@ -81,25 +75,22 @@ export function MenuSurfaceEditor({ surface }: { surface: MenuSurface }) {
           ? resolvePluginText(textUnitReaderMode.copy.menuLabel, locale)
           : String(t(`menus.items.${meta.labelKey}` as never)),
       icon:
-        meta.id === "core:navigator" && textUnitReaderMode
-          ? renderPluginIcon(textUnitReaderMode.icon, 16)
-          : <meta.Icon size={16} weight="regular" aria-hidden="true" />,
+        meta.id === "core:navigator" && textUnitReaderMode ? (
+          renderPluginIcon(textUnitReaderMode.icon, 16)
+        ) : (
+          <meta.Icon size={16} weight="regular" aria-hidden="true" />
+        ),
       locked: false,
     }));
   const itemById = new Map([...coreItems, ...pluginItems].map((item) => [item.id, item]));
 
   const layout = resolveSurfaceLayout(
     config[surface],
-    [
-      ...coreItems.map((item) => item.id),
-      ...pluginItems.map((item) => item.id),
-    ],
+    [...coreItems.map((item) => item.id), ...pluginItems.map((item) => item.id)],
     {
       defaultVisibleIds:
         surface === "selection"
-          ? selectionActions
-              .filter((action) => action.role === "lookup")
-              .map((action) => pluginMenuId(action.key))
+          ? selectionActions.filter((action) => action.role === "lookup").map((action) => pluginMenuId(action.key))
           : [],
     },
   );
@@ -116,8 +107,7 @@ export function MenuSurfaceEditor({ surface }: { surface: MenuSurface }) {
     else target.push(dragId);
     // Surface rules: the drop is a no-op rather than a broken arrangement.
     if (next.visible.length < rules.minVisible) return;
-    if (rules.maxVisible !== null && next.visible.length > rules.maxVisible)
-      return;
+    if (rules.maxVisible !== null && next.visible.length > rules.maxVisible) return;
     setConfig({ ...config, [surface]: next });
   }
 
@@ -162,10 +152,7 @@ export function MenuSurfaceEditor({ surface }: { surface: MenuSurface }) {
               return (
                 <Fragment key={id}>
                   {index > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="select-none font-sans text-sm text-fg-subtle/50"
-                    >
+                    <span aria-hidden="true" className="select-none font-sans text-sm text-fg-subtle/50">
                       /
                     </span>
                   )}
@@ -182,11 +169,7 @@ export function MenuSurfaceEditor({ surface }: { surface: MenuSurface }) {
               );
             }
             return (
-              <Tooltip
-                key={id}
-                content={item.caption ? `${item.label} · ${item.caption}` : item.label}
-                side="top"
-              >
+              <Tooltip key={id} content={item.caption ? `${item.label} · ${item.caption}` : item.label} side="top">
                 <span
                   {...dragProps(id, "visible")}
                   className={cn(
@@ -245,9 +228,7 @@ export function MenuSurfaceEditor({ surface }: { surface: MenuSurface }) {
               <span className="text-fg-muted">{item.icon}</span>
               <span className="min-w-0 flex-1 truncate font-sans text-sm text-fg">
                 {item.label}
-                {item.caption && (
-                  <Caption className="ml-2 inline text-fg-subtle">{item.caption}</Caption>
-                )}
+                {item.caption && <Caption className="ml-2 inline text-fg-subtle">{item.caption}</Caption>}
               </span>
             </div>
           );

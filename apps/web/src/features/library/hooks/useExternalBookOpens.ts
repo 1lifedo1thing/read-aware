@@ -82,9 +82,14 @@ export function useExternalBookOpens({
       }
     }
 
-    const dispose = onExternalOpenRequest(() => void drain(), error => reportRef.current(error));
+    const dispose = onExternalOpenRequest(
+      () => void drain(),
+      (error) => reportRef.current(error),
+    );
     // StrictMode's abandoned mount must not consume the native cold-start queue.
-    queueMicrotask(() => { if (!disposed) void drain(); });
+    queueMicrotask(() => {
+      if (!disposed) void drain();
+    });
     return () => {
       disposed = true;
       dispose();

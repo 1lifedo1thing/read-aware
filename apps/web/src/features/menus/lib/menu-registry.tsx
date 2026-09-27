@@ -74,9 +74,6 @@ export const CORE_MENU_ITEMS: Record<MenuSurface, CoreMenuItemMeta[]> = {
   ],
 };
 
-export function coreMenuMeta(
-  surface: MenuSurface,
-  id: string,
-): CoreMenuItemMeta | undefined {
+export function coreMenuMeta(surface: MenuSurface, id: string): CoreMenuItemMeta | undefined {
   return CORE_MENU_ITEMS[surface].find((item) => item.id === id);
 }

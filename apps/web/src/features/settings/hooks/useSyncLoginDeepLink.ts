@@ -10,11 +10,7 @@ import { useSetAtom } from "jotai";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
 import { subscribeSyncLoginTokens } from "../../../platform/sync/sync-login-link";
-import {
-  settingsOpenAtom,
-  settingsSectionRequestAtom,
-  syncLoginTokenAtom,
-} from "../../../state/ui";
+import { settingsOpenAtom, settingsSectionRequestAtom, syncLoginTokenAtom } from "../../../state/ui";
 
 const log = createLogger("sync");
 

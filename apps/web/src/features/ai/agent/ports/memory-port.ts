@@ -13,7 +13,6 @@ import { invoke } from "../../../../platform/ipc";
 import { pageMemoryRows } from "./memory-store";
 import { applyMemoryChanges, reinforceMemory, snapshotMemories } from "./memory-maintenance";
 
-
 /** agent 的 scope（"user" | "global" | `book:<id>`）→ 事件目录的 scope 字段。 */
 function eventScope(scope: MemoryRecord["scope"]): {
   scope: "user" | "global" | "book";
@@ -29,11 +28,11 @@ export function createMemoryPort(): MemoryPort {
       const query = normalizeMemoryQuery(filter);
       return (await pageMemoryRows(query)).items;
     },
-    pageMemories: async input => {
+    pageMemories: async (input) => {
       const query = normalizeMemoryPageQuery(input);
       return pageMemoryRows(query);
     },
-    listMemories: async () => (await snapshotMemories()).map(snapshot => snapshot.memory),
+    listMemories: async () => (await snapshotMemories()).map((snapshot) => snapshot.memory),
     saveMemory: async (input) => {
       const now = new Date().toISOString();
       const record: MemoryRecord = {
@@ -41,8 +40,7 @@ export function createMemoryPort(): MemoryPort {
         scope: input.scope,
         kind: input.kind,
         content: input.content,
-        importance:
-          input.origin === "extraction" || input.origin === "plugin" ? 0.35 : 0.5,
+        importance: input.origin === "extraction" || input.origin === "plugin" ? 0.35 : 0.5,
         evidenceCount: 1,
         status: "active",
         createdAt: now,
@@ -61,12 +59,15 @@ export function createMemoryPort(): MemoryPort {
       };
       return runDomainWrite(async () => {
         const [event] = await mintEventRows([draft]);
-        const result = await invoke<{ memory: MemoryRecord; inserted: boolean }>("memory_create", { event, automatic: input.origin === "extraction" || input.origin === "plugin" });
+        const result = await invoke<{ memory: MemoryRecord; inserted: boolean }>("memory_create", {
+          event,
+          automatic: input.origin === "extraction" || input.origin === "plugin",
+        });
         if (result.inserted) broadcastDomainEventDrafts([draft]);
         return result.memory;
       });
     },
-    snapshotMemories: async filter => snapshotMemories(filter ? normalizeMemoryQuery(filter) : undefined),
+    snapshotMemories: async (filter) => snapshotMemories(filter ? normalizeMemoryQuery(filter) : undefined),
     reinforceMemory,
     applyMemoryChanges,
   };

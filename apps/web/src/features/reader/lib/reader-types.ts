@@ -1,5 +1,5 @@
 import type { BookFormat } from "../../library/lib/library-types";
-import type { BookFile } from '../../../../foliate-js/src/book';
+import type { BookFile } from "../../../../foliate-js/src/book";
 import type { BookTextRange } from "@read-aware/core";
 
 /** Minimal Blob/File surface consumed by foliate's format sniffers and parsers. */

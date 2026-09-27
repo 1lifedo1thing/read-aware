@@ -12,10 +12,7 @@
  */
 
 import { AppError } from "@read-aware/core";
-import type {
-  PluginReaderTextSegment,
-  RegisteredReaderMode,
-} from "../../plugins/lib/plugin-types";
+import type { PluginReaderTextSegment, RegisteredReaderMode } from "../../plugins/lib/plugin-types";
 import { normalizeReaderTextSegments } from "../../plugins/lib/reader-mode";
 import { consumePluginResult } from "../../plugins/runtime/plugin-result";
 
@@ -24,11 +21,39 @@ export type TextUnitId = string;
 
 /** Block-level tags that reset unit segmentation (from foliate's tts.js). */
 const BLOCK_TAGS = new Set([
-  "article", "aside", "audio", "blockquote", "caption",
-  "details", "dialog", "div", "dl", "dt", "dd",
-  "figure", "footer", "form", "figcaption",
-  "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li",
-  "main", "math", "nav", "ol", "p", "pre", "section", "tr",
+  "article",
+  "aside",
+  "audio",
+  "blockquote",
+  "caption",
+  "details",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "dd",
+  "figure",
+  "footer",
+  "form",
+  "figcaption",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hgroup",
+  "hr",
+  "li",
+  "main",
+  "math",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "tr",
 ]);
 
 const SEGMENT_CONCURRENCY = 8;
@@ -111,10 +136,7 @@ function readingBlocks(doc: Document): Node[][] {
 }
 
 /** Map trimmed segment offsets back onto the block's text nodes as Ranges. */
-function segmentsToRanges(
-  nodes: Node[],
-  segments: PluginReaderTextSegment[],
-): Range[] {
+function segmentsToRanges(nodes: Node[], segments: PluginReaderTextSegment[]): Range[] {
   // Cumulative start offset of each node's text within the joined block string.
   const starts: number[] = [];
   let total = 0;
@@ -173,11 +195,11 @@ export async function buildTextUnitRanges(
       if (signal?.aborted) throw signal.reason;
       if (next >= blocks.length) return;
       const nodes = blocks[next++];
-      const text = nodes.map(node => node.nodeValue ?? "").join("");
+      const text = nodes.map((node) => node.nodeValue ?? "").join("");
       if (!nodes.length || !text.trim()) continue;
       const index = ordinal++;
       try {
-        await consumePluginResult(segmentText({ text, language, unitId }), segmented => {
+        await consumePluginResult(segmentText({ text, language, unitId }), (segmented) => {
           if (signal?.aborted) throw signal.reason;
           if (failed) return;
           results[index] = segmentsToRanges(nodes, normalizeReaderTextSegments(segmented, text.length));
@@ -185,7 +207,9 @@ export async function buildTextUnitRanges(
       } catch (error) {
         failed = true;
         if (signal?.aborted) throw signal.reason;
-        throw new AppError("reader/segmentation-failed", "Reading mode could not segment the section", { cause: error });
+        throw new AppError("reader/segmentation-failed", "Reading mode could not segment the section", {
+          cause: error,
+        });
       }
     }
   };

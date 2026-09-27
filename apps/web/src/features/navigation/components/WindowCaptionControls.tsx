@@ -13,12 +13,7 @@ import { CopySimple, Minus, Square, X } from "@phosphor-icons/react";
 import { useEffect } from "react";
 import { IconButton } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
-import {
-  desktopChromeKind,
-  isMacOS,
-  isWindows,
-  type DesktopChromeKind,
-} from "../../../platform/environment";
+import { desktopChromeKind, isMacOS, isWindows, type DesktopChromeKind } from "../../../platform/environment";
 import { setTrafficLightsVisible } from "../../../platform/traffic-lights";
 import { useWindowMaximized } from "../hooks/useWindowMaximized";
 import { invoke } from "../../../platform/ipc";
@@ -41,9 +36,7 @@ type WindowCaptionControlsProps = {
   chrome?: DesktopChromeKind;
 };
 
-export function WindowCaptionControls({
-  chrome = desktopChromeKind(),
-}: WindowCaptionControlsProps = {}) {
+export function WindowCaptionControls({ chrome = desktopChromeKind() }: WindowCaptionControlsProps = {}) {
   const { t } = useTranslation("nav");
   const custom = chrome === "custom";
   const maximized = useWindowMaximized(custom);
@@ -84,9 +77,13 @@ export function WindowCaptionControls({
         label={maximized ? t("window.restore") : t("window.maximize")}
         onMouseEnter={showSnapOverlay}
         onClick={() => windowAction({ action: maximized ? "restore" : "maximize" })}
-        icon={maximized
-          ? <CopySimple size={14} weight="regular" aria-hidden="true" />
-          : <Square size={13} weight="regular" aria-hidden="true" />}
+        icon={
+          maximized ? (
+            <CopySimple size={14} weight="regular" aria-hidden="true" />
+          ) : (
+            <Square size={13} weight="regular" aria-hidden="true" />
+          )
+        }
       />
       <IconButton
         size="caption"

@@ -28,15 +28,7 @@ export class SqlReportStore implements ReportStore {
            (id, created_at, created_at_ms, ip_hash, app_version, platform, bytes)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
       )
-      .bind(
-        meta.id,
-        meta.createdAt,
-        meta.createdAtMs,
-        meta.ipHash,
-        meta.appVersion,
-        meta.platform,
-        meta.bytes,
-      )
+      .bind(meta.id, meta.createdAt, meta.createdAtMs, meta.ipHash, meta.appVersion, meta.platform, meta.bytes)
       .run();
   }
 

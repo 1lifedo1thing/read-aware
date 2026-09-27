@@ -25,7 +25,11 @@ const meta = {
 
 function ControlledFontList(args: FontListArgs) {
   const [value, setValue] = useState(args.value);
-  return <div className="w-[358px]"><FontList {...args} value={value} onChange={setValue} /></div>;
+  return (
+    <div className="w-[358px]">
+      <FontList {...args} value={value} onChange={setValue} />
+    </div>
+  );
 }
 
 export default meta;

@@ -13,8 +13,7 @@ const base: SoftwareUpdateState = {
 };
 
 /** Seeds the update state the indicator reads. */
-const updateState = (patch: Partial<SoftwareUpdateState>) =>
-  withAtoms(seed(softwareUpdateAtom, { ...base, ...patch }));
+const updateState = (patch: Partial<SoftwareUpdateState>) => withAtoms(seed(softwareUpdateAtom, { ...base, ...patch }));
 
 /**
  * The header's update chip.
@@ -49,9 +48,7 @@ export const Available: Story = {
 
 /** Downloading, with a percentage. */
 export const Downloading: Story = {
-  decorators: [
-    updateState({ phase: "downloading", availableVersion: "0.6.0", progress: 42 }),
-  ],
+  decorators: [updateState({ phase: "downloading", availableVersion: "0.6.0", progress: 42 })],
 };
 
 /** Downloading before any progress has been reported — no invented number. */
@@ -66,9 +63,7 @@ export const Installing: Story = {
 
 /** Android's permission gate, which still reads as "ready to install". */
 export const PermissionRequired: Story = {
-  decorators: [
-    updateState({ phase: "permission-required", availableVersion: "0.6.0" }),
-  ],
+  decorators: [updateState({ phase: "permission-required", availableVersion: "0.6.0" })],
 };
 
 /** The OS installer is open; the app is waiting on it. */
@@ -107,7 +102,5 @@ export const UpToDateIsSilent: Story = {
  * for the reader to act on.
  */
 export const CheckFailureIsSilent: Story = {
-  decorators: [
-    updateState({ phase: "error", errorStage: "check" }),
-  ],
+  decorators: [updateState({ phase: "error", errorStage: "check" })],
 };

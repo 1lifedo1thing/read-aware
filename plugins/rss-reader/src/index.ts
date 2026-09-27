@@ -12,16 +12,23 @@ import { REFRESH_SCHEDULE, refreshScheduledFeeds } from "./refresh";
 const plugin: PluginModule = {
   async activate(ctx) {
     assertPluginCapabilities(ctx);
-    ctx.contributions.uriHandlers.register({id:"subscribe",open:request=>{
-      if(request.parameters.length!==1||request.parameters[0]?.key!=="url"||!isHttpFeedUrl(request.parameters[0].value))
-        throw Object.assign(Error("Expected one HTTP feed URL"),{code:"plugin/invalid-input"});
-      // External navigation opens a draft only; fetching and durable subscribe
-      // remain in the form's explicit submit handler.
-      return {view:addFeedView(ctx,request.parameters[0].value)};
-    }});
+    ctx.contributions.uriHandlers.register({
+      id: "subscribe",
+      open: (request) => {
+        if (
+          request.parameters.length !== 1 ||
+          request.parameters[0]?.key !== "url" ||
+          !isHttpFeedUrl(request.parameters[0].value)
+        )
+          throw Object.assign(Error("Expected one HTTP feed URL"), { code: "plugin/invalid-input" });
+        // External navigation opens a draft only; fetching and durable subscribe
+        // remain in the form's explicit submit handler.
+        return { view: addFeedView(ctx, request.parameters[0].value) };
+      },
+    });
     ctx.contributions.contentProviders.register({
       id: PROVIDER_ID,
-      load: url => loadFeedContent(ctx, url),
+      load: (url) => loadFeedContent(ctx, url),
     });
     ctx.contributions.headerActions.register({
       id: "feeds",
@@ -31,15 +38,21 @@ const plugin: PluginModule = {
       presentation: "page",
       view: () => rssPageView(ctx),
     });
-    ctx.domains.library.events.subscribe("book.removed", async event => {
-      try {
-        const reaction = ctx.withEvent(event);
-        assertPluginCapabilities(reaction);
-        const feed = await forgetRemovedBook(reaction, event.payload.bookId);
-        if (!feed) return;
-        ctx.services.ui.showToast(tr(ctx.locale, "unsubscribedFrom", { title: feed.title }));
-      } catch (error) { console.warn("RSS removed-book cleanup failed", error); }
-    }, { ruleId: "removed-book-cleanup" });
+    ctx.domains.library.events.subscribe(
+      "book.removed",
+      async (event) => {
+        try {
+          const reaction = ctx.withEvent(event);
+          assertPluginCapabilities(reaction);
+          const feed = await forgetRemovedBook(reaction, event.payload.bookId);
+          if (!feed) return;
+          ctx.services.ui.showToast(tr(ctx.locale, "unsubscribedFrom", { title: feed.title }));
+        } catch (error) {
+          console.warn("RSS removed-book cleanup failed", error);
+        }
+      },
+      { ruleId: "removed-book-cleanup" },
+    );
     ctx.contributions.commands.register({
       id: "subscribe",
       title: "RSS: subscriptions",

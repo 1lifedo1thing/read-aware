@@ -20,10 +20,15 @@ function references(path: string): string[] {
   function visit(node: ts.Node) {
     if (ts.isStringLiteralLike(node)) {
       const parent = node.parent;
-      if (((ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node)
-        || (ts.isCallExpression(parent) && parent.expression.kind === ts.SyntaxKind.ImportKeyword && parent.arguments[0] === node)
-        || (ts.isNewExpression(parent) && parent.expression.getText(ast) === "URL" && parent.arguments?.[0] === node)
-        || (ts.isLiteralTypeNode(parent) && ts.isImportTypeNode(parent.parent))) result.push(node.text);
+      if (
+        ((ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node) ||
+        (ts.isCallExpression(parent) &&
+          parent.expression.kind === ts.SyntaxKind.ImportKeyword &&
+          parent.arguments[0] === node) ||
+        (ts.isNewExpression(parent) && parent.expression.getText(ast) === "URL" && parent.arguments?.[0] === node) ||
+        (ts.isLiteralTypeNode(parent) && ts.isImportTypeNode(parent.parent))
+      )
+        result.push(node.text);
     }
     ts.forEachChild(node, visit);
   }
@@ -43,14 +48,18 @@ test("desktop acceptance modules live outside production source and keep resolva
         expect(existsSync(resolve(dirname(target), "../manifest.json"))).toBe(true);
         continue;
       }
-      expect(["", ".ts", ".tsx", ".json", "/index.ts", "/index.tsx"].some((suffix) => existsSync(target + suffix)),
-        `${relative(web, path)}: ${reference}`).toBe(true);
+      expect(
+        ["", ".ts", ".tsx", ".json", "/index.ts", "/index.tsx"].some((suffix) => existsSync(target + suffix)),
+        `${relative(web, path)}: ${reference}`,
+      ).toBe(true);
     }
   }
 });
 
 test("production modules do not depend on desktop acceptance code", () => {
-  for (const path of files(join(web, "src")).filter((path) => /\.tsx?$/.test(path) && !/\.(test|stories)\.tsx?$/.test(path))) {
+  for (const path of files(join(web, "src")).filter(
+    (path) => /\.tsx?$/.test(path) && !/\.(test|stories)\.tsx?$/.test(path),
+  )) {
     for (const reference of references(path)) {
       expect(reference.includes("runtime/fixtures"), path).toBe(false);
       const target = reference.startsWith(".") ? resolve(dirname(path), reference) : resolve(web, `.${reference}`);

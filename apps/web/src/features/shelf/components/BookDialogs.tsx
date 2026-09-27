@@ -28,8 +28,7 @@ function AnnotationPreview({ annotation }: { annotation: Annotation }) {
         <span
           className="mt-1 block h-2.5 w-2.5 shrink-0 rounded-sm"
           style={{
-            backgroundColor:
-              HIGHLIGHT_COLORS[(annotation as Highlight).color] ?? HIGHLIGHT_COLORS.yellow,
+            backgroundColor: HIGHLIGHT_COLORS[(annotation as Highlight).color] ?? HIGHLIGHT_COLORS.yellow,
           }}
           aria-hidden="true"
         />
@@ -37,9 +36,7 @@ function AnnotationPreview({ annotation }: { annotation: Annotation }) {
         <NotePencil size={13} weight="regular" className="mt-0.5 shrink-0 text-fg-subtle" aria-hidden="true" />
       )}
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-xs leading-relaxed text-fg-muted">
-          &ldquo;{annotation.text}&rdquo;
-        </p>
+        <p className="line-clamp-2 text-xs leading-relaxed text-fg-muted">&ldquo;{annotation.text}&rdquo;</p>
         {annotation.type === "note" && (annotation as Note).content && (
           <p className="mt-0.5 line-clamp-2 text-xs text-fg">{(annotation as Note).content}</p>
         )}
@@ -68,7 +65,12 @@ export function BookDetailsDialog({ book, open, onClose, onUpdateMetadata }: Boo
   const store = useAtomValue(readingStatsAtom);
   const readingTime = formatReadingDuration(getBookReadingStats(store, book.id).totalMs);
   // Only read annotations while the dialog is open.
-  const { annotations, loadFailed: annotationsLoadFailed, loadErrorCode, isLoading: annotationsLoading } = useBookAnnotations(open ? book.id : null);
+  const {
+    annotations,
+    loadFailed: annotationsLoadFailed,
+    loadErrorCode,
+    isLoading: annotationsLoading,
+  } = useBookAnnotations(open ? book.id : null);
   const highlightCount = annotations.filter((a) => a.type === "highlight").length;
   const noteCount = annotations.filter((a) => a.type === "note").length;
 
@@ -134,9 +136,7 @@ export function BookDetailsDialog({ book, open, onClose, onUpdateMetadata }: Boo
                   {book.title}
                 </Body>
                 <Body className="mt-1 break-words text-sm text-fg-muted">{book.author}</Body>
-                <Caption className="mt-2 block uppercase tracking-wide text-fg-subtle">
-                  {book.format}
-                </Caption>
+                <Caption className="mt-2 block uppercase tracking-wide text-fg-subtle">{book.format}</Caption>
               </>
             )}
           </div>
@@ -156,8 +156,14 @@ export function BookDetailsDialog({ book, open, onClose, onUpdateMetadata }: Boo
         {/* Headline figures */}
         <div className="grid grid-cols-3 gap-3 border-t border-border pt-4">
           <DetailStat label={t("details.fieldReading")} value={readingTime} />
-          <DetailStat label={t("details.highlights")} value={annotationsLoadFailed || annotationsLoading ? "-" : highlightCount} />
-          <DetailStat label={t("details.notes")} value={annotationsLoadFailed || annotationsLoading ? "-" : noteCount} />
+          <DetailStat
+            label={t("details.highlights")}
+            value={annotationsLoadFailed || annotationsLoading ? "-" : highlightCount}
+          />
+          <DetailStat
+            label={t("details.notes")}
+            value={annotationsLoadFailed || annotationsLoading ? "-" : noteCount}
+          />
         </div>
 
         {/* Highlights & notes preview */}

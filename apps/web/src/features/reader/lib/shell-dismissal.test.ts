@@ -9,9 +9,7 @@ const at = (current: number, cfi: string | null = `cfi-${current}`): ReadingLoca
 describe("relocateDismissesShell", () => {
   test("a page turn dismisses the chrome, however it was driven", () => {
     for (const reason of ["page", "snap", "scroll"] as const) {
-      expect(
-        relocateDismissesShell({ reason, previous: at(4), next: at(5) }),
-      ).toBe(true);
+      expect(relocateDismissesShell({ reason, previous: at(4), next: at(5) })).toBe(true);
     }
   });
 
@@ -50,35 +48,23 @@ describe("relocateDismissesShell", () => {
 
   test("programmatic jumps do not dismiss", () => {
     for (const reason of ["navigation", "selection"] as const) {
-      expect(
-        relocateDismissesShell({ reason, previous: at(4), next: at(40) }),
-      ).toBe(false);
+      expect(relocateDismissesShell({ reason, previous: at(4), next: at(40) })).toBe(false);
     }
     // A fixed-layout `goTo` reports no reason at all.
-    expect(
-      relocateDismissesShell({ reason: undefined, previous: at(4), next: at(40) }),
-    ).toBe(false);
+    expect(relocateDismissesShell({ reason: undefined, previous: at(4), next: at(40) })).toBe(false);
   });
 
   test("a snap that moved nothing does not dismiss", () => {
     // The engine reports one right after a tap that only toggled the chrome.
-    expect(
-      relocateDismissesShell({ reason: "snap", previous: at(16), next: at(16) }),
-    ).toBe(false);
+    expect(relocateDismissesShell({ reason: "snap", previous: at(16), next: at(16) })).toBe(false);
   });
 
   test("the first relocation of a book has nothing to compare against", () => {
-    expect(
-      relocateDismissesShell({ reason: "page", previous: null, next: at(1) }),
-    ).toBe(false);
+    expect(relocateDismissesShell({ reason: "page", previous: null, next: at(1) })).toBe(false);
   });
 
   test("an unknown CFI on either side falls back to the page index", () => {
-    expect(
-      relocateDismissesShell({ reason: "page", previous: at(4, null), next: at(4, "cfi") }),
-    ).toBe(false);
-    expect(
-      relocateDismissesShell({ reason: "page", previous: at(4, null), next: at(5, "cfi") }),
-    ).toBe(true);
+    expect(relocateDismissesShell({ reason: "page", previous: at(4, null), next: at(4, "cfi") })).toBe(false);
+    expect(relocateDismissesShell({ reason: "page", previous: at(4, null), next: at(5, "cfi") })).toBe(true);
   });
 });

@@ -134,7 +134,7 @@ function masterKey(): Uint8Array | null {
  * SQLite. Publication reads that current durable value, including deletions. */
 function publishRoamingSecret(slot: SecretKey): void {
   if (!isTauri() || !isRoamingSecretSlot(slot)) return;
-  void flushRestoredCredentialPublications().catch(error => {
+  void flushRestoredCredentialPublications().catch((error) => {
     log.error(`failed to publish credential slot ${slot}; durable marker retained`, error);
   });
 }
@@ -142,7 +142,9 @@ onLocalSecretWrite(publishRoamingSecret);
 
 async function enqueueCurrentCredentials(onlyUnpublished: boolean): Promise<void> {
   if (!isTauri()) return;
-  await runDomainWrite(() => afterSecretWrites(() => invoke("restored_credentials_enqueue_current", { onlyUnpublished })));
+  await runDomainWrite(() =>
+    afterSecretWrites(() => invoke("restored_credentials_enqueue_current", { onlyUnpublished })),
+  );
   await flushRestoredCredentialPublications();
 }
 
@@ -190,7 +192,11 @@ function preferenceDraft(key: RoamingPreferenceKey, raw: string | null, origin: 
   if (!policy || PluginPreferencePublication.blocks(key)) return null;
   let value: unknown = null;
   if (raw !== null) {
-    try { value = JSON.parse(raw); } catch { return null; }
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
   if (policy.stripOnPublish?.length && value && typeof value === "object" && !Array.isArray(value)) {
     const clone = { ...(value as Record<string, unknown>) };
@@ -204,25 +210,41 @@ function preferenceDraft(key: RoamingPreferenceKey, raw: string | null, origin: 
  * failed append stays in this process's publication scope for a later save or
  * refresh to retry; remote overlays cannot replace it with an older projection. */
 export function acceptPluginPreferencePublication(scope: PluginPreferencePublication): Promise<void> {
-  return scope.accept(async (changes, sources) => {
-    const events: import("./domain-events").DomainEventDraft[] = [];
-    for (const [key, raw] of changes) {
-      if (!roamingPolicyFor(key)) continue;
-      try { events.push({ type: "preference.changed", origin: sources.get(key), payload: { key, value: raw === null ? null : JSON.parse(raw) } }); }
-      catch { /* Non-JSON plugin KV is outside the existing roaming contract. */ }
-    }
-    if (events.length && isTauri()) await commitDomainEvents(...events);
-  }, error => log.error(`failed to log accepted plugin ${scope.pluginId} preferences`, error));
+  return scope.accept(
+    async (changes, sources) => {
+      const events: import("./domain-events").DomainEventDraft[] = [];
+      for (const [key, raw] of changes) {
+        if (!roamingPolicyFor(key)) continue;
+        try {
+          events.push({
+            type: "preference.changed",
+            origin: sources.get(key),
+            payload: { key, value: raw === null ? null : JSON.parse(raw) },
+          });
+        } catch {
+          /* Non-JSON plugin KV is outside the existing roaming contract. */
+        }
+      }
+      if (events.length && isTauri()) await commitDomainEvents(...events);
+    },
+    (error) => log.error(`failed to log accepted plugin ${scope.pluginId} preferences`, error),
+  );
 }
 
 /** Log a KV value that is already durable but was never published (backfill).
  * No KV write is involved, so there is nothing to roll back: a failed append is
  * logged and retried by the next refresh's row-presence check. */
-export function backfillRoamingPreference(key: RoamingPreferenceKey, raw: string, origin: DomainActor = "system"): void {
+export function backfillRoamingPreference(
+  key: RoamingPreferenceKey,
+  raw: string,
+  origin: DomainActor = "system",
+): void {
   if (!isTauri()) return;
   const draft = preferenceDraft(key, raw, origin);
   if (!draft) return;
-  void commitDomainEvents(draft).catch(error => log.error(`failed to backfill ${key}; retried on the next refresh`, error));
+  void commitDomainEvents(draft).catch((error) =>
+    log.error(`failed to backfill ${key}; retried on the next refresh`, error),
+  );
 }
 
 // ── The write seam ───────────────────────────────────────────────────────────
@@ -328,19 +350,23 @@ async function loadAndOverlayRows(origin: DomainActor): Promise<{ rows: Preferen
     await PluginPreferencePublication.flushAccepted();
     await flushRestoredCredentialPublications();
     const rows = await invoke<PreferenceRow[]>("preferences_load_all");
-    const eligible = rows.filter(row => !PluginPreferencePublication.suppressesOverlay(row.key));
-    if (eligible.length !== rows.length) log.warn("Skipped plugin preferences awaiting update recovery or accepted publication");
-    const ids = eligible.flatMap(row => /^read-aware-plugin\.([a-z0-9-]+)\./.exec(row.key)?.[1] ?? []);
+    const eligible = rows.filter((row) => !PluginPreferencePublication.suppressesOverlay(row.key));
+    if (eligible.length !== rows.length)
+      log.warn("Skipped plugin preferences awaiting update recovery or accepted publication");
+    const ids = eligible.flatMap((row) => /^read-aware-plugin\.([a-z0-9-]+)\./.exec(row.key)?.[1] ?? []);
     try {
       return await withPluginDataWrites(ids, async () => {
         // Even a later overlay failure must drain every earlier native write.
         const drain = async () => {
-          const results = await Promise.allSettled([...new Set(ids)].map(id => flushLocalKV(`read-aware-plugin.${id}.`)));
+          const results = await Promise.allSettled(
+            [...new Set(ids)].map((id) => flushLocalKV(`read-aware-plugin.${id}.`)),
+          );
           return results.find((result): result is PromiseRejectedResult => result.status === "rejected");
         };
         let changed: string[];
-        try { changed = await overlayRows(eligible, origin); }
-        catch (error) {
+        try {
+          changed = await overlayRows(eligible, origin);
+        } catch (error) {
           const failure = await drain();
           if (failure) log.warn("Plugin preference drain also failed", failure.reason);
           throw error;
@@ -381,7 +407,7 @@ function reconcileUnpublished(rows: PreferenceRow[]): void {
   }
   // Native row-presence check avoids a stale JS projection snapshot deciding
   // which credentials to backfill. Existing pending local changes drained first.
-  void enqueueCurrentCredentials(true).catch(error => log.error("Credential backfill remains pending", error));
+  void enqueueCurrentCredentials(true).catch((error) => log.error("Credential backfill remains pending", error));
 }
 
 /**

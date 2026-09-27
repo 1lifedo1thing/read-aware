@@ -18,7 +18,10 @@ type Gesture = {
  * reader panels' (lib/panel-swipe), so vertical movement stays the list's
  * scrolling and a surrounding pull-down drawer is left alone.
  */
-export function useSwipeReveal<T extends HTMLElement>(ref: RefObject<T | null>, width: number): {
+export function useSwipeReveal<T extends HTMLElement>(
+  ref: RefObject<T | null>,
+  width: number,
+): {
   /** How far the row is moved left, 0..-width. */
   offset: number;
   /** The finger holds the row (no settle transition). */
@@ -40,8 +43,8 @@ export function useSwipeReveal<T extends HTMLElement>(ref: RefObject<T | null>, 
     if (!el) return;
     let gesture: Gesture | null = null;
     const touchOf = (event: TouchEvent, id: number) =>
-      Array.from(event.changedTouches).find((touch) => touch.identifier === id)
-      ?? Array.from(event.touches).find((touch) => touch.identifier === id);
+      Array.from(event.changedTouches).find((touch) => touch.identifier === id) ??
+      Array.from(event.touches).find((touch) => touch.identifier === id);
 
     const onStart = (event: TouchEvent) => {
       if (event.touches.length !== 1) {
@@ -49,8 +52,14 @@ export function useSwipeReveal<T extends HTMLElement>(ref: RefObject<T | null>, 
         return;
       }
       const touch = event.touches[0];
-      gesture = { touchId: touch.identifier, startX: touch.clientX, startY: touch.clientY,
-        base: offsetRef.current, lock: { kind: "pending" }, samples: [] };
+      gesture = {
+        touchId: touch.identifier,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        base: offsetRef.current,
+        lock: { kind: "pending" },
+        samples: [],
+      };
     };
     const onMove = (event: TouchEvent) => {
       const current = gesture;
@@ -79,8 +88,8 @@ export function useSwipeReveal<T extends HTMLElement>(ref: RefObject<T | null>, 
       gesture = null;
       if (current.lock.kind !== "drag") return;
       setDragging(false);
-      const open = event.type === "touchend"
-        && settlesRevealed(offsetRef.current, releaseVelocity(current.samples), width);
+      const open =
+        event.type === "touchend" && settlesRevealed(offsetRef.current, releaseVelocity(current.samples), width);
       setOffset(open ? -width : 0);
     };
 

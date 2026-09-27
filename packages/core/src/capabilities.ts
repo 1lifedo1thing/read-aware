@@ -1,8 +1,4 @@
-import {
-  DOMAIN_CATALOG,
-  DOMAIN_PERMISSIONS,
-  type DomainPermission,
-} from "./domains";
+import { DOMAIN_CATALOG, DOMAIN_PERMISSIONS, type DomainPermission } from "./domains";
 
 /** Host-owned extension points. A null permission means every plugin may use it. */
 export const CONTRIBUTION_CATALOG = {
@@ -25,10 +21,7 @@ export const CONTRIBUTION_CATALOG = {
 } as const;
 
 export type ContributionId = keyof typeof CONTRIBUTION_CATALOG;
-export type ContributionPermission = Exclude<
-  (typeof CONTRIBUTION_CATALOG)[ContributionId]["permission"],
-  null
->;
+export type ContributionPermission = Exclude<(typeof CONTRIBUTION_CATALOG)[ContributionId]["permission"], null>;
 
 /** Bounded host facilities. Core local services need no additional consent. */
 export const HOST_SERVICE_CATALOG = {
@@ -52,10 +45,7 @@ export const HOST_SERVICE_CATALOG = {
 } as const;
 
 export type HostServiceId = keyof typeof HOST_SERVICE_CATALOG;
-export type HostServicePermission = Exclude<
-  (typeof HOST_SERVICE_CATALOG)[HostServiceId]["permission"],
-  null
->;
+export type HostServicePermission = Exclude<(typeof HOST_SERVICE_CATALOG)[HostServiceId]["permission"], null>;
 
 /** Host-rendered declaration grammars, versioned apart from executable APIs. */
 export const DECLARATIVE_SCHEMA_CATALOG = {
@@ -74,17 +64,14 @@ export const HOST_CAPABILITY_CATALOG = {
   schemas: DECLARATIVE_SCHEMA_CATALOG,
 } as const;
 
-export type PluginPermission =
-  | DomainPermission
-  | ContributionPermission
-  | HostServicePermission;
+export type PluginPermission = DomainPermission | ContributionPermission | HostServicePermission;
 
-function declaredPermissions<
-  TCatalog extends Record<string, { permission: string | null }>,
->(catalog: TCatalog): Array<Exclude<TCatalog[keyof TCatalog]["permission"], null>> {
-  return [...new Set(Object.values(catalog).flatMap((entry) =>
-    entry.permission === null ? [] : [entry.permission]
-  ))] as Array<Exclude<TCatalog[keyof TCatalog]["permission"], null>>;
+function declaredPermissions<TCatalog extends Record<string, { permission: string | null }>>(
+  catalog: TCatalog,
+): Array<Exclude<TCatalog[keyof TCatalog]["permission"], null>> {
+  return [
+    ...new Set(Object.values(catalog).flatMap((entry) => (entry.permission === null ? [] : [entry.permission]))),
+  ] as Array<Exclude<TCatalog[keyof TCatalog]["permission"], null>>;
 }
 
 /** The manifest vocabulary, wholly derived from the three capability families. */
@@ -94,30 +81,20 @@ export const PLUGIN_PERMISSIONS: readonly PluginPermission[] = [
   ...declaredPermissions(HOST_SERVICE_CATALOG),
 ];
 
-export function permissionForContribution(
-  id: ContributionId,
-): ContributionPermission | null {
+export function permissionForContribution(id: ContributionId): ContributionPermission | null {
   return CONTRIBUTION_CATALOG[id].permission;
 }
 
-export function permissionForHostService(
-  id: HostServiceId,
-): HostServicePermission | null {
+export function permissionForHostService(id: HostServiceId): HostServicePermission | null {
   return HOST_SERVICE_CATALOG[id].permission;
 }
 
-export function canUseContribution(
-  id: ContributionId,
-  permissions: ReadonlySet<string>,
-): boolean {
+export function canUseContribution(id: ContributionId, permissions: ReadonlySet<string>): boolean {
   const permission = permissionForContribution(id);
   return permission === null || permissions.has(permission);
 }
 
-export function canUseHostService(
-  id: HostServiceId,
-  permissions: ReadonlySet<string>,
-): boolean {
+export function canUseHostService(id: HostServiceId, permissions: ReadonlySet<string>): boolean {
   const permission = permissionForHostService(id);
   return permission === null || permissions.has(permission);
 }

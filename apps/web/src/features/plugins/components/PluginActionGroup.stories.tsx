@@ -58,9 +58,23 @@ export const ToolbarPrioritized: Story = {
     actions: [
       { id: "refresh", label: "Refresh", icon: "arrows-clockwise", priority: "secondary", run: () => undefined },
       { id: "filter", label: "Filter", icon: "magnifying-glass", run: () => undefined },
-      { id: "new", label: "New note", icon: "note-pencil", variant: "solid", priority: "primary", run: () => undefined },
+      {
+        id: "new",
+        label: "New note",
+        icon: "note-pencil",
+        variant: "solid",
+        priority: "primary",
+        run: () => undefined,
+      },
       { id: "export", label: "Export", icon: "export", run: () => undefined },
-      { id: "delete", label: "Delete all", icon: "trash", variant: "danger", priority: "secondary", run: () => undefined },
+      {
+        id: "delete",
+        label: "Delete all",
+        icon: "trash",
+        variant: "danger",
+        priority: "secondary",
+        run: () => undefined,
+      },
     ],
   },
 };
@@ -88,9 +102,7 @@ export const WithoutIcons: Story = {
 /** An unknown icon name falls back to the puzzle piece rather than vanishing. */
 export const UnknownIconName: Story = {
   args: {
-    actions: [
-      { id: "x", label: "Custom action", icon: "not-a-real-icon", run: () => undefined },
-    ],
+    actions: [{ id: "x", label: "Custom action", icon: "not-a-real-icon", run: () => undefined }],
   },
 };
 

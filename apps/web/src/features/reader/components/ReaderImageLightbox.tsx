@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
-  ArrowClockwise,
-  Check,
-  CopySimple,
-  MagnifyingGlassMinus,
-  MagnifyingGlassPlus,
-  X,
-} from "@phosphor-icons/react";
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { ArrowClockwise, Check, CopySimple, MagnifyingGlassMinus, MagnifyingGlassPlus, X } from "@phosphor-icons/react";
 import { writeImage } from "@tauri-apps/plugin-clipboard-manager";
 import { Caption, IconButton } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
@@ -62,7 +62,9 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
           objectUrl = URL.createObjectURL(blob);
           setDisplaySrc(objectUrl);
         })
-        .catch(() => { /* Best-effort lifetime copy; the original source remains the fallback. */ });
+        .catch(() => {
+          /* Best-effort lifetime copy; the original source remains the fallback. */
+        });
     }
     return () => {
       disposed = true;
@@ -77,7 +79,9 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
   const focusDialog = useEffectEvent(() => {
     if (dialogRef.current) focusWithReadingSource(dialogRef.current, lifetime?.opening ?? "user");
   });
-  useEffect(() => { focusDialog(); }, []);
+  useEffect(() => {
+    focusDialog();
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -113,29 +117,28 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       canvas.getContext("2d")?.drawImage(img, 0, 0);
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png"),
-      );
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("PNG encode failed");
       return blob;
     };
     const write = isTauri()
-      ? renderPng()
-          .then(async (blob) => {
-            const bytes = new Uint8Array(await blob.arrayBuffer());
-            return isMobileOS() ? writeImage(bytes)
-              : copyResourceImageBytes(nativeResourceFiles, bytes, error => log.warn("Image resource cleanup failed", error));
-          })
-      : navigator.clipboard.write([
-          new ClipboardItem({ "image/png": renderPng() }),
-        ]);
-    write
-      .then(flashCopied)
-      .catch((error) => log.warn("copy image failed", error));
+      ? renderPng().then(async (blob) => {
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          return isMobileOS()
+            ? writeImage(bytes)
+            : copyResourceImageBytes(nativeResourceFiles, bytes, (error) =>
+                log.warn("Image resource cleanup failed", error),
+              );
+        })
+      : navigator.clipboard.write([new ClipboardItem({ "image/png": renderPng() })]);
+    write.then(flashCopied).catch((error) => log.warn("copy image failed", error));
   }, [flashCopied, zoom.imgRef]);
-  useEffect(() => () => {
-    if (copyResetRef.current != null) window.clearTimeout(copyResetRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (copyResetRef.current != null) window.clearTimeout(copyResetRef.current);
+    },
+    [],
+  );
 
   // The second click of an image double-click lands on the freshly-opened
   // backdrop; ignoring backdrop clicks briefly keeps "double-click to open"
@@ -196,9 +199,7 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
         />
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-5">
-        {alt && (
-          <Caption className="max-w-xl truncate text-stone-400">{alt}</Caption>
-        )}
+        {alt && <Caption className="max-w-xl truncate text-stone-400">{alt}</Caption>}
         <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg bg-stone-900/95 px-1.5 py-1">
           <IconButton
             size="sm"
@@ -226,13 +227,7 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
             label={copied ? t("imageViewer.copied") : t("imageViewer.copy")}
             onClick={copyImage}
             className={toolButtonClass}
-            icon={
-              copied ? (
-                <Check size={18} aria-hidden="true" />
-              ) : (
-                <CopySimple size={18} aria-hidden="true" />
-              )
-            }
+            icon={copied ? <Check size={18} aria-hidden="true" /> : <CopySimple size={18} aria-hidden="true" />}
           />
           <div aria-hidden="true" className="mx-1 h-4 w-px bg-stone-700" />
           <IconButton

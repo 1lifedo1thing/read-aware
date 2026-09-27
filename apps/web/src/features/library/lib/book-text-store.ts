@@ -23,7 +23,11 @@ const yieldToUi = (() => {
   const channel = new MessageChannel();
   const waiters: (() => void)[] = [];
   channel.port1.onmessage = () => waiters.shift()?.();
-  return () => new Promise<void>(resolve => { waiters.push(resolve); channel.port2.postMessage(null); });
+  return () =>
+    new Promise<void>((resolve) => {
+      waiters.push(resolve);
+      channel.port2.postMessage(null);
+    });
 })();
 
 const repository = new BookTextRepository({
@@ -34,50 +38,86 @@ const repository = new BookTextRepository({
     if (book.format === "virtual") return getVirtualTextSource(bookId, fetchMissing);
     let info = await getDesktopBlobInfo(`bookfile:${bookId}`);
     if (!info?.sha256 && fetchMissing) {
-      if (!await getStoredBookFile(book)) throw new AppError("library/content-unavailable", "Book source is missing locally and could not be retrieved");
+      if (!(await getStoredBookFile(book)))
+        throw new AppError("library/content-unavailable", "Book source is missing locally and could not be retrieved");
       info = await getDesktopBlobInfo(`bookfile:${bookId}`);
     }
     return { format: book.format, contentVersion: info?.sha256 ? `sha256:${info.sha256}` : null };
   },
-  read: async bookId => {
+  read: async (bookId) => {
     const bytes = await getDesktopBlob(blobKey(bookId));
     if (!bytes) return null;
-    try { return JSON.parse(new TextDecoder().decode(bytes)) as unknown; }
-    catch (error) { log.warn("Discarding malformed derived book text", error); return null; }
+    try {
+      return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    } catch (error) {
+      log.warn("Discarding malformed derived book text", error);
+      return null;
+    }
   },
-  write: async record => { await putDesktopBlob(blobKey(record.bookId), new TextEncoder().encode(JSON.stringify(record)), "application/json"); },
-  remove: bookId => deleteDesktopBlob(blobKey(bookId)),
+  write: async (record) => {
+    await putDesktopBlob(blobKey(record.bookId), new TextEncoder().encode(JSON.stringify(record)), "application/json");
+  },
+  remove: (bookId) => deleteDesktopBlob(blobKey(bookId)),
   content: (bookId, version, signal, read) => withBookContent(bookId, version, signal, ({ book }) => read(book)),
   yieldToReader: async (signal, waiting) => {
     while (readingRuntime.readerDemandDelay > 0) {
-      signal.throwIfAborted(); waiting?.(true);
+      signal.throwIfAborted();
+      waiting?.(true);
       await new Promise<void>((resolve, reject) => {
-        const abort = () => { clearTimeout(timer); reject(signal.reason); };
-        const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, readingRuntime.readerDemandDelay);
+        const abort = () => {
+          clearTimeout(timer);
+          reject(signal.reason);
+        };
+        const timer = setTimeout(() => {
+          signal.removeEventListener("abort", abort);
+          resolve();
+        }, readingRuntime.readerDemandDelay);
         signal.addEventListener("abort", abort, { once: true });
       });
     }
-    signal.throwIfAborted(); waiting?.(false); await yieldToUi(); signal.throwIfAborted();
+    signal.throwIfAborted();
+    waiting?.(false);
+    await yieldToUi();
+    signal.throwIfAborted();
   },
   warn: (message, error) => log.warn(message, error),
   changed: (bookId, actor) => emitAppEvent("book-text-changed", { bookId }, actor),
 });
 
-onAppEvent("book-removed", event => {
+onAppEvent("book-removed", (event) => {
   const { bookId } = event;
   forgetVirtualTextSource(bookId);
-  void repository.remove(bookId, actorFromEvent(event)).catch(error => log.warn("Removed book text cleanup failed", error));
+  void repository
+    .remove(bookId, actorFromEvent(event))
+    .catch((error) => log.warn("Removed book text cleanup failed", error));
 });
 
 export const getBookTextSnapshot = (bookId: string): Promise<BookTextSnapshot> => repository.snapshot(bookId);
-export const createBookTextTaskOwner = (lifetime?: AbortSignal, origin: import("../../../platform/domain-actor").DomainActor = "user", trackCleanup?: (work: Promise<void>) => void) => new BookTextTaskOwner(repository, (message, error) => log.warn(message, error), lifetime, createTextTaskHistory(origin, trackCleanup));
-export const getDigestChapterSource = (bookId: string, index: number, version: string, signal?: AbortSignal, origin?: DomainActor) => repository.chapter(bookId, index, version, signal, origin);
+export const createBookTextTaskOwner = (
+  lifetime?: AbortSignal,
+  origin: import("../../../platform/domain-actor").DomainActor = "user",
+  trackCleanup?: (work: Promise<void>) => void,
+) =>
+  new BookTextTaskOwner(
+    repository,
+    (message, error) => log.warn(message, error),
+    lifetime,
+    createTextTaskHistory(origin, trackCleanup),
+  );
+export const getDigestChapterSource = (
+  bookId: string,
+  index: number,
+  version: string,
+  signal?: AbortSignal,
+  origin?: DomainActor,
+) => repository.chapter(bookId, index, version, signal, origin);
 export const getPersistedBookText = (bookId: string) => repository.persisted(bookId);
 // Borrow the active parser with its registered version, never attach a new hash to an old parser.
-export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook, origin?: DomainActor) => repository.ensure(bookId, !!preopened, origin);
+export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook, origin?: DomainActor) =>
+  repository.ensure(bookId, !!preopened, origin);
 export async function getBookTextStatus(bookId: string): Promise<"ok" | "unextracted" | "textless"> {
   const state = await repository.snapshot(bookId);
-  return state.status === "ready" ? state.text === "textless" ? "textless" : "ok" : "unextracted";
+  return state.status === "ready" ? (state.text === "textless" ? "textless" : "ok") : "unextracted";
 }
 export async function deleteBookText(bookIds: string[]): Promise<void> {
   for (const bookId of bookIds) await repository.remove(bookId);

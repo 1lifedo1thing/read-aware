@@ -14,7 +14,12 @@ Return ONLY strict JSON with exactly these keys:
 Return empty arrays when no safe entity decision exists. Do not emit event IDs, versions, permissions, tool calls or other fields.`;
 
 export type IdentityReport = { status: "skipped" | "complete" | "partial" | "pending"; emitted: number };
-export async function runIdentityConsolidation(input: { deps: RuntimeDeps; complete: CompleteFn; model: Model<Api>; signal?: AbortSignal }): Promise<IdentityReport> {
+export async function runIdentityConsolidation(input: {
+  deps: RuntimeDeps;
+  complete: CompleteFn;
+  model: Model<Api>;
+  signal?: AbortSignal;
+}): Promise<IdentityReport> {
   const { deps, signal } = input;
   const pending = (reason: string, detail?: unknown): IdentityReport => {
     deps.log?.warn(`Identity consolidation pending: ${reason}`, detail);
@@ -26,22 +31,39 @@ export async function runIdentityConsolidation(input: { deps: RuntimeDeps; compl
   try {
     let plan;
     if (!snapshot.sources.length) {
-      plan = { expectedRevision: snapshot.revision, entitiesRevision: snapshot.entitiesRevision, summary: "", sources: [], decisions: [], complete: true };
+      plan = {
+        expectedRevision: snapshot.revision,
+        entitiesRevision: snapshot.entitiesRevision,
+        summary: "",
+        sources: [],
+        decisions: [],
+        complete: true,
+      };
     } else {
       const maxTokens = Math.min(4096, input.model.maxTokens);
       const budget = Math.min(48_000, input.model.contextWindow - maxTokens - 2048) - identityBytes(PROMPT);
-      if (!Number.isFinite(budget) || budget <= 0 || !Number.isFinite(maxTokens) || maxTokens < 1) return pending("model capacity unavailable");
+      if (!Number.isFinite(budget) || budget <= 0 || !Number.isFinite(maxTokens) || maxTokens < 1)
+        return pending("model capacity unavailable");
       let data = await readIdentityInput(snapshot, deps.entityRegistry, budget, signal);
       if (!data) {
         const batches = await readBatchedIdentityInput({ ...input, snapshot, maxBytes: budget, maxTokens });
-        if ("reason" in batches) return pending(batches.reason, { maxInputBytes: budget, sourceCount: snapshot.sources.length });
+        if ("reason" in batches)
+          return pending(batches.reason, { maxInputBytes: budget, sourceCount: snapshot.sources.length });
         data = batches.data;
       }
       signal?.throwIfAborted();
-      const response = await input.complete(input.model, { systemPrompt: PROMPT, messages: [{ role: "user", content: JSON.stringify(data), timestamp: Date.now() }] }, { signal, maxTokens });
+      const response = await input.complete(
+        input.model,
+        { systemPrompt: PROMPT, messages: [{ role: "user", content: JSON.stringify(data), timestamp: Date.now() }] },
+        { signal, maxTokens },
+      );
       signal?.throwIfAborted();
-      if (response.stopReason !== "stop" || response.content.some(part => part.type === "toolCall")) return pending("inference did not finish", { stopReason: response.stopReason });
-      const text = response.content.filter(part => part.type === "text").map(part => part.text).join("");
+      if (response.stopReason !== "stop" || response.content.some((part) => part.type === "toolCall"))
+        return pending("inference did not finish", { stopReason: response.stopReason });
+      const text = response.content
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join("");
       if (identityBytes(text) > 96_000) return pending("output exceeds validation budget");
       plan = await identityPlan(text, snapshot, data);
       await checkNewIdentityIds(plan, data, deps.entityRegistry, signal);

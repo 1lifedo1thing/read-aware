@@ -3,8 +3,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- Annotations projection (highlights + notes + asks; one typed table) ---
 
@@ -39,8 +39,18 @@ pub(crate) fn row_to_annotation(row: &rusqlite::Row) -> rusqlite::Result<Annotat
         book_id: row.get("book_id")?,
         kind: row.get("type")?,
         cfi_range: row.get("cfi_range")?,
-        range: row.get::<_, Option<String>>("range_json")?.map(|value| serde_json::from_str(&value)
-            .map_err(|error| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error)))).transpose()?,
+        range: row
+            .get::<_, Option<String>>("range_json")?
+            .map(|value| {
+                serde_json::from_str(&value).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Text,
+                        Box::new(error),
+                    )
+                })
+            })
+            .transpose()?,
         chapter_href: row.get("chapter_href")?,
         text: row.get("text")?,
         color: row.get("color")?,
@@ -71,25 +81,39 @@ pub struct ObservedAnnotation {
     pub revision: String,
 }
 
-pub(crate) fn annotations_observe_inner(conn: &mut Connection, book_id: Option<&str>) -> Result<Vec<ObservedAnnotation>, CommandError> {
+pub(crate) fn annotations_observe_inner(
+    conn: &mut Connection,
+    book_id: Option<&str>,
+) -> Result<Vec<ObservedAnnotation>, CommandError> {
     // Native lists carry the SAME token as inspect, captured with their displayed
     // rows in one read transaction. Never refresh a token just before a stale edit.
     let tx = conn.transaction()?;
     let rows = annotations_list_inner(&tx, book_id)?;
-    let snapshots = rows.into_iter().map(|annotation| {
-        let snapshot = super::annotation_mutations::snapshot_for_annotation(&tx, annotation)?;
-        Ok(ObservedAnnotation { annotation: snapshot.annotation, revision: snapshot.revision })
-    }).collect::<Result<Vec<_>, CommandError>>()?;
+    let snapshots = rows
+        .into_iter()
+        .map(|annotation| {
+            let snapshot = super::annotation_mutations::snapshot_for_annotation(&tx, annotation)?;
+            Ok(ObservedAnnotation {
+                annotation: snapshot.annotation,
+                revision: snapshot.revision,
+            })
+        })
+        .collect::<Result<Vec<_>, CommandError>>()?;
     tx.commit()?;
     Ok(snapshots)
 }
 
-pub(crate) fn annotations_list_inner(conn: &Connection, book_id: Option<&str>) -> Result<Vec<Annotation>, CommandError> {
-    let sql = if book_id.is_some() { "SELECT * FROM annotations WHERE book_id = ?1" } else { "SELECT * FROM annotations" };
+pub(crate) fn annotations_list_inner(
+    conn: &Connection,
+    book_id: Option<&str>,
+) -> Result<Vec<Annotation>, CommandError> {
+    let sql = if book_id.is_some() {
+        "SELECT * FROM annotations WHERE book_id = ?1"
+    } else {
+        "SELECT * FROM annotations"
+    };
     let mut stmt = conn.prepare(sql)?;
-    let rows = stmt
-        .query_map(rusqlite::params_from_iter(book_id), row_to_annotation)
-        ?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(book_id), row_to_annotation)?;
     let mut out = Vec::new();
     for r in rows {
         out.push(r?);
@@ -153,10 +177,13 @@ pub async fn annotation_put(
                 annotation.content,
                 annotation.created_at,
                 annotation.updated_at,
-                annotation.range.as_ref().map(serde_json::to_string).transpose()?,
+                annotation
+                    .range
+                    .as_ref()
+                    .map(serde_json::to_string)
+                    .transpose()?,
             ],
-        )
-        ?;
+        )?;
         Ok(())
     })
     .await
@@ -188,9 +215,7 @@ pub(crate) fn annotations_search_inner(
     }
     sql.push_str(" ORDER BY bm25(annotations_fts)");
     let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt
-        .query_map(rusqlite::params_from_iter(binds.iter()), row_to_annotation)
-        ?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(binds.iter()), row_to_annotation)?;
     let mut out = Vec::new();
     for r in rows {
         out.push(r?);
@@ -235,16 +260,52 @@ mod observation_tests {
     fn annotation_book_reads_are_scoped_before_rows_are_decoded() {
         let mut conn = database();
         assert_eq!(annotations_list_inner(&conn, None).unwrap().len(), 3);
-        assert_eq!(annotations_list_inner(&conn, Some("first")).unwrap().len(), 2);
-        assert_eq!(annotations_observe_inner(&mut conn, Some("first")).unwrap().len(), 2);
-        assert!(annotations_list_inner(&conn, Some("missing")).unwrap().is_empty());
-        conn.execute("UPDATE annotations SET created_at=X'00' WHERE id='b'", []).unwrap();
-        assert_eq!(annotations_list_inner(&conn, Some("first")).unwrap().len(), 2);
-        assert_eq!(annotations_observe_inner(&mut conn, Some("first")).unwrap().len(), 2);
-        assert_eq!(annotations_observe_inner(&mut conn, Some("second")).unwrap_err().code, "db/error");
-        assert_eq!(annotations_list_inner(&conn, Some("second")).unwrap_err().code, "db/error");
+        assert_eq!(
+            annotations_list_inner(&conn, Some("first")).unwrap().len(),
+            2
+        );
+        assert_eq!(
+            annotations_observe_inner(&mut conn, Some("first"))
+                .unwrap()
+                .len(),
+            2
+        );
+        assert!(annotations_list_inner(&conn, Some("missing"))
+            .unwrap()
+            .is_empty());
+        conn.execute("UPDATE annotations SET created_at=X'00' WHERE id='b'", [])
+            .unwrap();
+        assert_eq!(
+            annotations_list_inner(&conn, Some("first")).unwrap().len(),
+            2
+        );
+        assert_eq!(
+            annotations_observe_inner(&mut conn, Some("first"))
+                .unwrap()
+                .len(),
+            2
+        );
+        assert_eq!(
+            annotations_observe_inner(&mut conn, Some("second"))
+                .unwrap_err()
+                .code,
+            "db/error"
+        );
+        assert_eq!(
+            annotations_list_inner(&conn, Some("second"))
+                .unwrap_err()
+                .code,
+            "db/error"
+        );
         assert!(annotations_list_inner(&conn, None).is_err());
-        conn.execute("UPDATE annotations SET created_at='2026-09-10' WHERE id='b'", []).unwrap();
-        assert_eq!(annotations_list_inner(&conn, Some("second")).unwrap().len(), 1);
+        conn.execute(
+            "UPDATE annotations SET created_at='2026-09-10' WHERE id='b'",
+            [],
+        )
+        .unwrap();
+        assert_eq!(
+            annotations_list_inner(&conn, Some("second")).unwrap().len(),
+            1
+        );
     }
 }

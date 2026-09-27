@@ -58,9 +58,7 @@ function downlevelSchema(value: unknown): unknown {
 
   const variants = Array.isArray(next.anyOf) ? next.anyOf : undefined;
   if (variants && variants.length > 0) {
-    const nullableIndex = variants.findIndex(
-      (variant) => asRecord(variant)?.type === "null",
-    );
+    const nullableIndex = variants.findIndex((variant) => asRecord(variant)?.type === "null");
     if (nullableIndex >= 0 && variants.length === 2) {
       const concrete = asRecord(variants[nullableIndex === 0 ? 1 : 0]);
       if (concrete) {
@@ -70,10 +68,7 @@ function downlevelSchema(value: unknown): unknown {
     } else {
       const literals = variants.map(literalValue);
       const types = literals.map(primitiveSchemaType);
-      if (
-        literals.every((literal) => literal !== undefined) &&
-        types.every((type) => type && type === types[0])
-      ) {
+      if (literals.every((literal) => literal !== undefined) && types.every((type) => type && type === types[0])) {
         delete next.anyOf;
         next.type = types[0];
         next.enum = literals;

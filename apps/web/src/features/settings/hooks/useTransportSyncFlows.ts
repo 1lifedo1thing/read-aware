@@ -71,8 +71,9 @@ export function useTransportSyncFlows(
         throw new AppError("ui/unavailable", "A native sync dialog is already active");
       }
       const status = getSyncStatusSnapshot();
-      const blocked = syncFlowConditions(request, status, getSyncConnectionBusy(), sync.transports, false)
-        .find((value) => value.state === "unavailable");
+      const blocked = syncFlowConditions(request, status, getSyncConnectionBusy(), sync.transports, false).find(
+        (value) => value.state === "unavailable",
+      );
       if (blocked) {
         throw new AppError(
           blocked.errorCode === "sync/transport-unavailable" ? "sync/transport-unavailable" : "ui/unavailable",

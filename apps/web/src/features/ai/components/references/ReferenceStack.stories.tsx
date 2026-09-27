@@ -24,8 +24,7 @@ const RICH_WORD: ChatWordReference = {
     senses: [
       {
         partOfSpeech: "noun",
-        definition:
-          "The faculty of making fortunate discoveries by accident; a happy, unplanned finding.",
+        definition: "The faculty of making fortunate discoveries by accident; a happy, unplanned finding.",
         examples: ["Meeting her at the library was pure serendipity."],
       },
       { partOfSpeech: "noun", definition: "An instance of such a discovery.", examples: [] },

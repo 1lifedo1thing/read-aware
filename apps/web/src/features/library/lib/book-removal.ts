@@ -1,4 +1,9 @@
-import { errorCode, normalizeBookRemovalIds, type BookRemovalReceipt, type BookFileReleaseReceipt } from "@read-aware/core";
+import {
+  errorCode,
+  normalizeBookRemovalIds,
+  type BookRemovalReceipt,
+  type BookFileReleaseReceipt,
+} from "@read-aware/core";
 
 type RemovalDeps = {
   commit(ids: string[]): Promise<unknown>;
@@ -12,13 +17,20 @@ export async function removeBookBatch(input: unknown, deps: RemovalDeps): Promis
   const bookIds = normalizeBookRemovalIds(input);
   await deps.commit(bookIds);
   for (const id of bookIds) {
-    try { deps.removed(id); } catch (error) { deps.warn(error); }
+    try {
+      deps.removed(id);
+    } catch (error) {
+      deps.warn(error);
+    }
   }
-  return { ...await releaseRemovedBookFiles(bookIds, deps), committed: true };
+  return { ...(await releaseRemovedBookFiles(bookIds, deps)), committed: true };
 }
 
 /** Native release verifies that all IDs are still absent while holding the DB lock. */
-export async function releaseRemovedBookFiles(input: unknown, deps: Pick<RemovalDeps, "releaseFiles" | "warn">): Promise<BookFileReleaseReceipt> {
+export async function releaseRemovedBookFiles(
+  input: unknown,
+  deps: Pick<RemovalDeps, "releaseFiles" | "warn">,
+): Promise<BookFileReleaseReceipt> {
   const bookIds = normalizeBookRemovalIds(input);
   try {
     await deps.releaseFiles(bookIds);

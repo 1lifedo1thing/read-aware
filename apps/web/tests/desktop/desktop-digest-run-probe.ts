@@ -13,12 +13,42 @@ export async function prepareDigestRunProbe() {
 }
 export async function makeDigestObsolete(index = 0) {
   if (!seed || ![0, 1].includes(index)) throw Error("Prepare isolated digest probe first");
-  await commitDomainEvents({ type: "book.chapterDigested", origin: "agent", payload: { bookId: seed.bookId, chapterIndex: index,
-    chapterHref: seed.chapters[index]!.hrefs?.[0], summary: `Old chapter ${index}`, characters: [], relations: [], digestVersion: 1, flavor: "narrative" } });
+  await commitDomainEvents({
+    type: "book.chapterDigested",
+    origin: "agent",
+    payload: {
+      bookId: seed.bookId,
+      chapterIndex: index,
+      chapterHref: seed.chapters[index]!.hrefs?.[0],
+      summary: `Old chapter ${index}`,
+      characters: [],
+      relations: [],
+      digestVersion: 1,
+      flavor: "narrative",
+    },
+  });
 }
-export function runDigestProbe(mode: "fail-first" | "success") { if (!probe) throw Error("Prepare probe first"); return probe.run(mode); }
-export function beginDigestCancelProbe() { if (!probe) throw Error("Prepare probe first"); probe.begin(); }
-export function digestCancelStatus() { return probe?.status(); }
-export function cancelDigestProbe() { probe?.cancel(); }
-export async function releaseDigestProbe() { return probe?.release(); }
-export async function cleanupDigestRunProbe() { await probe?.dispose(); probe = undefined; const result = await cleanupMemoryDomainProbe(); seed = undefined; return result; }
+export function runDigestProbe(mode: "fail-first" | "success") {
+  if (!probe) throw Error("Prepare probe first");
+  return probe.run(mode);
+}
+export function beginDigestCancelProbe() {
+  if (!probe) throw Error("Prepare probe first");
+  probe.begin();
+}
+export function digestCancelStatus() {
+  return probe?.status();
+}
+export function cancelDigestProbe() {
+  probe?.cancel();
+}
+export async function releaseDigestProbe() {
+  return probe?.release();
+}
+export async function cleanupDigestRunProbe() {
+  await probe?.dispose();
+  probe = undefined;
+  const result = await cleanupMemoryDomainProbe();
+  seed = undefined;
+  return result;
+}

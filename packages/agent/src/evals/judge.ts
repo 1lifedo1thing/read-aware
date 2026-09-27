@@ -14,10 +14,7 @@ import type { EvalAssessment, EvalCheck, JsonValue } from "./types";
 export const JUDGE_IMPLEMENTATION_VERSION = 4;
 
 /** 单次非流式补全；生产由 CLI 构造，测试注入假实现。 */
-export type JudgeCompletion = (
-  prompt: string,
-  options?: { signal?: AbortSignal },
-) => Promise<string>;
+export type JudgeCompletion = (prompt: string, options?: { signal?: AbortSignal }) => Promise<string>;
 
 export interface AgentEvalJudgeOptions {
   complete: JudgeCompletion;
@@ -69,9 +66,7 @@ export function digestObservation(observation: unknown): JudgeObservationDigest 
         input,
         ...(entry.stateBefore === undefined ? {} : { stateBefore: entry.stateBefore }),
         ...(entry.stateAfter === undefined ? {} : { stateAfter: entry.stateAfter }),
-        ...(typeof entry.answer === "string"
-          ? { assistant: entry.answer }
-          : {}),
+        ...(typeof entry.answer === "string" ? { assistant: entry.answer } : {}),
       },
     ];
   });
@@ -80,26 +75,36 @@ export function digestObservation(observation: unknown): JudgeObservationDigest 
     if (!tool || typeof tool !== "object" || Array.isArray(tool)) return [];
     const entry = tool as Record<string, unknown>;
     if (typeof entry.name !== "string") return [];
-    const args =
-      entry.args === undefined ? undefined : JSON.stringify(entry.args);
-    return [{ name: entry.name,
-      ...(typeof entry.turn === "number" ? { turn: entry.turn } : {}),
-      ...(args === undefined ? {} : { args }),
-      ...(typeof entry.output === "string" ? { output: boundedJson(entry.output) } : {}),
-      ...(typeof entry.isError === "boolean" ? { isError: entry.isError } : {}),
-    }];
+    const args = entry.args === undefined ? undefined : JSON.stringify(entry.args);
+    return [
+      {
+        name: entry.name,
+        ...(typeof entry.turn === "number" ? { turn: entry.turn } : {}),
+        ...(args === undefined ? {} : { args }),
+        ...(typeof entry.output === "string" ? { output: boundedJson(entry.output) } : {}),
+        ...(typeof entry.isError === "boolean" ? { isError: entry.isError } : {}),
+      },
+    ];
   });
-  const interactions = (Array.isArray(record.interactions) ? record.interactions : []).flatMap(interaction => {
+  const interactions = (Array.isArray(record.interactions) ? record.interactions : []).flatMap((interaction) => {
     if (!interaction || typeof interaction !== "object" || Array.isArray(interaction)) return [];
     const entry = interaction as Record<string, unknown>;
     if (entry.phase !== "request" && entry.phase !== "response") return [];
-    return [{ phase: entry.phase,
-      ...(typeof entry.turn === "number" ? { turn: entry.turn } : {}),
-      ...(typeof entry.kind === "string" ? { kind: entry.kind } : {}),
-      ...(entry.value === undefined ? {} : { value: boundedJson(entry.value) }),
-    }];
+    return [
+      {
+        phase: entry.phase,
+        ...(typeof entry.turn === "number" ? { turn: entry.turn } : {}),
+        ...(typeof entry.kind === "string" ? { kind: entry.kind } : {}),
+        ...(entry.value === undefined ? {} : { value: boundedJson(entry.value) }),
+      },
+    ];
   });
-  return { userTurns, turns, answer, tools, interactions,
+  return {
+    userTurns,
+    turns,
+    answer,
+    tools,
+    interactions,
     ...(record.reviewEvidence === undefined ? {} : { evidence: record.reviewEvidence }),
     ...(record.state === undefined ? {} : { state: record.state }),
   };
@@ -118,19 +123,24 @@ export function buildJudgePrompt(input: {
         `Reader context / selection: ${JSON.stringify(turn.input ?? {})}`,
         ...(turn.stateBefore === undefined ? [] : [`State before turn: ${JSON.stringify(turn.stateBefore)}`]),
         ...(turn.stateAfter === undefined ? [] : [`State after turn: ${JSON.stringify(turn.stateAfter)}`]),
-        ...(turn.assistant === undefined
-          ? []
-          : [`Turn ${index + 1} assistant:\n"""\n${turn.assistant}\n"""`]),
+        ...(turn.assistant === undefined ? [] : [`Turn ${index + 1} assistant:\n"""\n${turn.assistant}\n"""`]),
       ].join("\n"),
     )
     .join("\n\n");
   const tools =
     input.digest.tools
-      .map((tool) => `- ${tool.turn === undefined ? "" : `Turn ${tool.turn}: `}${tool.name}${tool.args ? ` ${tool.args}` : ""}${tool.isError === undefined ? "" : ` [${tool.isError ? "failed" : "returned"}]`}${tool.output === undefined ? "" : `\n  Result: ${tool.output}`}`)
+      .map(
+        (tool) =>
+          `- ${tool.turn === undefined ? "" : `Turn ${tool.turn}: `}${tool.name}${tool.args ? ` ${tool.args}` : ""}${tool.isError === undefined ? "" : ` [${tool.isError ? "failed" : "returned"}]`}${tool.output === undefined ? "" : `\n  Result: ${tool.output}`}`,
+      )
       .join("\n") || "- (none)";
-  const interactions = input.digest.interactions.map(entry =>
-    `- Turn ${entry.turn ?? "?"} ${entry.kind ?? "interaction"} ${entry.phase}: ${entry.value ?? "(not recorded)"}`,
-  ).join("\n") || "- (none recorded)";
+  const interactions =
+    input.digest.interactions
+      .map(
+        (entry) =>
+          `- Turn ${entry.turn ?? "?"} ${entry.kind ?? "interaction"} ${entry.phase}: ${entry.value ?? "(not recorded)"}`,
+      )
+      .join("\n") || "- (none recorded)";
   const criteria = input.rubric.map((entry, index) => `${index + 1}. ${entry}`).join("\n");
   return `You are grading one recorded run of a reading-assistant agent.
 
@@ -173,7 +183,10 @@ Score 1 = fully satisfied, 0 = clearly violated, in between = partially satisfie
 }
 
 function parseVerdicts(raw: string, rubric: string[]): JudgeVerdict[] | undefined {
-  const trimmed = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const trimmed = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
@@ -196,7 +209,15 @@ function parseVerdicts(raw: string, rubric: string[]): JudgeVerdict[] | undefine
   for (const [index, entry] of criteria.entries()) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return undefined;
     const { score, rationale } = entry as { score?: unknown; rationale?: unknown };
-    if (typeof score !== "number" || !Number.isFinite(score) || typeof rationale !== "string" || !rationale.trim() || score < 0 || score > 1) return undefined;
+    if (
+      typeof score !== "number" ||
+      !Number.isFinite(score) ||
+      typeof rationale !== "string" ||
+      !rationale.trim() ||
+      score < 0 ||
+      score > 1
+    )
+      return undefined;
     verdicts.push({
       criterion: rubric[index]!,
       score,
@@ -229,7 +250,8 @@ export class AgentEvalJudge {
       digest: digestObservation(input.observation),
     });
     // Never silently grade a truncated answer or receipt as if it were complete.
-    if (prompt.length > 240_000) throw new Error("judge evidence exceeds 240000 characters; primary review must inspect the full local artifact");
+    if (prompt.length > 240_000)
+      throw new Error("judge evidence exceeds 240000 characters; primary review must inspect the full local artifact");
     const first = await this.complete(prompt, { signal: input.signal });
     let verdicts = parseVerdicts(first, input.rubric);
     if (!verdicts) {
@@ -254,7 +276,11 @@ export class AgentEvalJudge {
     return {
       ...assessmentFromChecks(checks),
       modelReview: {
-        verdict: verdicts.every(v => v.score >= this.threshold) ? "pass" : verdicts.some(v => v.score < 0.5) ? "fail" : "partial",
+        verdict: verdicts.every((v) => v.score >= this.threshold)
+          ? "pass"
+          : verdicts.some((v) => v.score < 0.5)
+            ? "fail"
+            : "partial",
         criteria: verdicts,
       },
     };

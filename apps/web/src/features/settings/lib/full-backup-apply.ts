@@ -18,7 +18,13 @@ export type FullBackupRestoreRequest = {
   credentials: Record<string, BackupCredentialChoice>;
 };
 export type FullBackupRestoreReceipt = {
-  format: 2; restoreId: string; domainRows: number; files: number; plugins: number; credentials: number; cleanupPending: boolean;
+  format: 2;
+  restoreId: string;
+  domainRows: number;
+  files: number;
+  plugins: number;
+  credentials: number;
+  cleanupPending: boolean;
 };
 export type FullBackupApplyReceipt = FullBackupRestoreReceipt & { taskId: string };
 
@@ -26,8 +32,13 @@ export type FullBackupApplyReceipt = FullBackupRestoreReceipt & { taskId: string
  * write/capture reservations until this document reloads, while returning the
  * physical decision to the result dialog. Cancellation cannot reopen old actors.
  * An unfinished rollback needs the same protection until startup recovery. */
-export function applyFullBackup(taskId: string, request: FullBackupRestoreRequest,
-  onProgress: (progress: FullBackupImportProgress) => void, signal?: AbortSignal, origin: DomainActor = "user"): Promise<FullBackupApplyReceipt> {
+export function applyFullBackup(
+  taskId: string,
+  request: FullBackupRestoreRequest,
+  onProgress: (progress: FullBackupImportProgress) => void,
+  signal?: AbortSignal,
+  origin: DomainActor = "user",
+): Promise<FullBackupApplyReceipt> {
   origin = causalActor(origin);
   return new Promise((resolve, reject) => {
     const untilReload = () => new Promise<never>(() => {});
@@ -35,21 +46,34 @@ export function applyFullBackup(taskId: string, request: FullBackupRestoreReques
       try {
         const { shutdownPlugins } = await import("../../plugins/runtime/plugin-host");
         await shutdownPlugins(undefined, origin);
-      } catch (error) { createLogger("backup-import").error("Plugin shutdown failed; writes remain paused until reload", error); }
-    };
-    void withSyncBackup(() => withPluginDataBackup("import", () => withBackupCapture(async () => {
-      const progress = new Channel<FullBackupImportProgress>(); progress.onmessage = onProgress;
-      let receipt: FullBackupApplyReceipt;
-      try { receipt = await invoke("backup_import_apply", { taskId, request, progress }); }
-      catch (error) {
-        if (errorCode(error) !== "backup/recovery-required") throw error;
-        reject(error);
-        await stopPlugins();
-        return untilReload();
+      } catch (error) {
+        createLogger("backup-import").error("Plugin shutdown failed; writes remain paused until reload", error);
       }
-      resolve(stampEventCause(receipt, origin));
-      await stopPlugins();
-      return untilReload();
-    }, signal), signal), signal).catch(reject);
+    };
+    void withSyncBackup(
+      () =>
+        withPluginDataBackup(
+          "import",
+          () =>
+            withBackupCapture(async () => {
+              const progress = new Channel<FullBackupImportProgress>();
+              progress.onmessage = onProgress;
+              let receipt: FullBackupApplyReceipt;
+              try {
+                receipt = await invoke("backup_import_apply", { taskId, request, progress });
+              } catch (error) {
+                if (errorCode(error) !== "backup/recovery-required") throw error;
+                reject(error);
+                await stopPlugins();
+                return untilReload();
+              }
+              resolve(stampEventCause(receipt, origin));
+              await stopPlugins();
+              return untilReload();
+            }, signal),
+          signal,
+        ),
+      signal,
+    ).catch(reject);
   });
 }

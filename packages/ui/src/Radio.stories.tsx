@@ -35,9 +35,7 @@ export const WithDescription: Story = {
 export const Group: Story = {
   render: () => (
     <fieldset>
-      <legend className="mb-3 font-sans text-[13px] font-medium text-fg-muted">
-        Reading speed
-      </legend>
+      <legend className="mb-3 font-sans text-[13px] font-medium text-fg-muted">Reading speed</legend>
       <div className="flex flex-col gap-3">
         <Radio name="speed" label="Slow" description="~150 words per minute" />
         <Radio name="speed" label="Normal" description="~250 words per minute" defaultChecked />

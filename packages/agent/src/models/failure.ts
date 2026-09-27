@@ -90,8 +90,7 @@ const CATEGORIES: Array<{ code: string; retryable: boolean; pattern: RegExp }> =
  */
 export function classifyModelFailure(raw: unknown): AppError {
   if (raw instanceof AppError) return raw;
-  const message =
-    raw instanceof Error ? raw.message : typeof raw === "string" ? raw : String(raw);
+  const message = raw instanceof Error ? raw.message : typeof raw === "string" ? raw : String(raw);
   const category = CATEGORIES.find((entry) => entry.pattern.test(message));
   return new AppError(category?.code ?? ERR_AI_UNKNOWN, message || "model call failed", {
     retryable: category?.retryable ?? false,

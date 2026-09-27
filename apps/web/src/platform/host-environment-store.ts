@@ -10,12 +10,14 @@ export class HostEnvironmentStore {
   private readonly listeners = new Set<Listener>();
   private unwatch: (() => void) | undefined;
 
-  constructor(private readonly deps: {
-    read(): Facts;
-    source?(previous: Facts | undefined, next: Facts): DomainActor;
-    watch(changed: () => void): () => void;
-    report(error: unknown): void;
-  }) {}
+  constructor(
+    private readonly deps: {
+      read(): Facts;
+      source?(previous: Facts | undefined, next: Facts): DomainActor;
+      watch(changed: () => void): () => void;
+      report(error: unknown): void;
+    },
+  ) {}
 
   snapshot = (): HostEnvironmentSnapshot => {
     this.refresh();
@@ -24,7 +26,7 @@ export class HostEnvironmentStore {
 
   observe = (handler: Listener): (() => void) => {
     let revision = -1;
-    const listener: Listener = state => {
+    const listener: Listener = (state) => {
       if (revision === state.revision) return;
       revision = state.revision;
       return handler(state);
@@ -34,19 +36,28 @@ export class HostEnvironmentStore {
     this.deliver(listener, this.snapshot());
     return () => {
       this.listeners.delete(listener);
-      if (!this.listeners.size) { this.unwatch?.(); this.unwatch = undefined; }
+      if (!this.listeners.size) {
+        this.unwatch?.();
+        this.unwatch = undefined;
+      }
     };
   };
 
   private deliver(listener: Listener, state: HostEnvironmentSnapshot): void {
-    try { void Promise.resolve(listener(copyEventCause(state, structuredClone(state)))).catch(this.deps.report); }
-    catch (error) { this.deps.report(error); }
+    try {
+      void Promise.resolve(listener(copyEventCause(state, structuredClone(state)))).catch(this.deps.report);
+    } catch (error) {
+      this.deps.report(error);
+    }
   }
 
   private refresh = (): void => {
     const facts = this.deps.read();
     if (this.state && Object.entries(facts).every(([key, value]) => this.state![key as keyof Facts] === value)) return;
-    this.state = stampEventCause({ ...facts, revision: (this.state?.revision ?? 0) + 1 }, this.deps.source?.(this.state, facts) ?? "system");
+    this.state = stampEventCause(
+      { ...facts, revision: (this.state?.revision ?? 0) + 1 },
+      this.deps.source?.(this.state, facts) ?? "system",
+    );
     for (const listener of [...this.listeners]) {
       if (this.listeners.has(listener)) this.deliver(listener, this.state);
     }

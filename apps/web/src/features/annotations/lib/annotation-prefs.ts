@@ -15,9 +15,7 @@ const FALLBACK_COLOR: Highlight["color"] = "yellow";
 export function getDefaultMarkColor(): Highlight["color"] {
   try {
     const raw = localKV.getItem(DEFAULT_COLOR_KEY);
-    return MARK_COLORS.includes(raw as Highlight["color"])
-      ? (raw as Highlight["color"])
-      : FALLBACK_COLOR;
+    return MARK_COLORS.includes(raw as Highlight["color"]) ? (raw as Highlight["color"]) : FALLBACK_COLOR;
   } catch {
     return FALLBACK_COLOR;
   }

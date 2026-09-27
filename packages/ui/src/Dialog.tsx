@@ -129,9 +129,7 @@ export function Dialog({
           // already unmistakable from its backdrop and elevation.
           "relative w-full max-w-lg rounded-md border border-border bg-[var(--ra-main-surface-color)] p-8 font-sans text-fg outline-none",
           "transition-[opacity,transform] duration-280 ease-[var(--ra-ease-out-quint)] motion-reduce:transition-none",
-          isVisible
-            ? "translate-y-0 scale-100 opacity-100"
-            : "translate-y-4 scale-[0.985] opacity-0",
+          isVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-4 scale-[0.985] opacity-0",
           className,
         )}
         onMouseDown={(event) => {

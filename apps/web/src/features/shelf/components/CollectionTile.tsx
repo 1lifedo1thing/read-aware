@@ -105,9 +105,7 @@ export function CollectionTile({ data, layout, onOpen, onDropBooks }: Collection
           </div>
           <div className="min-w-0 flex-1">
             <span className="block truncate font-serif text-sm font-medium text-fg">{data.name}</span>
-            <span className="mt-0.5 block font-sans text-[13px] tabular-nums text-fg-muted">
-              {countLabel}
-            </span>
+            <span className="mt-0.5 block font-sans text-[13px] tabular-nums text-fg-muted">{countLabel}</span>
           </div>
           <CaretRight size={16} weight="regular" aria-hidden="true" className="shrink-0 text-fg-subtle" />
         </button>
@@ -133,12 +131,8 @@ export function CollectionTile({ data, layout, onOpen, onDropBooks }: Collection
         >
           <Montage coverUrls={data.coverUrls} className="h-full w-full" />
           <div className="absolute inset-x-0 bottom-0 bg-stone-950/70 px-2 py-1.5">
-            <span className="block truncate font-serif text-xs font-medium leading-tight text-white">
-              {data.name}
-            </span>
-            <span className="mt-0.5 block font-sans text-[10px] tabular-nums text-white/70">
-              {countLabel}
-            </span>
+            <span className="block truncate font-serif text-xs font-medium leading-tight text-white">{data.name}</span>
+            <span className="mt-0.5 block font-sans text-[10px] tabular-nums text-white/70">{countLabel}</span>
           </div>
         </div>
       </button>

@@ -14,11 +14,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import {
-  DIGEST_VERSION,
-  extractChapterDigest,
-  mergeCharacterRegistry,
-} from "./memory/chapter-digest";
+import { DIGEST_VERSION, extractChapterDigest, mergeCharacterRegistry } from "./memory/chapter-digest";
 import { createModelResolver } from "./models/accounts";
 import { createCompleteFn } from "./models/complete";
 import { evalProviderRegistry } from "./evals/model-config";
@@ -82,7 +78,9 @@ for (let index = 0; index < epub.chapters.length; index++) {
   // 与产品管线同一门槛：没有实文的章节静默跳过（不算失败）。
   if (!chapter.text.trim()) continue;
   const known = mergeCharacterRegistry(
-    [...digests.values()].filter(digest => digest.chapterIndex < index).sort((a, b) => a.chapterIndex - b.chapterIndex),
+    [...digests.values()]
+      .filter((digest) => digest.chapterIndex < index)
+      .sort((a, b) => a.chapterIndex - b.chapterIndex),
   );
   const digest = await extractChapterDigest({
     complete,
@@ -92,7 +90,7 @@ for (let index = 0; index < epub.chapters.length; index++) {
     chapterText: chapter.text,
     knownCharacters: known,
     flavor,
-  }).catch(error => {
+  }).catch((error) => {
     console.error(`  #${index} inference failed`, error);
     return undefined;
   });
@@ -110,7 +108,9 @@ for (let index = 0; index < epub.chapters.length; index++) {
 
 persist();
 console.log(`wrote ${digests.size} digests to ${outPath}`);
-console.log("Generation complete, semantic review pending: compare entities, relations and claims with original chapter text before trusting this fixture. JSON validity is not a quality verdict.");
+console.log(
+  "Generation complete, semantic review pending: compare entities, relations and claims with original chapter text before trusting this fixture. JSON validity is not a quality verdict.",
+);
 if (failed.length) {
   console.error(`FAILED chapters (re-run with --resume): ${failed.join(", ")}`);
   process.exit(1);

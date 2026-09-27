@@ -34,25 +34,14 @@ const NAV_SECTIONS = [
  * The docs section navigation: a sticky sidebar on wide screens, a compact
  * row of sections above the article on narrow ones.
  */
-export function DocsNav({
-  locale,
-  compact = false,
-}: {
-  locale: DocsLocale;
-  compact?: boolean;
-}) {
+export function DocsNav({ locale, compact = false }: { locale: DocsLocale; compact?: boolean }) {
   const copy = useSiteCopy("docsNav");
 
   const navigation = (
-    <nav
-      aria-label={copy.ariaLabel}
-      className="flex flex-wrap gap-x-10 gap-y-5 md:flex-col md:gap-y-7"
-    >
+    <nav aria-label={copy.ariaLabel} className="flex flex-wrap gap-x-10 gap-y-5 md:flex-col md:gap-y-7">
       {NAV_SECTIONS.map((section) => (
         <div key={section.title}>
-          <div className="text-[0.75rem] uppercase tracking-[0.08em] text-fg-subtle">
-            {copy[section.title]}
-          </div>
+          <div className="text-[0.75rem] uppercase tracking-[0.08em] text-fg-subtle">{copy[section.title]}</div>
           <ul className="mt-2.5 flex flex-col gap-1.5 text-[0.9375rem]">
             {section.items.map((item) => (
               <li key={item.to}>

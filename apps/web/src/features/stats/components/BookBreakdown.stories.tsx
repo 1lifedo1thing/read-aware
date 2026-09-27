@@ -1,13 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { BookBreakdown } from "./BookBreakdown";
-import {
-  emptyAnnotations,
-  emptyStore,
-  NOW,
-  sampleAnnotations,
-  sampleBooks,
-  sampleStore,
-} from "./stats.fixtures";
+import { emptyAnnotations, emptyStore, NOW, sampleAnnotations, sampleBooks, sampleStore } from "./stats.fixtures";
 
 const meta = {
   title: "Interface/Stats/BookBreakdown",

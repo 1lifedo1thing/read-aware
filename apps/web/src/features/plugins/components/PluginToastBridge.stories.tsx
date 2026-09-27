@@ -28,9 +28,7 @@ export const RaisesAToast: Story = {
   render: () => (
     <>
       <PluginToastBridge />
-      <Button onClick={() => showPluginToast("Dictionary: 12 entries imported.")}>
-        Call showPluginToast()
-      </Button>
+      <Button onClick={() => showPluginToast("Dictionary: 12 entries imported.")}>Call showPluginToast()</Button>
     </>
   ),
   play: async ({ canvasElement }) => {
@@ -40,9 +38,22 @@ export const RaisesAToast: Story = {
 };
 
 export const RetryableError: Story = {
-  render: () => <><PluginToastBridge /><Button onClick={() => showPluginToast({ kind: "error", code: "db/locked",
-    retry: () => showPluginToast("Dictionary: entries imported."),
-  })}>Import entries</Button></>,
+  render: () => (
+    <>
+      <PluginToastBridge />
+      <Button
+        onClick={() =>
+          showPluginToast({
+            kind: "error",
+            code: "db/locked",
+            retry: () => showPluginToast("Dictionary: entries imported."),
+          })
+        }
+      >
+        Import entries
+      </Button>
+    </>
+  ),
 };
 
 /**
@@ -57,8 +68,6 @@ export const NoBridgeMounted: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Call showPluginToast() with no bridge" }),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Call showPluginToast() with no bridge" }));
   },
 };

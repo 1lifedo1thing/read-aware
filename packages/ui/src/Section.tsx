@@ -18,13 +18,7 @@ export function Section({ title, description, actions, children, className }: Se
   return (
     <section className={className}>
       {hasHeader && (
-        <Stack
-          direction="horizontal"
-          gap="md"
-          align="start"
-          justify="between"
-          className="mb-3"
-        >
+        <Stack direction="horizontal" gap="md" align="start" justify="between" className="mb-3">
           <Stack gap="xs" className="min-w-0">
             {title && <Eyebrow>{title}</Eyebrow>}
             {description && <Body className="text-sm text-fg-muted">{description}</Body>}

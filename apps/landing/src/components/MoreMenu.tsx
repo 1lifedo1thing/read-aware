@@ -51,20 +51,10 @@ function moreTo(locale: Locale): {
 const itemClass =
   "flex items-center justify-between gap-3 rounded px-3 py-2 text-[0.9375rem] text-fg-muted transition-colors hover:bg-fill hover:text-fg";
 
-export function MoreMenu({
-  locale = "en",
-  pathname,
-}: {
-  locale?: Locale;
-  pathname: string;
-}) {
+export function MoreMenu({ locale = "en", pathname }: { locale?: Locale; pathname: string }) {
   const explorerQuery = useRouterState({
     select: (state) =>
-      state.location.pathname
-        .replace(/\/$/, "")
-        .endsWith("/docs/plugins/capabilities")
-        ? state.location.searchStr
-        : "",
+      state.location.pathname.replace(/\/$/, "").endsWith("/docs/plugins/capabilities") ? state.location.searchStr : "",
   });
   const [open, setOpen] = useState(false);
   const strings = useSiteCopy("chrome");
@@ -93,37 +83,16 @@ export function MoreMenu({
         </>
       }
     >
-      <Link
-        to={moreTo(locale).pricing}
-        onClick={close}
-        activeProps={{ className: "text-fg" }}
-        className={itemClass}
-      >
+      <Link to={moreTo(locale).pricing} onClick={close} activeProps={{ className: "text-fg" }} className={itemClass}>
         {strings.pricing}
       </Link>
-      <Link
-        to={moreTo(locale).blog}
-        onClick={close}
-        activeProps={{ className: "text-fg" }}
-        className={itemClass}
-      >
+      <Link to={moreTo(locale).blog} onClick={close} activeProps={{ className: "text-fg" }} className={itemClass}>
         {strings.blog}
       </Link>
-      <Link
-        to={moreTo(locale).changelog}
-        onClick={close}
-        activeProps={{ className: "text-fg" }}
-        className={itemClass}
-      >
+      <Link to={moreTo(locale).changelog} onClick={close} activeProps={{ className: "text-fg" }} className={itemClass}>
         {strings.changelog}
       </Link>
-      <a
-        href={DISCORD_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={close}
-        className={itemClass}
-      >
+      <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={close} className={itemClass}>
         Discord
         <ArrowUpRight size={13} aria-hidden="true" className="shrink-0" />
       </a>
@@ -159,14 +128,7 @@ export function MoreMenu({
               className={cn(itemClass, target === locale && "text-fg")}
             >
               <span>{LOCALE_LABEL[target]}</span>
-              {target === locale && (
-                <Check
-                  size={14}
-                  weight="bold"
-                  aria-hidden="true"
-                  className="shrink-0"
-                />
-              )}
+              {target === locale && <Check size={14} weight="bold" aria-hidden="true" className="shrink-0" />}
             </a>
           ))}
         </>

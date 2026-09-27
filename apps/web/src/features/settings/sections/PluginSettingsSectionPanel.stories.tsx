@@ -12,7 +12,13 @@ const manifest: PluginManifest = {
   description: "Look up words while reading and keep a vocabulary notebook.",
   permissions: ["annotations:write", "service:network"],
   settings: [
-    { kind: "toggle", id: "autoSave", label: "Save every lookup", description: "Adds each word you look up to the notebook.", value: true },
+    {
+      kind: "toggle",
+      id: "autoSave",
+      label: "Save every lookup",
+      description: "Adds each word you look up to the notebook.",
+      value: true,
+    },
     { kind: "number", id: "perPage", label: "Entries per page", value: 25, min: 5, max: 100, step: 5 },
     {
       kind: "select",

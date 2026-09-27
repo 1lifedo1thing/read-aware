@@ -2,10 +2,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
-import {
-  fauxAssistantMessage,
-  type FauxProviderRegistration,
-} from "@earendil-works/pi-ai/providers/faux";
+import { fauxAssistantMessage, type FauxProviderRegistration } from "@earendil-works/pi-ai/providers/faux";
 import type { CompleteFn } from "../models/complete";
 import { applyOnboarding } from "../onboarding";
 import { createInMemoryDeps } from "../testing/fixtures";
@@ -22,11 +19,15 @@ describe("onboarding", () => {
 
   test("applyOnboarding writes the profile summary and seeds user memories", async () => {
     const { deps, stores } = createInMemoryDeps();
-    await applyOnboarding(deps, {
-      goals: "系统理解货币史",
-      background: "工程背景",
-      explanationDepth: "第一性原理，别怕长",
-    }, { submissionId: "interview", expectedRevision: (await deps.profile.readProfile()).revision });
+    await applyOnboarding(
+      deps,
+      {
+        goals: "系统理解货币史",
+        background: "工程背景",
+        explanationDepth: "第一性原理，别怕长",
+      },
+      { submissionId: "interview", expectedRevision: (await deps.profile.readProfile()).revision },
+    );
 
     expect(stores.profile.summary).toContain("工程背景");
     expect(stores.profile.summary).toContain("货币史");

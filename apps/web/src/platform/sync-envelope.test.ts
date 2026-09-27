@@ -75,9 +75,7 @@ describe("event envelope", () => {
     // A malicious relay replays the ciphertext under a different id...
     expect(() => openEvent(key, { ...sealed, id: "evt-2" })).toThrow();
     // ...or under a different position in the log.
-    expect(() =>
-      openEvent(key, { ...sealed, hlc: { ...sealed.hlc, wallMs: sealed.hlc.wallMs + 1 } }),
-    ).toThrow();
+    expect(() => openEvent(key, { ...sealed, hlc: { ...sealed.hlc, wallMs: sealed.hlc.wallMs + 1 } })).toThrow();
   });
 
   test("the wrong key opens nothing", () => {
@@ -134,9 +132,7 @@ describe("chunked blob envelope (v2)", () => {
   test("split, seal, reassemble round-trips the plaintext", () => {
     const parts = blobPartCount(plain.length);
     expect(parts).toBe(3);
-    const opened = sealAll("bookfile:big").map((wire, i) =>
-      openBlobPart(key, "bookfile:big", i, parts, wire),
-    );
+    const opened = sealAll("bookfile:big").map((wire, i) => openBlobPart(key, "bookfile:big", i, parts, wire));
     const joined = new Uint8Array(plain.length);
     let offset = 0;
     for (const chunk of opened) {

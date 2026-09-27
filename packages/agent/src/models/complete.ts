@@ -1,12 +1,5 @@
 /** 单次非流式补全的 seam：后台管道（提炼等）用，测试可注入假实现。 */
-import type {
-  Api,
-  AssistantMessage,
-  Context,
-  FetchFunction,
-  Model,
-  SimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Context, FetchFunction, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import type { AssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { isCustomOpenAIAccount, type LlmAccount } from "./accounts";
 import { sanitizeCustomOpenAIPayload } from "./custom-openai";
@@ -38,7 +31,8 @@ function requestOptions(
   // Explicit per-call caps must survive compatibility sanitation. The relay
   // can impose a stricter subscription cap independently.
   const sanitizedMaxOutputTokens = isCustomOpenAIAccount(account)
-    ? base.maxTokens === undefined ? account.maxOutputTokens
+    ? base.maxTokens === undefined
+      ? account.maxOutputTokens
       : Math.min(base.maxTokens, account.maxOutputTokens ?? base.maxTokens)
     : base.maxTokens;
   const onPayload =
@@ -56,8 +50,7 @@ function requestOptions(
     ...base,
     ...(base.maxTokens === undefined ? {} : { maxTokens: sanitizedMaxOutputTokens }),
     apiKey: account.kind === "readaware" ? account.session : account.apiKey,
-    reasoning:
-      thinking === undefined ? base.reasoning : asReasoning(thinking),
+    reasoning: thinking === undefined ? base.reasoning : asReasoning(thinking),
     fetch: fetch ?? base.fetch,
     onPayload,
   };

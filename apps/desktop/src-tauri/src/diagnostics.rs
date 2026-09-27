@@ -47,8 +47,13 @@ pub fn diagnostics_log_dir(app: tauri::AppHandle) -> Result<String, CommandError
 /// `MAX_TOTAL_BYTES` across the set. Newest-first means the cap always spends
 /// its budget on the most recent history.
 #[tauri::command]
-pub async fn diagnostics_read_logs(app: tauri::AppHandle) -> Result<Vec<LogFileTail>, CommandError> {
-    crate::storage::blocking("diagnostics_read_logs", move || read_log_tails(&log_dir(&app)?)).await
+pub async fn diagnostics_read_logs(
+    app: tauri::AppHandle,
+) -> Result<Vec<LogFileTail>, CommandError> {
+    crate::storage::blocking("diagnostics_read_logs", move || {
+        read_log_tails(&log_dir(&app)?)
+    })
+    .await
 }
 
 fn read_log_tails(dir: &Path) -> Result<Vec<LogFileTail>, CommandError> {
@@ -57,12 +62,18 @@ fn read_log_tails(dir: &Path) -> Result<Vec<LogFileTail>, CommandError> {
         // No directory yet = nothing has ever logged; an empty bundle is the
         // honest answer. Any other failure is a failed read, not "no logs".
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => return Err(CommandError::context("could not list the log directory", error)),
+        Err(error) => {
+            return Err(CommandError::context(
+                "could not list the log directory",
+                error,
+            ))
+        }
     };
 
     let mut files: Vec<(String, u64, PathBuf)> = Vec::new();
     for entry in entries {
-        let entry = entry.map_err(|error| CommandError::context("could not list the log directory", error))?;
+        let entry = entry
+            .map_err(|error| CommandError::context("could not list the log directory", error))?;
         let name = entry.file_name().to_string_lossy().into_owned();
         if !name.starts_with(LOG_FILE_PREFIX) || !name.ends_with(".log") {
             continue;
@@ -71,7 +82,12 @@ fn read_log_tails(dir: &Path) -> Result<Vec<LogFileTail>, CommandError> {
             Ok(modified) => modified,
             // Rotation deleted it between listing and inspection.
             Err(error) if error.kind() == ErrorKind::NotFound => continue,
-            Err(error) => return Err(CommandError::context(&format!("could not inspect {name}"), error)),
+            Err(error) => {
+                return Err(CommandError::context(
+                    &format!("could not inspect {name}"),
+                    error,
+                ))
+            }
         };
         let modified_ms = modified
             .duration_since(UNIX_EPOCH)
@@ -89,7 +105,12 @@ fn read_log_tails(dir: &Path) -> Result<Vec<LogFileTail>, CommandError> {
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,
             Err(error) if error.kind() == ErrorKind::NotFound => continue,
-            Err(error) => return Err(CommandError::context(&format!("could not read {name}"), error)),
+            Err(error) => {
+                return Err(CommandError::context(
+                    &format!("could not read {name}"),
+                    error,
+                ))
+            }
         };
         let truncated = bytes.len() > remaining;
         let tail = if truncated {
@@ -115,7 +136,9 @@ mod tests {
     #[test]
     fn a_missing_log_directory_is_empty_but_an_unreadable_one_fails() {
         let root = tempfile::tempdir().unwrap();
-        assert!(read_log_tails(&root.path().join("never-logged")).unwrap().is_empty());
+        assert!(read_log_tails(&root.path().join("never-logged"))
+            .unwrap()
+            .is_empty());
         let not_a_dir = root.path().join("file");
         fs::write(&not_a_dir, "x").unwrap();
         assert!(read_log_tails(&not_a_dir).is_err());
@@ -133,7 +156,11 @@ mod tests {
             .unwrap()
             .set_modified(old)
             .unwrap();
-        fs::write(root.path().join("readaware.log"), "x".repeat(MAX_TOTAL_BYTES + 10)).unwrap();
+        fs::write(
+            root.path().join("readaware.log"),
+            "x".repeat(MAX_TOTAL_BYTES + 10),
+        )
+        .unwrap();
         let tails = read_log_tails(root.path()).unwrap();
         assert_eq!(tails.len(), 1);
         assert_eq!(tails[0].name, "readaware.log");

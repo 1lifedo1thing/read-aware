@@ -12,7 +12,7 @@ export class DomainWriteGate {
   private closed = false;
   constructor(private readonly settlement = new WriteSettlement()) {}
 
-  run: RunDomainWrite = operation => {
+  run: RunDomainWrite = (operation) => {
     if (this.closed) return Promise.reject(new AppError("backup/busy", "Domain writes are paused for backup"));
     return this.track(this.active, operation);
   };
@@ -23,9 +23,10 @@ export class DomainWriteGate {
     this.reserved = true;
     const owned = new Set<Promise<unknown>>();
     let accepting = false;
-    const runOwned: RunDomainWrite = work => accepting
-      ? this.track(owned, work)
-      : Promise.reject(new AppError("backup/busy", "Domain backup scope has ended"));
+    const runOwned: RunDomainWrite = (work) =>
+      accepting
+        ? this.track(owned, work)
+        : Promise.reject(new AppError("backup/busy", "Domain backup scope has ended"));
     try {
       // Keep admission open while draining: an accepted commit's observers
       // can produce a dependent event. Close synchronously at quiescence.
@@ -50,9 +51,15 @@ export class DomainWriteGate {
     const result = Promise.withResolvers<T>();
     const work = this.settlement.track(result.promise);
     pending.add(work);
-    const done = () => { pending.delete(work); };
+    const done = () => {
+      pending.delete(work);
+    };
     work.then(done, done);
-    try { result.resolve(operation()); } catch (error) { result.reject(error); }
+    try {
+      result.resolve(operation());
+    } catch (error) {
+      result.reject(error);
+    }
     return work;
   }
 }
@@ -64,10 +71,18 @@ export const withDomainBackup = <T>(operation: (runOwned: RunDomainWrite) => Pro
 
 /** Snapshot queues already report dispatched failures. Admission failures
  * must use that same surface, and void setters must not leak rejections. */
-export function runObservedDomainWrite<T>(operation: () => T | Promise<T>, rejected: (error: unknown) => void,
-  run: RunDomainWrite = runDomainWrite): Promise<T> {
+export function runObservedDomainWrite<T>(
+  operation: () => T | Promise<T>,
+  rejected: (error: unknown) => void,
+  run: RunDomainWrite = runDomainWrite,
+): Promise<T> {
   let started = false;
-  const work = run(() => { started = true; return operation(); });
-  void work.catch(error => { if (!started) rejected(error); });
+  const work = run(() => {
+    started = true;
+    return operation();
+  });
+  void work.catch((error) => {
+    if (!started) rejected(error);
+  });
   return work;
 }

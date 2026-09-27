@@ -31,9 +31,7 @@ const INHERITANCE_CHAPTER = 18;
 
 function readerCursor() {
   const epub = fowler.epub();
-  const charsBefore = epub.chapters
-    .slice(0, READER_CHAPTER)
-    .reduce((sum, chapter) => sum + chapter.text.length, 0);
+  const charsBefore = epub.chapters.slice(0, READER_CHAPTER).reduce((sum, chapter) => sum + chapter.text.length, 0);
   const totalChars = epub.chapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
   return {
     chapterIndex: READER_CHAPTER,
@@ -45,10 +43,7 @@ function readerCursor() {
 }
 
 /** 中文读者 + 英文技术书：回答须是中文，术语须保留本书英文拼写。 */
-function bilingualAssessment(
-  observation: AgentEvalObservation,
-  requiredTerms: string[],
-): EvalAssessment {
+function bilingualAssessment(observation: AgentEvalObservation, requiredTerms: string[]): EvalAssessment {
   const cjk = /[一-鿿]/.test(observation.answer);
   const kept = requiredTerms.filter((term) => observation.answer.includes(term));
   return assessmentFromChecks([
@@ -56,9 +51,7 @@ function bilingualAssessment(
       id: "answer.language-chinese",
       category: "quality",
       passed: cjk,
-      message: cjk
-        ? "answer is in Chinese for a Chinese reader"
-        : "answer to a Chinese question contains no Chinese",
+      message: cjk ? "answer is in Chinese for a Chinese reader" : "answer to a Chinese question contains no Chinese",
     },
     {
       id: "answer.english-terms-preserved",
@@ -78,13 +71,11 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
   id: "refactoring",
   displayName: "《重构（第2版）》",
   code: "S14",
-  description:
-    "基于英文 Refactoring 第2版全书的真实技术场景（目录查找、概念图谱、双语术语）。",
+  description: "基于英文 Refactoring 第2版全书的真实技术场景（目录查找、概念图谱、双语术语）。",
   scenarios: [
     defineAgentEvalScenario({
       id: "catalog-lookup-by-name",
-      description:
-        "在目录中定位指定重构的对应章节，从文本解释其机制——中文回答，英文术语保留。",
+      description: "在目录中定位指定重构的对应章节，从文本解释其机制——中文回答，英文术语保留。",
       tags: ["retrieval", "toc", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -120,20 +111,19 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
             },
             interactions: { forbiddenKinds: ["permission"] },
           }),
-          coverageAssessment(observation, "answer.names-defining-chapter", [
-            "A First Set of Refactorings",
-            "Chapter 6",
-            "第6章",
-            "第六章",
-          ], 1),
+          coverageAssessment(
+            observation,
+            "answer.names-defining-chapter",
+            ["A First Set of Refactorings", "Chapter 6", "第6章", "第六章"],
+            1,
+          ),
           bilingualAssessment(observation, ["Extract Function"]),
           noFenceAssessment(observation),
         ),
     }),
     defineAgentEvalScenario({
       id: "smells-from-concept-graph",
-      description:
-        "从注入的概念图谱背诵坏味道词汇——该版多个味道名称，少量工具调用。",
+      description: "从注入的概念图谱背诵坏味道词汇——该版多个味道名称，少量工具调用。",
       tags: ["digest", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -163,26 +153,30 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, { tools: { maxCalls: 8 }, maxRounds: 6 }),
-          coverageAssessment(observation, "answer.smell-vocabulary", [
-            "Duplicated Code",
-            "Long Function",
-            "Mysterious Name",
-            "Long Parameter List",
-            "Global Data",
-            "Mutable Data",
-            "Feature Envy",
-            "Data Clumps",
-            "Shotgun Surgery",
-            "Primitive Obsession",
-          ], 3),
+          coverageAssessment(
+            observation,
+            "answer.smell-vocabulary",
+            [
+              "Duplicated Code",
+              "Long Function",
+              "Mysterious Name",
+              "Long Parameter List",
+              "Global Data",
+              "Mutable Data",
+              "Feature Envy",
+              "Data Clumps",
+              "Shotgun Surgery",
+              "Primitive Obsession",
+            ],
+            3,
+          ),
           bilingualAssessment(observation, []),
           noFenceAssessment(observation),
         ),
     }),
     defineAgentEvalScenario({
       id: "forward-lookup-inheritance",
-      description:
-        "技术书籍后续章节的问题，自由前向查找并用该书术语回答。",
+      description: "技术书籍后续章节的问题，自由前向查找并用该书术语回答。",
       tags: ["retrieval", "forward", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -225,8 +219,7 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "english-reader-native-flow",
-      description:
-        "关于英文书的英文问题，基于文本给出英文回答——双语纪律双向适用。",
+      description: "关于英文书的英文问题，基于文本给出英文回答——双语纪律双向适用。",
       tags: ["language", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -261,8 +254,7 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "smell-diagnosis-mapping",
-      description:
-        "从症状反推：三百行长函数嵌套分支 → 指认坏味道并开出对症手法（目录查找的逆向）。",
+      description: "从症状反推：三百行长函数嵌套分支 → 指认坏味道并开出对症手法（目录查找的逆向）。",
       tags: ["digest", "retrieval", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -302,12 +294,7 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
           coverageAssessment(
             observation,
             "answer.smell-to-refactoring",
-            [
-              "Long Function",
-              "Extract Function",
-              "Decompose Conditional",
-              "Replace Conditional with Polymorphism",
-            ],
+            ["Long Function", "Extract Function", "Decompose Conditional", "Replace Conditional with Polymorphism"],
             2,
           ),
           bilingualAssessment(observation, ["Extract Function"]),
@@ -316,8 +303,7 @@ export const refactoringEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "reading-goal-then-next-chapter",
-      description:
-        "先记下学习目标，再按书的结构荐下一章——记忆写入与目录综合的多轮教练面。",
+      description: "先记下学习目标，再按书的结构荐下一章——记忆写入与目录综合的多轮教练面。",
       tags: ["memory", "toc", "multi-turn", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {

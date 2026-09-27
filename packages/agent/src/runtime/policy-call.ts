@@ -6,14 +6,18 @@ export interface LivePolicy {
 
 export function policyCall(policy: LivePolicy, denied: () => Error, signal?: AbortSignal) {
   const controller = new AbortController();
-  const check = () => { if (!policy.enabled()) controller.abort(denied()); };
+  const check = () => {
+    if (!policy.enabled()) controller.abort(denied());
+  };
   const abort = () => controller.abort(signal?.reason);
   const unsubscribe = policy.subscribe(check);
   signal?.addEventListener("abort", abort, { once: true });
   check();
   if (signal?.aborted) abort();
   let rejectAbort!: (reason: unknown) => void;
-  const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAbort = reject;
+  });
   const onAbort = () => rejectAbort(controller.signal.reason);
   controller.signal.addEventListener("abort", onAbort, { once: true });
   if (controller.signal.aborted) onAbort();
@@ -22,7 +26,10 @@ export function policyCall(policy: LivePolicy, denied: () => Error, signal?: Abo
   let disposed = false;
   return {
     signal: controller.signal,
-    assertAllowed() { check(); controller.signal.throwIfAborted(); },
+    assertAllowed() {
+      check();
+      controller.signal.throwIfAborted();
+    },
     async wait<T>(operation: Promise<T>): Promise<T> {
       // Even an already-settled result must not win against a revoked grant.
       // Attach the race first so a rejected operation is always observed.

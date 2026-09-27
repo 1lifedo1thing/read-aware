@@ -8,11 +8,20 @@ import { withBackupCapture } from "./backup-capture";
  * Failure releases them only after the native transaction has rolled back. */
 export function applyProjectionRepair(signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    void withSyncBackup(() => withPluginDataBackup("import", () => withBackupCapture(async () => {
-      signal?.throwIfAborted();
-      await invoke("rebuild_projections");
-      resolve();
-      return new Promise<never>(() => {});
-    }, signal), signal), signal).catch(reject);
+    void withSyncBackup(
+      () =>
+        withPluginDataBackup(
+          "import",
+          () =>
+            withBackupCapture(async () => {
+              signal?.throwIfAborted();
+              await invoke("rebuild_projections");
+              resolve();
+              return new Promise<never>(() => {});
+            }, signal),
+          signal,
+        ),
+      signal,
+    ).catch(reject);
   });
 }

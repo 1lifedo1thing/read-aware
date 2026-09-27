@@ -303,7 +303,11 @@ fn migration_backfills_old_events_without_rewriting_unrelated_or_local_rows() {
         [],
     )
     .unwrap();
-    conn.execute("INSERT INTO collections(id,name,created_at) VALUES ('unlogged','Keep','old')", []).unwrap();
+    conn.execute(
+        "INSERT INTO collections(id,name,created_at) VALUES ('unlogged','Keep','old')",
+        [],
+    )
+    .unwrap();
     run_migrations(&mut conn).unwrap();
     let mut expected = migrated_conn();
     commit_events_inner(&mut expected, &sample()).unwrap();

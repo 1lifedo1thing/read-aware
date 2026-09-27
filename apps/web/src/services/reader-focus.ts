@@ -1,4 +1,11 @@
-import { AppError, assertReaderFocusTarget, type ReaderFocusOutcome, type ReaderFocusReceipt, type ReaderFocusTarget, type ReadingSessionGuard } from "@read-aware/core";
+import {
+  AppError,
+  assertReaderFocusTarget,
+  type ReaderFocusOutcome,
+  type ReaderFocusReceipt,
+  type ReaderFocusTarget,
+  type ReadingSessionGuard,
+} from "@read-aware/core";
 import type { ReadingSessionController } from "../domain/reading-session-controller";
 import { readingRuntime } from "../domain/reading-runtime";
 import { causalActor, type DomainActor } from "../platform/domain-actor";
@@ -12,23 +19,41 @@ export class ReaderFocusService {
 
   bind(target: ReaderFocusTarget, binding: Binding): () => void {
     this.targets.set(target, binding);
-    return () => { if (this.targets.get(target) === binding) this.targets.delete(target); };
+    return () => {
+      if (this.targets.get(target) === binding) this.targets.delete(target);
+    };
   }
 
-  async focus(target: ReaderFocusTarget, signal?: AbortSignal, guard?: ReadingSessionGuard, source: DomainActor = "user"): Promise<ReaderFocusReceipt> {
+  async focus(
+    target: ReaderFocusTarget,
+    signal?: AbortSignal,
+    guard?: ReadingSessionGuard,
+    source: DomainActor = "user",
+  ): Promise<ReaderFocusReceipt> {
     assertReaderFocusTarget(target);
     signal?.throwIfAborted();
-    if (guard !== undefined && (!guard || typeof guard !== "object" || Array.isArray(guard)
-      || Object.keys(guard).some(key => key !== "sessionId" && key !== "bookId")
-      || guard.sessionId !== undefined && typeof guard.sessionId !== "string"
-      || guard.bookId !== undefined && typeof guard.bookId !== "string")) throw new AppError("reader/invalid-target", "Invalid focus session guard");
+    if (
+      guard !== undefined &&
+      (!guard ||
+        typeof guard !== "object" ||
+        Array.isArray(guard) ||
+        Object.keys(guard).some((key) => key !== "sessionId" && key !== "bookId") ||
+        (guard.sessionId !== undefined && typeof guard.sessionId !== "string") ||
+        (guard.bookId !== undefined && typeof guard.bookId !== "string"))
+    )
+      throw new AppError("reader/invalid-target", "Invalid focus session guard");
     const current = this.reading.snapshot();
-    if (guard?.bookId !== undefined && guard.bookId !== current.bookId
-      || guard?.sessionId !== undefined && guard.sessionId !== current.sessionId) throw new AppError("reader/superseded", "Focus target session changed");
-    if (current.status !== "ready" || !current.sessionId || !current.bookId) throw new AppError("reader/unavailable", "No ready reader to focus");
+    if (
+      (guard?.bookId !== undefined && guard.bookId !== current.bookId) ||
+      (guard?.sessionId !== undefined && guard.sessionId !== current.sessionId)
+    )
+      throw new AppError("reader/superseded", "Focus target session changed");
+    if (current.status !== "ready" || !current.sessionId || !current.bookId)
+      throw new AppError("reader/unavailable", "No ready reader to focus");
     const identity = { target, sessionId: current.sessionId, bookId: current.bookId };
     const binding = this.targets.get(target);
-    if (!binding || binding.sessionId !== current.sessionId || binding.bookId !== current.bookId) return { ...identity, status: "not-focused", reason: "missing" };
+    if (!binding || binding.sessionId !== current.sessionId || binding.bookId !== current.bookId)
+      return { ...identity, status: "not-focused", reason: "missing" };
     const outcome = binding.focus(causalActor(source));
     const after = this.reading.snapshot();
     // Focus handlers may synchronously replace the reader or the target.

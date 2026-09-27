@@ -5,10 +5,13 @@ import type { ReaderLoadError } from "../hooks/useReaderSession";
 export function readerRecoveryAction(error: ReaderLoadError): "retry" | "import" | "settings" | null {
   if (error.kind === "generic") return error.retryable ? "retry" : null;
   switch (error.reason) {
-    case "unreachable": return "retry";
+    case "unreachable":
+      return "retry";
     case "no-sync":
-    case "not-on-relay": return "import";
+    case "not-on-relay":
+      return "import";
     case "unauthenticated":
-    case "undecodable": return "settings";
+    case "undecodable":
+      return "settings";
   }
 }

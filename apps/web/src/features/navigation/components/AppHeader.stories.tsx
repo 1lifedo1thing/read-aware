@@ -60,11 +60,7 @@ const conversationActions: HeaderActionEntry[] = [
   {
     id: "clear",
     inline: (
-      <IconButton
-        size="sm"
-        label="Clear conversation"
-        icon={<Trash size={16} weight="regular" aria-hidden="true" />}
-      />
+      <IconButton size="sm" label="Clear conversation" icon={<Trash size={16} weight="regular" aria-hidden="true" />} />
     ),
     overflow: { id: "clear", label: "Clear conversation", run: () => {} },
   },

@@ -309,7 +309,12 @@ function registerAgentTools(ctx) {
     contexts: ["global"],
     approval: "required",
     description: "Permanently remove one saved Dictionary entry by its exact id from get_vocabulary. This deletes that saved word, not book annotations or other words. There is no undo.",
-    parameters: { type: "object", properties: { id: { type: "string", minLength: 1, maxLength: 512 } }, required: ["id"], additionalProperties: false },
+    parameters: {
+      type: "object",
+      properties: { id: { type: "string", minLength: 1, maxLength: 512 } },
+      required: ["id"],
+      additionalProperties: false
+    },
     execute: async (params) => {
       if (typeof params.id !== "string" || !params.id.trim() || params.id.length > 512)
         throw Object.assign(new Error("Invalid saved-word ID"), { code: "plugin/invalid-input" });

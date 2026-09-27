@@ -1,12 +1,21 @@
 import { actorFromEvent, causalActor, type DomainActor } from "../platform/domain-actor";
-import { AppError, normalizeBookImageQuery, type BookImageQuery, type ReaderImageOpenReceipt,
-  type ReaderImageSnapshot, type ReadingSessionGuard } from "@read-aware/core";
+import {
+  AppError,
+  normalizeBookImageQuery,
+  type BookImageQuery,
+  type ReaderImageOpenReceipt,
+  type ReaderImageSnapshot,
+  type ReadingSessionGuard,
+} from "@read-aware/core";
 import type { ReadingSessionController } from "../domain/reading-session-controller";
 import { readingRuntime } from "../domain/reading-runtime";
 import type { BookImageData } from "../features/library/lib/book-images";
 import { readerImage, type ReaderImageService } from "./reader-image";
 
-type Adapter = { present(id: string, image: Extract<BookImageData, { status: "ready" }>, origin: DomainActor): void; clear(id: string, origin: DomainActor): void };
+type Adapter = {
+  present(id: string, image: Extract<BookImageData, { status: "ready" }>, origin: DomainActor): void;
+  clear(id: string, origin: DomainActor): void;
+};
 type Pending = { controller: AbortController; origin: DomainActor; cancelledBy?: DomainActor };
 type Binding = { sessionId: string; bookId: string; adapter: Adapter; dispose(origin?: DomainActor): void };
 const superseded = () => new AppError("reader/superseded", "Image opening was replaced or the reader changed");
@@ -21,38 +30,56 @@ export class ReaderImageOpenService {
     pending.cancelledBy = causalActor(origin ?? pending.origin);
     pending.controller.abort(reason);
   }
-  constructor(private reading: Pick<ReadingSessionController, "snapshot" | "observe">,
-    private images: Pick<ReaderImageService, "snapshot" | "observe">, private deadlineMs = 10_000) {}
+  constructor(
+    private reading: Pick<ReadingSessionController, "snapshot" | "observe">,
+    private images: Pick<ReaderImageService, "snapshot" | "observe">,
+    private deadlineMs = 10_000,
+  ) {}
 
   bind(sessionId: string, bookId: string, adapter: Adapter) {
     this.binding?.dispose();
     const binding: Binding = { sessionId, bookId, adapter, dispose: () => {} };
     this.binding = binding;
     let stop = () => {};
-    const interrupt = (origin: DomainActor = "user") => { if (this.binding === binding) this.cancel(origin); };
+    const interrupt = (origin: DomainActor = "user") => {
+      if (this.binding === binding) this.cancel(origin);
+    };
     const dispose = (origin?: DomainActor) => {
       if (this.binding !== binding) return;
-      this.cancel(origin); this.binding = undefined; stop();
+      this.cancel(origin);
+      this.binding = undefined;
+      stop();
     };
     binding.dispose = dispose;
-    stop = this.reading.observe(state => {
-      if (state.status !== "ready" || state.sessionId !== sessionId || state.bookId !== bookId) dispose(actorFromEvent(state));
+    stop = this.reading.observe((state) => {
+      if (state.status !== "ready" || state.sessionId !== sessionId || state.bookId !== bookId)
+        dispose(actorFromEvent(state));
     });
     if (this.binding !== binding) stop();
     return { dispose, interrupt };
   }
 
-  async open(input: BookImageQuery, read: (query: BookImageQuery, signal: AbortSignal, origin: DomainActor) => Promise<BookImageData>,
-    signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "user"): Promise<ReaderImageOpenReceipt> {
+  async open(
+    input: BookImageQuery,
+    read: (query: BookImageQuery, signal: AbortSignal, origin: DomainActor) => Promise<BookImageData>,
+    signal?: AbortSignal,
+    guard?: ReadingSessionGuard,
+    origin: DomainActor = "user",
+  ): Promise<ReaderImageOpenReceipt> {
     const query = normalizeBookImageQuery(input);
     signal?.throwIfAborted();
     const binding = this.requireBinding(query, guard);
     origin = causalActor(origin);
     this.cancel(origin);
-    const pending: Pending = { controller: new AbortController(), origin }; this.pending = pending;
-    const abort = () => { if (this.pending === pending) this.cancel(origin, signal?.reason); };
+    const pending: Pending = { controller: new AbortController(), origin };
+    this.pending = pending;
+    const abort = () => {
+      if (this.pending === pending) this.cancel(origin, signal?.reason);
+    };
     signal?.addEventListener("abort", abort, { once: true });
-    const timer = setTimeout(() => { if (this.pending === pending) this.cancel(origin, new AppError("reader/timeout", "Image viewer did not commit")); }, this.deadlineMs);
+    const timer = setTimeout(() => {
+      if (this.pending === pending) this.cancel(origin, new AppError("reader/timeout", "Image viewer did not commit"));
+    }, this.deadlineMs);
     let id: string | undefined;
     try {
       // Keep the parser lease until it actually settles, including after cancellation.
@@ -71,7 +98,8 @@ export class ReaderImageOpenService {
       if (id) binding.adapter.clear(id, pending.cancelledBy ?? origin);
       throw error;
     } finally {
-      clearTimeout(timer); signal?.removeEventListener("abort", abort);
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
       if (this.pending === pending) this.pending = undefined;
     }
   }
@@ -79,26 +107,52 @@ export class ReaderImageOpenService {
   private waitForImage(id: string, signal: AbortSignal): Promise<ReaderImageSnapshot> {
     signal.throwIfAborted();
     return new Promise((resolve, reject) => {
-      let stop = () => {}, done = false;
-      const cleanup = () => { done = true; stop(); signal.removeEventListener("abort", abort); };
-      const abort = () => { cleanup(); reject(signal.reason); };
+      let stop = () => {},
+        done = false;
+      const cleanup = () => {
+        done = true;
+        stop();
+        signal.removeEventListener("abort", abort);
+      };
+      const abort = () => {
+        cleanup();
+        reject(signal.reason);
+      };
       signal.addEventListener("abort", abort, { once: true });
-      stop = this.images.observe(value => { if (!done && value?.id === id) { cleanup(); resolve(value); } });
+      stop = this.images.observe((value) => {
+        if (!done && value?.id === id) {
+          cleanup();
+          resolve(value);
+        }
+      });
       if (done) stop();
     });
   }
 
   private requireBinding(query: BookImageQuery, guard?: ReadingSessionGuard): Binding {
-    const state = this.reading.snapshot(), binding = this.binding;
-    if (guard !== undefined && (!guard || typeof guard !== "object" || Array.isArray(guard)
-      || Object.keys(guard).some(key => !["sessionId", "bookId"].includes(key))
-      || guard.sessionId !== undefined && typeof guard.sessionId !== "string"
-      || guard.bookId !== undefined && typeof guard.bookId !== "string")) throw new AppError("reader/invalid-target", "Invalid image session guard");
-    if (guard?.sessionId !== undefined && guard.sessionId !== state.sessionId
-      || guard?.bookId !== undefined && guard.bookId !== state.bookId) throw superseded();
-    if (!binding || state.status !== "ready" || binding.sessionId !== state.sessionId) throw new AppError("reader/unavailable", "Image opening needs a mounted reader");
-    if (query.image.bookId !== state.bookId || query.image.bookId !== binding.bookId) throw new AppError("reader/out-of-scope", "Open the image's book first");
-    if (state.location?.contentVersion !== query.image.contentVersion) throw new AppError("reader/stale-location", "Image belongs to another content revision");
+    const state = this.reading.snapshot(),
+      binding = this.binding;
+    if (
+      guard !== undefined &&
+      (!guard ||
+        typeof guard !== "object" ||
+        Array.isArray(guard) ||
+        Object.keys(guard).some((key) => !["sessionId", "bookId"].includes(key)) ||
+        (guard.sessionId !== undefined && typeof guard.sessionId !== "string") ||
+        (guard.bookId !== undefined && typeof guard.bookId !== "string"))
+    )
+      throw new AppError("reader/invalid-target", "Invalid image session guard");
+    if (
+      (guard?.sessionId !== undefined && guard.sessionId !== state.sessionId) ||
+      (guard?.bookId !== undefined && guard.bookId !== state.bookId)
+    )
+      throw superseded();
+    if (!binding || state.status !== "ready" || binding.sessionId !== state.sessionId)
+      throw new AppError("reader/unavailable", "Image opening needs a mounted reader");
+    if (query.image.bookId !== state.bookId || query.image.bookId !== binding.bookId)
+      throw new AppError("reader/out-of-scope", "Open the image's book first");
+    if (state.location?.contentVersion !== query.image.contentVersion)
+      throw new AppError("reader/stale-location", "Image belongs to another content revision");
     return binding;
   }
 }

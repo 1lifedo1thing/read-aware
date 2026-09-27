@@ -59,9 +59,7 @@ function mark(text: string, note?: string): Annotation {
     createdAt: "2026-06-20T10:00:00.000Z",
     updatedAt: "2026-06-20T10:00:00.000Z",
   };
-  return note
-    ? { ...base, type: "note", content: note }
-    : { ...base, type: "highlight", color: "yellow" };
+  return note ? { ...base, type: "note", content: note } : { ...base, type: "highlight", color: "yellow" };
 }
 
 const marks: Annotation[] = [

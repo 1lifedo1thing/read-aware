@@ -18,21 +18,13 @@ export function SiteFooter({ locale = "en" }: { locale?: Locale }) {
       <nav className="mb-5 flex flex-wrap gap-x-5 gap-y-2">
         <Link to={localizePath("/docs", locale) as never}>{strings.docs}</Link>
         <Link to={localizePath("/pricing", locale) as never}>{strings.pricing}</Link>
-        <Link
-          to={localizePath("/blog", isBlogLocale(locale) ? locale : "en") as never}
-        >
-          {strings.blog}
-        </Link>
+        <Link to={localizePath("/blog", isBlogLocale(locale) ? locale : "en") as never}>{strings.blog}</Link>
         <Link to={localizePath("/changelog", locale) as never}>{strings.changelog}</Link>
       </nav>
       {topicPagesForLocale(locale).length > 0 && (
         <p className="mb-6 flex flex-wrap gap-x-5 gap-y-1 text-[0.875rem] text-fg-subtle">
           {topicPagesForLocale(locale).map((page) => (
-            <Link
-              key={page.path}
-              to={page.path}
-              className="transition-colors hover:text-fg"
-            >
+            <Link key={page.path} to={page.path} className="transition-colors hover:text-fg">
               {page.label}
             </Link>
           ))}
@@ -40,26 +32,14 @@ export function SiteFooter({ locale = "en" }: { locale?: Locale }) {
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <img
-            src={HEADER_ICON_URL}
-            alt=""
-            width={20}
-            height={20}
-            className="h-5 w-5"
-          />
+          <img src={HEADER_ICON_URL} alt="" width={20} height={20} className="h-5 w-5" />
           <span className="text-fg">ReadAware</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-          <Link
-            to={localizePath("/privacy", locale) as never}
-            className="transition-colors hover:text-fg"
-          >
+          <Link to={localizePath("/privacy", locale) as never} className="transition-colors hover:text-fg">
             {strings.privacy}
           </Link>
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="transition-colors hover:text-fg"
-          >
+          <a href={`mailto:${CONTACT_EMAIL}`} className="transition-colors hover:text-fg">
             {CONTACT_EMAIL}
           </a>
           <span>{strings.tagline}</span>

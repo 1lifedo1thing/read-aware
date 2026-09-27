@@ -77,11 +77,7 @@ const STRINGS = {
 
 export type TtsStringKey = keyof typeof STRINGS;
 
-export function tr(
-  locale: string,
-  key: TtsStringKey,
-  params?: Record<string, string | number>,
-): string {
+export function tr(locale: string, key: TtsStringKey, params?: Record<string, string | number>): string {
   const bundle: Localized = STRINGS[key];
   const requested = locale.toLowerCase();
   const base = requested.split("-")[0];
@@ -89,10 +85,7 @@ export function tr(
     (candidate) => candidate !== "default" && candidate.toLowerCase() === requested,
   );
   const baseMatch =
-    exact ??
-    Object.keys(bundle).find(
-      (candidate) => candidate !== "default" && candidate.toLowerCase() === base,
-    );
+    exact ?? Object.keys(bundle).find((candidate) => candidate !== "default" && candidate.toLowerCase() === base);
   let text = bundle[baseMatch ?? "default"] ?? bundle.default;
   for (const [name, value] of Object.entries(params ?? {})) {
     text = text.split(`{${name}}`).join(String(value));

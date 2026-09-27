@@ -40,20 +40,70 @@
  */
 
 import { PLUGIN_PERMISSIONS as CORE_PLUGIN_PERMISSIONS } from "@read-aware/core";
-export type { BookRemovalReceipt, BookFileReleaseReceipt, BookRemovalCleanupPage, BookRemovalCleanupQuery } from "@read-aware/core";
-export type { ReadingTimeQuery, ReadingTimeCursor, ReadingTimeSnapshot, ReadingTimeObservation, PendingReadingTime } from "@read-aware/core";
+export type {
+  BookRemovalReceipt,
+  BookFileReleaseReceipt,
+  BookRemovalCleanupPage,
+  BookRemovalCleanupQuery,
+} from "@read-aware/core";
+export type {
+  ReadingTimeQuery,
+  ReadingTimeCursor,
+  ReadingTimeSnapshot,
+  ReadingTimeObservation,
+  PendingReadingTime,
+} from "@read-aware/core";
 export type { ReadingInsights, ReadingInsightsQuery, ReadingPeriod } from "@read-aware/core";
-export type { ReadingEmphasisWrite, ReadingEmphasisRef, ReadingEmphasisStyle, ReadingEmphasisSnapshot, ReadingEmphasisReceipt, ReadingEmphasisRemoval } from "@read-aware/core";
-export type { WorkspaceTarget, WorkspaceQuery, WorkspaceSnapshot, WorkspaceReceipt, WorkspaceSettingsSection } from "@read-aware/core";
+export type {
+  ReadingEmphasisWrite,
+  ReadingEmphasisRef,
+  ReadingEmphasisStyle,
+  ReadingEmphasisSnapshot,
+  ReadingEmphasisReceipt,
+  ReadingEmphasisRemoval,
+} from "@read-aware/core";
+export type {
+  WorkspaceTarget,
+  WorkspaceQuery,
+  WorkspaceSnapshot,
+  WorkspaceReceipt,
+  WorkspaceSettingsSection,
+} from "@read-aware/core";
 export type { SettingsObservation, SettingsObservationCause } from "@read-aware/core";
-export type { MemoryRecord, MemoryScope, MemoryQuery, BookGraphQuery, BookGraphResult, BookGraphProfile } from "@read-aware/core";
+export type {
+  MemoryRecord,
+  MemoryScope,
+  MemoryQuery,
+  BookGraphQuery,
+  BookGraphResult,
+  BookGraphProfile,
+} from "@read-aware/core";
 export type { MemoryPage, MemoryPageQuery } from "@read-aware/core";
 export type { MemorySnapshot, MemoryMutation, MemoryMutationReceipt } from "@read-aware/core";
 export type { BookClassificationSnapshot, BookClassificationChange, BookClassificationReceipt } from "@read-aware/core";
 export type { MemoryObservationQuery, MemoryObservationResult, MemoryObservation } from "@read-aware/core";
-export type { ContextBundle, ContextBundleContent, ContextBundleItem, ContextBundleOmission, ContextBundleKind, ContextBundleScope, ContextBundleSelector,
-  ContextBundleHistoryQuery, ContextBundleHistoryPage, ContextBundleHistoryEntry, ContextBundleReadQuery, ContextBundleCaptureReceipt } from "@read-aware/core";
-export type { HostCommandId, HostCommandRequest, HostCommandDescriptor, HostCommandSnapshot, HostCommandReceipt, HostCommandObservation } from "@read-aware/core";
+export type {
+  ContextBundle,
+  ContextBundleContent,
+  ContextBundleItem,
+  ContextBundleOmission,
+  ContextBundleKind,
+  ContextBundleScope,
+  ContextBundleSelector,
+  ContextBundleHistoryQuery,
+  ContextBundleHistoryPage,
+  ContextBundleHistoryEntry,
+  ContextBundleReadQuery,
+  ContextBundleCaptureReceipt,
+} from "@read-aware/core";
+export type {
+  HostCommandId,
+  HostCommandRequest,
+  HostCommandDescriptor,
+  HostCommandSnapshot,
+  HostCommandReceipt,
+  HostCommandObservation,
+} from "@read-aware/core";
 import type {
   AnnotationItem,
   AskItem,
@@ -97,8 +147,47 @@ import type {
 // depending on @read-aware/core directly.
 export type { BookTextSearch, BookTextHit } from "@read-aware/core";
 export type { BookImportPhase, BookImportReceipt, BookImportRequest, BookImportTaskSnapshot } from "@read-aware/core";
-export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, BookTextTaskHistoryEntry, BookTextTaskHistoryPage, BookTextTaskHistoryQuery, BookTextPriority, BookTextWaitReason, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
-  ReadingLocation, ReadingTarget, ReadingSessionSnapshot, ReadingSessionChange, ReadingPaginationSnapshot, ReadingSelectionSnapshot, ReadingSelectionReceipt, ReadingSessionGuard, ReadingNavigationReceipt, ReadingPlaybackSnapshot, ReadingPlaybackReceipt, ReadingModeConfiguration, ReadingModeDescriptor, ReadingModeSnapshot, ReadingModeReceipt, ReadingModePosition, ReadingModeStepOutcome, ReadingModeStepReceipt } from "@read-aware/core";
+export type {
+  BookTextRange,
+  BookRangeQuery,
+  BookRangePage,
+  BookTextSnapshot,
+  BookTextTaskSnapshot,
+  BookTextPrepareOptions,
+  BookTextTaskHistoryEntry,
+  BookTextTaskHistoryPage,
+  BookTextTaskHistoryQuery,
+  BookTextPriority,
+  BookTextWaitReason,
+  AnnotationSnapshot,
+  AnnotationMutation,
+  AnnotationCommitResult,
+  AnnotationPage,
+  AnnotationPageQuery,
+  BookTocEntry,
+  BookNavigationToc,
+  BookLocationSearch,
+  BookLocationSearchPage,
+  BookLocationHit,
+  ReadingLocation,
+  ReadingTarget,
+  ReadingSessionSnapshot,
+  ReadingSessionChange,
+  ReadingPaginationSnapshot,
+  ReadingSelectionSnapshot,
+  ReadingSelectionReceipt,
+  ReadingSessionGuard,
+  ReadingNavigationReceipt,
+  ReadingPlaybackSnapshot,
+  ReadingPlaybackReceipt,
+  ReadingModeConfiguration,
+  ReadingModeDescriptor,
+  ReadingModeSnapshot,
+  ReadingModeReceipt,
+  ReadingModePosition,
+  ReadingModeStepOutcome,
+  ReadingModeStepReceipt,
+} from "@read-aware/core";
 export type {
   BookFormat,
   DictionaryEntrySnapshot,
@@ -179,10 +268,7 @@ export type PluginCapabilityView = {
  * it by passing a different book id, range, cursor, resource id, or observer
  * query.
  */
-export type PluginBookAccess =
-  | { mode: "all" }
-  | { mode: "current" }
-  | { mode: "book"; bookId: string };
+export type PluginBookAccess = { mode: "all" } | { mode: "current" } | { mode: "book"; bookId: string };
 
 // ─── Manifest ────────────────────────────────────────────────────────────────
 
@@ -294,10 +380,7 @@ export type PluginVoiceProvider = {
   /** Provider name shown alongside its voices in the voice picker. */
   label: PluginText;
   listVoices(): PluginVoice[] | Promise<PluginVoice[]>;
-  synthesize(input: {
-    text: string;
-    voiceId: string;
-  }): Promise<ArrayBuffer | Uint8Array>;
+  synthesize(input: { text: string; voiceId: string }): Promise<ArrayBuffer | Uint8Array>;
 };
 
 // ─── Schedule declarations ───────────────────────────────────────────────────
@@ -393,14 +476,7 @@ export type PluginReaderFontSize =
   | "x-large"
   | "xx-large"
   | "xxx-large";
-export type PluginReaderFontWeight =
-  | "light"
-  | "regular"
-  | "medium"
-  | "semibold"
-  | "bold"
-  | "extra-bold"
-  | "black";
+export type PluginReaderFontWeight = "light" | "regular" | "medium" | "semibold" | "bold" | "extra-bold" | "black";
 export type PluginReaderLineSpacing = "compact" | "comfortable" | "relaxed";
 export type PluginReaderParagraphSpacing = "tight" | "normal" | "loose";
 
@@ -718,124 +794,124 @@ export type PluginSelectOption = { value: string; label: PluginText };
 
 export type PluginFormField = PluginFormFieldBase &
   (
-  | {
-      kind: "text";
-      id: string;
-      label: PluginText;
-      value?: string;
-      placeholder?: PluginText;
-      helperText?: PluginText;
-      inputMode?: "text" | "email" | "url" | "password";
-    }
-  | {
-      kind: "textarea";
-      id: string;
-      label: PluginText;
-      value?: string;
-      placeholder?: PluginText;
-      helperText?: PluginText;
-      rows?: number;
-    }
-  | {
-      /**
-       * A time of day, rendered as two host-owned dropdowns (hours,
-       * minutes) — never a text box: a typed time invites "7pm", locale
-       * ambiguity, and half-finished states, none of which a plugin should
-       * have to parse. The stored value is always 24-hour `HH:MM`.
-       */
-      kind: "time";
-      id: string;
-      label: PluginText;
-      /** `HH:MM`, 24-hour. */
-      value?: string;
-      helperText?: PluginText;
-      /** Minute granularity offered, 1–30. Defaults to 5. */
-      minuteStep?: number;
-    }
-  | {
-      kind: "number";
-      id: string;
-      label: PluginText;
-      value?: number;
-      helperText?: PluginText;
-      min?: number;
-      max?: number;
-      step?: number;
-    }
-  | {
-      kind: "select";
-      id: string;
-      label: PluginText;
-      value?: string;
-      /** Static options; may be empty when `dynamicOptions` is set. */
-      options: PluginSelectOption[];
-      helperText?: PluginText;
-      /**
-       * Options resolved at runtime instead of listed in the declaration —
-       * for lists only the plugin can know (an account's voices, what a
-       * local endpoint serves). Declared settings bind the source via
-       * `ctx.contributions.settingsOptions.register`; a plugin-authored form view carries
-       * it as `resolveOptions`. While the source yields options the field
-       * renders as a select (the stored value is kept selectable even when
-       * the list no longer contains it); when it errors or yields none, the
-       * field falls back to a free text input — a listing failure must
-       * never lock the user out of typing the value.
-       */
-      dynamicOptions?: boolean;
-      /**
-       * Whether the resolved list is a CATALOG — the default: a sample of an
-       * open set, so "Enter manually…" and the empty-list text fallback stay
-       * available — or the WHOLE set (`false`: every acceptable value is in
-       * the list, so typing one is meaningless and the escape hatch is
-       * dropped; an empty list then reads as "nothing to pick" rather than
-       * as an invitation to type). Set it to `false` only when the value is
-       * checked against a closed set the host owns — a theme, an installed
-       * font — never for a remote catalog that may be incomplete or briefly
-       * unreachable.
-       */
-      allowManualEntry?: boolean;
-    }
-  | {
-      /**
-       * A credential field: host-rendered password input whose value lives in
-       * the ENCRYPTED secret store (`ctx.services.secrets`), never in the settings
-       * object, the KV, or the agent's settings catalog. `id` IS the secret
-       * key the plugin reads back (`ctx.services.secrets.get(id)`); lowercase letters,
-       * digits, `_`/`-`. The field shows configured/empty state and a clear
-       * affordance — it never echoes the stored value. Writes go through the
-       * form's `secrets` adapter: declared settings get it from the host; a
-       * plugin-authored form view may supply its own bound to `ctx.services.secrets`.
-       * A secret persists as soon as its input blurs, regardless of the
-       * form's `submitMode` — credentials never sit in form state waiting
-       * for a submit.
-       */
-      kind: "secret";
-      id: string;
-      label: PluginText;
-      placeholder?: PluginText;
-      helperText?: PluginText;
-    }
-  | {
-      kind: "toggle";
-      id: string;
-      label: PluginText;
-      description?: PluginText;
-      value?: boolean;
-    }
-  | {
-      kind: "checkbox";
-      id: string;
-      label: PluginText;
-      description?: PluginText;
-      value?: boolean;
-    }
-  | {
-      kind: "choice";
-      id: string;
-      label: PluginText;
-      value?: string;
-      options: { value: string; label: PluginText; icon?: string }[];
-    }
+    | {
+        kind: "text";
+        id: string;
+        label: PluginText;
+        value?: string;
+        placeholder?: PluginText;
+        helperText?: PluginText;
+        inputMode?: "text" | "email" | "url" | "password";
+      }
+    | {
+        kind: "textarea";
+        id: string;
+        label: PluginText;
+        value?: string;
+        placeholder?: PluginText;
+        helperText?: PluginText;
+        rows?: number;
+      }
+    | {
+        /**
+         * A time of day, rendered as two host-owned dropdowns (hours,
+         * minutes) — never a text box: a typed time invites "7pm", locale
+         * ambiguity, and half-finished states, none of which a plugin should
+         * have to parse. The stored value is always 24-hour `HH:MM`.
+         */
+        kind: "time";
+        id: string;
+        label: PluginText;
+        /** `HH:MM`, 24-hour. */
+        value?: string;
+        helperText?: PluginText;
+        /** Minute granularity offered, 1–30. Defaults to 5. */
+        minuteStep?: number;
+      }
+    | {
+        kind: "number";
+        id: string;
+        label: PluginText;
+        value?: number;
+        helperText?: PluginText;
+        min?: number;
+        max?: number;
+        step?: number;
+      }
+    | {
+        kind: "select";
+        id: string;
+        label: PluginText;
+        value?: string;
+        /** Static options; may be empty when `dynamicOptions` is set. */
+        options: PluginSelectOption[];
+        helperText?: PluginText;
+        /**
+         * Options resolved at runtime instead of listed in the declaration —
+         * for lists only the plugin can know (an account's voices, what a
+         * local endpoint serves). Declared settings bind the source via
+         * `ctx.contributions.settingsOptions.register`; a plugin-authored form view carries
+         * it as `resolveOptions`. While the source yields options the field
+         * renders as a select (the stored value is kept selectable even when
+         * the list no longer contains it); when it errors or yields none, the
+         * field falls back to a free text input — a listing failure must
+         * never lock the user out of typing the value.
+         */
+        dynamicOptions?: boolean;
+        /**
+         * Whether the resolved list is a CATALOG — the default: a sample of an
+         * open set, so "Enter manually…" and the empty-list text fallback stay
+         * available — or the WHOLE set (`false`: every acceptable value is in
+         * the list, so typing one is meaningless and the escape hatch is
+         * dropped; an empty list then reads as "nothing to pick" rather than
+         * as an invitation to type). Set it to `false` only when the value is
+         * checked against a closed set the host owns — a theme, an installed
+         * font — never for a remote catalog that may be incomplete or briefly
+         * unreachable.
+         */
+        allowManualEntry?: boolean;
+      }
+    | {
+        /**
+         * A credential field: host-rendered password input whose value lives in
+         * the ENCRYPTED secret store (`ctx.services.secrets`), never in the settings
+         * object, the KV, or the agent's settings catalog. `id` IS the secret
+         * key the plugin reads back (`ctx.services.secrets.get(id)`); lowercase letters,
+         * digits, `_`/`-`. The field shows configured/empty state and a clear
+         * affordance — it never echoes the stored value. Writes go through the
+         * form's `secrets` adapter: declared settings get it from the host; a
+         * plugin-authored form view may supply its own bound to `ctx.services.secrets`.
+         * A secret persists as soon as its input blurs, regardless of the
+         * form's `submitMode` — credentials never sit in form state waiting
+         * for a submit.
+         */
+        kind: "secret";
+        id: string;
+        label: PluginText;
+        placeholder?: PluginText;
+        helperText?: PluginText;
+      }
+    | {
+        kind: "toggle";
+        id: string;
+        label: PluginText;
+        description?: PluginText;
+        value?: boolean;
+      }
+    | {
+        kind: "checkbox";
+        id: string;
+        label: PluginText;
+        description?: PluginText;
+        value?: boolean;
+      }
+    | {
+        kind: "choice";
+        id: string;
+        label: PluginText;
+        value?: string;
+        options: { value: string; label: PluginText; icon?: string }[];
+      }
   );
 
 export type PluginFormValues = Record<string, string | boolean | number>;
@@ -866,10 +942,7 @@ export type PluginFormView = {
    * again when sibling values change. Declared settings forms get this wired
    * by the host from `ctx.contributions.settingsOptions.register`.
    */
-  resolveOptions?: (
-    fieldId: string,
-    values: PluginFormValues,
-  ) => PluginSelectOption[] | Promise<PluginSelectOption[]>;
+  resolveOptions?: (fieldId: string, values: PluginFormValues) => PluginSelectOption[] | Promise<PluginSelectOption[]>;
   /**
    * Storage adapter for this form's `secret` fields, keyed by field id.
    * Declared settings forms get one from the host, bound to the plugin's
@@ -958,8 +1031,14 @@ export type PluginBlock =
   | { kind: "metric"; label: string; value: string; description?: string }
   /** Views 1.8: null is indeterminate. Cancel requests run while the main action is busy;
    * the plugin must stop its own work and publish the resulting state. */
-  | { kind: "progress"; value: number | null; max?: number; label?: string; showValue?: boolean;
-      cancel?: Pick<PluginAction, "id" | "label" | "run"> }
+  | {
+      kind: "progress";
+      value: number | null;
+      max?: number;
+      label?: string;
+      showValue?: boolean;
+      cancel?: Pick<PluginAction, "id" | "label" | "run">;
+    }
   | { kind: "tags"; label?: string; values: string[] }
   | {
       kind: "alert";
@@ -1027,7 +1106,8 @@ export type PluginViewContent = (
   | PluginEditorView
   | PluginFormView
   | PluginBlocksView
-  | PluginDetailView) & {
+  | PluginDetailView
+) & {
   /** Views 1.10: a host-labelled drop zone for this visible view. Dropping grants
    * this activation read access to the selected file snapshots, never paths.
    * Defaults to one file; multiple accepts at most 16. Release resources when done.
@@ -1262,9 +1342,7 @@ export type PluginReaderMode = {
   /** Segment one block. Results must be ordered, non-overlapping spans.
    * readerModes 1.1 permits async providers. Failure rejects the section build;
    * returning [] deliberately declares this block has no reading units. */
-  segmentText(
-    input: PluginReaderTextSegmentInput,
-  ): PluginReaderTextSegment[] | Promise<PluginReaderTextSegment[]>;
+  segmentText(input: PluginReaderTextSegmentInput): PluginReaderTextSegment[] | Promise<PluginReaderTextSegment[]>;
 };
 
 /**
@@ -1495,12 +1573,16 @@ export type PluginLibraryDomain = {
       /** Initialize this activation's sealed resource with the reader parser; no import. */
       inspectResource(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookInspection>;
       /** Library 1.10: same-content groups; live offset pages, limit 1-50. */
-      listDuplicates(query?: import("@read-aware/core").DuplicateBookQuery): Promise<import("@read-aware/core").DuplicateBookPage>;
+      listDuplicates(
+        query?: import("@read-aware/core").DuplicateBookQuery,
+      ): Promise<import("@read-aware/core").DuplicateBookPage>;
       previewMerge(bookId: string): Promise<import("@read-aware/core").BookMergePreview | null>;
       /** Current book ID or merge redirect, null if neither points to a living book. */
       resolveId(bookId: string): Promise<string | null>;
       /** Durable device-local pending file cleanup, including after view/plugin restart. Live keyset page, limit 1-100 (default 50). */
-      listRemovalCleanup(query?: import("@read-aware/core").BookRemovalCleanupQuery): Promise<import("@read-aware/core").BookRemovalCleanupPage>;
+      listRemovalCleanup(
+        query?: import("@read-aware/core").BookRemovalCleanupQuery,
+      ): Promise<import("@read-aware/core").BookRemovalCleanupPage>;
       get(bookId: string): Promise<PluginBook | null>;
       getToc(bookId: string): Promise<PluginChapterRef[]>;
       /** Read-only derived-text state. Never starts parsing, fetching, or extraction. */
@@ -1508,31 +1590,67 @@ export type PluginLibraryDomain = {
       /** Library 1.9: local cover/source state and the latest process-local enrichment attempt. */
       getEnrichment(bookId: string): Promise<import("@read-aware/core").BookEnrichmentSnapshot>;
       /** Source metadata only; never loads a provider or reveals reading state. Library 1.16. */
-      getContentState(bookId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookContentState>;
-      listTextTaskHistory(bookId: string, query?: import("@read-aware/core").BookTextTaskHistoryQuery): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
+      getContentState(
+        bookId: string,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookContentState>;
+      listTextTaskHistory(
+        bookId: string,
+        query?: import("@read-aware/core").BookTextTaskHistoryQuery,
+      ): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
       getTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       listTextTasks(bookId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot[]>;
       /** Library 1.20: this activation's in-memory import handles (64 retained). */
       /** waitMs (0..30000) waits for terminal state or returns current progress at the deadline.
        * Cancelling this query stops observation only. */
-      getImportTask(taskId: string, waitMs?: number, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+      getImportTask(
+        taskId: string,
+        waitMs?: number,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
       listImportTasks(): Promise<import("@read-aware/core").BookImportTaskSnapshot[]>;
-    getChapterText(bookId: string, chapterIndex: number): Promise<string | null>;
-    getNavigationToc(bookId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookNavigationToc>;
-    /** Library 1.14: bounded source-section or author-supplied page-label catalog; not screen page counts. */
-    listNavigationTargets(input: import("@read-aware/core").BookNavigationTargetsQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookNavigationTargetsPage>;
-    searchLocations(input: import("@read-aware/core").BookLocationSearch, options?: PluginCallOptions): Promise<import("@read-aware/core").BookLocationSearchPage>;
-    readRange(input: import("@read-aware/core").BookRangeQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookRangePage>;
-    /** Library 1.12: versioned section references, not extracted chapter indices. */
-    listReferences(input: import("@read-aware/core").BookReferencesQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookReferencesPage>;
-    /** Library 1.29: section-local img/SVG, srcset/authored CSS and PDF image candidates. No remote fetch; PDF operator inspection can decode objects. */
-    listImages(input: import("@read-aware/core").BookImagesQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImagesPage>;
-    /** Seal an embedded image as this activation's ResourceRef; does not display it or decode pixels. */
-    openImageResource(input: import("@read-aware/core").BookImageQuery): Promise<import("@read-aware/core").BookImageResource>;
-    /** Plain-text preview and resolved navigation location; never fetches or opens an external URL. */
-    readReference(input: import("@read-aware/core").BookReferenceQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookReferencePreview>;
-    /** Multi-query derived prose search. Single-book may prepare text; shelf search never does. Results are not navigation locations. */
-    searchText(input: import("@read-aware/core").BookTextSearch, options?: PluginCallOptions): Promise<import("@read-aware/core").BookTextHit[]>;
+      getChapterText(bookId: string, chapterIndex: number): Promise<string | null>;
+      getNavigationToc(
+        bookId: string,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookNavigationToc>;
+      /** Library 1.14: bounded source-section or author-supplied page-label catalog; not screen page counts. */
+      listNavigationTargets(
+        input: import("@read-aware/core").BookNavigationTargetsQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookNavigationTargetsPage>;
+      searchLocations(
+        input: import("@read-aware/core").BookLocationSearch,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookLocationSearchPage>;
+      readRange(
+        input: import("@read-aware/core").BookRangeQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookRangePage>;
+      /** Library 1.12: versioned section references, not extracted chapter indices. */
+      listReferences(
+        input: import("@read-aware/core").BookReferencesQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookReferencesPage>;
+      /** Library 1.29: section-local img/SVG, srcset/authored CSS and PDF image candidates. No remote fetch; PDF operator inspection can decode objects. */
+      listImages(
+        input: import("@read-aware/core").BookImagesQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookImagesPage>;
+      /** Seal an embedded image as this activation's ResourceRef; does not display it or decode pixels. */
+      openImageResource(
+        input: import("@read-aware/core").BookImageQuery,
+      ): Promise<import("@read-aware/core").BookImageResource>;
+      /** Plain-text preview and resolved navigation location; never fetches or opens an external URL. */
+      readReference(
+        input: import("@read-aware/core").BookReferenceQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookReferencePreview>;
+      /** Multi-query derived prose search. Single-book may prepare text; shelf search never does. Results are not navigation locations. */
+      searchText(
+        input: import("@read-aware/core").BookTextSearch,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookTextHit[]>;
     };
     collections: {
       list(): Promise<PluginCollection[]>;
@@ -1544,22 +1662,34 @@ export type PluginLibraryDomain = {
       /** Library 1.31: starts an actor-owned background request. A receipt is not completion.
        * Current-book grants fence admission and the lease through pause/resume;
        * switching books cancels only this request, without undoing accepted writes. */
-      prepareText(bookId: string, options?: import("@read-aware/core").BookTextPrepareOptions): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+      prepareText(
+        bookId: string,
+        options?: import("@read-aware/core").BookTextPrepareOptions,
+      ): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       /** Retry unchecked covers and missing/filename-derived metadata using the shared queue, without forcing replacement or download. */
       retryEnrichment(bookId: string): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
       /** Conditional record merge with the host's deterministic keeper; not file deletion or undo. */
-      mergeDuplicates(input: import("@read-aware/core").BookMergeRequest): Promise<import("@read-aware/core").BookMergeReceipt>;
+      mergeDuplicates(
+        input: import("@read-aware/core").BookMergeRequest,
+      ): Promise<import("@read-aware/core").BookMergeReceipt>;
       /** Library 1.21: pauses only this request by releasing its lease; other consumers and dispatched I/O may continue. */
-      setTextTaskPriority(bookId: string, taskId: string, priority: import("@read-aware/core").BookTextPriority): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+      setTextTaskPriority(
+        bookId: string,
+        taskId: string,
+        priority: import("@read-aware/core").BookTextPriority,
+      ): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       pauseTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       /** Library 1.21: reacquires this paused request using saved checkpoints and the same handle. */
       resumeTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       /** Cancels only this activation's request; shared work or dispatched writes may continue. */
       cancelTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
-      importBook(input: {
-        fileName: string;
-        data: ArrayBuffer | Uint8Array;
-      }, options?: PluginCallOptions): Promise<PluginBook>;
+      importBook(
+        input: {
+          fileName: string;
+          data: ArrayBuffer | Uint8Array;
+        },
+        options?: PluginCallOptions,
+      ): Promise<PluginBook>;
       /** Library 1.19 adds per-call cancellation. Before the first durable write,
        * cancellation prevents admission; afterward await the actual imported/duplicate
        * receipt or failure. No whole-file transfer, opening or resource release. */
@@ -1569,7 +1699,10 @@ export type PluginLibraryDomain = {
        * after the receipt. At most 2 physical task executions per activation, 4 in the app;
        * direct imports/picker jobs are outside this task quota.
        * Tasks do not resume after restart. Accepted writes finish despite cancellation. */
-      startImport(input: import("@read-aware/core").BookImportRequest, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+      startImport(
+        input: import("@read-aware/core").BookImportRequest,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
       cancelImportTask(taskId: string): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
       editMetadata(bookId: string, patch: { title?: string; author?: string }): Promise<void>;
       setStarred(bookId: string, starred: boolean): Promise<void>;
@@ -1578,12 +1711,7 @@ export type PluginLibraryDomain = {
       removeMany(bookIds: string[]): Promise<import("@read-aware/core").BookRemovalReceipt>;
       /** Retry file release only. Refuses any ID now present in the library; never deletes records. */
       retryRemovalCleanup(bookIds: string[]): Promise<import("@read-aware/core").BookFileReleaseReceipt>;
-      addVirtualBook(input: {
-        providerId: string;
-        key: string;
-        title: string;
-        author?: string;
-      }): Promise<PluginBook>;
+      addVirtualBook(input: { providerId: string; key: string; title: string; author?: string }): Promise<PluginBook>;
       removeVirtualBook(input: { providerId: string; key: string; expectedBookId?: string }): Promise<void>;
       /** Announce already-saved source changes. Does not reload or move the reader.
        * revision is a process-local invalidation fence, not a content hash. Library 1.15. */
@@ -1599,14 +1727,33 @@ export type PluginLibraryDomain = {
   events: {
     subscribe: DomainSubscribe<LibraryDomainEventType>;
     /** Library 1.32: serial reaction deliveries retain task and history-write sources. */
-    observeTextTask(bookId: string, taskId: string, handler: PluginObservationHandler<import("@read-aware/core").BookTextTaskSnapshot>, options?: { ruleId?: string }): PluginDisposable;
+    observeTextTask(
+      bookId: string,
+      taskId: string,
+      handler: PluginObservationHandler<import("@read-aware/core").BookTextTaskSnapshot>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
     /** Initial snapshot and coalesced monotonic revisions, including terminal failures. */
-    observeImportTask(taskId: string, handler: PluginObservationHandler<import("@read-aware/core").BookImportTaskSnapshot>, options?: { ruleId?: string }): PluginDisposable;
-    observeEnrichment(bookId: string, handler: PluginObservationHandler<import("@read-aware/core").BookEnrichmentObservation>, options?: { ruleId?: string }): PluginDisposable;
-    observeContentState(bookId: string, handler: PluginObservationHandler<import("@read-aware/core").BookContentObservation>, options?: { ruleId?: string }): PluginDisposable;
+    observeImportTask(
+      taskId: string,
+      handler: PluginObservationHandler<import("@read-aware/core").BookImportTaskSnapshot>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
+    observeEnrichment(
+      bookId: string,
+      handler: PluginObservationHandler<import("@read-aware/core").BookEnrichmentObservation>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
+    observeContentState(
+      bookId: string,
+      handler: PluginObservationHandler<import("@read-aware/core").BookContentObservation>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
     /** Initial and coalesced reload hints, including remote projection changes.
      * Re-query authorized data; not an event log or a conditional-write token. */
-    observeInvalidation(handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>): PluginDisposable;
+    observeInvalidation(
+      handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>,
+    ): PluginDisposable;
   };
 };
 
@@ -1622,8 +1769,12 @@ export type PluginReadingDomain = {
     session(): Promise<import("@read-aware/core").ReadingSessionSnapshot>;
     stats: {
       /** Atomic settled + pending time, with native sampling clock. Reading >=2.7. */
-      time(query?: import("@read-aware/core").ReadingTimeQuery): Promise<import("@read-aware/core").ReadingTimeSnapshot>;
-      insights(query?: import("@read-aware/core").ReadingInsightsQuery): Promise<import("@read-aware/core").ReadingInsights>;
+      time(
+        query?: import("@read-aware/core").ReadingTimeQuery,
+      ): Promise<import("@read-aware/core").ReadingTimeSnapshot>;
+      insights(
+        query?: import("@read-aware/core").ReadingInsightsQuery,
+      ): Promise<import("@read-aware/core").ReadingInsights>;
       forBook(bookId: string): Promise<PluginBookStats | null>;
       list(): Promise<PluginBookStats[]>;
       overview(): Promise<PluginStatsOverview>;
@@ -1631,45 +1782,114 @@ export type PluginReadingDomain = {
   };
   commands?: {
     /** Temporary owned marks, not annotations. No navigation; replacement requires an observed revision. */
-    putEmphasis(input: import("@read-aware/core").ReadingEmphasisWrite, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingEmphasisReceipt>;
-    removeEmphasis(input: import("@read-aware/core").ReadingEmphasisRef, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingEmphasisRemoval>;
+    putEmphasis(
+      input: import("@read-aware/core").ReadingEmphasisWrite,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingEmphasisReceipt>;
+    removeEmphasis(
+      input: import("@read-aware/core").ReadingEmphasisRef,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingEmphasisRemoval>;
     /** Requires this book to be open; validates its source range, navigates, then waits for the selection overlay commit. */
-    selectRange(range: import("@read-aware/core").BookTextRange, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
+    selectRange(
+      range: import("@read-aware/core").BookTextRange,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
     /** Clears only the observed selection ID; a replacement selection is never silently cleared. */
-    clearSelection(expectedId: string, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
+    clearSelection(
+      expectedId: string,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
     /** Set reader chrome visibility; completes after UI commit. Does not alter panel preferences or playback. */
-    setControls(visible: boolean, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingControlsReceipt>;
+    setControls(
+      visible: boolean,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingControlsReceipt>;
     setFinished(bookId: string, finished: boolean): Promise<void>;
     openBook(bookId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-    goTo(target: import("@read-aware/core").ReadingTarget, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-    back(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-    forward(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+    goTo(
+      target: import("@read-aware/core").ReadingTarget,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+    back(
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+    forward(
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
     /** Reading 2.12: page, source-section and book-boundary navigation; section/boundary jumps enter history. */
-    step(direction: import("@read-aware/core").ReadingStep, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+    step(
+      direction: import("@read-aware/core").ReadingStep,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
     /** Reading 2.21: reopen source; virtual sections with identical stable identity/content preserve their location across reorder. Stale/legacy virtual locators restart at the beginning; files still restart. Whole-book contentVersion guards remain strict. */
-    reload(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+    reload(
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
     close(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<void>;
     /** Start resolves on actual audio start. Stop is idempotent; disabling the initiating plugin stops its playback. */
-    controlPlayback(action: "start" | "stop", guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingPlaybackReceipt>;
+    controlPlayback(
+      action: "start" | "stop",
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingPlaybackReceipt>;
     /** Configure the host mode; modeKey guards the current provider, selectModeKey selects from session().mode.availableModes.
      * Resolves after real indexing (ready/empty) or deactivation. Failed indexing rejects.
      * Disabling the caller cancels an unfinished change; completed mode preferences remain. */
-    configureMode(input: import("@read-aware/core").ReadingModeConfiguration, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingModeReceipt>;
+    configureMode(
+      input: import("@read-aware/core").ReadingModeConfiguration,
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingModeReceipt>;
     /** Return to the versioned resting unit; wait for renderer navigation and unit restoration before committing history. */
-    returnToMode(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+    returnToMode(
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
     /** Step one configured text unit, across sections if necessary; reports book boundaries explicitly. */
-    stepMode(direction: "next" | "previous", guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingModeStepReceipt>;
+    stepMode(
+      direction: "next" | "previous",
+      guard?: import("@read-aware/core").ReadingSessionGuard,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ReadingModeStepReceipt>;
   };
   events: {
     subscribe: DomainSubscribe<ReadingDomainEventType>;
     /** Immediate and subsequent snapshots carry a live reaction lease. Use withEvent for automatic writes;
      * keep the original context for later user actions. A stable ruleId can resume job causality across activations. */
-    observeSession(handler: (snapshot: import("@read-aware/core").ReadingSessionSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string }): PluginDisposable;
-    observeEmphasis(handler: (snapshot: import("@read-aware/core").ReadingEmphasisSnapshot[], delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable;
+    observeSession(
+      handler: (
+        snapshot: import("@read-aware/core").ReadingSessionSnapshot,
+        delivery?: PluginReactionEvent,
+      ) => void | Promise<void>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
+    observeEmphasis(
+      handler: (
+        snapshot: import("@read-aware/core").ReadingEmphasisSnapshot[],
+        delivery?: PluginReactionEvent,
+      ) => void | Promise<void>,
+    ): PluginDisposable;
     /** Immediate sample then a 1s minimum gap after each delivery. Errors are explicit; dispose stops further delivery.
      * Reading 2.24: delivery retains sampling subscription ancestry across timers.
      * It does not identify historical writers of the aggregate. */
-    observeTime(query: import("@read-aware/core").ReadingTimeQuery, handler: (event: import("@read-aware/core").ReadingTimeObservation, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string }): PluginDisposable;
+    observeTime(
+      query: import("@read-aware/core").ReadingTimeQuery,
+      handler: (
+        event: import("@read-aware/core").ReadingTimeObservation,
+        delivery?: PluginReactionEvent,
+      ) => void | Promise<void>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
   };
 };
 
@@ -1697,7 +1917,9 @@ export type PluginAnnotationsDomain = {
   commands?: {
     /** Since 2.0 this is the only edit/delete entry. Use the revision observed
      * before the user's decision; 1..100 distinct items, all commit or none. */
-    applyChanges(changes: import("@read-aware/core").AnnotationMutation[]): Promise<import("@read-aware/core").AnnotationCommitResult>;
+    applyChanges(
+      changes: import("@read-aware/core").AnnotationMutation[],
+    ): Promise<import("@read-aware/core").AnnotationCommitResult>;
     /** annotations >=2.1: range validates and preserves the captured source; requires library:read. */
     createHighlight(input: {
       range?: import("@read-aware/core").BookTextRange;
@@ -1720,8 +1942,10 @@ export type PluginAnnotationsDomain = {
   events: {
     subscribe: DomainSubscribe<AnnotationDomainEventType>;
     /** Since 1.4. Initial authorized snapshot, then changed results/errors/recovery. Disposal ends polling. */
-    observe(query: import("@read-aware/core").AnnotationObservationQuery,
-      handler: PluginObservationHandler<import("@read-aware/core").AnnotationObservation>): PluginDisposable;
+    observe(
+      query: import("@read-aware/core").AnnotationObservationQuery,
+      handler: PluginObservationHandler<import("@read-aware/core").AnnotationObservation>,
+    ): PluginDisposable;
   };
 };
 
@@ -1735,7 +1959,10 @@ export type PluginAnnotationsDomain = {
  * Message generation stays with the host chat runtime.
  */
 /** A book-scoped installation receives no selected global thread identity. */
-export type PluginConversationRuntimeSnapshot = Omit<import("@read-aware/core").ConversationRuntimeSnapshot, "selectedGlobalThreadId"> & {
+export type PluginConversationRuntimeSnapshot = Omit<
+  import("@read-aware/core").ConversationRuntimeSnapshot,
+  "selectedGlobalThreadId"
+> & {
   selectedGlobalThreadId: string | null;
 };
 
@@ -1753,30 +1980,48 @@ export type PluginConversationsDomain = {
   };
   commands?: {
     /** Requires a mounted conversation. Only a host UI confirmation can adopt/send/retry; receipt is not a completed turn. */
-    requestTurn(request: import("@read-aware/core").ConversationTurnRequest): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
+    requestTurn(
+      request: import("@read-aware/core").ConversationTurnRequest,
+    ): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
     cancelTurnRequest(id: string): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
     /** Creates and selects a global draft; no transcript row until the first message. Does not navigate the app. */
     createThread(): Promise<import("@read-aware/core").ConversationControlReceipt & { draft: true }>;
     selectThread(threadId: string): Promise<import("@read-aware/core").ConversationControlReceipt>;
     /** Stops live UI turns and waits for their final transcript writes. Does not undo tool effects. */
-    stop(target: import("@read-aware/core").ConversationTarget): Promise<import("@read-aware/core").ConversationControlReceipt>;
+    stop(
+      target: import("@read-aware/core").ConversationTarget,
+    ): Promise<import("@read-aware/core").ConversationControlReceipt>;
     /** Clears transcript/hidden thread state after draining turns, not long-term memory or event history. */
-    clear(target: import("@read-aware/core").ConversationTarget): Promise<import("@read-aware/core").ConversationControlReceipt>;
+    clear(
+      target: import("@read-aware/core").ConversationTarget,
+    ): Promise<import("@read-aware/core").ConversationControlReceipt>;
   };
-  events: { subscribe: DomainSubscribe<ConversationDomainEventType>;
-    observeInvalidation(handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>): PluginDisposable;
+  events: {
+    subscribe: DomainSubscribe<ConversationDomainEventType>;
+    observeInvalidation(
+      handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>,
+    ): PluginDisposable;
     /** Conversations 1.6: serial reaction deliveries, with an optional stable rule ID. */
-    observeRuntime(handler: PluginObservationHandler<PluginConversationRuntimeSnapshot>, options?: { ruleId?: string }): PluginDisposable };
+    observeRuntime(
+      handler: PluginObservationHandler<PluginConversationRuntimeSnapshot>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
+  };
 };
 
 export type PluginSettingsDomain = {
   queries: {
     /** Settings 1.9: cached public model metadata; discover access to primaryModel or fastModel. No network. */
-    modelCatalog(query: import("@read-aware/core").ModelCatalogQuery): Promise<import("@read-aware/core").ModelCatalogPage>;
+    modelCatalog(
+      query: import("@read-aware/core").ModelCatalogQuery,
+    ): Promise<import("@read-aware/core").ModelCatalogPage>;
     /** Since settings 1.3: one host snapshot after prior queued writes settle, filtered by exact path grants. */
     snapshot(query?: SettingsQuery): Promise<import("@read-aware/core").SettingsSnapshot>;
     /** Settled snapshots after native, domain, remote, restore and catalog changes. Coalesces slow callbacks. */
-    observe(query: SettingsQuery, handler: PluginObservationHandler<import("@read-aware/core").SettingsObservation>): PluginDisposable;
+    observe(
+      query: SettingsQuery,
+      handler: PluginObservationHandler<import("@read-aware/core").SettingsObservation>,
+    ): PluginDisposable;
     discover(query?: SettingsQuery): Promise<SettingCatalogEntry[]>;
     /** Settings 1.8: bounded options; same path grants as discover. Includes
      * installed system families for reading/content fonts without font paths or bytes.
@@ -1790,12 +2035,17 @@ export type PluginSettingsDomain = {
      * is not cancelled by this deadline or caller retirement. No writes/synthesis.
      * Plugin-owned option queries require the caller's active phase, not activation/migration.
      * Empty results still allow manual values; provider failures remain failures. */
-    options(query: import("@read-aware/core").SettingsOptionsQuery): Promise<import("@read-aware/core").SettingsOptionsPage>;
+    options(
+      query: import("@read-aware/core").SettingsOptionsQuery,
+    ): Promise<import("@read-aware/core").SettingsOptionsPage>;
     read(path: string, target?: SettingsQueryTarget): Promise<SettingReadResult>;
   };
   commands: {
     /** Settings 1.9: additionally requires service:network. Shared native refresh, not a connection test. */
-    refreshModelCatalog?(provider: string, options?: PluginCallOptions): Promise<import("@read-aware/core").ModelCatalogPage>;
+    refreshModelCatalog?(
+      provider: string,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ModelCatalogPage>;
     update(changes: SettingChange[]): Promise<SettingsUpdateResult>;
     /** Settings 1.7: reset the whole reader-preference bundle; every reading path must be writable.
      * defaults restores built-ins; inherit deletes active and remembered book overrides. */
@@ -1825,74 +2075,122 @@ export type PluginDomains = {
    * and cancel graph execution. Graph generation additionally requires service:llm;
    * handles belong to this activation. Dispatched writes may have committed even
    * if a later scope change prevents disclosure of their result; inspect before retry. */
-  memory?: { queries: {
-    /** Memory 2.4: the versioned context-bundle archive (`docs/architecture/context-bundles.md`). Every recipe also needs
-     * read access to the domains it draws on: book_memory_context needs annotations and library, book scopes
-     * need library, conversation_insights_context needs conversations. History pages carry versions and
-     * publication times only. A pinned read delivers the exact immutable cb1 artifact; a retained
-     * book_memory_context is delivered only when the host can place its recorded fence within the reader's
-     * current boundary, otherwise it fails rather than being redacted. export seals the same artifact into this
-     * activation's resource queue as a read-only `context` ResourceRef bound to the durable source clock: any
-     * later tracked source change, reading-position change or retirement revokes reads/saves of that handle,
-     * while a native write already dispatched keeps its receipt. Aborted/retired callers receive no late result. */
-    context: {
-      history(query: import("@read-aware/core").ContextBundleHistoryQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").ContextBundleHistoryPage>;
-      read(query: import("@read-aware/core").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").ContextBundle | null>;
-      export(query: import("@read-aware/core").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").ResourceRef>;
+  memory?: {
+    queries: {
+      /** Memory 2.4: the versioned context-bundle archive (`docs/architecture/context-bundles.md`). Every recipe also needs
+       * read access to the domains it draws on: book_memory_context needs annotations and library, book scopes
+       * need library, conversation_insights_context needs conversations. History pages carry versions and
+       * publication times only. A pinned read delivers the exact immutable cb1 artifact; a retained
+       * book_memory_context is delivered only when the host can place its recorded fence within the reader's
+       * current boundary, otherwise it fails rather than being redacted. export seals the same artifact into this
+       * activation's resource queue as a read-only `context` ResourceRef bound to the durable source clock: any
+       * later tracked source change, reading-position change or retirement revokes reads/saves of that handle,
+       * while a native write already dispatched keeps its receipt. Aborted/retired callers receive no late result. */
+      context: {
+        history(
+          query: import("@read-aware/core").ContextBundleHistoryQuery,
+          options?: PluginCallOptions,
+        ): Promise<import("@read-aware/core").ContextBundleHistoryPage>;
+        read(
+          query: import("@read-aware/core").ContextBundleReadQuery,
+          options?: PluginCallOptions,
+        ): Promise<import("@read-aware/core").ContextBundle | null>;
+        export(
+          query: import("@read-aware/core").ContextBundleReadQuery,
+          options?: PluginCallOptions,
+        ): Promise<import("@read-aware/core").ResourceRef>;
+      };
+      /** Memory 2.3: inspect the generated summary and provenance, separately from curated profile().
+       * Summary pages count UTF-16 units (4000 default, 16000 max); provenance pages count rows
+       * (25 default, 100 max; historical ID sizes are unbounded). Pin every page kind to pctx1.
+       * Stale text is inspectable, never current context. Invalid blocks expose no content.
+       * Current means source-consistent, not semantic verification or completed consolidation.
+       * entityEvidence IDs include proposed no-ops, not proof of emitted events. Read grant;
+       * no source text, transcripts, raw traits, registry writes or automatic inference. */
+      profileContext(
+        query?: import("@read-aware/core").ProfileInspectionQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").ProfileInspectionPage>;
+      /** Global explicit identities, not book-digest characters. Row-bounded, revision-pinned pages.
+       * Memory 2.2 adds canonicalDefinition from the same snapshot. Historical field sizes are not bounded. Aborted/retired callers receive no late page. */
+      entities(
+        query?: import("@read-aware/core").EntityQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").EntityPage>;
+      /** The event-backed summary projection; read grant, bounded revision-pinned pages. */
+      profile(query?: import("@read-aware/core").UserProfileQuery): Promise<import("@read-aware/core").UserProfilePage>;
+      inspect(id: string): Promise<import("@read-aware/core").MemorySnapshot | null>;
+      classification(bookId: string): Promise<import("@read-aware/core").BookClassificationSnapshot | null>;
+      getGraphTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
+      listGraphTasks(bookId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot[]>;
+      search(input: import("@read-aware/core").MemoryQuery): Promise<import("@read-aware/core").MemoryRecord[]>;
+      page(input: import("@read-aware/core").MemoryPageQuery): Promise<import("@read-aware/core").MemoryPage>;
+      /** memory >=2.6 only exposes current-source digests; chapter results carry contentVersion for navigation. */
+      bookGraph(
+        bookId: string,
+        query?: import("@read-aware/core").BookGraphQuery,
+      ): Promise<import("@read-aware/core").BookGraphResult>;
     };
-    /** Memory 2.3: inspect the generated summary and provenance, separately from curated profile().
-     * Summary pages count UTF-16 units (4000 default, 16000 max); provenance pages count rows
-     * (25 default, 100 max; historical ID sizes are unbounded). Pin every page kind to pctx1.
-     * Stale text is inspectable, never current context. Invalid blocks expose no content.
-     * Current means source-consistent, not semantic verification or completed consolidation.
-     * entityEvidence IDs include proposed no-ops, not proof of emitted events. Read grant;
-     * no source text, transcripts, raw traits, registry writes or automatic inference. */
-    profileContext(query?: import("@read-aware/core").ProfileInspectionQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").ProfileInspectionPage>;
-    /** Global explicit identities, not book-digest characters. Row-bounded, revision-pinned pages.
-     * Memory 2.2 adds canonicalDefinition from the same snapshot. Historical field sizes are not bounded. Aborted/retired callers receive no late page. */
-    entities(query?: import("@read-aware/core").EntityQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").EntityPage>;
-    /** The event-backed summary projection; read grant, bounded revision-pinned pages. */
-    profile(query?: import("@read-aware/core").UserProfileQuery): Promise<import("@read-aware/core").UserProfilePage>;
-    inspect(id: string): Promise<import("@read-aware/core").MemorySnapshot | null>;
-    classification(bookId: string): Promise<import("@read-aware/core").BookClassificationSnapshot | null>;
-    getGraphTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
-    listGraphTasks(bookId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot[]>;
-    search(input: import("@read-aware/core").MemoryQuery): Promise<import("@read-aware/core").MemoryRecord[]>;
-    page(input: import("@read-aware/core").MemoryPageQuery): Promise<import("@read-aware/core").MemoryPage>;
-    /** memory >=2.6 only exposes current-source digests; chapter results carry contentVersion for navigation. */
-    bookGraph(bookId: string, query?: import("@read-aware/core").BookGraphQuery): Promise<import("@read-aware/core").BookGraphResult>;
-  }; commands?: {
-    /** Memory 2.1: resolve an original member or merge known resolved classes using an observed
-     * entities1 revision. Present the exact change for confirmation first. Retains original
-     * definitions/aliases, may sync to other devices. No blind conflict retry. Cancellation
-     * prevents dispatch only; dispatched writes drain to their actual receipt. A transport
-     * timeout or lost Worker leaves the outcome unknown: reread, never retry blindly. */
-    decideEntity(input: import("@read-aware/core").EntityDecision, options?: PluginCallOptions): Promise<import("@read-aware/core").EntityDecisionReceipt>;
-    /** Memory 2.4: assemble one recipe from its current durable sources behind the host's own scope, privacy
-     * and spoiler authority, publish it as an immutable `context.bundlePublished` version and return the
-     * artifact. Requires memory:write plus read access to the recipe's source domains. changed=false means the
-     * identical content version already existed. Concurrent source changes reject assembly instead of mixing
-     * reads; cancellation before native dispatch prevents publication, afterwards the call drains to the real
-     * receipt. This is a versioned export artifact, not a backup, transcript or prompt. May sync. */
-    context: { capture(selector: import("@read-aware/core").ContextBundleSelector, options?: PluginCallOptions): Promise<import("@read-aware/core").ContextBundleCaptureReceipt>; };
-    /** Replace the event-backed summary using the observed profile2 revision.
-     * Present the complete candidate for user confirmation before calling.
-     * Empty text clears the summary, not memories or historical copies. */
-    updateProfile(input: import("@read-aware/core").UserProfileChange): Promise<import("@read-aware/core").UserProfileReceipt>;
-    /** Memory 2.5: confirm the full summary AND seeds before calling. Reuse the same
-     * owner-local submissionId and exact candidate after a lost receipt; a different
-     * candidate requires a new id and renewed confirmation. Atomic, event-backed. */
-    completeOnboarding(input: import("@read-aware/core").OnboardingChange, options?: PluginCallOptions): Promise<import("@read-aware/core").OnboardingReceipt>;
-    mutate(input: import("@read-aware/core").MemoryMutation): Promise<import("@read-aware/core").MemoryMutationReceipt>;
-    classify(input: import("@read-aware/core").BookClassificationChange): Promise<import("@read-aware/core").BookClassificationReceipt>;
-    startGraphTask(bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
-    cancelGraphTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
-    retryGraphTask(bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
-  };
+    commands?: {
+      /** Memory 2.1: resolve an original member or merge known resolved classes using an observed
+       * entities1 revision. Present the exact change for confirmation first. Retains original
+       * definitions/aliases, may sync to other devices. No blind conflict retry. Cancellation
+       * prevents dispatch only; dispatched writes drain to their actual receipt. A transport
+       * timeout or lost Worker leaves the outcome unknown: reread, never retry blindly. */
+      decideEntity(
+        input: import("@read-aware/core").EntityDecision,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").EntityDecisionReceipt>;
+      /** Memory 2.4: assemble one recipe from its current durable sources behind the host's own scope, privacy
+       * and spoiler authority, publish it as an immutable `context.bundlePublished` version and return the
+       * artifact. Requires memory:write plus read access to the recipe's source domains. changed=false means the
+       * identical content version already existed. Concurrent source changes reject assembly instead of mixing
+       * reads; cancellation before native dispatch prevents publication, afterwards the call drains to the real
+       * receipt. This is a versioned export artifact, not a backup, transcript or prompt. May sync. */
+      context: {
+        capture(
+          selector: import("@read-aware/core").ContextBundleSelector,
+          options?: PluginCallOptions,
+        ): Promise<import("@read-aware/core").ContextBundleCaptureReceipt>;
+      };
+      /** Replace the event-backed summary using the observed profile2 revision.
+       * Present the complete candidate for user confirmation before calling.
+       * Empty text clears the summary, not memories or historical copies. */
+      updateProfile(
+        input: import("@read-aware/core").UserProfileChange,
+      ): Promise<import("@read-aware/core").UserProfileReceipt>;
+      /** Memory 2.5: confirm the full summary AND seeds before calling. Reuse the same
+       * owner-local submissionId and exact candidate after a lost receipt; a different
+       * candidate requires a new id and renewed confirmation. Atomic, event-backed. */
+      completeOnboarding(
+        input: import("@read-aware/core").OnboardingChange,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").OnboardingReceipt>;
+      mutate(
+        input: import("@read-aware/core").MemoryMutation,
+      ): Promise<import("@read-aware/core").MemoryMutationReceipt>;
+      classify(
+        input: import("@read-aware/core").BookClassificationChange,
+      ): Promise<import("@read-aware/core").BookClassificationReceipt>;
+      startGraphTask(
+        bookId: string,
+        mode: "catch-up" | "rebuild",
+        options?: import("@read-aware/core").BookGraphTaskOptions,
+      ): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
+      cancelGraphTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
+      retryGraphTask(
+        bookId: string,
+        taskId: string,
+        options?: import("@read-aware/core").BookGraphTaskOptions,
+      ): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
+    };
     events: {
       /** Initial snapshot, then changed results/errors; bounded polling, not an event log.
        * Plugins 1.5 supplies a separate reaction delivery, including graph task updates. */
-      observe(query: import("@read-aware/core").MemoryObservationQuery, handler: PluginObservationHandler<import("@read-aware/core").MemoryObservation>): PluginDisposable;
+      observe(
+        query: import("@read-aware/core").MemoryObservationQuery,
+        handler: PluginObservationHandler<import("@read-aware/core").MemoryObservation>,
+      ): PluginDisposable;
     };
   };
   settings: PluginSettingsDomain;
@@ -1909,11 +2207,32 @@ export type PluginStorageUsage = {
 };
 export type PluginStoragePolicy = {
   usage: PluginStorageUsage;
-  kv: { roaming: "preference-events"; localOnlyKeys: string[]; backup: "complete"; uninstall: "retain"; maxBytes: null };
-  documents: { roaming: "none"; backup: "complete"; uninstall: "delete"; maxBytes: null;
-    putMaxDocumentBytes: null; applyMaxDocumentBytes: number; applyMaxBatchBytes: number; applyMaxChanges: number };
+  kv: {
+    roaming: "preference-events";
+    localOnlyKeys: string[];
+    backup: "complete";
+    uninstall: "retain";
+    maxBytes: null;
+  };
+  documents: {
+    roaming: "none";
+    backup: "complete";
+    uninstall: "delete";
+    maxBytes: null;
+    putMaxDocumentBytes: null;
+    applyMaxDocumentBytes: number;
+    applyMaxBatchBytes: number;
+    applyMaxChanges: number;
+  };
   secrets: { roaming: "none"; backup: "excluded"; uninstall: "retain"; maxBytes: null; usage: null };
-  assets: { roaming: "none"; backup: "complete"; uninstall: "delete"; maxBytes: number; maxItems: number; maxItemBytes: number };
+  assets: {
+    roaming: "none";
+    backup: "complete";
+    uninstall: "delete";
+    maxBytes: number;
+    maxItems: number;
+    maxItemBytes: number;
+  };
   /** Eligibility is not delivery: this query does not inspect remote sync. */
   syncStatus: "not-measured";
 };
@@ -1949,7 +2268,10 @@ export type PluginStorage = {
    * errors/recovery. At most 64 active observers per activation; reads and
    * callbacks settle before the next one-second poll. Not a replayable write
    * stream. Dispose or plugin retirement stops delivery; sequence is not CAS. */
-  observeDocuments<T = unknown>(query: PluginDocumentObservationQuery, handler: PluginObservationHandler<PluginDocumentObservation<T>>): PluginDisposable;
+  observeDocuments<T = unknown>(
+    query: PluginDocumentObservationQuery,
+    handler: PluginObservationHandler<PluginDocumentObservation<T>>,
+  ): PluginDisposable;
   /**
    * Fires when this plugin's namespace is written from OUTSIDE the plugin —
    * its settings page, the reading agent, another surface editing the same
@@ -2007,11 +2329,7 @@ export type PluginDocumentChange = {
   id: string;
   /** null requires absence; a revision requires that exact existing write. */
   expectedRevision: string | null;
-} & (
-  | { kind: "put"; data: unknown; bookId?: string; anchor?: string }
-  | { kind: "delete" }
-  | { kind: "check" }
-);
+} & ({ kind: "put"; data: unknown; bookId?: string; anchor?: string } | { kind: "delete" } | { kind: "check" });
 
 export type PluginDocumentCommit =
   | { status: "conflict"; index: number }
@@ -2022,7 +2340,10 @@ export type PluginDocumentPage<T = unknown> =
   | { status: "ready"; items: PluginDocument<T>[]; nextCursor: string | null };
 
 export type PluginDocumentPageFilter = {
-  bookId?: string; limit?: number; oldestFirst?: boolean; cursor?: string;
+  bookId?: string;
+  limit?: number;
+  oldestFirst?: boolean;
+  cursor?: string;
   /** Storage 2.3: literal substring of any JSON key/scalar value, including
    * nested arrays/objects. Unicode lowercase matching, no tokenization,
    * regex, accent folding or metadata search. Trimmed empty means no filter.
@@ -2047,20 +2368,14 @@ export type PluginDocumentCollection = {
   get<T = unknown>(id: string): Promise<PluginDocument<T> | null>;
   delete(id: string): Promise<void>;
   /** Newest-first by default. */
-  list<T = unknown>(filter?: {
-    bookId?: string;
-    limit?: number;
-    oldestFirst?: boolean;
-  }): Promise<PluginDocument<T>[]>;
+  list<T = unknown>(filter?: { bookId?: string; limit?: number; oldestFirst?: boolean }): Promise<PluginDocument<T>[]>;
   /** Storage 2.1: 1..200 rows (default 50), 4 MiB JSON per page.
    * Cursors bind namespace/filter/order and expire on any collection write.
    * On stale-cursor restart rather than combining different snapshots. */
   page<T = unknown>(filter?: PluginDocumentPageFilter): Promise<PluginDocumentPage<T>>;
 };
 
-export type PluginAgentScope =
-  | { kind: "global"; threadId: string }
-  | { kind: "book"; bookId: string };
+export type PluginAgentScope = { kind: "global"; threadId: string } | { kind: "book"; bookId: string };
 
 export type PluginAgentContextBlock = {
   title?: string;
@@ -2076,7 +2391,9 @@ export type PluginAgentContextProvider = {
   readingIntent?: {
     scopes: Array<"user" | "book">;
     prepare(scope: import("@read-aware/core").ReadingIntentScope): Promise<void>;
-    read(scope: import("@read-aware/core").ReadingIntentScope): Promise<import("@read-aware/core").ReadingIntentSnapshot>;
+    read(
+      scope: import("@read-aware/core").ReadingIntentScope,
+    ): Promise<import("@read-aware/core").ReadingIntentSnapshot>;
   };
   provide(input: {
     scope: PluginAgentScope;
@@ -2189,11 +2506,7 @@ export type PluginSyncTransportSession = {
   getEventBatch(deviceId: string, index: number): Promise<SealedEventWire[]>;
   /** Append one immutable batch; must fail rather than overwrite an existing
    *  index. */
-  putEventBatch(
-    deviceId: string,
-    index: number,
-    events: SealedEventWire[],
-  ): Promise<void>;
+  putEventBatch(deviceId: string, index: number, events: SealedEventWire[]): Promise<void>;
   putBlob(key: string, bytes: Uint8Array): Promise<void>;
   getBlob(key: string): Promise<Uint8Array | null>;
   putBlobPart(key: string, index: number, parts: number, bytes: Uint8Array): Promise<void>;
@@ -2243,19 +2556,14 @@ export type PluginContributions = {
   settingsOptions: {
     register(
       fieldId: string,
-      provider: (
-        values: PluginFormValues,
-      ) => PluginSelectOption[] | Promise<PluginSelectOption[]>,
+      provider: (values: PluginFormValues) => PluginSelectOption[] | Promise<PluginSelectOption[]>,
     ): PluginDisposable;
   };
   voiceProviders: {
     register(provider: PluginVoiceProvider): PluginDisposable;
   };
   contentProviders: {
-    register(provider: {
-      id: string;
-      load(key: string): Promise<PluginBookContent>;
-    }): PluginDisposable;
+    register(provider: { id: string; load(key: string): Promise<PluginBookContent> }): PluginDisposable;
   };
   readerModes?: {
     register(mode: PluginReaderMode): PluginDisposable;
@@ -2351,16 +2659,26 @@ export type PluginHostServices = {
     window?: {
       snapshot(): Promise<import("@read-aware/core").HostWindowSnapshot>;
       /** UI 1.17: reaction delivery remains valid until the callback settles. */
-      observe(handler: PluginObservationHandler<import("@read-aware/core").HostWindowObservation>, options?: { ruleId?: string }): PluginDisposable;
-      control(request: import("@read-aware/core").HostWindowRequest): Promise<import("@read-aware/core").HostWindowReceipt>;
+      observe(
+        handler: PluginObservationHandler<import("@read-aware/core").HostWindowObservation>,
+        options?: { ruleId?: string },
+      ): PluginDisposable;
+      control(
+        request: import("@read-aware/core").HostWindowRequest,
+      ): Promise<import("@read-aware/core").HostWindowReceipt>;
     };
     /** UI 1.4: native navigation/shelf commands. UI 1.5: typed open-book/open-collection args. Never arbitrary menu/plugin IDs. */
     commands?: {
       list(): Promise<import("@read-aware/core").HostCommandSnapshot>;
       /** UI 1.16: serial/coalesced snapshots with a reaction delivery and optional stable ruleId. */
-      observe(handler: PluginObservationHandler<import("@read-aware/core").HostCommandObservation>, options?: { ruleId?: string }): PluginDisposable;
+      observe(
+        handler: PluginObservationHandler<import("@read-aware/core").HostCommandObservation>,
+        options?: { ruleId?: string },
+      ): PluginDisposable;
       /** Library write plus each command's setting grant; opening/leaving a reader needs reading:write. */
-      execute?(request: import("@read-aware/core").HostCommandRequest): Promise<import("@read-aware/core").HostCommandReceipt>;
+      execute?(
+        request: import("@read-aware/core").HostCommandRequest,
+      ): Promise<import("@read-aware/core").HostCommandReceipt>;
     };
     /** UI 1.15: library read grants expose a workspace projection. Book-restricted
      * projections filter selection before pagination/counting, explicitly mark
@@ -2368,11 +2686,20 @@ export type PluginHostServices = {
      * token. Collection-wide navigation requires all-books access; supplied
      * selections/open-book commands must name only the authorized book. */
     workspace?: {
-      snapshot(query?: import("@read-aware/core").WorkspaceQuery): Promise<import("@read-aware/core").WorkspaceSnapshot>;
+      snapshot(
+        query?: import("@read-aware/core").WorkspaceQuery,
+      ): Promise<import("@read-aware/core").WorkspaceSnapshot>;
       /** UI 1.16: use the separate reaction delivery even for null/retired snapshots. */
-      observe(query: import("@read-aware/core").WorkspaceQuery, handler: PluginObservationHandler<import("@read-aware/core").WorkspaceSnapshot | null>, options?: { ruleId?: string }): PluginDisposable;
+      observe(
+        query: import("@read-aware/core").WorkspaceQuery,
+        handler: PluginObservationHandler<import("@read-aware/core").WorkspaceSnapshot | null>,
+        options?: { ruleId?: string },
+      ): PluginDisposable;
       /** Library write grant; leaving an active reader additionally requires reading:write. */
-      navigate?(target: import("@read-aware/core").WorkspaceTarget, expectedRevision?: number): Promise<import("@read-aware/core").WorkspaceReceipt>;
+      navigate?(
+        target: import("@read-aware/core").WorkspaceTarget,
+        expectedRevision?: number,
+      ): Promise<import("@read-aware/core").WorkspaceReceipt>;
     };
     showToast(message: PluginToast): void;
     exportFile(file: PluginExportFile): Promise<boolean>;
@@ -2387,57 +2714,118 @@ export type PluginHostServices = {
       image?: {
         snapshot(): Promise<import("@read-aware/core").ReaderImageSnapshot | null>;
         /** Plugins 1.6 supplies a separate reaction delivery, including closed/null snapshots. */
-        observe(handler: PluginObservationHandler<import("@read-aware/core").ReaderImageSnapshot | null>): PluginDisposable;
+        observe(
+          handler: PluginObservationHandler<import("@read-aware/core").ReaderImageSnapshot | null>,
+        ): PluginDisposable;
         /** reading:write; exact current viewer ID required. Pan deltas are fractions of its viewport. */
-        control?(request: import("@read-aware/core").ReaderImageRequest): Promise<import("@read-aware/core").ReaderImageReceipt>;
+        control?(
+          request: import("@read-aware/core").ReaderImageRequest,
+        ): Promise<import("@read-aware/core").ReaderImageReceipt>;
         /** UI 1.13: library read + reading write; opens an embedded image in the current book. */
-        open?(query: import("@read-aware/core").BookImageQuery, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderImageOpenReceipt>;
+        open?(
+          query: import("@read-aware/core").BookImageQuery,
+          guard?: import("@read-aware/core").ReadingSessionGuard,
+        ): Promise<import("@read-aware/core").ReaderImageOpenReceipt>;
       };
       snapshot(): Promise<import("@read-aware/core").ReaderPanelsSnapshot | null>;
       /** Plugins 1.6 supplies a separate reaction delivery; callbacks are serial and coalesced. */
-      observe(handler: PluginObservationHandler<import("@read-aware/core").ReaderPanelsSnapshot | null>): PluginDisposable;
+      observe(
+        handler: PluginObservationHandler<import("@read-aware/core").ReaderPanelsSnapshot | null>,
+      ): PluginDisposable;
       /** Requires reading:write. Opening reveals controls; completion waits for persistence and DOM commit. */
-      setPanel?(panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderPanelReceipt>;
+      setPanel?(
+        panel: import("@read-aware/core").ReaderPanel,
+        open: boolean,
+        guard?: import("@read-aware/core").ReadingSessionGuard,
+      ): Promise<import("@read-aware/core").ReaderPanelReceipt>;
       /** Persist a shared TOC/chat width (integer 240..640 CSS px); does not open it or focus. */
-      setWidth?(panel: import("@read-aware/core").ResizableReaderPanel, width: number, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderPanelReceipt>;
+      setWidth?(
+        panel: import("@read-aware/core").ResizableReaderPanel,
+        width: number,
+        guard?: import("@read-aware/core").ReadingSessionGuard,
+      ): Promise<import("@read-aware/core").ReaderPanelReceipt>;
       /** UI 1.14, reading:write. Focus an already visible semantic target, without opening or dismissing UI.
        * not-focused is not success; close your own dialog before returning focus. */
-      focus?(target: import("@read-aware/core").ReaderFocusTarget, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderFocusReceipt>;
+      focus?(
+        target: import("@read-aware/core").ReaderFocusTarget,
+        guard?: import("@read-aware/core").ReadingSessionGuard,
+      ): Promise<import("@read-aware/core").ReaderFocusReceipt>;
       /** UI 1.8: also needs library:read. Open book only; resolved preview waits for DOM commit. */
-      previewReference?(query: import("@read-aware/core").BookReferenceQuery, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderReferencePreviewReceipt>;
+      previewReference?(
+        query: import("@read-aware/core").BookReferenceQuery,
+        guard?: import("@read-aware/core").ReadingSessionGuard,
+      ): Promise<import("@read-aware/core").ReaderReferencePreviewReceipt>;
       /** Only this activation's current preview ID; never closes a native or other owner's note. */
       closeReferencePreview?(id: string): Promise<import("@read-aware/core").ReaderReferenceCloseReceipt>;
     };
   };
   schedules: {
-    bind(scheduleId: string, run: (context: import("@read-aware/core").PluginScheduleRun, delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable;
+    bind(
+      scheduleId: string,
+      run: (
+        context: import("@read-aware/core").PluginScheduleRun,
+        delivery?: PluginReactionEvent,
+      ) => void | Promise<void>,
+    ): PluginDisposable;
     /** Schedules 2: enqueue one declared deferred task. Persists before acknowledgement.
      * 1 second..7 days; idle means 5 seconds without host input. Never runs while closed.
      * The most recent request ID is retained for retry; changed input conflicts, another queued ID is busy.
      * A dispatched request is never automatically replayed after a crash. Inspect interrupted and decide explicitly. */
-    defer(id: string, input: import("@read-aware/core").PluginDeferredRequest, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginDeferredReceipt>;
+    defer(
+      id: string,
+      input: import("@read-aware/core").PluginDeferredRequest,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").PluginDeferredReceipt>;
     /** Cancel exactly the queued ID, not an in-flight callback or a replacement request. */
-    cancelDeferred(id: string, requestId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginDeferredReceipt>;
+    cancelDeferred(
+      id: string,
+      requestId: string,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").PluginDeferredReceipt>;
     /** Bound schedules owned by this plugin only, with the latest persisted attempt/outcome. */
-    list(query?: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">): Promise<import("@read-aware/core").PluginSchedulePage>;
-    observe(query: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">, handler: PluginObservationHandler<import("@read-aware/core").PluginSchedulePage>, options?: { ruleId?: string }): PluginDisposable;
+    list(
+      query?: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">,
+    ): Promise<import("@read-aware/core").PluginSchedulePage>;
+    observe(
+      query: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">,
+      handler: PluginObservationHandler<import("@read-aware/core").PluginSchedulePage>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
     /** Pause/resume persist; run bypasses pause/cadence once. Neither pause nor cancellation undoes dispatched callback effects. */
     control(id: string, action: "pause" | "resume" | "run"): Promise<import("@read-aware/core").PluginScheduleReceipt>;
   };
   plugins: {
     /** Plugins 1.8: authorized service contracts; discovery does not execute providers. */
-    listServices(query?: import("@read-aware/core").PluginServiceQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginServicePage>;
+    listServices(
+      query?: import("@read-aware/core").PluginServiceQuery,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").PluginServicePage>;
     /** Executes one declared export in a fresh restricted Worker. No live-root closures,
      * callbacks, binary handles, automatic retries, or resources surviving the call. */
-    callService(request: import("@read-aware/core").PluginServiceCall, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginServiceReceipt>;
+    callService(
+      request: import("@read-aware/core").PluginServiceCall,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").PluginServiceReceipt>;
     /** Registered identities across extension points, never provider callbacks,
      * data, settings or a grant to invoke another plugin. Offset pages may change. */
-    contributions(query?: import("@read-aware/core").PluginContributionQuery): Promise<import("@read-aware/core").PluginContributionPage>;
-    observeContributions(query: import("@read-aware/core").PluginContributionQuery, handler: PluginObservationHandler<import("@read-aware/core").PluginContributionPage>, options?: { ruleId?: string }): PluginDisposable;
+    contributions(
+      query?: import("@read-aware/core").PluginContributionQuery,
+    ): Promise<import("@read-aware/core").PluginContributionPage>;
+    observeContributions(
+      query: import("@read-aware/core").PluginContributionQuery,
+      handler: PluginObservationHandler<import("@read-aware/core").PluginContributionPage>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
     /** Public installed metadata only, no settings, paths, secrets or raw errors. */
-    list(query?: import("@read-aware/core").PluginDirectoryQuery): Promise<import("@read-aware/core").PluginDirectoryPage>;
+    list(
+      query?: import("@read-aware/core").PluginDirectoryQuery,
+    ): Promise<import("@read-aware/core").PluginDirectoryPage>;
     /** Plugins 1.10: serial reaction deliveries with stable rule IDs; reload offset pages after changes. */
-    observe(query: import("@read-aware/core").PluginDirectoryQuery, handler: PluginObservationHandler<import("@read-aware/core").PluginDirectoryPage>, options?: { ruleId?: string }): PluginDisposable;
+    observe(
+      query: import("@read-aware/core").PluginDirectoryQuery,
+      handler: PluginObservationHandler<import("@read-aware/core").PluginDirectoryPage>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
   };
   maintenance: {
     /** Maintenance 1.3: reveal native AI test controls; only the user's click starts inference. */
@@ -2446,14 +2834,22 @@ export type PluginHostServices = {
      * Both directions use the complete encrypted archive (host-only password);
      * import adds host review and confirmation, then reload. Retired v1 JSON
      * library backups are rejected. No passwords, bytes or paths are returned. */
-    requestBackup(action: import("@read-aware/core").BackupAction, options?: PluginCallOptions): Promise<import("@read-aware/core").BackupReceipt>;
+    requestBackup(
+      action: import("@read-aware/core").BackupAction,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").BackupReceipt>;
     snapshot(): Promise<import("@read-aware/core").HostMaintenanceSnapshot>;
-    observe(handler: PluginObservationHandler<import("@read-aware/core").HostMaintenanceSnapshot>, options?: { ruleId?: string }): PluginDisposable;
+    observe(
+      handler: PluginObservationHandler<import("@read-aware/core").HostMaintenanceSnapshot>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
     /** Reveals the host's controls only; export/send/install still require native user actions. */
     /** Maintenance 1.4 adds data-location: shows the directory in host UI, never returns its path or opens the file manager.
      * Also reveals updates/diagnostics/plugins/backup-import/backup-export/delete-data/ai-connection.
      * Does not click controls, open file dialogs, approve installation or bypass typed DELETE. */
-    openSettings(surface: import("@read-aware/core").HostMaintenanceSurface): ReturnType<import("@read-aware/core").HostMaintenancePort["openSettings"]>;
+    openSettings(
+      surface: import("@read-aware/core").HostMaintenanceSurface,
+    ): ReturnType<import("@read-aware/core").HostMaintenancePort["openSettings"]>;
     /** Requires service:network. Uses the host release feed; no caller-supplied URL or silent installation. */
     checkForUpdates?(): Promise<import("@read-aware/core").HostMaintenanceSnapshot>;
   };
@@ -2461,27 +2857,50 @@ export type PluginHostServices = {
   diagnostics?: {
     /** Diagnostics 1.2: opens host confirmation; a committed repair requires reload. */
     requestProjectionRepair(options?: PluginCallOptions): Promise<import("@read-aware/core").ProjectionRepairReceipt>;
-    requestReport(action: import("@read-aware/core").DiagnosticsReportAction, options?: PluginCallOptions): Promise<import("@read-aware/core").DiagnosticsReportReceipt>;
+    requestReport(
+      action: import("@read-aware/core").DiagnosticsReportAction,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").DiagnosticsReportReceipt>;
     verifyProjections(options?: PluginCallOptions): Promise<import("@read-aware/core").ProjectionVerification>;
   };
   resources: {
     /** Resources 1.4: reader-selected, read-only directory grants; four per activation, one hour.
      * No ambient paths. Listings are live; openDirectoryFile seals the current file bytes. */
     pickDirectory(): Promise<{ cancelled: boolean; directory: import("@read-aware/core").ResourceDirectoryRef | null }>;
-    listDirectory(id: string, query?: import("@read-aware/core").ResourceDirectoryQuery): Promise<import("@read-aware/core").ResourceDirectoryPage>;
+    listDirectory(
+      id: string,
+      query?: import("@read-aware/core").ResourceDirectoryQuery,
+    ): Promise<import("@read-aware/core").ResourceDirectoryPage>;
     openDirectoryFile(id: string, relativePath: string): Promise<import("@read-aware/core").ResourceRef>;
     releaseDirectory(id: string): Promise<void>;
     /** Resources 1.3: own local binary assets, retained across activations.
      * Only full backups include them; uninstall deletes them. No sync. */
     assets: {
       policy(options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAssetPolicy>;
-      list(query?: import("@read-aware/core").PluginAssetQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAssetPage>;
+      list(
+        query?: import("@read-aware/core").PluginAssetQuery,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").PluginAssetPage>;
       get(key: string, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAsset | null>;
-      store(resourceId: string, input: import("@read-aware/core").PluginAssetWrite, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAssetReceipt>;
-      open(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<import("@read-aware/core").ResourceRef>;
-      delete(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<{ deleted: true; cleanupPending: boolean }>;
+      store(
+        resourceId: string,
+        input: import("@read-aware/core").PluginAssetWrite,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").PluginAssetReceipt>;
+      open(
+        key: string,
+        expectedRevision: string,
+        options?: PluginCallOptions,
+      ): Promise<import("@read-aware/core").ResourceRef>;
+      delete(
+        key: string,
+        expectedRevision: string,
+        options?: PluginCallOptions,
+      ): Promise<{ deleted: true; cleanupPending: boolean }>;
     };
-    pick(options?: import("@read-aware/core").ResourcePickOptions): Promise<{ cancelled: boolean; resources: import("@read-aware/core").ResourceRef[] }>;
+    pick(
+      options?: import("@read-aware/core").ResourcePickOptions,
+    ): Promise<{ cancelled: boolean; resources: import("@read-aware/core").ResourceRef[] }>;
     /** Requires library:read. Original local file only; no implicit remote download. */
     openBook?(bookId: string): Promise<import("@read-aware/core").ResourceRef | null>;
     /** Resources 1.1; requires library:read. No extraction/download when the cover is unavailable. */
@@ -2499,13 +2918,22 @@ export type PluginHostServices = {
     release(id: string): Promise<void>;
   };
   /** Requires service:sync; no keys, account identifiers, billing tickets or raw event access. */
-  sync?: Omit<import("@read-aware/core").HostSyncPort, "backlog" | "account" | "requestSync" | "openSettings" | "requestFlow"> & {
+  sync?: Omit<
+    import("@read-aware/core").HostSyncPort,
+    "backlog" | "account" | "requestSync" | "openSettings" | "requestFlow"
+  > & {
     backlog(): ReturnType<import("@read-aware/core").HostSyncPort["backlog"]>;
     account(): ReturnType<import("@read-aware/core").HostSyncPort["account"]>;
     requestSync(): ReturnType<import("@read-aware/core").HostSyncPort["requestSync"]>;
     openSettings(): ReturnType<import("@read-aware/core").HostSyncPort["openSettings"]>;
-    requestFlow(request: import("@read-aware/core").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import("@read-aware/core").HostSyncPort["requestFlow"]>;
-    observe(handler: PluginObservationHandler<import("@read-aware/core").HostSyncSnapshot>, options?: { ruleId?: string }): PluginDisposable;
+    requestFlow(
+      request: import("@read-aware/core").HostSyncFlowRequest,
+      options?: PluginCallOptions,
+    ): ReturnType<import("@read-aware/core").HostSyncPort["requestFlow"]>;
+    observe(
+      handler: PluginObservationHandler<import("@read-aware/core").HostSyncSnapshot>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
   };
   /** Persistent scoped reload hints, available under the existing read grants. */
   changes: {
@@ -2514,21 +2942,39 @@ export type PluginHostServices = {
      * conservative reload hints, not events or values; settings hints cover the
      * authorized requested paths in a shared storage namespace. */
     open(query: import("@read-aware/core").ChangesQuery, options?: PluginCallOptions): Promise<{ cursor: string }>;
-    read(query: import("@read-aware/core").ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<import("@read-aware/core").ChangesPage>;
+    read(
+      query: import("@read-aware/core").ChangesQuery,
+      cursor: string,
+      limit?: number,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").ChangesPage>;
   };
   jobs: {
     /** jobs 1.1: event-bound starts preserve their source through restart. Every
      * causal event subscription must have a stable ruleId. Unnamed reactions
      * and isolated service invocations cannot create saved jobs. */
-    start(plan: import("@read-aware/core").DurableJobPlan, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
+    start(
+      plan: import("@read-aware/core").DurableJobPlan,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").DurableJobSnapshot>;
     get(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
-    list(query?: { offset?: number; limit?: number }, options?: PluginCallOptions): Promise<{ jobs: import("@read-aware/core").DurableJobSnapshot[]; nextOffset: number | null }>;
-    control(id: string, action: import("@read-aware/core").DurableJobControl, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
+    list(
+      query?: { offset?: number; limit?: number },
+      options?: PluginCallOptions,
+    ): Promise<{ jobs: import("@read-aware/core").DurableJobSnapshot[]; nextOffset: number | null }>;
+    control(
+      id: string,
+      action: import("@read-aware/core").DurableJobControl,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").DurableJobSnapshot>;
   };
   /** Local semantic transactions. Preview does not execute; commit consumes the
    * frozen preview once. Query the receipt after an unknown response before retrying. */
   transactions: {
-    preview(operations: import("@read-aware/core").AtomicOperation[], options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicPreview>;
+    preview(
+      operations: import("@read-aware/core").AtomicOperation[],
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").AtomicPreview>;
     commit(previewId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt>;
     previewUndo(receiptId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicPreview>;
     receipt(receiptId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt | null>;
@@ -2537,23 +2983,45 @@ export type PluginHostServices = {
     /** Session 2.11: inspect host command permissions/workspace guards and plugin service contract/authority/capacity (Agent approval remains required), export metadata/save entry and clipboard/browser entry availability (no OS access probe), window support/capacity/target state, sync connection/credentials/provider, inference, book-targeted playback/mode, text preparation and graph prerequisites without executing
      * or probing. Missing permission returns only the permission condition.
      * Unknown remote health is not a local refusal or a success guarantee. */
-    operationAvailability(query: import("@read-aware/core").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").OperationAvailability>;
+    operationAvailability(
+      query: import("@read-aware/core").OperationAvailabilityQuery,
+      options?: PluginCallOptions,
+    ): Promise<import("@read-aware/core").OperationAvailability>;
     /** Fresh non-sensitive metadata; contains no reading or account state. */
     environment(): Promise<import("@read-aware/core").HostEnvironmentSnapshot>;
     /** Delivers an initial snapshot, then changed revisions. Disposed on unload. */
     /** Session 2.7: locale effects retain their requester; other system facts keep independent sources. */
-    observeEnvironment(handler: (snapshot: import("@read-aware/core").HostEnvironmentSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string }): PluginDisposable;
+    observeEnvironment(
+      handler: (
+        snapshot: import("@read-aware/core").HostEnvironmentSnapshot,
+        delivery?: PluginReactionEvent,
+      ) => void | Promise<void>,
+      options?: { ruleId?: string },
+    ): PluginDisposable;
   };
   network?: {
     /** Network 2.0: this activation's immutable authorization and transport limits.
      * All-origins authorization is ["*"], not a guarantee of endpoint reachability. */
-    policy(): Promise<PluginNetworkAccess & {
-      maxRedirects: number; maxBodyBytes: number; timeoutMs: number;
-      maxStreamBytes: number; maxChunkBytes: number;
-      maxConcurrentRequests: number; maxHostConcurrentRequests: number;
-      cumulative: { windowMs: number; maxOwnerRequests: number; maxHostRequests: number; maxOwnerBytes: number; maxHostBytes: number; maxOwners: number };
-      retry: { maxRetries: number; baseDelayMs: number; maxDelayMs: number; statuses: readonly number[] };
-    }>;
+    policy(): Promise<
+      PluginNetworkAccess & {
+        maxRedirects: number;
+        maxBodyBytes: number;
+        timeoutMs: number;
+        maxStreamBytes: number;
+        maxChunkBytes: number;
+        maxConcurrentRequests: number;
+        maxHostConcurrentRequests: number;
+        cumulative: {
+          windowMs: number;
+          maxOwnerRequests: number;
+          maxHostRequests: number;
+          maxOwnerBytes: number;
+          maxHostBytes: number;
+          maxOwners: number;
+        };
+        retry: { maxRetries: number; baseDelayMs: number; maxDelayMs: number; statuses: readonly number[] };
+      }
+    >;
     /** Native HTTP; Request/init semantics and cancellation survive the Worker bridge.
      * Bodies are buffered up to 64 MiB per direction. Calls have a 120s deadline;
      * an abort does not undo a remote side effect already committed by the server.
@@ -2581,7 +3049,11 @@ export type PluginHostServices = {
      * init.signal cancels OPENING only; after receipt use closeStream to cancel.
      * Close in finally if not reading to EOF. 120s absolute lifetime, including
      * headers/redirects/reads; unload cancels and drains native resources. */
-    openStream(input: string | URL | Request, init?: RequestInit, options?: { retry?: "none" | "safe" }): Promise<PluginNetworkStream>;
+    openStream(
+      input: string | URL | Request,
+      init?: RequestInit,
+      options?: { retry?: "none" | "safe" },
+    ): Promise<PluginNetworkStream>;
     /** Sequential, non-replayable reads. offset must equal bytes already delivered.
      * One outstanding read per stream; maxBytes defaults to 64 KiB, max 1 MiB.
      * A lost read receipt is not safely retryable: close and restart explicitly. */
@@ -2592,13 +3064,29 @@ export type PluginHostServices = {
   };
   llm?: {
     /** Plugin inference limits, not billing quotas. maxOutputTokensLimit since 1.3. */
-    policy(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number; maxTotalOutputTokensLimit: number; maxOutputCharsLimit: number; maxInputChars: number }>;
+    policy(): Promise<{
+      defaultTimeoutMs: number;
+      maxTimeoutMs: number;
+      perPluginLimit: number;
+      appLimit: number;
+      maxOutputTokensLimit: number;
+      maxImageCount: number;
+      maxImageBytes: number;
+      maxImageTotalBytes: number;
+      maxTotalOutputTokensLimit: number;
+      maxOutputCharsLimit: number;
+      maxInputChars: number;
+    }>;
     ask(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void }): Promise<string>;
     ask(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never }): Promise<unknown>;
     /** llm 1.3: same execution as ask, with per-attempt metadata on success.
      * Includes structured retries; failure/cancellation rejects, not a billing receipt. */
-    askDetailed(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void }): Promise<import("@read-aware/core").InferenceResult<string>>;
-    askDetailed(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never }): Promise<import("@read-aware/core").InferenceResult>;
+    askDetailed(
+      input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void },
+    ): Promise<import("@read-aware/core").InferenceResult<string>>;
+    askDetailed(
+      input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never },
+    ): Promise<import("@read-aware/core").InferenceResult>;
     /** llm 1.6: last 64 named requests in this plugin's local private storage.
      * Initial metadata commits before inference dispatch; no prompt/output is retained.
      * Includes backup/rollback and uninstall cleanup, not roaming or billing history.
@@ -2638,7 +3126,10 @@ export type PluginContext = {
    * subscription/resource disposables are not contribution registrations.
    * Every operation rechecks the delivery lease. User actions use the original
    * handle, and automatic callbacks await the bound operation before returning. */
-  withEvent<T extends PluginDisposable>(event: PluginReactionEvent | undefined, registration: T): PluginEventRegistration<T>;
+  withEvent<T extends PluginDisposable>(
+    event: PluginReactionEvent | undefined,
+    registration: T,
+  ): PluginEventRegistration<T>;
   readonly manifest: Readonly<PluginManifest>;
   readonly appVersion: string;
   readonly locale: string;

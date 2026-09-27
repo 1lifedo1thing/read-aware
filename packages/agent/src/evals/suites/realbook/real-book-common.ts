@@ -170,9 +170,7 @@ function selectionCursor(book: RealBookFixture, chapterIndex: number, selection:
     throw new Error(`${book.spec.slug} fixture lost the selection in chapter ${chapterIndex}`);
   }
   const end = at + selection.length;
-  const charsBefore = epub.chapters
-    .slice(0, chapterIndex)
-    .reduce((sum, entry) => sum + entry.text.length, 0);
+  const charsBefore = epub.chapters.slice(0, chapterIndex).reduce((sum, entry) => sum + entry.text.length, 0);
   const totalChars = epub.chapters.reduce((sum, entry) => sum + entry.text.length, 0);
   return {
     chapterIndex,
@@ -184,11 +182,7 @@ function selectionCursor(book: RealBookFixture, chapterIndex: number, selection:
 }
 
 /** 书型分派的红线组合：叙事书查围栏纪律，说明书查围栏必须不存在。 */
-function typeDiscipline(
-  book: RealBookFixture,
-  observation: AgentEvalObservation,
-  ceiling: number,
-): EvalAssessment {
+function typeDiscipline(book: RealBookFixture, observation: AgentEvalObservation, ceiling: number): EvalAssessment {
   return book.spec.narrativity === "narrative"
     ? fenceDisciplineAssessment(observation, ceiling)
     : noFenceAssessment(observation);
@@ -204,9 +198,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
   const book = realBook(config.slug);
   const baseSeed = () => ({
     ...book.seed(config.progressPercent),
-    ...(book.hasDigests()
-      ? { chapterDigests: book.digestsSeed(config.readerChapter) }
-      : {}),
+    ...(book.hasDigests() ? { chapterDigests: book.digestsSeed(config.readerChapter) } : {}),
   });
   const scope = { kind: "book", bookId: book.bookId } as const;
   const scenarios: AgentEvalScenario[] = [];
@@ -230,9 +222,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
         tools: { requiredAny: ["search_book_text", "get_toc", "read_chapter"], noErrors: true },
         interactions: { forbiddenKinds: ["question", "permission"] },
       },
-      rubric: [
-        "Answers with concrete chapter/section references from this book, without retelling unread plot events",
-      ],
+      rubric: ["Answers with concrete chapter/section references from this book, without retelling unread plot events"],
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
@@ -242,12 +232,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
             },
             interactions: { forbiddenKinds: ["question", "permission"] },
           }),
-          coverageAssessment(
-            observation,
-            "answer.topic-coverage",
-            config.topical.anyOf,
-            1,
-          ),
+          coverageAssessment(observation, "answer.topic-coverage", config.topical.anyOf, 1),
           typeDiscipline(book, observation, config.readerChapter),
           cjkAnswerAssessment(observation),
         ),
@@ -274,14 +259,9 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
           },
         ],
         criteria: { selectionChapter: config.selectionChapter, selection },
-        rubric: [
-          "Explains THIS passage using its actual surrounding context, not a generic summary of the book",
-        ],
+        rubric: ["Explains THIS passage using its actual surrounding context, not a generic summary of the book"],
         evaluate: (observation) =>
-          combineAssessments(
-            typeDiscipline(book, observation, chapterCeiling),
-            cjkAnswerAssessment(observation),
-          ),
+          combineAssessments(typeDiscipline(book, observation, chapterCeiling), cjkAnswerAssessment(observation)),
       }),
     );
   }
@@ -303,11 +283,15 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
           const start = chapterText.indexOf(sentence);
           if (start < 0) throw new Error(`${config.slug} annotation selection is not in its source chapter`);
           const { contentVersion } = await deps.bookText.getNavigationToc(book.bookId);
-          const range = { bookId: book.bookId, contentVersion,
+          const range = {
+            bookId: book.bookId,
+            contentVersion,
             cfi: `epubcfi(fixture:${config.annotationChapter}:${start}:${start + sentence.length})`,
-            textQuote: { exact: sentence } };
+            textQuote: { exact: sentence },
+          };
           const page = await deps.bookText.readRange({ range, limit: 12000, contextChars: 0 });
-          if (page.text !== sentence || page.nextOffset !== null) throw new Error("Annotation selection source mismatch");
+          if (page.text !== sentence || page.nextOffset !== null)
+            throw new Error("Annotation selection source mismatch");
           await deps.reader.selectRange(page.range);
         },
         turns: [
@@ -352,11 +336,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
         },
         {
           text: config.crossing.followup,
-          readingCursor: cursorAt(
-            book,
-            config.crossing.firstChapter + 1,
-            config.progressPercent,
-          ),
+          readingCursor: cursorAt(book, config.crossing.firstChapter + 1, config.progressPercent),
         },
       ],
       criteria: {
@@ -368,12 +348,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
       ],
       evaluate: (observation) =>
         combineAssessments(
-          coverageAssessment(
-            observation,
-            "answer.crossing-recall",
-            config.crossing.recallAnyOf,
-            1,
-          ),
+          coverageAssessment(observation, "answer.crossing-recall", config.crossing.recallAnyOf, 1),
           typeDiscipline(book, observation, config.crossing.firstChapter + 1),
           cjkAnswerAssessment(observation),
         ),
@@ -407,12 +382,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
                 noErrors: true,
               },
             }),
-            coverageAssessment(
-              observation,
-              "answer.explicit-ending",
-              noCursor.answerAnyOf,
-              1,
-            ),
+            coverageAssessment(observation, "answer.explicit-ending", noCursor.answerAnyOf, 1),
             cjkAnswerAssessment(observation),
           ),
       }),

@@ -9,9 +9,16 @@ export function textResult(value: unknown) {
 /** Resource expiry is a timestamp for readers, not an epoch-millisecond counter. */
 export function resourceTextResult(value: unknown) {
   return {
-    content: [{ type: "text" as const, text: JSON.stringify(value, (key, item: unknown) =>
-      key === "expiresAt" && typeof item === "number" && Number.isFinite(item)
-        ? new Date(item).toISOString() : item) }],
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify(value, (key, item: unknown) =>
+          key === "expiresAt" && typeof item === "number" && Number.isFinite(item)
+            ? new Date(item).toISOString()
+            : item,
+        ),
+      },
+    ],
     details: undefined,
   };
 }

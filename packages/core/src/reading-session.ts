@@ -28,7 +28,15 @@ export type ReadingTarget = {
 
 /** Chapter steps follow flattened TOC targets (including subsections); section
  * steps follow linear source sections. Neither interprets printed chapter numbers. */
-export type ReadingStep = "next" | "previous" | "next-section" | "previous-section" | "next-chapter" | "previous-chapter" | "start" | "end";
+export type ReadingStep =
+  | "next"
+  | "previous"
+  | "next-section"
+  | "previous-section"
+  | "next-chapter"
+  | "previous-chapter"
+  | "start"
+  | "end";
 
 /** Optional execution preconditions, not a replacement for actor authorization. */
 export type ReadingSessionGuard = {
@@ -54,9 +62,26 @@ export type ReadingSessionChange = {
   /** Actor of this publication. Unattributed renderer/lifecycle feedback is system,
    * not inferred human input or the actor of a concurrent pending command. */
   origin: EventOrigin;
-  reason: "initial" | "open" | "ready" | "detach" | "error" | "close" | "relocate"
-    | "navigate" | "back" | "forward" | "step" | "reload" | "mode-step" | "mode-return"
-    | "selection" | "controls" | "mode" | "playback" | "reader-demand";
+  reason:
+    | "initial"
+    | "open"
+    | "ready"
+    | "detach"
+    | "error"
+    | "close"
+    | "relocate"
+    | "navigate"
+    | "back"
+    | "forward"
+    | "step"
+    | "reload"
+    | "mode-step"
+    | "mode-return"
+    | "selection"
+    | "controls"
+    | "mode"
+    | "playback"
+    | "reader-demand";
 };
 
 export type ReadingSessionSnapshot = {
@@ -128,7 +153,12 @@ export type ReadingModePosition = {
 };
 
 /** A registered text-unit mode. No passage text or executable provider is exposed. */
-export type ReadingModeDescriptor = { key: string; label: string; units: { id: string; label: string }[]; defaultUnitId: string };
+export type ReadingModeDescriptor = {
+  key: string;
+  label: string;
+  units: { id: string; label: string }[];
+  defaultUnitId: string;
+};
 
 export type ReadingModeSnapshot = {
   /** Ready means the current section is indexed; it is not a navigation receipt. */

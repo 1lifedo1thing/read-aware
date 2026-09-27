@@ -7,7 +7,7 @@ const EMPTY: CatalogState = { models: [], refreshing: false };
 export function useModelCatalog(provider: string) {
   const supported = isCatalogProvider(provider);
   const getSnapshot = useCallback(
-    () => supported ? modelCatalog.getSnapshot(provider as KnownProviderId) : EMPTY,
+    () => (supported ? modelCatalog.getSnapshot(provider as KnownProviderId) : EMPTY),
     [provider, supported],
   );
   const state = useSyncExternalStore(modelCatalog.subscribe, getSnapshot, getSnapshot);

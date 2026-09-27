@@ -1,8 +1,5 @@
 import { Detail, Stack } from "@read-aware/ui";
-import {
-  DictionaryEntryBody,
-  DictionaryEntryHeading,
-} from "../../reader/components/DictionaryEntryBody";
+import { DictionaryEntryBody, DictionaryEntryHeading } from "../../reader/components/DictionaryEntryBody";
 import type { PluginDetailView } from "../lib/plugin-types";
 import { PluginActionGroup } from "./PluginActionGroup";
 import { PluginBlocks } from "./PluginBlockRenderer";
@@ -40,23 +37,11 @@ export function PluginDetailViewBody({
     <Stack gap="lg">
       <DictionaryEntryBody entry={dictionary} />
       {remainingContent.length > 0 && (
-        <PluginBlocks
-          blocks={remainingContent}
-          gap="relaxed"
-          stackDepth={stackDepth}
-          busy={busy}
-          onResult={onResult}
-        />
+        <PluginBlocks blocks={remainingContent} gap="relaxed" stackDepth={stackDepth} busy={busy} onResult={onResult} />
       )}
     </Stack>
   ) : (
-    <PluginBlocks
-      blocks={remainingContent}
-      gap="relaxed"
-      stackDepth={stackDepth}
-      busy={busy}
-      onResult={onResult}
-    />
+    <PluginBlocks blocks={remainingContent} gap="relaxed" stackDepth={stackDepth} busy={busy} onResult={onResult} />
   );
 
   return (
@@ -67,38 +52,24 @@ export function PluginDetailViewBody({
       header={
         dictionary ? (
           <Stack gap="sm" className="min-w-0">
-            <DictionaryEntryHeading
-              headword={dictionary.headword}
-              pronunciation={dictionary.pronunciation}
-            />
-            {metadataPresentation === "header" && hasMetadata && (
-              <PluginMetadataLine items={view.metadata!} />
-            )}
+            <DictionaryEntryHeading headword={dictionary.headword} pronunciation={dictionary.pronunciation} />
+            {metadataPresentation === "header" && hasMetadata && <PluginMetadataLine items={view.metadata!} />}
           </Stack>
         ) : metadataPresentation === "header" && hasMetadata ? (
           <PluginMetadataLine items={view.metadata!} />
         ) : undefined
       }
       metadata={
-        metadataPresentation === "footer" && hasMetadata ? (
-          <PluginMetadata items={view.metadata!} />
-        ) : undefined
+        metadataPresentation === "footer" && hasMetadata ? <PluginMetadata items={view.metadata!} /> : undefined
       }
       actions={
-        (view.controls && view.controls.length > 0) ||
-        (showActions && view.actions && view.actions.length > 0) ? (
+        (view.controls && view.controls.length > 0) || (showActions && view.actions && view.actions.length > 0) ? (
           <Stack direction="horizontal" gap="sm" align="center" justify="end" wrap>
             {view.controls && view.controls.length > 0 && (
               <PluginControlGroup controls={view.controls} busy={busy} onResult={onResult} />
             )}
             {showActions && view.actions && view.actions.length > 0 && (
-              <PluginActionGroup
-                actions={view.actions}
-                busy={busy}
-                align="end"
-                display="toolbar"
-                onResult={onResult}
-              />
+              <PluginActionGroup actions={view.actions} busy={busy} align="end" display="toolbar" onResult={onResult} />
             )}
           </Stack>
         ) : undefined

@@ -36,11 +36,11 @@ function d1Over(db: Database): D1Like {
   return {
     prepare: (sql) => ({
       bind: (...values) => ({
-        first: async <T,>() => (db.query(sql).get(...(values as never[])) as T) ?? null,
+        first: async <T>() => (db.query(sql).get(...(values as never[])) as T) ?? null,
         run: async () => {
           db.query(sql).run(...(values as never[]));
         },
-        all: async <T,>() => ({ results: db.query(sql).all(...(values as never[])) as T[] }),
+        all: async <T>() => ({ results: db.query(sql).all(...(values as never[])) as T[] }),
       }),
     }),
   };
@@ -154,9 +154,9 @@ export function makeRelay(
       await Promise.all(background.splice(0));
     },
     rateWindowRows(bucket: string): number {
-      const row = db
-        .query(`SELECT COUNT(*) AS count FROM rate_windows WHERE bucket = ?1`)
-        .get(bucket) as { count: number };
+      const row = db.query(`SELECT COUNT(*) AS count FROM rate_windows WHERE bucket = ?1`).get(bucket) as {
+        count: number;
+      };
       return Number(row.count);
     },
     reportPayloads,

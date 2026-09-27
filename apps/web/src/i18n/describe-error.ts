@@ -302,10 +302,7 @@ export function describeErrorCode(code: string | undefined): ErrorDescription | 
  * localized by the caller — e.g. "Could not import this file.") or the generic
  * line; log the raw error at the failure site, don't show it.
  */
-export function describeError(
-  error: unknown,
-  options?: { fallback?: string },
-): ErrorDescription {
+export function describeError(error: unknown, options?: { fallback?: string }): ErrorDescription {
   const described = describeErrorCode(errorCode(error));
   if (described) return described;
   return {

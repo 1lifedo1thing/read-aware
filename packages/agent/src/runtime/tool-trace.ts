@@ -8,9 +8,7 @@ import type { AgentToolResult } from "@earendil-works/pi-agent-core";
  */
 export function toolResultText(result: AgentToolResult<unknown>): string | undefined {
   const text = result.content
-    .filter((item): item is Extract<(typeof result.content)[number], { type: "text" }> =>
-      item.type === "text",
-    )
+    .filter((item): item is Extract<(typeof result.content)[number], { type: "text" }> => item.type === "text")
     .map((item) => item.text)
     .filter((item) => item.trim().length > 0)
     .join("\n");

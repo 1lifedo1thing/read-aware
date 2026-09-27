@@ -16,8 +16,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
   const listCollections: AgentTool = {
     name: "list_collections",
     label: "List collections",
-    description:
-      "List the user's shelf collections and the book ids currently assigned to each one.",
+    description: "List the user's shelf collections and the book ids currently assigned to each one.",
     parameters: Type.Object({}),
     execute: async () => {
       const collections = await deps.library.listCollections();
@@ -38,16 +37,13 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
       "Get SETTLED reading history and progress, with durations already formatted for the reader. For current time including unfinished sessions, use get_reading_time instead. Quote formatted durations as given. Call only for reading time, streaks, or progress, not content questions. With bookId returns that book; otherwise the whole-shelf aggregate and every book's stats. In a book thread defaults to the current book; allBooks=true requests the aggregate.",
     parameters: Type.Object({
       bookId: Type.Optional(Type.String()),
-      allBooks: Type.Optional(
-        Type.Boolean({ description: "Return the whole-shelf aggregate even in a book thread" }),
-      ),
+      allBooks: Type.Optional(Type.Boolean({ description: "Return the whole-shelf aggregate even in a book thread" })),
     }),
     execute: async (_id, params) => {
       const { bookId, allBooks = false } = params as { bookId?: string; allBooks?: boolean };
       const target = allBooks
         ? undefined
-        : (normalizeBookIdParam(bookId) ??
-          (scope.kind === "book" ? String(scope.bookId) : undefined));
+        : (normalizeBookIdParam(bookId) ?? (scope.kind === "book" ? String(scope.bookId) : undefined));
       if (target) {
         const stats = await deps.library.getBookStats(target as Id);
         if (stats) return textResult(presentBookStats(stats));
@@ -62,10 +58,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
           note: "No reading time has been recorded for this book yet.",
         });
       }
-      const [overview, books] = await Promise.all([
-        deps.library.getStatsOverview(),
-        deps.library.listBookStats(),
-      ]);
+      const [overview, books] = await Promise.all([deps.library.getStatsOverview(), deps.library.listBookStats()]);
       return textResult({
         overview: presentStatsOverview(overview),
         books: books.map(presentBookStats),
@@ -83,9 +76,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
       title: Type.Optional(Type.String({ description: "New title" })),
       author: Type.Optional(Type.String({ description: "New author" })),
       starred: Type.Optional(Type.Boolean({ description: "Add to / remove from favorites" })),
-      finished: Type.Optional(
-        Type.Boolean({ description: "Mark finished, or false to resume reading" }),
-      ),
+      finished: Type.Optional(Type.Boolean({ description: "Mark finished, or false to resume reading" })),
     }),
     executionMode: "sequential",
     execute: async (_id, params) => {
@@ -96,12 +87,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
         starred?: boolean;
         finished?: boolean;
       };
-      if (
-        title === undefined &&
-        author === undefined &&
-        starred === undefined &&
-        finished === undefined
-      ) {
+      if (title === undefined && author === undefined && starred === undefined && finished === undefined) {
         throw new Error("pass at least one of title, author, starred, finished");
       }
       const normalizedTitle = title?.trim();
@@ -118,10 +104,11 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
       const saved = await deps.library.getBook(target);
       if (!saved) throw new AppError("reader/book-not-found", "Book was removed while updating");
       return textResult({
-        updated: (title === undefined || saved.title === normalizedTitle)
-          && (author === undefined || saved.author === author.trim())
-          && (starred === undefined || saved.starred === starred)
-          && (finished === undefined || (saved.status === "finished") === finished),
+        updated:
+          (title === undefined || saved.title === normalizedTitle) &&
+          (author === undefined || saved.author === author.trim()) &&
+          (starred === undefined || saved.starred === starred) &&
+          (finished === undefined || (saved.status === "finished") === finished),
         bookId: target,
         ...(title !== undefined ? { title: saved.title } : {}),
         ...(author !== undefined ? { author: saved.author } : {}),
@@ -137,23 +124,25 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
     description:
       "Create, rename, or fill shelf collections. action=create needs name; action=rename needs collectionId + name; action=assign needs bookIds + collectionId (null collectionId removes the books from any collection). Deleting a collection is a separate tool.",
     parameters: Type.Object({
-      action: Type.Union(
-        [Type.Literal("create"), Type.Literal("rename"), Type.Literal("assign")],
-        { description: "Which collection operation to perform" },
-      ),
+      action: Type.Union([Type.Literal("create"), Type.Literal("rename"), Type.Literal("assign")], {
+        description: "Which collection operation to perform",
+      }),
       name: Type.Optional(Type.String({ description: "Collection name (create / rename)" })),
       collectionId: Type.Optional(
         Type.Union([Type.String(), Type.Null()], {
           description: "Target collection (rename / assign); null in assign ungroups the books",
         }),
       ),
-      bookIds: Type.Optional(
-        Type.Array(Type.String(), { minItems: 1, maxItems: 100, description: "Books to assign" }),
-      ),
+      bookIds: Type.Optional(Type.Array(Type.String(), { minItems: 1, maxItems: 100, description: "Books to assign" })),
     }),
     executionMode: "sequential",
     execute: async (_id, params) => {
-      const { action, name: rawName, collectionId, bookIds } = params as {
+      const {
+        action,
+        name: rawName,
+        collectionId,
+        bookIds,
+      } = params as {
         action: "create" | "rename" | "assign";
         name?: string;
         collectionId?: string | null;
@@ -168,9 +157,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
         const name = rawName?.trim();
         if (!name) throw new Error("rename requires a non-empty name");
         if (typeof collectionId !== "string") throw new Error("rename requires collectionId");
-        const collection = (await deps.library.listCollections()).find(
-          (entry) => String(entry.id) === collectionId,
-        );
+        const collection = (await deps.library.listCollections()).find((entry) => String(entry.id) === collectionId);
         if (!collection) throw new Error(`unknown collection: ${collectionId}`);
         await deps.library.renameCollection(collectionId, name);
         return textResult({ updated: true, collectionId, name });
@@ -185,9 +172,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
       if (unknown.length) throw new Error(`unknown book(s): ${unknown.join(", ")}`);
       if (
         collectionId !== null &&
-        !(await deps.library.listCollections()).some(
-          (collection) => String(collection.id) === collectionId,
-        )
+        !(await deps.library.listCollections()).some((collection) => String(collection.id) === collectionId)
       ) {
         throw new Error(`unknown collection: ${collectionId}`);
       }
@@ -231,9 +216,7 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
     executionMode: "sequential",
     execute: async (toolCallId, params, signal, onUpdate) => {
       const { collectionId } = params as { collectionId: string };
-      const collection = (await deps.library.listCollections()).find(
-        (entry) => String(entry.id) === collectionId,
-      );
+      const collection = (await deps.library.listCollections()).find((entry) => String(entry.id) === collectionId);
       if (!collection) throw new Error(`unknown collection: ${collectionId}`);
       const { answer, details } = await requestUserInteraction({
         deps,
@@ -255,7 +238,13 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
   };
 
   if (scope.kind === "book") {
-    return [getReadingStats, buildReadingTimeTool(scope, deps), buildReadingInsightsTool(scope, deps), updateBook, deleteBook];
+    return [
+      getReadingStats,
+      buildReadingTimeTool(scope, deps),
+      buildReadingInsightsTool(scope, deps),
+      updateBook,
+      deleteBook,
+    ];
   }
 
   return [

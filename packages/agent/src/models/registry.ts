@@ -48,6 +48,9 @@ export function buildProviderRegistry(options?: Parameters<typeof createModels>[
 
 export function getProviderModelCatalog(provider: KnownProviderId): ProviderModelCatalogEntry[] {
   return readCatalog(provider).map(({ id, name, reasoning, cost }) => ({
-    id, name, reasoning, cost: { input: cost.input, output: cost.output },
+    id,
+    name,
+    reasoning,
+    cost: { input: cost.input, output: cost.output },
   }));
 }

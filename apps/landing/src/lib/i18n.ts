@@ -14,16 +14,7 @@ export type Locale = "en" | "zh" | "zh-hant" | "ja" | "fr" | "de" | "ru" | "es";
 export const LOCALE_CHOICE_KEY = "read-aware-landing-locale";
 
 /** The full site locale set — mirrors the app's own i18n locales. */
-export const LOCALES: readonly Locale[] = [
-  "en",
-  "zh",
-  "zh-hant",
-  "ja",
-  "fr",
-  "de",
-  "ru",
-  "es",
-];
+export const LOCALES: readonly Locale[] = ["en", "zh", "zh-hant", "ja", "fr", "de", "ru", "es"];
 
 /**
  * Docs routes exist in every locale and render one shared component from
@@ -78,9 +69,7 @@ const PREFIX: Record<Locale, string> = {
 };
 
 // Longest prefix first, so "/zh-hant" never matches as "/zh".
-const PREFIXED = LOCALES.filter((locale) => locale !== "en").sort(
-  (a, b) => PREFIX[b].length - PREFIX[a].length,
-);
+const PREFIXED = LOCALES.filter((locale) => locale !== "en").sort((a, b) => PREFIX[b].length - PREFIX[a].length);
 
 export function localeFromPathname(pathname: string): Locale {
   for (const locale of PREFIXED) {
@@ -93,8 +82,7 @@ export function localeFromPathname(pathname: string): Locale {
 /** The same page's pathname in another locale ("/zh/docs/install" ↔ "/docs/install"). */
 export function localizePath(pathname: string, locale: Locale): string {
   const current = localeFromPathname(pathname);
-  const base =
-    current === "en" ? pathname : pathname.slice(PREFIX[current].length) || "/";
+  const base = current === "en" ? pathname : pathname.slice(PREFIX[current].length) || "/";
   return locale === "en" ? base : `${PREFIX[locale]}${base}`;
 }
 

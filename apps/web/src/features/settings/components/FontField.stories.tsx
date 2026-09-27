@@ -3,12 +3,7 @@ import { useState } from "react";
 import { seed, withAtoms } from "../../../story-support/atoms";
 import { pluginFontsAtom } from "../../plugins/state/plugin-store";
 import { CURATED_FONTS } from "../lib/curated-fonts";
-import {
-  toCuratedFont,
-  toSystemFont,
-  type ReaderFontFamily,
-  type ReaderFontWeight,
-} from "../lib/reader-settings";
+import { toCuratedFont, toSystemFont, type ReaderFontFamily, type ReaderFontWeight } from "../lib/reader-settings";
 import { FontField } from "./FontField";
 
 /**
@@ -121,12 +116,7 @@ export const Interactive: Story = {
     const [value, setValue] = useState<ReaderFontFamily>(curated);
     return (
       <>
-        <FontField
-          value={value}
-          onChange={setValue}
-          fontWeight={fontWeight}
-          className={className}
-        />
+        <FontField value={value} onChange={setValue} fontWeight={fontWeight} className={className} />
         <p className="mt-3 text-xs text-fg-subtle">
           selected: <code>{value}</code>
         </p>

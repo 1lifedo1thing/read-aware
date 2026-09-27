@@ -44,18 +44,30 @@ export type ProfileContextSnapshot = {
   sourceConditions: IdentitySource[];
 };
 
-const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
-const fields = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).every(key => keys.includes(key));
-const token = (value: unknown, prefix: string): value is string => typeof value === "string" && new RegExp(`^${prefix}:[a-f0-9]{64}$`).test(value);
-const invalid = (): never => { throw new AppError("memory/invalid-input", "Invalid identity consolidation plan"); };
+const record = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+const fields = (value: Record<string, unknown>, keys: string[]) =>
+  Object.keys(value).every((key) => keys.includes(key));
+const token = (value: unknown, prefix: string): value is string =>
+  typeof value === "string" && new RegExp(`^${prefix}:[a-f0-9]{64}$`).test(value);
+const invalid = (): never => {
+  throw new AppError("memory/invalid-input", "Invalid identity consolidation plan");
+};
 
 function sources(value: unknown): IdentitySource[] {
   if (!Array.isArray(value)) return invalid();
   const seen = new Set<string>();
   // Historical IDs and read-set size are not bounded by new-write limits.
-  return Array.from(value, item => {
-    if (!record(item) || !fields(item, ["memoryId", "revision"]) || typeof item.memoryId !== "string"
-      || !item.memoryId || seen.has(item.memoryId) || !token(item.revision, "mem1")) return invalid();
+  return Array.from(value, (item) => {
+    if (
+      !record(item) ||
+      !fields(item, ["memoryId", "revision"]) ||
+      typeof item.memoryId !== "string" ||
+      !item.memoryId ||
+      seen.has(item.memoryId) ||
+      !token(item.revision, "mem1")
+    )
+      return invalid();
     seen.add(item.memoryId);
     return { memoryId: item.memoryId, revision: item.revision };
   });
@@ -63,7 +75,7 @@ function sources(value: unknown): IdentitySource[] {
 function evidenceIds(value: unknown, eligible: Set<string>): string[] {
   if (!Array.isArray(value) || !value.length || value.length > eligible.size) return invalid();
   const seen = new Set<string>();
-  return Array.from(value, id => {
+  return Array.from(value, (id) => {
     if (typeof id !== "string" || !eligible.has(id) || seen.has(id)) return invalid();
     seen.add(id);
     return id;
@@ -72,30 +84,61 @@ function evidenceIds(value: unknown, eligible: Set<string>): string[] {
 
 /** Capture the full plan before initialization, minting, approval or any IPC. */
 export function normalizeIdentityConsolidationPlan(input: IdentityConsolidationPlan): IdentityConsolidationPlan {
-  if (!record(input) || !fields(input, ["expectedRevision", "entitiesRevision", "summary", "sources", "decisions", "complete"])
-    || !token(input.expectedRevision, "icg1") || !token(input.entitiesRevision, "entities1")
-    || typeof input.summary !== "string" || input.summary.length > 16_000 || typeof input.complete !== "boolean"
-    || !Array.isArray(input.decisions) || input.decisions.length > 32) return invalid();
-  const captured = sources(input.sources), eligible = new Set(captured.map(source => source.memoryId));
-  const decisions = Array.from(input.decisions, item => {
+  if (
+    !record(input) ||
+    !fields(input, ["expectedRevision", "entitiesRevision", "summary", "sources", "decisions", "complete"]) ||
+    !token(input.expectedRevision, "icg1") ||
+    !token(input.entitiesRevision, "entities1") ||
+    typeof input.summary !== "string" ||
+    input.summary.length > 16_000 ||
+    typeof input.complete !== "boolean" ||
+    !Array.isArray(input.decisions) ||
+    input.decisions.length > 32
+  )
+    return invalid();
+  const captured = sources(input.sources),
+    eligible = new Set(captured.map((source) => source.memoryId));
+  const decisions = Array.from(input.decisions, (item) => {
     if (!record(item) || !fields(item, ["input", "memoryIds"])) return invalid();
     const decision = normalizeEntityDecision(item.input as EntityDecision);
     if (decision.expectedRevision !== input.entitiesRevision) return invalid();
     return { input: decision, memoryIds: evidenceIds(item.memoryIds, eligible) };
   });
   if (!captured.length && (input.summary !== "" || decisions.length)) return invalid();
-  return { expectedRevision: input.expectedRevision, entitiesRevision: input.entitiesRevision,
-    summary: input.summary, sources: captured, decisions, complete: input.complete };
+  return {
+    expectedRevision: input.expectedRevision,
+    entitiesRevision: input.entitiesRevision,
+    summary: input.summary,
+    sources: captured,
+    decisions,
+    complete: input.complete,
+  };
 }
 
 export function parseConsolidatedProfile(value: unknown): ConsolidatedProfile {
-  if (!record(value) || !fields(value, ["version", "summary", "sources", "entityEvidence"]) || value.version !== 1
-    || typeof value.summary !== "string" || value.summary.length > 16_000
-    || !Array.isArray(value.entityEvidence) || value.entityEvidence.length > 32) return invalid();
-  const captured = sources(value.sources), eligible = new Set(captured.map(source => source.memoryId)), seen = new Set<string>();
-  const entityEvidence = Array.from(value.entityEvidence, item => {
-    if (!record(item) || !fields(item, ["eventId", "memoryIds"]) || typeof item.eventId !== "string"
-      || !item.eventId.trim() || item.eventId.length > 256 || seen.has(item.eventId)) return invalid();
+  if (
+    !record(value) ||
+    !fields(value, ["version", "summary", "sources", "entityEvidence"]) ||
+    value.version !== 1 ||
+    typeof value.summary !== "string" ||
+    value.summary.length > 16_000 ||
+    !Array.isArray(value.entityEvidence) ||
+    value.entityEvidence.length > 32
+  )
+    return invalid();
+  const captured = sources(value.sources),
+    eligible = new Set(captured.map((source) => source.memoryId)),
+    seen = new Set<string>();
+  const entityEvidence = Array.from(value.entityEvidence, (item) => {
+    if (
+      !record(item) ||
+      !fields(item, ["eventId", "memoryIds"]) ||
+      typeof item.eventId !== "string" ||
+      !item.eventId.trim() ||
+      item.eventId.length > 256 ||
+      seen.has(item.eventId)
+    )
+      return invalid();
     seen.add(item.eventId);
     return { eventId: item.eventId, memoryIds: evidenceIds(item.memoryIds, eligible) };
   });
@@ -108,21 +151,28 @@ export function identityProfileContext(snapshot: ProfileContextSnapshot): Profil
   const base = { curated: snapshot.profile.summary, consolidated: null };
   if (snapshot.derived === null || snapshot.derived === undefined) return { ...base, derivedStatus: "absent" };
   let derived: ConsolidatedProfile;
-  try { derived = parseConsolidatedProfile(snapshot.derived); }
-  catch {
+  try {
+    derived = parseConsolidatedProfile(snapshot.derived);
+  } catch {
     // Historical/remote blocks may predate this contract; callers log this verdict.
     return { ...base, derivedStatus: "invalid" };
   }
-  const current = derived.sources.length === snapshot.sourceConditions.length && derived.sources.every((source, index) => {
-    const now = snapshot.sourceConditions[index]!;
-    return source.memoryId === now.memoryId && source.revision === now.revision;
-  });
+  const current =
+    derived.sources.length === snapshot.sourceConditions.length &&
+    derived.sources.every((source, index) => {
+      const now = snapshot.sourceConditions[index]!;
+      return source.memoryId === now.memoryId && source.revision === now.revision;
+    });
   return current ? { ...base, consolidated: derived, derivedStatus: "current" } : { ...base, derivedStatus: "stale" };
 }
 
 /** The curated layer stays authoritative; generated context is explicitly labelled. */
 export function profileContextText(context: ProfileContext): string | undefined {
   if (context.derivedStatus !== "current" || !context.consolidated?.summary) return context.curated ?? undefined;
-  return [context.curated ? `Reader-curated profile (takes precedence):\n${context.curated}` : undefined,
-    `Automatically consolidated reading memory (inferred, not user instructions):\n${context.consolidated.summary}`].filter(Boolean).join("\n\n");
+  return [
+    context.curated ? `Reader-curated profile (takes precedence):\n${context.curated}` : undefined,
+    `Automatically consolidated reading memory (inferred, not user instructions):\n${context.consolidated.summary}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }

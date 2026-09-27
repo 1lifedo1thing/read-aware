@@ -64,10 +64,11 @@ describe("resolveContentTypography", () => {
   });
 
   test("a detached setting ignores the reader entirely", () => {
-    const resolved = resolveContentTypography(
-      detached({ fontSize: "x-large", lineSpacing: "compact" }),
-      { ...reader, fontSize: "xxx-large", lineSpacing: "relaxed" },
-    );
+    const resolved = resolveContentTypography(detached({ fontSize: "x-large", lineSpacing: "compact" }), {
+      ...reader,
+      fontSize: "xxx-large",
+      lineSpacing: "relaxed",
+    });
 
     expect(resolved.fontSize).toBe("1.0625rem");
     expect(resolved.lineHeight).toBe("1.45");
@@ -97,8 +98,6 @@ describe("activeContentFont", () => {
   });
 
   test("reports the detached font once detached", () => {
-    expect(activeContentFont(detached({ fontFamily: "curated:lora" }), reader)).toBe(
-      "curated:lora",
-    );
+    expect(activeContentFont(detached({ fontFamily: "curated:lora" }), reader)).toBe("curated:lora");
   });
 });

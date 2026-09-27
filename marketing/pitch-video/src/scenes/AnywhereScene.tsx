@@ -84,7 +84,15 @@ export function AnywhereScene() {
             </div>
           </div>
         </div>
-        <div style={{ marginTop: 34, fontFamily: font.book, fontSize: 34, color: color.fg, ...arrive(progress(frame, 6, 16), 14, 5) }}>
+        <div
+          style={{
+            marginTop: 34,
+            fontFamily: font.book,
+            fontSize: 34,
+            color: color.fg,
+            ...arrive(progress(frame, 6, 16), 14, 5),
+          }}
+        >
           {PLATFORMS.join("  ·  ")}
         </div>
         <div
@@ -163,7 +171,16 @@ function PhoneReader() {
             color: color.fg,
           }}
         >
-          <div style={{ height: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 30px 0 40px", background: color.paper }}>
+          <div
+            style={{
+              height: 50,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "6px 30px 0 40px",
+              background: color.paper,
+            }}
+          >
             <span style={{ fontSize: 16, fontWeight: 600 }}>10:00</span>
             <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <CellSignalFullIcon size={17} weight="fill" />
@@ -178,9 +195,19 @@ function PhoneReader() {
               <div style={{ marginTop: 2, fontSize: 11, color: color.fgSubtle }}>Chapter I · 1%</div>
             </div>
             <div style={{ position: "absolute", insetInline: 0, bottom: 0, height: 1, background: color.border }} />
-            <div style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: "2%", background: color.fgSubtle }} />
+            <div
+              style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: "2%", background: color.fgSubtle }}
+            />
           </div>
-          <div style={{ padding: "34px 28px 0", fontFamily: font.book, fontSize: 18, lineHeight: 1.85, color: color.pageText }}>
+          <div
+            style={{
+              padding: "34px 28px 0",
+              fontFamily: font.book,
+              fontSize: 18,
+              lineHeight: 1.85,
+              color: color.pageText,
+            }}
+          >
             <div style={{ textAlign: "center", fontSize: 24, color: color.stone500, marginBottom: 22 }}>Chapter I.</div>
             {PAGE_TEXT.map((text, i) => (
               <p key={i} style={{ margin: "0 0 14px", textIndent: i === 0 ? 0 : "1.2em" }}>
@@ -198,7 +225,15 @@ function PhoneReader() {
               borderTop: `1px solid ${color.border}`,
             }}
           >
-            <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "space-around", color: color.fgMuted }}>
+            <div
+              style={{
+                height: 52,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-around",
+                color: color.fgMuted,
+              }}
+            >
               <ListBulletsIcon size={21} />
               <NotebookIcon size={21} />
               <TextAaIcon size={21} />

@@ -2,11 +2,7 @@ import { useMemo } from "react";
 import { cn } from "@read-aware/ui/cn";
 import { formatPercent, useTranslation } from "../../../i18n";
 import { useProgressScrub } from "../hooks/useProgressScrub";
-import {
-  findMarkAt,
-  pageAtFraction,
-  type ProgressMark,
-} from "../lib/reader-progress";
+import { findMarkAt, pageAtFraction, type ProgressMark } from "../lib/reader-progress";
 
 type ReaderProgressScrubberProps = {
   /** Reading position, 0..1; null while unknown (nothing has relocated yet). */
@@ -74,12 +70,8 @@ export function ReaderProgressScrubber({
 
   const fillFraction = scrub.displayFraction ?? 0;
   const readoutFraction = scrub.pointerFraction;
-  const chapterTicks = useMemo(
-    () => marks.filter((mark) => mark.fraction > 0 && mark.fraction < 1),
-    [marks],
-  );
-  const readoutMark =
-    readoutFraction != null ? findMarkAt(marks, readoutFraction) : null;
+  const chapterTicks = useMemo(() => marks.filter((mark) => mark.fraction > 0 && mark.fraction < 1), [marks]);
+  const readoutMark = readoutFraction != null ? findMarkAt(marks, readoutFraction) : null;
 
   const describe = (value: number) => {
     const percent = formatPercent(value * 100);
@@ -95,8 +87,7 @@ export function ReaderProgressScrubber({
   // Keep the readout inside the header instead of half-hanging off its edges:
   // it anchors by its center in the middle of the track and by its near edge
   // at either end.
-  const readoutAnchor =
-    readoutPercent < 12 ? "start" : readoutPercent > 88 ? "end" : "center";
+  const readoutAnchor = readoutPercent < 12 ? "start" : readoutPercent > 88 ? "end" : "center";
 
   return (
     <div className={cn("pointer-events-none absolute inset-x-0 bottom-0", wholeHeader && "top-0")}>
@@ -114,9 +105,7 @@ export function ReaderProgressScrubber({
           style={{ left: `${readoutPercent}%` }}
         >
           {readoutMark && (
-            <span className="block truncate font-sans text-xs leading-tight text-fg">
-              {readoutMark.label}
-            </span>
+            <span className="block truncate font-sans text-xs leading-tight text-fg">{readoutMark.label}</span>
           )}
           <span className="block truncate font-sans text-[11px] leading-tight tabular-nums text-fg-muted">
             {describe(readoutFraction)}

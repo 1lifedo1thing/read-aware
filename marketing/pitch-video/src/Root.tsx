@@ -5,13 +5,6 @@ import { DURATION, FPS, HEIGHT, WIDTH } from "./timeline";
 
 export function RemotionRoot() {
   return (
-    <Composition
-      id="Pitch"
-      component={Pitch}
-      durationInFrames={DURATION}
-      fps={FPS}
-      width={WIDTH}
-      height={HEIGHT}
-    />
+    <Composition id="Pitch" component={Pitch} durationInFrames={DURATION} fps={FPS} width={WIDTH} height={HEIGHT} />
   );
 }

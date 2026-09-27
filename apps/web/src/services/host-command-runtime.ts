@@ -9,36 +9,88 @@ import { HostCommandObservers } from "./host-command-observers";
 import { createLogger } from "../platform/logger";
 
 const log = createLogger("host-commands");
-const observers = new HostCommandObservers(error => log.warn("Command observation failed", error));
+const observers = new HostCommandObservers((error) => log.warn("Command observation failed", error));
 
 export function hostCommandTitle(id: HostCommandId): string {
-  const key = id === "open-book" ? "actions.openBook.title" : id === "open-collection" ? "actions.openCollection.title"
-    : id === "go-shelf" ? "actions.goShelf.title" : id === "go-context" ? "actions.goAgent.title"
-    : id === "go-stats" ? "actions.goStats.title" : id === "open-settings" ? "actions.openSettings.title"
-      : id === "select" ? "actions.select.title" : id.startsWith("layout-") ? `layout.${id.slice(7)}`
-        : id.startsWith("sort-") ? `sort.by.${id.slice(5)}` : id === "group-none" ? "group.none" : `group.by.${id.slice(6)}`;
+  const key =
+    id === "open-book"
+      ? "actions.openBook.title"
+      : id === "open-collection"
+        ? "actions.openCollection.title"
+        : id === "go-shelf"
+          ? "actions.goShelf.title"
+          : id === "go-context"
+            ? "actions.goAgent.title"
+            : id === "go-stats"
+              ? "actions.goStats.title"
+              : id === "open-settings"
+                ? "actions.openSettings.title"
+                : id === "select"
+                  ? "actions.select.title"
+                  : id.startsWith("layout-")
+                    ? `layout.${id.slice(7)}`
+                    : id.startsWith("sort-")
+                      ? `sort.by.${id.slice(5)}`
+                      : id === "group-none"
+                        ? "group.none"
+                        : `group.by.${id.slice(6)}`;
   return i18n.t(key, { ns: "command", defaultValue: id });
 }
 
-export function actorHostCommands(settings: SettingsDomain, canReadWorkspace: boolean, canNavigate: boolean, canCloseReader: boolean, origin: DomainActor = "system") {
-  const commands = createHostCommands({ workspace: { snapshot: (...args) => workspace.snapshot(...args),
-    navigate: (target, revision, signal, allowClose, project) => workspace.navigate(target, revision, signal, allowClose, project, origin) }, settings, canReadWorkspace, canNavigate, canCloseReader, title: hostCommandTitle,
-    openBook: (bookId, signal) => readingRuntime.navigate({ bookId }, signal, origin) });
-  return { ...commands, observe: (handler: (state: HostCommandObservation) => unknown,
-    read: (signal: AbortSignal) => Promise<HostCommandSnapshot> = commands.list,
-    observeExtra?: (invalidate: (source?: object) => void) => () => void) => observers.observe(read, invalidate => {
-    const releases: (() => void)[] = [];
-    const release = () => { for (const dispose of releases.splice(0).reverse()) dispose(); };
-    try {
-      if (canReadWorkspace) releases.push(workspace.observe({ limit: 1 }, (_state, source) => invalidate(source), undefined, origin));
-      releases.push(settings.queries.observe({ section: "shelf" }, invalidate));
-      if (observeExtra) releases.push(observeExtra(invalidate));
-      const localeChanged = () => invalidate(stampEventCause({}, localeActor()));
-      i18n.on("languageChanged", localeChanged);
-      releases.push(() => { i18n.off("languageChanged", localeChanged); });
-      return release;
-    } catch (error) { release(); throw error; }
-  }, handler, origin) };
+export function actorHostCommands(
+  settings: SettingsDomain,
+  canReadWorkspace: boolean,
+  canNavigate: boolean,
+  canCloseReader: boolean,
+  origin: DomainActor = "system",
+) {
+  const commands = createHostCommands({
+    workspace: {
+      snapshot: (...args) => workspace.snapshot(...args),
+      navigate: (target, revision, signal, allowClose, project) =>
+        workspace.navigate(target, revision, signal, allowClose, project, origin),
+    },
+    settings,
+    canReadWorkspace,
+    canNavigate,
+    canCloseReader,
+    title: hostCommandTitle,
+    openBook: (bookId, signal) => readingRuntime.navigate({ bookId }, signal, origin),
+  });
+  return {
+    ...commands,
+    observe: (
+      handler: (state: HostCommandObservation) => unknown,
+      read: (signal: AbortSignal) => Promise<HostCommandSnapshot> = commands.list,
+      observeExtra?: (invalidate: (source?: object) => void) => () => void,
+    ) =>
+      observers.observe(
+        read,
+        (invalidate) => {
+          const releases: (() => void)[] = [];
+          const release = () => {
+            for (const dispose of releases.splice(0).reverse()) dispose();
+          };
+          try {
+            if (canReadWorkspace)
+              releases.push(workspace.observe({ limit: 1 }, (_state, source) => invalidate(source), undefined, origin));
+            releases.push(settings.queries.observe({ section: "shelf" }, invalidate));
+            if (observeExtra) releases.push(observeExtra(invalidate));
+            const localeChanged = () => invalidate(stampEventCause({}, localeActor()));
+            i18n.on("languageChanged", localeChanged);
+            releases.push(() => {
+              i18n.off("languageChanged", localeChanged);
+            });
+            return release;
+          } catch (error) {
+            release();
+            throw error;
+          }
+        },
+        handler,
+        origin,
+      ),
+  };
 }
 export function trustedHostCommands(origin: DomainActor) {
   return actorHostCommands(createSettingsDomain(origin), true, true, true, origin);

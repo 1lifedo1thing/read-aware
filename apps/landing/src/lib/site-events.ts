@@ -61,20 +61,12 @@ const hosts: Record<string, Source> = {
 
 export function sourceFrom(url: URL, referrer: string): Source {
   const campaign = url.searchParams.get("utm_source")?.toLowerCase();
-  if (campaign)
-    return (
-      hosts[campaign] ??
-      (SOURCES.includes(campaign as Source) ? (campaign as Source) : "other")
-    );
+  if (campaign) return hosts[campaign] ?? (SOURCES.includes(campaign as Source) ? (campaign as Source) : "other");
   if (!referrer) return "direct";
   try {
     const host = new URL(referrer).hostname.toLowerCase();
     if (host === "readaware.app") return "direct";
-    return (
-      Object.entries(hosts).find(
-        ([known]) => host === known || host.endsWith(`.${known}`),
-      )?.[1] ?? "other"
-    );
+    return Object.entries(hosts).find(([known]) => host === known || host.endsWith(`.${known}`))?.[1] ?? "other";
   } catch {
     return "other";
   }
@@ -84,17 +76,10 @@ export function canonicalPath(path: string): string {
   return path === "/" ? "/" : `${path.replace(/\/$/, "")}/`;
 }
 
-export function validateEvent(
-  value: unknown,
-  pages: ReadonlySet<string>,
-): value is SiteEvent {
+export function validateEvent(value: unknown, pages: ReadonlySet<string>): value is SiteEvent {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const e = value as Record<string, unknown>;
-  if (
-    Object.keys(e).sort().join(",") !==
-    "asset,event,landing,page,release,source,version"
-  )
-    return false;
+  if (Object.keys(e).sort().join(",") !== "asset,event,landing,page,release,source,version") return false;
   return (
     e.version === 1 &&
     (e.event === "landing" || e.event === "download") &&
@@ -105,25 +90,17 @@ export function validateEvent(
     pages.has(e.landing) &&
     typeof e.page === "string" &&
     pages.has(e.page) &&
-    (e.event === "landing"
-      ? e.asset === "" && e.landing === e.page
-      : DOWNLOAD_ASSETS.some((a) => a.asset === e.asset))
+    (e.event === "landing" ? e.asset === "" && e.landing === e.page : DOWNLOAD_ASSETS.some((a) => a.asset === e.asset))
   );
 }
 
-export function analyticsAllowed(
-  url: URL,
-  dnt: string | null,
-  gpc: boolean,
-): boolean {
+export function analyticsAllowed(url: URL, dnt: string | null, gpc: boolean): boolean {
   return (
     url.origin === SITE_ORIGIN &&
     dnt !== "1" &&
     !gpc &&
     !url.pathname.startsWith("/sync/") &&
-    ![...url.searchParams.keys()].some((key) =>
-      /token|ticket|code|email|session|key/i.test(key),
-    ) &&
+    ![...url.searchParams.keys()].some((key) => /token|ticket|code|email|session|key/i.test(key)) &&
     !/[=&]/.test(url.hash)
   );
 }

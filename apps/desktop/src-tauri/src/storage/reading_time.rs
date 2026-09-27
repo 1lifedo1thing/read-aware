@@ -4,8 +4,8 @@
 //! Split out of `storage/mod.rs`, which had grown to hold fourteen unrelated
 //! domains in one file. `use super::*` keeps the parent's shared types (`Db`,
 //! `EventRow`, the apply helpers) in scope, so this is a move, not a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- Reading-time projection (migration v9) ---
 
@@ -61,9 +61,7 @@ pub struct ReadingTimeWire {
 ///
 /// Idempotent: it does nothing once the log contains any `book.timeRecorded`.
 #[tauri::command]
-pub async fn reading_time_genesis(
-    app: tauri::AppHandle,
-) -> Result<usize, CommandError> {
+pub async fn reading_time_genesis(app: tauri::AppHandle) -> Result<usize, CommandError> {
     crate::storage::blocking("reading_time_genesis", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
@@ -86,48 +84,38 @@ fn read_reading_time_shape(conn: &Connection) -> Result<ReadingTimeShape, Comman
     let mut bounds: std::collections::BTreeMap<String, (Option<i64>, Option<i64>)> =
         Default::default();
     {
-        let mut stmt = conn
-            .prepare(
-                "SELECT book_id, local_day, ms FROM reading_time_daily
+        let mut stmt = conn.prepare(
+            "SELECT book_id, local_day, ms FROM reading_time_daily
                  WHERE ms > 0 ORDER BY local_day",
-            )
-            ?;
+        )?;
         let mut rows = stmt.query([])?;
         while let Some(row) = rows.next()? {
             let book: String = row.get(0)?;
-            daily.entry(book).or_default().push((
-                row.get(1)?,
-                row.get(2)?,
-            ));
+            daily
+                .entry(book)
+                .or_default()
+                .push((row.get(1)?, row.get(2)?));
+        }
+    }
+    {
+        let mut stmt =
+            conn.prepare("SELECT book_id, local_hour, ms FROM reading_time_hourly WHERE ms > 0")?;
+        let mut rows = stmt.query([])?;
+        while let Some(row) = rows.next()? {
+            let book: String = row.get(0)?;
+            hourly
+                .entry(book)
+                .or_default()
+                .push((row.get(1)?, row.get(2)?));
         }
     }
     {
         let mut stmt = conn
-            .prepare("SELECT book_id, local_hour, ms FROM reading_time_hourly WHERE ms > 0")
-            ?;
+            .prepare("SELECT book_id, first_started_at, last_read_at FROM reading_time_totals")?;
         let mut rows = stmt.query([])?;
         while let Some(row) = rows.next()? {
             let book: String = row.get(0)?;
-            hourly.entry(book).or_default().push((
-                row.get(1)?,
-                row.get(2)?,
-            ));
-        }
-    }
-    {
-        let mut stmt = conn
-            .prepare("SELECT book_id, first_started_at, last_read_at FROM reading_time_totals")
-            ?;
-        let mut rows = stmt.query([])?;
-        while let Some(row) = rows.next()? {
-            let book: String = row.get(0)?;
-            bounds.insert(
-                book,
-                (
-                    row.get(1)?,
-                    row.get(2)?,
-                ),
-            );
+            bounds.insert(book, (row.get(1)?, row.get(2)?));
         }
     }
     Ok((daily, hourly, bounds))
@@ -162,7 +150,10 @@ pub(crate) fn reading_time_genesis_inner(conn: &mut Connection) -> Result<usize,
     Ok(synthesized)
 }
 
-fn reading_time_genesis_pass(conn: &mut Connection, device_id: &str) -> Result<usize, CommandError> {
+fn reading_time_genesis_pass(
+    conn: &mut Connection,
+    device_id: &str,
+) -> Result<usize, CommandError> {
     let device_id = device_id.to_string();
     // What the tables hold today — the truth to preserve.
     let (target_daily, target_hourly, bounds) = read_reading_time_shape(conn)?;
@@ -181,20 +172,16 @@ fn reading_time_genesis_pass(conn: &mut Connection, device_id: &str) -> Result<u
             "reading_time_daily",
             "reading_time_hourly",
         ] {
-            tx.execute(&format!("DELETE FROM {table}"), [])
-                ?;
+            tx.execute(&format!("DELETE FROM {table}"), [])?;
         }
         let logged: Vec<EventRow> = {
-            let mut stmt = tx
-                .prepare(
-                    "SELECT * FROM domain_events
+            let mut stmt = tx.prepare(
+                "SELECT * FROM domain_events
                       WHERE type IN ('book.timeRecorded', 'book.sessionRecorded')
                       ORDER BY hlc_wall_ms, hlc_counter, hlc_device",
-                )
-                ?;
+            )?;
             let iter = stmt.query_map([], row_to_event)?;
-            iter.collect::<rusqlite::Result<Vec<_>>>()
-                ?
+            iter.collect::<rusqlite::Result<Vec<_>>>()?
         };
         for event in &logged {
             apply::apply_event(&tx, event)?;
@@ -293,8 +280,8 @@ fn reading_time_genesis_pass(conn: &mut Connection, device_id: &str) -> Result<u
         let mut grid = vec![vec![0_i64; scaled_hours.len()]; days.len()];
         for (r, (_, day_ms)) in days.iter().enumerate() {
             for (c, (_, hour_ms)) in scaled_hours.iter().enumerate() {
-                let share = ((*day_ms as i128) * (*hour_ms as i128) / (day_total.max(1) as i128))
-                    as i64;
+                let share =
+                    ((*day_ms as i128) * (*hour_ms as i128) / (day_total.max(1) as i128)) as i64;
                 grid[r][c] = share;
                 row_left[r] -= share;
                 col_left[c] -= share;
@@ -398,9 +385,7 @@ fn reading_time_genesis_pass(conn: &mut Connection, device_id: &str) -> Result<u
 }
 
 #[tauri::command]
-pub async fn reading_time_load(
-    app: tauri::AppHandle,
-) -> Result<ReadingTimeWire, CommandError> {
+pub async fn reading_time_load(app: tauri::AppHandle) -> Result<ReadingTimeWire, CommandError> {
     crate::storage::blocking("reading_time_load", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
@@ -412,17 +397,38 @@ pub async fn reading_time_load(
     .await
 }
 
-pub(crate) fn reading_time_scope_inner(conn: &mut Connection, book_id: Option<String>) -> Result<ReadingTimeWire, CommandError> {
-    if book_id.as_deref().is_some_and(|id| id.trim().is_empty() || id.encode_utf16().count() > 256) {
-        return Err(CommandError::new("reading/invalid-time-query", "Invalid reading history book"));
+pub(crate) fn reading_time_scope_inner(
+    conn: &mut Connection,
+    book_id: Option<String>,
+) -> Result<ReadingTimeWire, CommandError> {
+    if book_id
+        .as_deref()
+        .is_some_and(|id| id.trim().is_empty() || id.encode_utf16().count() > 256)
+    {
+        return Err(CommandError::new(
+            "reading/invalid-time-query",
+            "Invalid reading history book",
+        ));
     }
     let tx = conn.transaction()?;
     if super::events::projections_stale_conn(&tx)? {
-        return Err(CommandError::new("reading/stats-stale", "Reading history is recovering"));
+        return Err(CommandError::new(
+            "reading/stats-stale",
+            "Reading history is recovering",
+        ));
     }
     if let Some(id) = &book_id {
-        let exists: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM books WHERE id=?1)", [id], |row| row.get(0))?;
-        if !exists { return Err(CommandError::new("library/book-not-found", "Unknown reading history book")); }
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM books WHERE id=?1)",
+            [id],
+            |row| row.get(0),
+        )?;
+        if !exists {
+            return Err(CommandError::new(
+                "library/book-not-found",
+                "Unknown reading history book",
+            ));
+        }
     }
     let wire = reading_time_load_conn(&tx, book_id.as_deref())?;
     tx.commit()?;
@@ -442,7 +448,10 @@ pub async fn reading_time_scope(
     .await
 }
 
-fn reading_time_load_conn(conn: &Connection, book_id: Option<&str>) -> Result<ReadingTimeWire, CommandError> {
+fn reading_time_load_conn(
+    conn: &Connection,
+    book_id: Option<&str>,
+) -> Result<ReadingTimeWire, CommandError> {
     let totals = {
         let mut stmt = conn
             .prepare("SELECT book_id, total_ms, first_started_at, last_read_at FROM reading_time_totals WHERE (?1 IS NULL OR book_id=?1) ORDER BY book_id")
@@ -455,10 +464,8 @@ fn reading_time_load_conn(conn: &Connection, book_id: Option<&str>) -> Result<Re
                     first_started_at: row.get(2)?,
                     last_read_at: row.get(3)?,
                 })
-            })
-            ?
-            .collect::<Result<Vec<_>, _>>()
-            ?;
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         rows
     };
     let daily = {
@@ -472,10 +479,8 @@ fn reading_time_load_conn(conn: &Connection, book_id: Option<&str>) -> Result<Re
                     local_day: row.get(1)?,
                     ms: row.get(2)?,
                 })
-            })
-            ?
-            .collect::<Result<Vec<_>, _>>()
-            ?;
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         rows
     };
     let hourly = {
@@ -489,13 +494,15 @@ fn reading_time_load_conn(conn: &Connection, book_id: Option<&str>) -> Result<Re
                     local_hour: row.get(1)?,
                     ms: row.get(2)?,
                 })
-            })
-            ?
-            .collect::<Result<Vec<_>, _>>()
-            ?;
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         rows
     };
-    Ok(ReadingTimeWire { totals, daily, hourly })
+    Ok(ReadingTimeWire {
+        totals,
+        daily,
+        hourly,
+    })
 }
 
 // ── Reading sessions: the tracker's crash-safe scratch pad ───────────────────
@@ -574,7 +581,9 @@ pub(crate) fn reading_session_accrue_inner(
     at_epoch_ms: i64,
 ) -> Result<ReadingSessionBucket, CommandError> {
     if delta_ms <= 0 {
-        return Err(CommandError::internal("reading_session_accrue: delta must be positive"));
+        return Err(CommandError::internal(
+            "reading_session_accrue: delta must be positive",
+        ));
     }
     conn.execute(
         "INSERT INTO reading_sessions_pending
@@ -603,7 +612,9 @@ pub(crate) fn reading_session_position_inner(
     progress: &Value,
 ) -> Result<ReadingSessionBucket, CommandError> {
     if !progress.is_object() {
-        return Err(CommandError::internal("reading_session_position: progress must be an object"));
+        return Err(CommandError::internal(
+            "reading_session_position: progress must be an object",
+        ));
     }
     conn.execute(
         "INSERT INTO reading_sessions_pending
@@ -613,12 +624,20 @@ pub(crate) fn reading_session_position_inner(
             last_at = MAX(last_at, excluded.last_at),
             progress_json = excluded.progress_json,
             position_at = MAX(COALESCE(position_at, 0), excluded.position_at)",
-        params![book_id, local_day, local_hour, at_epoch_ms, progress.to_string()],
+        params![
+            book_id,
+            local_day,
+            local_hour,
+            at_epoch_ms,
+            progress.to_string()
+        ],
     )?;
     read_session(conn, book_id, local_day, local_hour)
 }
 
-pub(crate) fn reading_sessions_pending_inner(conn: &Connection) -> Result<Vec<ReadingSessionBucket>, CommandError> {
+pub(crate) fn reading_sessions_pending_inner(
+    conn: &Connection,
+) -> Result<Vec<ReadingSessionBucket>, CommandError> {
     let mut stmt = conn.prepare(&format!(
         "SELECT {SESSION_COLUMNS} FROM reading_sessions_pending ORDER BY started_at"
     ))?;
@@ -660,17 +679,31 @@ pub(crate) fn reading_session_flush_in_transaction(
                 ev.event_type
             )));
         }
-        let book_id = ev.payload.get("bookId").and_then(|v| v.as_str()).ok_or_else(|| {
-            CommandError::internal("reading_session_flush: payload lacks bookId")
-        })?;
-        let local_day = ev.payload.get("localDay").and_then(|v| v.as_str()).ok_or_else(|| {
-            CommandError::internal("reading_session_flush: payload lacks localDay")
-        })?;
-        let local_hour = ev.payload.get("localHour").and_then(|v| v.as_i64()).ok_or_else(|| {
-            CommandError::internal("reading_session_flush: payload lacks localHour")
-        })?;
+        let book_id = ev
+            .payload
+            .get("bookId")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| CommandError::internal("reading_session_flush: payload lacks bookId"))?;
+        let local_day = ev
+            .payload
+            .get("localDay")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                CommandError::internal("reading_session_flush: payload lacks localDay")
+            })?;
+        let local_hour = ev
+            .payload
+            .get("localHour")
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| {
+                CommandError::internal("reading_session_flush: payload lacks localHour")
+            })?;
         let ms = ev.payload.get("ms").and_then(|v| v.as_i64()).unwrap_or(0);
-        let ended_at = ev.payload.get("endedAt").and_then(|v| v.as_i64()).unwrap_or(0);
+        let ended_at = ev
+            .payload
+            .get("endedAt")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
         let has_position = ev.payload.get("progress").is_some_and(|v| v.is_object());
         let observed_at = ev
             .payload
@@ -726,7 +759,14 @@ pub async fn reading_session_accrue(
     crate::storage::blocking("reading_session_accrue", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        reading_session_accrue_inner(&conn, &book_id, &local_day, local_hour, delta_ms, at_epoch_ms)
+        reading_session_accrue_inner(
+            &conn,
+            &book_id,
+            &local_day,
+            local_hour,
+            delta_ms,
+            at_epoch_ms,
+        )
     })
     .await
 }
@@ -744,7 +784,14 @@ pub async fn reading_session_position(
     crate::storage::blocking("reading_session_position", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        reading_session_position_inner(&conn, &book_id, &local_day, local_hour, at_epoch_ms, &progress)
+        reading_session_position_inner(
+            &conn,
+            &book_id,
+            &local_day,
+            local_hour,
+            at_epoch_ms,
+            &progress,
+        )
     })
     .await
 }
@@ -794,39 +841,46 @@ pub async fn reading_time_import(
     .await
 }
 
-pub(crate) fn reading_time_import_inner(conn: &mut Connection, wire: &ReadingTimeWire) -> Result<(), CommandError> {
+pub(crate) fn reading_time_import_inner(
+    conn: &mut Connection,
+    wire: &ReadingTimeWire,
+) -> Result<(), CommandError> {
     let tx = conn.transaction()?;
     tx.execute_batch(
         "DELETE FROM reading_time_totals;
          DELETE FROM reading_time_daily;
          DELETE FROM reading_time_hourly;",
-    )
-    ?;
+    )?;
     for row in &wire.totals {
         tx.execute(
             "INSERT INTO reading_time_totals (book_id, total_ms, first_started_at, last_read_at)
              VALUES (?1,?2,?3,?4)",
-            params![row.book_id, row.total_ms, row.first_started_at, row.last_read_at],
-        )
-        ?;
+            params![
+                row.book_id,
+                row.total_ms,
+                row.first_started_at,
+                row.last_read_at
+            ],
+        )?;
     }
     for row in &wire.daily {
         tx.execute(
             "INSERT INTO reading_time_daily (book_id, local_day, ms) VALUES (?1,?2,?3)",
             params![row.book_id, row.local_day, row.ms],
-        )
-        ?;
+        )?;
     }
     for row in &wire.hourly {
         tx.execute(
             "INSERT INTO reading_time_hourly (book_id, local_hour, ms) VALUES (?1,?2,?3)",
             params![row.book_id, row.local_hour, row.ms],
-        )
-        ?;
+        )?;
     }
     // The tables no longer equal the log's replay: let the genesis pass
     // re-measure at next boot.
-    tx.execute("UPDATE local_device SET reading_time_genesis_at = NULL WHERE id = 1", [])?;
+    tx.execute(
+        "UPDATE local_device SET reading_time_genesis_at = NULL WHERE id = 1",
+        [],
+    )?;
     tx.commit()?;
     Ok(())
 }

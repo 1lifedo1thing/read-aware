@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { DOMAIN_CATALOG, HOST_SERVICE_CATALOG } from "@read-aware/core";
 import type { PluginManifest } from "../lib/plugin-types";
-import {
-  assertPluginCapabilityRequirements,
-  resolvePluginCapabilities,
-} from "./plugin-capabilities";
+import { assertPluginCapabilityRequirements, resolvePluginCapabilities } from "./plugin-capabilities";
 
 function manifest(patch: Partial<PluginManifest> = {}): PluginManifest {
   return {
@@ -21,40 +18,97 @@ describe("plugin capability negotiation", () => {
   test("memory 2 rejects profile1 clients rather than silently changing their persistence contract", () => {
     for (const permission of ["memory:read", "memory:write"] as const) {
       expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.memory).toBe("2.8.0");
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^1.8.0" } } }))).toThrow(/host provides 2.8.0/);
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.0.0" } } }))).not.toThrow();
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.1.0" } } }))).not.toThrow();
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.2.0" } } }))).not.toThrow();
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.3.0" } } }))).not.toThrow();
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.4.0" } } }))).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { memory: "^1.8.0" } } }),
+        ),
+      ).toThrow(/host provides 2.8.0/);
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { memory: "^2.0.0" } } }),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { memory: "^2.1.0" } } }),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { memory: "^2.2.0" } } }),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { memory: "^2.3.0" } } }),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { memory: "^2.4.0" } } }),
+        ),
+      ).not.toThrow();
       for (const version of ["^2.5.0", "^2.6.0", "^2.7.0", "^2.8.0"])
-        expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: version } } }))).not.toThrow();
+        expect(() =>
+          assertPluginCapabilityRequirements(
+            manifest({ permissions: [permission], requires: { domains: { memory: version } } }),
+          ),
+        ).not.toThrow();
     }
   });
   test("annotation 2 requires conditional edits and rejects clients expecting legacy aliases", () => {
     for (const permission of ["annotations:read", "annotations:write"] as const) {
       expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.annotations).toBe("2.2.0");
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^1.4.0" } } }))).toThrow(/host provides 2.2.0/);
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.0.0" } } }))).not.toThrow();
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.1.0" } } }))).not.toThrow();
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.2.0" } } }))).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { annotations: "^1.4.0" } } }),
+        ),
+      ).toThrow(/host provides 2.2.0/);
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { annotations: "^2.0.0" } } }),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { annotations: "^2.1.0" } } }),
+        ),
+      ).not.toThrow();
+      expect(() =>
+        assertPluginCapabilityRequirements(
+          manifest({ permissions: [permission], requires: { domains: { annotations: "^2.2.0" } } }),
+        ),
+      ).not.toThrow();
     }
   });
   test("metadata service does not grant reading access and legacy event contracts are rejected", () => {
     const empty = manifest({ permissions: [] });
     expect(resolvePluginCapabilities(empty).services.session).toBe(HOST_SERVICE_CATALOG.session.version);
     expect(resolvePluginCapabilities(empty).domains.reading).toBeUndefined();
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^1.0.0" } } }))).toThrow(`host provides ${HOST_SERVICE_CATALOG.session.version}`);
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^2.0.0" } } }))).not.toThrow();
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { domains: { reading: "^2.0.0" } } }))).toThrow(/unavailable capability domains.reading/);
-    expect(() => assertPluginCapabilityRequirements(manifest({ permissions: ["reading:read"], requires: { domains: { reading: "^2.0.0" } } }))).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^1.0.0" } } })),
+    ).toThrow(`host provides ${HOST_SERVICE_CATALOG.session.version}`);
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^2.0.0" } } })),
+    ).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { domains: { reading: "^2.0.0" } } })),
+    ).toThrow(/unavailable capability domains.reading/);
+    expect(() =>
+      assertPluginCapabilityRequirements(
+        manifest({ permissions: ["reading:read"], requires: { domains: { reading: "^2.0.0" } } }),
+      ),
+    ).not.toThrow();
   });
   test("publishes only the actor-visible capability versions", () => {
     const visible = resolvePluginCapabilities(
       manifest({ permissions: ["library:read", "service:network", "ui:themes"] }),
     );
 
-    expect(visible.domains).toEqual({ library: DOMAIN_CATALOG.library.version, settings: DOMAIN_CATALOG.settings.version });
+    expect(visible.domains).toEqual({
+      library: DOMAIN_CATALOG.library.version,
+      settings: DOMAIN_CATALOG.settings.version,
+    });
     expect(visible.services.network).toBe("2.2.0");
     expect(visible.services.llm).toBeUndefined();
     expect(visible.contributions.themes).toBe("1.0.0");
@@ -64,35 +118,55 @@ describe("plugin capability negotiation", () => {
 
   test("rejects requirements outside the plugin actor's grants", () => {
     expect(() =>
-      assertPluginCapabilityRequirements(
-        manifest({ requires: { services: { network: "^1.0.0" } } }),
-      ),
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { network: "^1.0.0" } } })),
     ).toThrow(/unavailable capability services.network/);
   });
 
   test("network scopes require an explicit migration from the broad 1.x contract", () => {
-    expect(() => assertPluginCapabilityRequirements(manifest({ permissions: ["service:network"], requires: { services: { network: "^1.1.0" } } }))).toThrow(/host provides 2.2.0/);
-    expect(() => assertPluginCapabilityRequirements(manifest({ permissions: ["service:network"], requires: { services: { network: "^2.0.0" } } }))).not.toThrow();
-    expect(() => assertPluginCapabilityRequirements(manifest({ permissions: ["service:network"], requires: { services: { network: "^2.1.0" } } }))).not.toThrow();
-    expect(() => assertPluginCapabilityRequirements(manifest({ permissions: ["service:network"], requires: { services: { network: "^2.2.0" } } }))).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(
+        manifest({ permissions: ["service:network"], requires: { services: { network: "^1.1.0" } } }),
+      ),
+    ).toThrow(/host provides 2.2.0/);
+    expect(() =>
+      assertPluginCapabilityRequirements(
+        manifest({ permissions: ["service:network"], requires: { services: { network: "^2.0.0" } } }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(
+        manifest({ permissions: ["service:network"], requires: { services: { network: "^2.1.0" } } }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(
+        manifest({ permissions: ["service:network"], requires: { services: { network: "^2.2.0" } } }),
+      ),
+    ).not.toThrow();
   });
 
   test("rejects an incompatible host capability version", () => {
     expect(() =>
-      assertPluginCapabilityRequirements(
-        manifest({ requires: { services: { storage: "^1.0.0" } } }),
-      ),
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { storage: "^1.0.0" } } })),
     ).toThrow(`host provides ${HOST_SERVICE_CATALOG.storage.version}`);
   });
 
   test("accepts the awaited storage contract", () => {
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { storage: "^2.0.0" } } }))).not.toThrow();
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { storage: "^2.1.0" } } }))).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { storage: "^2.0.0" } } })),
+    ).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { storage: "^2.1.0" } } })),
+    ).not.toThrow();
   });
 
   test("logging needs no content grants and rejects an incompatible service version", () => {
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { logging: "^1.0.0" } } }))).not.toThrow();
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { logging: "^2.0.0" } } }))).toThrow(/host provides 1.0.0/);
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { logging: "^1.0.0" } } })),
+    ).not.toThrow();
+    expect(() =>
+      assertPluginCapabilityRequirements(manifest({ requires: { services: { logging: "^2.0.0" } } })),
+    ).toThrow(/host provides 1.0.0/);
     const visible = resolvePluginCapabilities(manifest());
     expect(visible.services.logging).toBe("1.0.0");
     expect(visible.domains.library).toBeUndefined();

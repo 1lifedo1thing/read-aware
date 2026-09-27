@@ -2,8 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import { elideStaleToolResults } from "./context-slim";
 
-const user = (text: string) =>
-  ({ role: "user", content: text, timestamp: 0 }) as unknown as AgentMessage;
+const user = (text: string) => ({ role: "user", content: text, timestamp: 0 }) as unknown as AgentMessage;
 const toolResult = (text: string, toolName = "read_chapter") =>
   ({
     role: "toolResult",
@@ -46,7 +45,13 @@ describe("elideStaleToolResults", () => {
 });
 
 test("earlier image blocks are removed even when their text metadata is short", () => {
-  const image = { ...toolResult("image metadata"), content: [{ type: "image", mimeType: "image/png", data: "AAAA" }, { type: "text", text: "image metadata" }] } as AgentMessage;
+  const image = {
+    ...toolResult("image metadata"),
+    content: [
+      { type: "image", mimeType: "image/png", data: "AAAA" },
+      { type: "text", text: "image metadata" },
+    ],
+  } as AgentMessage;
   const messages = [user("q1"), image, user("q2"), image];
   const result = elideStaleToolResults(messages);
   expect(JSON.stringify(result[1])).not.toContain("AAAA");
@@ -56,9 +61,19 @@ test("earlier image blocks are removed even when their text metadata is short", 
 
 test("completed turns release pixel payloads from retained state while preserving tool identity and metadata", async () => {
   const { releaseToolImages } = await import("./context-slim");
-  const message = { ...toolResult("descriptor", "read_book_image"), content: [{ type: "text", text: "descriptor" }, { type: "image", mimeType: "image/png", data: "AAAA" }] } as AgentMessage;
+  const message = {
+    ...toolResult("descriptor", "read_book_image"),
+    content: [
+      { type: "text", text: "descriptor" },
+      { type: "image", mimeType: "image/png", data: "AAAA" },
+    ],
+  } as AgentMessage;
   const [released] = releaseToolImages([message]);
-  expect(released).toMatchObject({ toolCallId: "t1", toolName: "read_book_image", content: [{ type: "text", text: "descriptor" }, { type: "text" }] });
+  expect(released).toMatchObject({
+    toolCallId: "t1",
+    toolName: "read_book_image",
+    content: [{ type: "text", text: "descriptor" }, { type: "text" }],
+  });
   expect(JSON.stringify(released)).not.toContain("AAAA");
   expect(JSON.stringify(message)).toContain("AAAA");
 });

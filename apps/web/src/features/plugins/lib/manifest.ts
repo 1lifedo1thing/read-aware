@@ -3,9 +3,7 @@
  * typed `PluginManifest`. Pure; throws `PluginManifestError` with a
  * human-readable reason (surfaced in settings and at install time).
  */
-import {
-  HOST_CAPABILITY_CATALOG, normalizePluginServices,
-} from "@read-aware/core";
+import { HOST_CAPABILITY_CATALOG, normalizePluginServices } from "@read-aware/core";
 import { intersects, validRange } from "semver";
 import {
   MIN_SCHEDULE_MINUTES,
@@ -21,8 +19,7 @@ import { parsePluginNetworkAccess } from "./plugin-network-policy";
 export class PluginManifestError extends Error {}
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
-const SETTINGS_PATH_PATTERN =
-  /^[a-z][a-zA-Z0-9-]*(?:\.(?:[a-zA-Z0-9_-]|%[0-9A-F]{2})+)*(?:\.\*)?$/;
+const SETTINGS_PATH_PATTERN = /^[a-z][a-zA-Z0-9-]*(?:\.(?:[a-zA-Z0-9_-]|%[0-9A-F]{2})+)*(?:\.\*)?$/;
 
 /** Loose semver: "1", "1.2", "1.2.3" (extra labels ignored). */
 function parseVersion(value: string): number[] | null {
@@ -69,16 +66,12 @@ function validateCapabilityRequirements(raw: unknown): PluginCapabilityRequireme
     throw new PluginManifestError("manifest.requires must be an object");
   }
   const record = raw as Record<string, unknown>;
-  const families = Object.keys(HOST_CAPABILITY_CATALOG) as Array<
-    keyof PluginCapabilityRequirements
-  >;
+  const families = Object.keys(HOST_CAPABILITY_CATALOG) as Array<keyof PluginCapabilityRequirements>;
   const unknownFamilies = Object.keys(record).filter(
     (family) => !families.includes(family as keyof PluginCapabilityRequirements),
   );
   if (unknownFamilies.length > 0) {
-    throw new PluginManifestError(
-      `manifest.requires has unknown families: ${unknownFamilies.join(", ")}`,
-    );
+    throw new PluginManifestError(`manifest.requires has unknown families: ${unknownFamilies.join(", ")}`);
   }
 
   const requirements: Record<string, Record<string, string>> = {};
@@ -92,14 +85,10 @@ function validateCapabilityRequirements(raw: unknown): PluginCapabilityRequireme
     const ranges: Record<string, string> = {};
     for (const [id, range] of Object.entries(requested as Record<string, unknown>)) {
       if (!(id in catalog)) {
-        throw new PluginManifestError(
-          `manifest.requires.${family} contains unknown capability "${id}"`,
-        );
+        throw new PluginManifestError(`manifest.requires.${family} contains unknown capability "${id}"`);
       }
       if (typeof range !== "string" || validRange(range) === null) {
-        throw new PluginManifestError(
-          `manifest.requires.${family}.${id} must be a valid semver range`,
-        );
+        throw new PluginManifestError(`manifest.requires.${family}.${id} must be a valid semver range`);
       }
       ranges[id] = range;
     }
@@ -116,9 +105,7 @@ export function validateManifest(raw: unknown): PluginManifest {
 
   const id = requireString(record, "id");
   if (!ID_PATTERN.test(id)) {
-    throw new PluginManifestError(
-      "manifest.id must be lowercase letters, digits, and hyphens (max 64 chars)",
-    );
+    throw new PluginManifestError("manifest.id must be lowercase letters, digits, and hyphens (max 64 chars)");
   }
 
   const name = requireString(record, "name");
@@ -151,12 +138,17 @@ export function validateManifest(raw: unknown): PluginManifest {
   let services: PluginManifest["services"];
   if (record.services !== undefined) {
     const range = requires.services?.plugins;
-    if (!range || intersects(range, ">=0.0.0 <1.8.0")) throw new PluginManifestError("manifest.services requires plugins >=1.8");
-    try { services = normalizePluginServices(record.services); }
-    catch { throw new PluginManifestError("manifest.services contains an invalid typed service contract"); }
+    if (!range || intersects(range, ">=0.0.0 <1.8.0"))
+      throw new PluginManifestError("manifest.services requires plugins >=1.8");
+    try {
+      services = normalizePluginServices(record.services);
+    } catch {
+      throw new PluginManifestError("manifest.services contains an invalid typed service contract");
+    }
     const grants = new Set<string>(permissions ?? []);
     for (const grant of [...grants]) if (grant.endsWith(":write")) grants.add(grant.replace(/:write$/, ":read"));
-    if (services.some(service => service.permissions.some(permission => !grants.has(permission)))) throw new PluginManifestError("service permissions exceed the provider's grants");
+    if (services.some((service) => service.permissions.some((permission) => !grants.has(permission))))
+      throw new PluginManifestError("service permissions exceed the provider's grants");
   }
 
   let networkAccess: PluginManifest["networkAccess"];
@@ -166,10 +158,17 @@ export function validateManifest(raw: unknown): PluginManifest {
     }
     const range = requires.services?.network;
     if (!range || intersects(range, ">=0.0.0 <2.0.0")) {
-      throw new PluginManifestError("manifest.networkAccess requires a network capability range excluding hosts before 2.0");
+      throw new PluginManifestError(
+        "manifest.networkAccess requires a network capability range excluding hosts before 2.0",
+      );
     }
-    try { networkAccess = parsePluginNetworkAccess(record.networkAccess); }
-    catch (error) { throw new PluginManifestError(`manifest.networkAccess: ${error instanceof Error ? error.message : String(error)}`); }
+    try {
+      networkAccess = parsePluginNetworkAccess(record.networkAccess);
+    } catch (error) {
+      throw new PluginManifestError(
+        `manifest.networkAccess: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   let settingsAccess: PluginManifest["settingsAccess"];
@@ -182,13 +181,9 @@ export function validateManifest(raw: unknown): PluginManifest {
       throw new PluginManifestError("manifest.settingsAccess must be an object");
     }
     const rawAccess = record.settingsAccess as Record<string, unknown>;
-    const unknown = Object.keys(rawAccess).filter(
-      (key) => key !== "discover" && key !== "read" && key !== "write",
-    );
+    const unknown = Object.keys(rawAccess).filter((key) => key !== "discover" && key !== "read" && key !== "write");
     if (unknown.length > 0) {
-      throw new PluginManifestError(
-        `manifest.settingsAccess has unknown operations: ${unknown.join(", ")}`,
-      );
+      throw new PluginManifestError(`manifest.settingsAccess has unknown operations: ${unknown.join(", ")}`);
     }
     settingsAccess = {};
     for (const operation of ["discover", "read", "write"] as const) {
@@ -196,9 +191,7 @@ export function validateManifest(raw: unknown): PluginManifest {
       if (paths == null) continue;
       if (
         !Array.isArray(paths) ||
-        paths.some(
-          (path) => typeof path !== "string" || !SETTINGS_PATH_PATTERN.test(path),
-        )
+        paths.some((path) => typeof path !== "string" || !SETTINGS_PATH_PATTERN.test(path))
       ) {
         throw new PluginManifestError(
           `manifest.settingsAccess.${operation} must contain exact setting paths or section.* groups`,
@@ -213,17 +206,7 @@ export function validateManifest(raw: unknown): PluginManifest {
     if (!Array.isArray(record.settings)) {
       throw new PluginManifestError("manifest.settings must be an array of fields");
     }
-    const kinds = new Set([
-      "text",
-      "textarea",
-      "number",
-      "time",
-      "select",
-      "toggle",
-      "checkbox",
-      "choice",
-      "secret",
-    ]);
+    const kinds = new Set(["text", "textarea", "number", "time", "select", "toggle", "checkbox", "choice", "secret"]);
     // A secret field's id doubles as its ctx.secrets key.
     const SECRET_ID = /^[a-z0-9][a-z0-9_-]{0,63}$/;
     // Field copy is PluginText: a plain string or a localized bundle.
@@ -232,22 +215,20 @@ export function validateManifest(raw: unknown): PluginManifest {
       (typeof value === "object" &&
         value !== null &&
         typeof (value as { default?: unknown }).default === "string" &&
-        ((value as { default: string }).default.trim() !== ""));
+        (value as { default: string }).default.trim() !== "");
     for (const field of record.settings as Record<string, unknown>[]) {
       if (
-        typeof field !== "object" || field === null ||
+        typeof field !== "object" ||
+        field === null ||
         !kinds.has(String(field.kind)) ||
-        typeof field.id !== "string" || field.id.trim() === "" ||
+        typeof field.id !== "string" ||
+        field.id.trim() === "" ||
         !validText(field.label)
       ) {
-        throw new PluginManifestError(
-          "manifest.settings entries need a valid kind, id, and label",
-        );
+        throw new PluginManifestError("manifest.settings entries need a valid kind, id, and label");
       }
       if (field.kind === "time" && field.value != null && !isTimeOfDay(field.value)) {
-        throw new PluginManifestError(
-          "manifest.settings time fields need a 24-hour HH:MM value",
-        );
+        throw new PluginManifestError("manifest.settings time fields need a 24-hour HH:MM value");
       }
       if (field.kind === "secret" && !SECRET_ID.test(String(field.id))) {
         throw new PluginManifestError(
@@ -266,17 +247,15 @@ export function validateManifest(raw: unknown): PluginManifest {
         const equals = condition?.equals;
         const validEquals =
           typeof equals === "string" ||
-          (Array.isArray(equals) &&
-            equals.length > 0 &&
-            equals.every((value) => typeof value === "string"));
+          (Array.isArray(equals) && equals.length > 0 && equals.every((value) => typeof value === "string"));
         if (
-          typeof condition !== "object" || condition === null ||
-          typeof condition.field !== "string" || condition.field.trim() === "" ||
+          typeof condition !== "object" ||
+          condition === null ||
+          typeof condition.field !== "string" ||
+          condition.field.trim() === "" ||
           !validEquals
         ) {
-          throw new PluginManifestError(
-            "manifest.settings visibleWhen needs { field, equals: string | string[] }",
-          );
+          throw new PluginManifestError("manifest.settings visibleWhen needs { field, equals: string | string[] }");
         }
       }
     }
@@ -291,10 +270,15 @@ export function validateManifest(raw: unknown): PluginManifest {
     const seen = new Set<string>();
     for (const entry of record.schedules as Record<string, unknown>[]) {
       if (
-        typeof entry !== "object" || entry === null ||
-        typeof entry.id !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(entry.id) ||
-        typeof entry.label !== "string" || entry.label.trim() === "" || entry.label.length > 256 ||
-        (entry.mode === "deferred" ? entry.everyMinutes !== undefined
+        typeof entry !== "object" ||
+        entry === null ||
+        typeof entry.id !== "string" ||
+        !/^[a-z][a-z0-9-]{0,63}$/.test(entry.id) ||
+        typeof entry.label !== "string" ||
+        entry.label.trim() === "" ||
+        entry.label.length > 256 ||
+        (entry.mode === "deferred"
+          ? entry.everyMinutes !== undefined
           : entry.mode !== undefined || typeof entry.everyMinutes !== "number" || !Number.isFinite(entry.everyMinutes))
       ) {
         throw new PluginManifestError(
@@ -302,9 +286,7 @@ export function validateManifest(raw: unknown): PluginManifest {
         );
       }
       if (typeof entry.everyMinutes === "number" && entry.everyMinutes < MIN_SCHEDULE_MINUTES) {
-        throw new PluginManifestError(
-          `manifest.schedules cadence floor is ${MIN_SCHEDULE_MINUTES} minutes`,
-        );
+        throw new PluginManifestError(`manifest.schedules cadence floor is ${MIN_SCHEDULE_MINUTES} minutes`);
       }
       if (seen.has(entry.id)) {
         throw new PluginManifestError(`duplicate schedule id "${entry.id}"`);
@@ -326,23 +308,16 @@ export function validateManifest(raw: unknown): PluginManifest {
   let fonts: PluginManifest["fonts"];
   if (record.themes != null || record.fonts != null) {
     if (!permissions?.includes("ui:themes")) {
-      throw new PluginManifestError(
-        'manifest.themes/manifest.fonts require the "ui:themes" permission',
-      );
+      throw new PluginManifestError('manifest.themes/manifest.fonts require the "ui:themes" permission');
     }
     try {
       fonts = record.fonts != null ? validateFontContributions(record.fonts) : undefined;
       themes =
         record.themes != null
-          ? validateThemeContributions(
-              record.themes,
-              new Set(fonts?.map((font) => font.id) ?? []),
-            )
+          ? validateThemeContributions(record.themes, new Set(fonts?.map((font) => font.id) ?? []))
           : undefined;
     } catch (error) {
-      throw new PluginManifestError(
-        error instanceof Error ? error.message : String(error),
-      );
+      throw new PluginManifestError(error instanceof Error ? error.message : String(error));
     }
   }
 

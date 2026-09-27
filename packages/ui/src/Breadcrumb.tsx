@@ -13,11 +13,7 @@ type BreadcrumbProps = {
   className?: string;
 };
 
-export function Breadcrumb({
-  items,
-  separator = "/",
-  className,
-}: BreadcrumbProps) {
+export function Breadcrumb({ items, separator = "/", className }: BreadcrumbProps) {
   const { t } = useTranslation("ui");
   return (
     <nav aria-label={t("breadcrumb")} className={className}>
@@ -32,10 +28,7 @@ export function Breadcrumb({
                 </span>
               )}
               {isLast ? (
-                <span
-                  aria-current="page"
-                  className="text-fg font-medium"
-                >
+                <span aria-current="page" className="text-fg font-medium">
                   {item.label}
                 </span>
               ) : item.href ? (

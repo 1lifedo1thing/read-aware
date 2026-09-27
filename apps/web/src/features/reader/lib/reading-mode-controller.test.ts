@@ -3,19 +3,28 @@ import { AppError } from "@read-aware/core";
 import { ReadingModeController, type ModeFeedback } from "./reading-mode-controller";
 import { eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
 
-const descriptor = { key: "sentences:mode", label: "Sentences", defaultUnitId: "sentence",
-  units: [{ id: "sentence", label: "Sentence" }, { id: "paragraph", label: "Paragraph" }] };
+const descriptor = {
+  key: "sentences:mode",
+  label: "Sentences",
+  defaultUnitId: "sentence",
+  units: [
+    { id: "sentence", label: "Sentence" },
+    { id: "paragraph", label: "Paragraph" },
+  ],
+};
 const ready: ModeFeedback = { status: "ready", progress: { ordinal: 1, total: 4 }, cfiRange: "unit" };
 function fixture(deadline = 1000) {
   const controller = new ReadingModeController(false, null, deadline);
   controller.environment(descriptor, true);
-  const feedback = (value: ModeFeedback) => controller.feedback(controller.requested().revision, descriptor.key, controller.requested().unitId, value);
+  const feedback = (value: ModeFeedback) =>
+    controller.feedback(controller.requested().revision, descriptor.key, controller.requested().unitId, value);
   feedback({ status: "inactive", progress: null, cfiRange: null });
   return { controller, feedback };
 }
 
 test("only the latest durable preference can change mode after configuration writes settle", async () => {
-  const { controller } = fixture(); controller.requireDurability();
+  const { controller } = fixture();
+  controller.requireDurability();
   const old = reactionActor("plugin:settings", "old", eventCause(stampEventCause({}))!);
   const latest = reactionActor("plugin:settings", "latest", eventCause(stampEventCause({}))!);
   const write = Promise.withResolvers<void>();
@@ -23,54 +32,79 @@ test("only the latest durable preference can change mode after configuration wri
   const first = controller.reconcilePreference(() => "paragraph", old);
   const second = controller.reconcilePreference(() => "paragraph", latest);
   expect(controller.requested().unitId).toBe("sentence");
-  write.resolve(); await Promise.all([first, second]);
+  write.resolve();
+  await Promise.all([first, second]);
   expect(controller.requested().unitId).toBe("paragraph");
   expect(controller.requested().origin).toBe(latest);
 });
 
 test("index feedback does not acknowledge configuration before its exact writes commit", async () => {
-  const { controller, feedback } = fixture(); controller.requireDurability();
-  let commit!: () => void, complete = false;
-  const work = controller.configure({ active: true }).then(value => { complete = true; return value; });
+  const { controller, feedback } = fixture();
+  controller.requireDurability();
+  let commit!: () => void,
+    complete = false;
+  const work = controller.configure({ active: true }).then((value) => {
+    complete = true;
+    return value;
+  });
   feedback(ready);
-  controller.trackPersistence(controller.generation(), new Promise(resolve => { commit = resolve; }));
-  await Promise.resolve(); await Promise.resolve();
+  controller.trackPersistence(
+    controller.generation(),
+    new Promise((resolve) => {
+      commit = resolve;
+    }),
+  );
+  await Promise.resolve();
+  await Promise.resolve();
   expect(complete).toBe(false);
   commit();
   expect((await work).status).toBe("ready");
 });
 
 test("a failed write before indexing is retained and returned, not lost by a late flush", async () => {
-  const { controller, feedback } = fixture(); controller.requireDurability();
+  const { controller, feedback } = fixture();
+  controller.requireDurability();
   const work = controller.configure({ active: true, unitId: "paragraph" });
   controller.trackPersistence(controller.generation(), Promise.reject(new AppError("db/error", "rejected")));
-  await Promise.resolve(); feedback(ready);
+  await Promise.resolve();
+  feedback(ready);
   await expect(work).rejects.toMatchObject({ code: "db/error" });
   expect(controller.snapshot()).toMatchObject({ status: "inactive", requestedActive: false, unitId: "sentence" });
   const retry = controller.configure({ active: true, unitId: "paragraph" });
-  controller.trackPersistence(controller.generation(), Promise.resolve()); feedback(ready);
+  controller.trackPersistence(controller.generation(), Promise.resolve());
+  feedback(ready);
   expect((await retry).status).toBe("ready");
 });
 
 test("cancellation remains active during persistence and late failure cannot corrupt a successor", async () => {
-  const { controller, feedback } = fixture(); controller.requireDurability();
+  const { controller, feedback } = fixture();
+  controller.requireDurability();
   const owner = new AbortController();
   const work = controller.configure({ active: true, unitId: "paragraph" }, owner.signal);
   let fail!: (error: Error) => void;
-  controller.trackPersistence(controller.generation(), new Promise((_, reject) => { fail = reject; }));
-  feedback(ready); await Promise.resolve();
+  controller.trackPersistence(
+    controller.generation(),
+    new Promise((_, reject) => {
+      fail = reject;
+    }),
+  );
+  feedback(ready);
+  await Promise.resolve();
   owner.abort(new Error("cancelled while committing"));
   await expect(work).rejects.toThrow("cancelled while committing");
   expect(controller.requested()).toMatchObject({ active: false, unitId: "sentence" });
-  const successor = controller.configure({ active: true, unitId: "sentence" }); feedback(ready);
+  const successor = controller.configure({ active: true, unitId: "sentence" });
+  feedback(ready);
   expect((await successor).status).toBe("ready");
   fail(new AppError("db/error", "old failed write"));
-  await Promise.resolve(); await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
   expect(controller.snapshot()).toMatchObject({ status: "ready", unitId: "sentence" });
 });
 
 test("disabling an unavailable provider still waits for retained book-state persistence", async () => {
-  const { controller } = fixture(); controller.requireDurability();
+  const { controller } = fixture();
+  controller.requireDurability();
   controller.environment(null, true);
   const work = controller.configure({ active: false });
   controller.trackPersistence(controller.generation(), Promise.reject(new AppError("db/error", "book state rejected")));
@@ -78,13 +112,15 @@ test("disabling an unavailable provider still waits for retained book-state pers
 });
 
 test("a matching configuration cannot wait forever on a later position write", async () => {
-  const { controller } = fixture(10); controller.requireDurability();
+  const { controller } = fixture(10);
+  controller.requireDurability();
   controller.trackPersistence(controller.generation(), new Promise(() => {}));
   await expect(controller.configure({ active: false })).rejects.toMatchObject({ code: "reader/timeout" });
 });
 
 test("a successor cannot restore an unfinished native choice on persistence failure", async () => {
-  const { controller } = fixture(); controller.requireDurability();
+  const { controller } = fixture();
+  controller.requireDurability();
   controller.choose(true, "paragraph");
   const work = controller.configure({ active: true, unitId: "sentence" });
   controller.trackConfiguration(controller.generation(), Promise.reject(new AppError("db/locked", "rejected")));
@@ -93,13 +129,19 @@ test("a successor cannot restore an unfinished native choice on persistence fail
 });
 
 test("position writes with stale revision or unit are never dispatched", async () => {
-  const { controller, feedback } = fixture(); controller.requireDurability();
+  const { controller, feedback } = fixture();
+  controller.requireDurability();
   const oldRevision = controller.generation();
   const work = controller.configure({ active: true, unitId: "paragraph" });
   let writes = 0;
-  controller.persistPosition(oldRevision, descriptor.key, "sentence", async () => { writes++; });
-  controller.persistPosition(controller.generation(), descriptor.key, "sentence", async () => { writes++; });
-  feedback(ready); await work;
+  controller.persistPosition(oldRevision, descriptor.key, "sentence", async () => {
+    writes++;
+  });
+  controller.persistPosition(controller.generation(), descriptor.key, "sentence", async () => {
+    writes++;
+  });
+  feedback(ready);
+  await work;
   expect(writes).toBe(0);
 });
 
@@ -107,7 +149,10 @@ test("mode configuration completes on matching actual indexing, never an old rea
   const { controller, feedback } = fixture();
   const oldRevision = controller.requested().revision;
   let complete = false;
-  const work = controller.configure({ active: true, unitId: "paragraph", modeKey: descriptor.key }).then(value => { complete = true; return value; });
+  const work = controller.configure({ active: true, unitId: "paragraph", modeKey: descriptor.key }).then((value) => {
+    complete = true;
+    return value;
+  });
   controller.feedback(oldRevision, descriptor.key, "paragraph", ready);
   await Promise.resolve();
   expect(complete).toBe(false);
@@ -121,13 +166,19 @@ test("mode configuration completes on matching actual indexing, never an old rea
 
 test("stop waits for deactivation and empty differs from failure", async () => {
   const { controller, feedback } = fixture();
-  const start = controller.configure({ active: true }); feedback({ status: "empty", progress: null, cfiRange: null });
+  const start = controller.configure({ active: true });
+  feedback({ status: "empty", progress: null, cfiRange: null });
   expect((await start).status).toBe("empty");
   const stop = controller.configure({ active: false });
   feedback(ready);
-  let done = false; void stop.then(() => { done = true; });
-  await Promise.resolve(); expect(done).toBe(false);
-  feedback({ status: "inactive", progress: null, cfiRange: null }); await stop;
+  let done = false;
+  void stop.then(() => {
+    done = true;
+  });
+  await Promise.resolve();
+  expect(done).toBe(false);
+  feedback({ status: "inactive", progress: null, cfiRange: null });
+  await stop;
   const failed = controller.configure({ active: true });
   feedback({ status: "error", errorCode: "reader/segmentation-failed", progress: null, cfiRange: null });
   await expect(failed).rejects.toMatchObject({ code: "reader/segmentation-failed" });
@@ -147,7 +198,8 @@ test("abort rolls back only unfinished actor state, while a user takeover owns i
   const first = controller.configure({ active: true }, owner.signal);
   controller.choose(true, "paragraph");
   await expect(first).rejects.toMatchObject({ code: "reader/superseded" });
-  feedback(ready); owner.abort();
+  feedback(ready);
+  owner.abort();
   expect(controller.snapshot()).toMatchObject({ status: "ready", requestedActive: true, unitId: "paragraph" });
 });
 
@@ -157,19 +209,25 @@ test("superseded requests cannot become a cancelled successor's rollback target"
   const owner = new AbortController();
   const second = controller.configure({ active: true, unitId: "paragraph" }, owner.signal);
   await expect(first).rejects.toMatchObject({ code: "reader/superseded" });
-  owner.abort(); await expect(second).rejects.toBeDefined();
+  owner.abort();
+  await expect(second).rejects.toBeDefined();
   expect(controller.requested()).toMatchObject({ active: false, unitId: "sentence" });
 });
 
 test("completed preference changes survive caller lifecycle end", async () => {
-  const { controller, feedback } = fixture(); const owner = new AbortController();
-  const work = controller.configure({ active: true }, owner.signal); feedback(ready); await work;
-  owner.abort(); expect(controller.snapshot().status).toBe("ready");
+  const { controller, feedback } = fixture();
+  const owner = new AbortController();
+  const work = controller.configure({ active: true }, owner.signal);
+  feedback(ready);
+  await work;
+  owner.abort();
+  expect(controller.snapshot().status).toBe("ready");
 });
 
 test("provider/format changes and retirement reject pending requests", async () => {
   const { controller } = fixture();
-  const work = controller.configure({ active: true }); controller.environment(null, true);
+  const work = controller.configure({ active: true });
+  controller.environment(null, true);
   await expect(work).rejects.toMatchObject({ code: "reader/superseded" });
   expect(controller.snapshot().unavailableReason).toBe("no-provider");
   expect(controller.requested().active).toBe(false);
@@ -179,14 +237,20 @@ test("provider/format changes and retirement reject pending requests", async () 
   await expect(controller.configure({ active: true })).rejects.toMatchObject({ code: "reader/unavailable" });
   expect(controller.snapshot().unavailableReason).toBe("unsupported-format");
   controller.environment(descriptor, true);
-  const current = controller.configure({ active: true }); controller.retire();
+  const current = controller.configure({ active: true });
+  controller.retire();
   await expect(current).rejects.toMatchObject({ code: "reader/superseded" });
   expect(controller.requested().active).toBe(false);
 });
 
 test("invalid configuration has no effects and unsettled operations time out", async () => {
-  const { controller } = fixture(10); const revision = controller.requested().revision;
-  for (const input of [{ active: "yes" }, { active: true, unitId: "unknown" }, { active: true, modeKey: "other:mode" }]) {
+  const { controller } = fixture(10);
+  const revision = controller.requested().revision;
+  for (const input of [
+    { active: "yes" },
+    { active: true, unitId: "unknown" },
+    { active: true, modeKey: "other:mode" },
+  ]) {
     await expect(controller.configure(input as { active: boolean })).rejects.toBeDefined();
   }
   expect(controller.requested().revision).toBe(revision);
@@ -202,8 +266,12 @@ test("provider selection validates target units and awaits the selected provider
   const implementation = () => [];
   controller.environment([descriptor, { ...other, implementation }], true);
   expect(controller.snapshot().availableModes).toEqual([descriptor, other]);
-  await expect(controller.configure({ active: true, selectModeKey: other.key, unitId: "sentence" })).rejects.toMatchObject({ code: "reader/invalid-target" });
-  await expect(controller.configure({ active: true, selectModeKey: "absent:mode" })).rejects.toMatchObject({ code: "reader/unavailable" });
+  await expect(
+    controller.configure({ active: true, selectModeKey: other.key, unitId: "sentence" }),
+  ).rejects.toMatchObject({ code: "reader/invalid-target" });
+  await expect(controller.configure({ active: true, selectModeKey: "absent:mode" })).rejects.toMatchObject({
+    code: "reader/unavailable",
+  });
   expect(controller.requested().modeKey).toBe(descriptor.key);
   const work = controller.configure({ active: true, selectModeKey: other.key, modeKey: descriptor.key });
   expect(controller.requested()).toMatchObject({ modeKey: other.key, unitId: "block" });
@@ -211,7 +279,9 @@ test("provider selection validates target units and awaits the selected provider
   expect(controller.snapshot().status).toBe("preparing");
   controller.feedback(controller.generation(), other.key, "block", ready);
   expect(await work).toMatchObject({ modeKey: other.key, status: "ready" });
-  await expect(controller.configure({ active: false, modeKey: descriptor.key })).rejects.toMatchObject({ code: "reader/superseded" });
+  await expect(controller.configure({ active: false, modeKey: descriptor.key })).rejects.toMatchObject({
+    code: "reader/superseded",
+  });
 });
 
 test("provider catalog churn retains selection and does not interrupt unrelated work", async () => {
@@ -223,7 +293,12 @@ test("provider catalog churn retains selection and does not interrupt unrelated 
   controller.feedback(revision, descriptor.key, "sentence", ready);
   await work;
   controller.environment([other], true);
-  expect(controller.snapshot()).toMatchObject({ modeKey: descriptor.key, requestedActive: true, unavailableReason: "no-provider", availableModes: [other] });
+  expect(controller.snapshot()).toMatchObject({
+    modeKey: descriptor.key,
+    requestedActive: true,
+    unavailableReason: "no-provider",
+    availableModes: [other],
+  });
   controller.environment([other, descriptor], true);
   expect(controller.snapshot()).toMatchObject({ modeKey: descriptor.key, status: "preparing" });
 });
@@ -251,7 +326,9 @@ test("a selected provider implementation replacement invalidates in-flight feedb
 });
 
 test("saved provider and provider-specific unit win over registration order", async () => {
-  const controller = new ReadingModeController(false, null, 1000, descriptor.key, key => key === descriptor.key ? "paragraph" : null);
+  const controller = new ReadingModeController(false, null, 1000, descriptor.key, (key) =>
+    key === descriptor.key ? "paragraph" : null,
+  );
   controller.environment([other, descriptor], true);
   expect(controller.requested()).toMatchObject({ modeKey: descriptor.key, unitId: "paragraph" });
   const work = controller.configure({ active: false, selectModeKey: other.key });

@@ -18,11 +18,11 @@ export function isAppSurfaceShortcut(id: ShortcutId | undefined): boolean {
 /** Same conservative conflict space as settings: no registration-order winner. */
 export function resolveShortcutDispatch(rows: readonly ShortcutRow[], event: KeyboardEvent): ShortcutDispatch {
   if (event.defaultPrevented || event.isComposing || event.key === "Escape") return { kind: "none" };
-  const matches = rows.filter(row => row.available && row.binding && chordMatchesEvent(row.binding, event));
+  const matches = rows.filter((row) => row.available && row.binding && chordMatchesEvent(row.binding, event));
   // Typing must remain possible even when bare-letter bindings conflict. Global
   // shortcuts remain global, but never acquire priority over a conflicting row.
-  if (isEditableKeyTarget(event.target) && !matches.some(row => GLOBAL_IDS.has(row.id))) return { kind: "none" };
-  if (matches.length > 1) return { kind: "conflict", ids: matches.map(row => row.id) };
+  if (isEditableKeyTarget(event.target) && !matches.some((row) => GLOBAL_IDS.has(row.id))) return { kind: "none" };
+  if (matches.length > 1) return { kind: "conflict", ids: matches.map((row) => row.id) };
   return matches.length ? { kind: "command", id: matches[0]!.id } : { kind: "none" };
 }
 

@@ -19,5 +19,7 @@ test("encrypted books use a localized terminal error instead of leaking algorith
       expect(description.body).not.toContain("urn:private-algorithm");
       expect(description.retryable).toBe(false);
     }
-  } finally { await setLocale("en"); }
+  } finally {
+    await setLocale("en");
+  }
 });

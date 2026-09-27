@@ -32,23 +32,14 @@ function BigStat({ label, value, delta }: { label: string; value: string; delta?
   return (
     <div className="min-w-0">
       <Caption className="block text-fg-subtle">{label}</Caption>
-      <div className="mt-1 truncate font-serif text-[28px] leading-none text-fg tabular-nums">
-        {value}
-      </div>
+      <div className="mt-1 truncate font-serif text-[28px] leading-none text-fg tabular-nums">{value}</div>
       {delta !== undefined && <DeltaBadge value={delta} className="mt-1.5" />}
     </div>
   );
 }
 
 /** One period tab's full body: headline, charts, rhythm, by-book, and milestones. */
-export function PeriodOverview({
-  period,
-  store,
-  books,
-  annotations,
-  now,
-  onOpenBook,
-}: PeriodOverviewProps) {
+export function PeriodOverview({ period, store, books, annotations, now, onOpenBook }: PeriodOverviewProps) {
   const { t, i18n } = useTranslation("stats");
   const insights = useMemo(
     () => computePeriodInsights(store, period, now, i18n.language),
@@ -56,10 +47,7 @@ export function PeriodOverview({
   );
   const byHour = useMemo(() => aggregateByHour(store), [store]);
   const daily = useMemo(() => aggregateDaily(store), [store]);
-  const achievements = useMemo(
-    () => (period === "all" ? computeAchievements(store, now) : null),
-    [store, period, now],
-  );
+  const achievements = useMemo(() => (period === "all" ? computeAchievements(store, now) : null), [store, period, now]);
 
   const isWeek = period === "week";
   const monthlyBars = period === "year" || period === "all";
@@ -70,8 +58,7 @@ export function PeriodOverview({
   const barsBlock = (
     <div>
       <Caption className="mb-2 block text-fg-subtle">
-        {t(monthlyBars ? "overview.monthlyReading" : "overview.dailyReading")} ·{" "}
-        {periodRangeLabel(t, period)}
+        {t(monthlyBars ? "overview.monthlyReading" : "overview.dailyReading")} · {periodRangeLabel(t, period)}
       </Caption>
       <ReadingBars bars={insights.bars} height={isWeek ? 110 : 160} />
     </div>

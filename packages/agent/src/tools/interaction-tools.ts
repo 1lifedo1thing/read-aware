@@ -12,17 +12,11 @@ import { buildInteractionFormTool } from "./interaction-form-tool";
 const optionSchema = Type.Object({
   id: Type.String({ description: "Short stable id, such as summarize or compare" }),
   label: Type.String({ description: "Concise choice label in the user's language" }),
-  description: Type.Optional(
-    Type.String({ description: "One short sentence explaining this choice" }),
-  ),
+  description: Type.Optional(Type.String({ description: "One short sentence explaining this choice" })),
 });
 
 /** A first-class pause in the current tool loop, resolved by the in-chat UI. */
-export function buildInteractionTools(
-  scope: ThreadScope,
-  deps: RuntimeDeps,
-  turnState?: AgentTurnState,
-): AgentTool[] {
+export function buildInteractionTools(scope: ThreadScope, deps: RuntimeDeps, turnState?: AgentTurnState): AgentTool[] {
   const askUser: AgentTool = {
     name: "ask_user",
     label: "Ask the user",
@@ -67,17 +61,18 @@ export function buildInteractionTools(
         signal,
         onUpdate,
       });
-      if (
-        turnState &&
-        interactionGrantsSpoilerPermission({ question, options: normalized, answer })
-      ) {
+      if (turnState && interactionGrantsSpoilerPermission({ question, options: normalized, answer })) {
         turnState.spoilerPermissionGranted = true;
         turnState.spoilerPermissionDenied = false;
       }
       return {
         ...textResult(
           answer.cancelled
-            ? { answered: false, reason: "The user skipped the question. The requested choice remains unresolved: stop the dependent operation without choosing a default or requesting destructive approval for a guessed target." }
+            ? {
+                answered: false,
+                reason:
+                  "The user skipped the question. The requested choice remains unresolved: stop the dependent operation without choosing a default or requesting destructive approval for a guessed target.",
+              }
             : { answered: true, optionId: answer.optionId, answer: answer.text },
         ),
         details,

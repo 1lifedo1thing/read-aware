@@ -14,7 +14,7 @@ const bookKey = `read-aware-navigator-state:${bookId}`;
 const settingsKey = "read-aware-plugin.mode-durability.settings";
 const modeKey = "mode-durability:reader";
 const legacyKey = "read-aware-navigator-prefs";
-const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // Native detection and Jotai's module-lifetime subscriptions stay in a child process.
 if (process.env.MODE_DURABILITY_CASE === "1") {
@@ -31,40 +31,86 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     state = control;
     const { controller, request } = control;
     useEffect(() => {
-      if (feedbackEnabled) controller.feedback(request.revision, request.modeKey, request.unitId,
-        { status: request.active ? "ready" : "inactive", cfiRange: null, progress: null });
+      if (feedbackEnabled)
+        controller.feedback(request.revision, request.modeKey, request.unitId, {
+          status: request.active ? "ready" : "inactive",
+          cfiRange: null,
+          progress: null,
+        });
     }, [controller, request]);
     return null;
   }
   beforeEach(async () => {
     dom = new JSDOM("<div id='root'></div>", { url: "http://localhost" });
-    const values = { window: dom.window, document: dom.window.document, navigator: dom.window.navigator,
-      localStorage: dom.window.localStorage, IS_REACT_ACT_ENVIRONMENT: true };
-    globals = new Map(Object.keys(values).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-    for (const [key, value] of Object.entries(values)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
-    Object.assign(dom.window, { __TAURI_INTERNALS__: {
-      invoke(command: string, args: { key: string; value: string; entries: [string, string | null][] }) {
-        if (!["set_kv", "delete_kv", "set_kv_batch"].includes(command)) return Promise.resolve();
-        const entries: [string, string | null][] = command === "set_kv_batch" ? args.entries : [[args.key, command === "delete_kv" ? null : args.value]];
-        return new Promise<void>((resolve, reject) => {
-          const commit = () => { for (const [key, value] of entries) { if (value === null) disk.delete(key); else disk.set(key, value); } resolve(); };
-          if (hold) pending.push({ entries, commit, reject }); else commit();
-        });
+    const values = {
+      window: dom.window,
+      document: dom.window.document,
+      navigator: dom.window.navigator,
+      localStorage: dom.window.localStorage,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    globals = new Map(Object.keys(values).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+    for (const [key, value] of Object.entries(values))
+      Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+    Object.assign(dom.window, {
+      __TAURI_INTERNALS__: {
+        invoke(command: string, args: { key: string; value: string; entries: [string, string | null][] }) {
+          if (!["set_kv", "delete_kv", "set_kv_batch"].includes(command)) return Promise.resolve();
+          const entries: [string, string | null][] =
+            command === "set_kv_batch" ? args.entries : [[args.key, command === "delete_kv" ? null : args.value]];
+          return new Promise<void>((resolve, reject) => {
+            const commit = () => {
+              for (const [key, value] of entries) {
+                if (value === null) disk.delete(key);
+                else disk.set(key, value);
+              }
+              resolve();
+            };
+            if (hold) pending.push({ entries, commit, reject });
+            else commit();
+          });
+        },
       },
-    } });
-    hold = false; feedbackEnabled = true;
+    });
+    hold = false;
+    feedbackEnabled = true;
     await localKV.removeItemAsync(legacyKey);
     await localKV.setItemAsync(settingsKey, JSON.stringify({ unitId: "sentence", tapToAdvance: false }));
-    await localKV.setItemAsync(bookKey, JSON.stringify({ active: false, resting: null, modeKey, unitId: "sentence", contentVersion: "v1" }));
-    contribution = registerReaderModeContribution({ id: "reader", key: modeKey, pluginId: "mode-durability",
-      pluginName: "Durability", kind: "text-unit-navigator", defaultUnitId: "sentence", units: sentenceReaderUnits,
-      copy: sentenceReaderCopy, segmentText: ({ text }) => [{ start: 0, end: text.length }] });
-    await localKV.setItemAsync("read-aware-plugin.mode-second.settings", JSON.stringify({ unitId: "sentence", tapToAdvance: false }));
-    second = registerReaderModeContribution({ id: "reader", key: "mode-second:reader", pluginId: "mode-second",
-      pluginName: "Second", kind: "text-unit-navigator", defaultUnitId: "sentence", units: sentenceReaderUnits,
-      copy: sentenceReaderCopy, segmentText: ({ text }) => [{ start: 0, end: text.length }] });
+    await localKV.setItemAsync(
+      bookKey,
+      JSON.stringify({ active: false, resting: null, modeKey, unitId: "sentence", contentVersion: "v1" }),
+    );
+    contribution = registerReaderModeContribution({
+      id: "reader",
+      key: modeKey,
+      pluginId: "mode-durability",
+      pluginName: "Durability",
+      kind: "text-unit-navigator",
+      defaultUnitId: "sentence",
+      units: sentenceReaderUnits,
+      copy: sentenceReaderCopy,
+      segmentText: ({ text }) => [{ start: 0, end: text.length }],
+    });
+    await localKV.setItemAsync(
+      "read-aware-plugin.mode-second.settings",
+      JSON.stringify({ unitId: "sentence", tapToAdvance: false }),
+    );
+    second = registerReaderModeContribution({
+      id: "reader",
+      key: "mode-second:reader",
+      pluginId: "mode-second",
+      pluginName: "Second",
+      kind: "text-unit-navigator",
+      defaultUnitId: "sentence",
+      units: sentenceReaderUnits,
+      copy: sentenceReaderCopy,
+      segmentText: ({ text }) => [{ start: 0, end: text.length }],
+    });
     root = createRoot(dom.window.document.getElementById("root")!);
-    await act(async () => { root.render(<Harness />); await tick(); });
+    await act(async () => {
+      root.render(<Harness />);
+      await tick();
+    });
     await flushLocalKV();
     hold = true;
   });
@@ -72,7 +118,11 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     hold = false;
     await act(async () => {
       for (const write of pending.splice(0)) write.commit();
-      await tick(); root.unmount(); contribution.dispose(); second.dispose(); await flushLocalKV();
+      await tick();
+      root.unmount();
+      contribution.dispose();
+      second.dispose();
+      await flushLocalKV();
     });
     dom.window.close();
     for (const [key, value] of globals) {
@@ -84,36 +134,48 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
   test("real mode hook waits for an atomic book/preference receipt after index feedback", async () => {
     const actor = reactionActor("plugin:mode-client", "on-change", eventCause(stampEventCause({}))!);
     const commits: KVCommit[] = [];
-    const stop = onLocalKVCommit(commit => { if (commit.entries.some(entry => entry.key === bookKey)) commits.push(commit); });
-    try {
-    let completed = false;
-    let result!: Promise<unknown>;
-    await act(async () => {
-      result = state.controller.configure({ active: true, unitId: "paragraph" }, undefined, actor).then(value => { completed = true; return value; });
-      await tick();
+    const stop = onLocalKVCommit((commit) => {
+      if (commit.entries.some((entry) => entry.key === bookKey)) commits.push(commit);
     });
-    expect(pending).toHaveLength(1);
-    expect(pending[0].entries.map(([key]) => key).sort()).toEqual([bookKey, settingsKey].sort());
-    expect(state.snapshot.status).toBe("ready");
-    expect(state.request.origin).toBe(actor);
-    expect(eventCause(state.snapshot)).toBe(actorCause(actor));
-    expect(completed).toBe(false);
-    expect(JSON.parse(disk.get(bookKey)!).active).toBe(false);
-    await act(async () => { pending.shift()!.commit(); await result; });
-    expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ active: true, unitId: "paragraph" });
-    expect(JSON.parse(disk.get(settingsKey)!)).toEqual({ unitId: "paragraph", tapToAdvance: false });
-    expect(eventCause(commits.at(-1)!)).toBe(actorCause(actor));
-    expect(commits.at(-1)?.actor).toBe("plugin:mode-client");
-    expect(disk.get(bookKey)).not.toContain("on-change");
-    } finally { stop(); }
+    try {
+      let completed = false;
+      let result!: Promise<unknown>;
+      await act(async () => {
+        result = state.controller.configure({ active: true, unitId: "paragraph" }, undefined, actor).then((value) => {
+          completed = true;
+          return value;
+        });
+        await tick();
+      });
+      expect(pending).toHaveLength(1);
+      expect(pending[0].entries.map(([key]) => key).sort()).toEqual([bookKey, settingsKey].sort());
+      expect(state.snapshot.status).toBe("ready");
+      expect(state.request.origin).toBe(actor);
+      expect(eventCause(state.snapshot)).toBe(actorCause(actor));
+      expect(completed).toBe(false);
+      expect(JSON.parse(disk.get(bookKey)!).active).toBe(false);
+      await act(async () => {
+        pending.shift()!.commit();
+        await result;
+      });
+      expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ active: true, unitId: "paragraph" });
+      expect(JSON.parse(disk.get(settingsKey)!)).toEqual({ unitId: "paragraph", tapToAdvance: false });
+      expect(eventCause(commits.at(-1)!)).toBe(actorCause(actor));
+      expect(commits.at(-1)?.actor).toBe("plugin:mode-client");
+      expect(disk.get(bookKey)).not.toContain("on-change");
+    } finally {
+      stop();
+    }
   });
 
   test("a failed optimistic preference is not a new intent; actor gets original error and old mode", async () => {
     let result!: Promise<unknown>;
     let positionWrites = 0;
     await act(async () => {
-      result = state.controller.configure({ active: true, unitId: "paragraph" }).catch(error => error);
-      state.controller.persistPosition(state.controller.generation(), modeKey, "paragraph", async () => { positionWrites++; });
+      result = state.controller.configure({ active: true, unitId: "paragraph" }).catch((error) => error);
+      state.controller.persistPosition(state.controller.generation(), modeKey, "paragraph", async () => {
+        positionWrites++;
+      });
       await tick();
     });
     expect(readTextUnitModeSettings(modeKey).unitId).toBe("paragraph");
@@ -127,26 +189,33 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     expect(positionWrites).toBe(0);
     expect(JSON.parse(disk.get(bookKey)!).active).toBe(false);
     expect(JSON.parse(disk.get(settingsKey)!).unitId).toBe("sentence");
-    await act(async () => { pending.shift()!.commit(); await tick(); });
+    await act(async () => {
+      pending.shift()!.commit();
+      await tick();
+    });
   });
 
   test("external unit edits change the mode only after commit and retain the external cause", async () => {
     const actor = reactionActor("plugin:preferences", "set-unit", eventCause(stampEventCause({}))!);
     let request!: Promise<unknown>;
     await act(async () => {
-      request = localKV.setItemAsync(settingsKey, JSON.stringify({ unitId: "paragraph" }), actor).catch(error => error);
+      request = localKV
+        .setItemAsync(settingsKey, JSON.stringify({ unitId: "paragraph" }), actor)
+        .catch((error) => error);
       await tick();
     });
     expect(state.request.unitId).toBe("sentence");
     await act(async () => {
       pending.shift()!.reject({ code: "db/locked", message: "external preference failed" });
-      expect(await request).toMatchObject({ code: "db/locked" }); await tick();
+      expect(await request).toMatchObject({ code: "db/locked" });
+      await tick();
     });
     expect(state.request.unitId).toBe("sentence");
     hold = false;
     await act(async () => {
       await localKV.setItemAsync(settingsKey, JSON.stringify({ unitId: "paragraph" }), actor);
-      await tick(); await flushLocalKV();
+      await tick();
+      await flushLocalKV();
     });
     expect(state.request.unitId).toBe("paragraph");
     expect(actorCause(state.request.origin)).toBe(actorCause(actor));
@@ -156,11 +225,13 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
 
   test("legacy consumption shares the actor receipt and survives failed source deletion", async () => {
     const legacy = JSON.stringify({ modeKey, unitId: "paragraph", scrollToStep: true });
-    hold = false; await localKV.setItemAsync(legacyKey, legacy); hold = true;
+    hold = false;
+    await localKV.setItemAsync(legacyKey, legacy);
+    hold = true;
     const oldSettings = disk.get(settingsKey);
     let result!: Promise<unknown>;
     await act(async () => {
-      result = state.controller.configure({ active: true, unitId: "paragraph" }).catch(error => error);
+      result = state.controller.configure({ active: true, unitId: "paragraph" }).catch((error) => error);
       await tick();
     });
     expect(pending[0].entries.map(([key]) => key).sort()).toEqual([bookKey, settingsKey, legacyKey].sort());
@@ -176,14 +247,25 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     expect(disk.get(settingsKey)).toBe(oldSettings);
     // The rollback's configuration is itself a new atomic attempt; keep the
     // injected fault active until the caller explicitly starts recovery.
-    await act(async () => { pending.shift()!.reject({ code: "db/locked", message: "rollback migration rejected" }); await tick(); });
+    await act(async () => {
+      pending.shift()!.reject({ code: "db/locked", message: "rollback migration rejected" });
+      await tick();
+    });
     expect(disk.get(legacyKey)).toBe(legacy);
     expect(localKV.getItem(legacyKey)).toBe(legacy);
     expect(localKV.getItem(settingsKey)).not.toContain('"scrollToStep":true');
     hold = false;
-    await act(async () => { result = state.controller.configure({ active: true, unitId: "paragraph" }); await tick(); await result; });
+    await act(async () => {
+      result = state.controller.configure({ active: true, unitId: "paragraph" });
+      await tick();
+      await result;
+    });
     expect(disk.has(legacyKey)).toBe(false);
-    expect(JSON.parse(disk.get(settingsKey)!)).toMatchObject({ unitId: "paragraph", scrollToStep: true, tapToAdvance: false });
+    expect(JSON.parse(disk.get(settingsKey)!)).toMatchObject({
+      unitId: "paragraph",
+      scrollToStep: true,
+      tapToAdvance: false,
+    });
   });
 
   test("cross-provider cancellation compensates the abandoned destination after its late commit", async () => {
@@ -191,15 +273,22 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     const owner = new AbortController();
     let result!: Promise<unknown>;
     await act(async () => {
-      result = state.controller.configure({ active: true, selectModeKey: "mode-second:reader", unitId: "paragraph" }, owner.signal).catch(error => error);
+      result = state.controller
+        .configure({ active: true, selectModeKey: "mode-second:reader", unitId: "paragraph" }, owner.signal)
+        .catch((error) => error);
       await tick();
-      owner.abort(new Error("cancel switch")); await result;
-      pending.shift()!.commit(); await tick();
+      owner.abort(new Error("cancel switch"));
+      await result;
+      pending.shift()!.commit();
+      await tick();
     });
     const secondKey = "read-aware-plugin.mode-second.settings";
     expect(JSON.parse(disk.get(secondKey)!).unitId).toBe("paragraph");
     expect(pending[0].entries.map(([key]) => key)).toContain(secondKey);
-    await act(async () => { pending.shift()!.commit(); await tick(); });
+    await act(async () => {
+      pending.shift()!.commit();
+      await tick();
+    });
     expect(JSON.parse(disk.get(secondKey)!)).toEqual({ unitId: "sentence", tapToAdvance: false });
     expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ modeKey, active: false });
   });
@@ -210,12 +299,19 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     let result!: Promise<unknown>;
     const secondKey = "read-aware-plugin.mode-second.settings";
     await act(async () => {
-      result = state.controller.configure({ active: true, selectModeKey: "mode-second:reader", unitId: "paragraph" }, owner.signal).catch(error => error);
-      await tick(); pending.shift()!.commit(); await tick();
+      result = state.controller
+        .configure({ active: true, selectModeKey: "mode-second:reader", unitId: "paragraph" }, owner.signal)
+        .catch((error) => error);
+      await tick();
+      pending.shift()!.commit();
+      await tick();
       void localKV.setItemAsync(secondKey, JSON.stringify({ unitId: "paragraph", tapToAdvance: true }));
-      owner.abort(new Error("cancel switch")); await result;
-      pending.shift()!.commit(); await tick();
-      pending.shift()!.commit(); await tick();
+      owner.abort(new Error("cancel switch"));
+      await result;
+      pending.shift()!.commit();
+      await tick();
+      pending.shift()!.commit();
+      await tick();
     });
     expect(JSON.parse(disk.get(secondKey)!)).toEqual({ unitId: "paragraph", tapToAdvance: true });
     expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ modeKey, active: false });
@@ -226,23 +322,31 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     let result!: Promise<unknown>;
     let positionWrites = 0;
     await act(async () => {
-      result = state.controller.configure({ active: true, unitId: "paragraph" }, abort.signal).catch(error => error);
-      state.controller.persistPosition(state.controller.generation(), modeKey, "paragraph", async () => { positionWrites++; });
+      result = state.controller.configure({ active: true, unitId: "paragraph" }, abort.signal).catch((error) => error);
+      state.controller.persistPosition(state.controller.generation(), modeKey, "paragraph", async () => {
+        positionWrites++;
+      });
       await tick();
       abort.abort(new Error("owner closed"));
       await result;
-      pending.shift()!.commit(); await tick();
+      pending.shift()!.commit();
+      await tick();
     });
     expect(positionWrites).toBe(0);
     expect(state.request).toMatchObject({ active: false, unitId: "sentence" });
-    await act(async () => { pending.shift()!.commit(); await tick(); });
+    await act(async () => {
+      pending.shift()!.commit();
+      await tick();
+    });
     expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ active: false, unitId: "sentence" });
     expect(JSON.parse(disk.get(settingsKey)!).unitId).toBe("sentence");
   });
 } else {
   test("isolated React/native mode durability cases", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
-      env: { ...process.env, MODE_DURABILITY_CASE: "1" }, stdout: "ignore", stderr: "pipe",
+      env: { ...process.env, MODE_DURABILITY_CASE: "1" },
+      stdout: "ignore",
+      stderr: "pipe",
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);

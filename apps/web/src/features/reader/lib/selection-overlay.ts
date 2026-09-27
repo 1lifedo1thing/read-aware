@@ -7,11 +7,7 @@ export type SelectionOverlayRect = {
   height: number;
 };
 
-export type ReaderSelectionAppearance =
-  | "selection"
-  | "highlight"
-  | "underline"
-  | "note";
+export type ReaderSelectionAppearance = "selection" | "highlight" | "underline" | "note";
 
 export type ReaderSelectionState = {
   anchorRect: SelectionOverlayRect | null;
@@ -39,8 +35,7 @@ export function getNormalizedSelectionText(selection: Selection | null) {
 export function getSelectionContext(range: Range, selectedText: string): string | undefined {
   const start = range.startContainer;
   const el = start.nodeType === Node.TEXT_NODE ? start.parentElement : (start as Element | null);
-  const block =
-    el?.closest?.("p, li, blockquote, dd, figcaption, h1, h2, h3, h4, h5, h6") ?? el;
+  const block = el?.closest?.("p, li, blockquote, dd, figcaption, h1, h2, h3, h4, h5, h6") ?? el;
   const raw = (block?.textContent ?? "").replace(/\s+/g, " ").trim();
   if (!raw || raw === selectedText) return undefined;
 

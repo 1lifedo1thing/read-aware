@@ -5,47 +5,90 @@ import { HostDiagnosticsService, projectionVerificationSummary } from "./diagnos
 import { verifyProjectionReport, type ProjectionReport } from "../platform/projection-verification";
 import * as ipc from "../platform/ipc";
 
-const report: ProjectionReport = { consistent: false, eventsReplayed: 12, drift: [
-  { table: "private-table", onlyLive: 2, onlyReplayed: 1, samples: ["PRIVATE ROW CONTENT"] },
-  { table: "another-table", onlyLive: 0, onlyReplayed: 3, samples: ["PRIVATE ID"] },
-] };
-const requestReport = async (action: import("@read-aware/core").DiagnosticsReportAction) => ({ action, status: "cancelled" as const });
+const report: ProjectionReport = {
+  consistent: false,
+  eventsReplayed: 12,
+  drift: [
+    { table: "private-table", onlyLive: 2, onlyReplayed: 1, samples: ["PRIVATE ROW CONTENT"] },
+    { table: "another-table", onlyLive: 0, onlyReplayed: 3, samples: ["PRIVATE ID"] },
+  ],
+};
+const requestReport = async (action: import("@read-aware/core").DiagnosticsReportAction) => ({
+  action,
+  status: "cancelled" as const,
+});
 
 test("report service forwards final outcomes and strips private error details", async () => {
   const signal = new AbortController().signal;
-  const service = new HostDiagnosticsService({ supported: () => true, verify: async () => report,
-    requestReport: async (action, received) => {
-      expect(received).toBe(signal);
-      if (action === "send") throw new AppError("sync/server", "PRIVATE upload detail");
-      return { action, status: "cancelled" };
+  const service = new HostDiagnosticsService(
+    {
+      supported: () => true,
+      verify: async () => report,
+      requestReport: async (action, received) => {
+        expect(received).toBe(signal);
+        if (action === "send") throw new AppError("sync/server", "PRIVATE upload detail");
+        return { action, status: "cancelled" };
+      },
     },
-  }, () => {});
+    () => {},
+  );
   expect(await service.requestReport("export", signal)).toEqual({ action: "export", status: "cancelled" });
-  await expect(service.requestReport("send", signal)).rejects.toMatchObject({ code: "sync/server", message: "Diagnostic report action failed" });
+  await expect(service.requestReport("send", signal)).rejects.toMatchObject({
+    code: "sync/server",
+    message: "Diagnostic report action failed",
+  });
   await expect(service.requestReport("send", AbortSignal.abort(Error("cancel")))).rejects.toThrow("cancel");
 });
 
 test("verification exposes aggregate counts only and fails closed on malformed reports", () => {
   const result = projectionVerificationSummary(report);
-  expect(result).toEqual({ scope: "event-projections", checkedAt: expect.any(String), consistent: false,
-    eventsReplayed: 12, driftedTables: 2, onlyLiveRows: 2, onlyReplayedRows: 4 });
+  expect(result).toEqual({
+    scope: "event-projections",
+    checkedAt: expect.any(String),
+    consistent: false,
+    eventsReplayed: 12,
+    driftedTables: 2,
+    onlyLiveRows: 2,
+    onlyReplayedRows: 4,
+  });
   expect(JSON.stringify(result)).not.toContain("private");
   expect(JSON.stringify(result)).not.toContain("PRIVATE");
-  for (const value of [null, {}, { ...report, consistent: true }, { ...report, eventsReplayed: -1 },
-    { ...report, drift: [null] }, { ...report, drift: [{ onlyLive: 0, onlyReplayed: 0 }] },
+  for (const value of [
+    null,
+    {},
+    { ...report, consistent: true },
+    { ...report, eventsReplayed: -1 },
+    { ...report, drift: [null] },
+    { ...report, drift: [{ onlyLive: 0, onlyReplayed: 0 }] },
     { ...report, drift: [{ onlyLive: 1.5, onlyReplayed: 0 }] },
-  ]) expect(() => projectionVerificationSummary(value)).toThrow();
-  expect(projectionVerificationSummary({ consistent: true, eventsReplayed: 0, drift: [] })).toMatchObject({ consistent: true, driftedTables: 0 });
+  ])
+    expect(() => projectionVerificationSummary(value)).toThrow();
+  expect(projectionVerificationSummary({ consistent: true, eventsReplayed: 0, drift: [] })).toMatchObject({
+    consistent: true,
+    driftedTables: 0,
+  });
 });
 
 test("call cancellation releases the waiter, not the shared native operation; every result is independent", async () => {
   const gate = Promise.withResolvers<unknown>();
   let calls = 0;
-  const service = new HostDiagnosticsService({ requestReport, supported: () => true, verify: () => { calls++; return gate.promise; } }, () => {});
+  const service = new HostDiagnosticsService(
+    {
+      requestReport,
+      supported: () => true,
+      verify: () => {
+        calls++;
+        return gate.promise;
+      },
+    },
+    () => {},
+  );
   const controller = new AbortController();
   const origin = causalActor("plugin:diagnostics");
   const cancelled = service.verifyProjections(controller.signal, origin);
-  expect(service.verificationConditions()).toContainEqual(expect.objectContaining({ reason: "projection-verification-shared", state: "satisfied" }));
+  expect(service.verificationConditions()).toContainEqual(
+    expect.objectContaining({ reason: "projection-verification-shared", state: "satisfied" }),
+  );
   const sibling = service.verifyProjections();
   controller.abort(new Error("cancel waiter"));
   await expect(cancelled).rejects.toThrow("cancel waiter");
@@ -64,10 +107,23 @@ test("call cancellation releases the waiter, not the shared native operation; ev
 
 test("unsupported and pre-aborted calls do not dispatch; incomplete logs and failures never mean consistent", async () => {
   const errors: unknown[] = [];
-  let calls = 0, supported = false;
+  let calls = 0,
+    supported = false;
   const failure = new AppError("sync/log-incomplete", "backfill pending");
-  const service = new HostDiagnosticsService({ requestReport, supported: () => supported, verify: async () => { calls++; throw failure; } }, error => errors.push(error));
-  expect(service.verificationConditions()).toContainEqual(expect.objectContaining({ reason: "projection-verification-unsupported", state: "unavailable" }));
+  const service = new HostDiagnosticsService(
+    {
+      requestReport,
+      supported: () => supported,
+      verify: async () => {
+        calls++;
+        throw failure;
+      },
+    },
+    (error) => errors.push(error),
+  );
+  expect(service.verificationConditions()).toContainEqual(
+    expect.objectContaining({ reason: "projection-verification-unsupported", state: "unavailable" }),
+  );
   expect(calls).toBe(0);
   expect(() => service.verifyProjections()).toThrow();
   supported = true;
@@ -75,7 +131,8 @@ test("unsupported and pre-aborted calls do not dispatch; incomplete logs and fai
   expect(calls).toBe(0);
   await expect(service.verifyProjections()).rejects.toBe(failure);
   await expect(service.verifyProjections()).rejects.toBe(failure);
-  expect(calls).toBe(2); expect(errors).toEqual([failure, failure]);
+  expect(calls).toBe(2);
+  expect(errors).toEqual([failure, failure]);
 });
 
 test("settings diagnostics and actor diagnostics share the same native verification flight", async () => {
@@ -83,10 +140,14 @@ test("settings diagnostics and actor diagnostics share the same native verificat
   const flight: ProjectionReport = structuredClone(report);
   const gate = Promise.withResolvers<ProjectionReport>();
   const invoke = spyOn(ipc, "invoke").mockImplementation(async () => gate.promise as never);
-  const service = new HostDiagnosticsService({ requestReport, supported: () => true, verify: verifyProjectionReport }, () => {});
+  const service = new HostDiagnosticsService(
+    { requestReport, supported: () => true, verify: verifyProjectionReport },
+    () => {},
+  );
   try {
     const origin = causalActor("user");
-    const settings = verifyProjectionReport(origin), actor = service.verifyProjections(undefined, "plugin:diagnostics");
+    const settings = verifyProjectionReport(origin),
+      actor = service.verifyProjections(undefined, "plugin:diagnostics");
     await Promise.resolve();
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith("verify_projections");
@@ -94,5 +155,9 @@ test("settings diagnostics and actor diagnostics share the same native verificat
     expect(await settings).toBe(flight);
     expect(await actor).toMatchObject({ onlyLiveRows: 2, onlyReplayedRows: 4 });
     expect(eventCause(await actor)).toEqual(actorCause(origin));
-  } finally { gate.resolve(flight); await gate.promise; invoke.mockRestore(); }
+  } finally {
+    gate.resolve(flight);
+    await gate.promise;
+    invoke.mockRestore();
+  }
 });

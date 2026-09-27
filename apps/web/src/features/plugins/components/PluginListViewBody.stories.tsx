@@ -75,7 +75,12 @@ function GoToSearch(args: ComponentProps<typeof PluginListViewBody>) {
       ? [
           { id: "chapter", title: `Chapter ${query}`, icon: "book-open", onSelect: () => undefined },
           { id: "page", title: `Page ${query}`, icon: "file-text", onSelect: () => undefined },
-          { id: "search", title: `Search the text for “${query}”`, icon: "magnifying-glass", onSelect: () => undefined },
+          {
+            id: "search",
+            title: `Search the text for “${query}”`,
+            icon: "magnifying-glass",
+            onSelect: () => undefined,
+          },
         ]
       : args.view.items,
   });
@@ -84,7 +89,10 @@ function GoToSearch(args: ComponentProps<typeof PluginListViewBody>) {
       {...args}
       view={view}
       searchQuery={searchQuery}
-      onQuery={async (query) => { setSearchQuery(query); setView(answer(query)); }}
+      onQuery={async (query) => {
+        setSearchQuery(query);
+        setView(answer(query));
+      }}
     />
   );
 }
@@ -94,7 +102,13 @@ export const PluginSearch: Story = {
   args: {
     view: {
       kind: "list",
-      items: items.map((entry, index) => ({ ...entry, title: `Chapter ${index + 1}: ${entry.title}`, icon: "book-open", subtitle: undefined, accessories: index === 1 ? [{ kind: "tag", text: "Current" }] : [] })),
+      items: items.map((entry, index) => ({
+        ...entry,
+        title: `Chapter ${index + 1}: ${entry.title}`,
+        icon: "book-open",
+        subtitle: undefined,
+        accessories: index === 1 ? [{ kind: "tag", text: "Current" }] : [],
+      })),
       search: { placeholder: "Chapter, page or words to find", autoFocus: true, onQuery: () => null },
       actions: [
         { id: "back", label: "Go back", icon: "arrow-left", priority: "primary", disabled: true, run: () => undefined },

@@ -22,7 +22,12 @@ pub fn extract_comic_metadata_from_path(path: &Path) -> Result<BookMetadata, Str
     let mut archive = ZipArchive::new(file).map_err(|error| error.to_string())?;
 
     let mut names: Vec<String> = (0..archive.len())
-        .filter_map(|index| archive.by_index(index).ok().map(|entry| entry.name().to_owned()))
+        .filter_map(|index| {
+            archive
+                .by_index(index)
+                .ok()
+                .map(|entry| entry.name().to_owned())
+        })
         .filter(|name| {
             let lower = name.to_ascii_lowercase();
             IMAGE_EXTENSIONS.iter().any(|ext| lower.ends_with(ext))
@@ -85,7 +90,6 @@ fn take_number(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> u64 {
     }
     value
 }
-
 
 #[cfg(test)]
 mod tests {

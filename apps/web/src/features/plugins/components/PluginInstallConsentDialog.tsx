@@ -7,16 +7,9 @@ import { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
 import { Badge, Button, Caption, Dialog, InlineError } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
-import {
-  permissionLabelKey,
-  permissionNameKey,
-  type PluginBookAccess,
-} from "../lib/plugin-types";
+import { permissionLabelKey, permissionNameKey, type PluginBookAccess } from "../lib/plugin-types";
 import { pluginInstallConsentAtom } from "../state/plugin-store";
-import {
-  isValidPluginBookAccess,
-  PluginBookAccessSelector,
-} from "./PluginBookAccessSelector";
+import { isValidPluginBookAccess, PluginBookAccessSelector } from "./PluginBookAccessSelector";
 
 export function PluginInstallConsentDialog() {
   const { t } = useTranslation("plugins");
@@ -29,9 +22,8 @@ export function PluginInstallConsentDialog() {
   const settingsAccess = manifest?.settingsAccess;
   const networkOrigins = manifest?.networkAccess?.origins ?? [];
   const books = request?.books ?? [];
-  const settingGrants = (["discover", "read", "write"] as const).flatMap(
-    (operation) =>
-      (settingsAccess?.[operation] ?? []).map((path) => ({ operation, path })),
+  const settingGrants = (["discover", "read", "write"] as const).flatMap((operation) =>
+    (settingsAccess?.[operation] ?? []).map((path) => ({ operation, path })),
   );
 
   useEffect(() => {
@@ -77,9 +69,7 @@ export function PluginInstallConsentDialog() {
             v{manifest.version}
             {manifest.author ? ` · ${manifest.author}` : ""}
           </Caption>
-          {manifest.description && (
-            <p className="font-sans text-sm text-fg-muted">{manifest.description}</p>
-          )}
+          {manifest.description && <p className="font-sans text-sm text-fg-muted">{manifest.description}</p>}
 
           <p className="border-l-2 border-border pl-3 font-sans text-xs leading-5 text-fg-muted">
             {t("settings.trustWarning")}
@@ -100,12 +90,8 @@ export function PluginInstallConsentDialog() {
                 ))}
                 {settingGrants.map(({ operation, path }) => (
                   <div key={`${operation}:${path}`} className="flex items-baseline gap-2">
-                    <Badge className="shrink-0 text-[11px]">
-                      {t(`settings.settingsAccess.${operation}` as never)}
-                    </Badge>
-                    <span className="font-mono text-xs leading-5 text-fg-muted">
-                      {path}
-                    </span>
+                    <Badge className="shrink-0 text-[11px]">{t(`settings.settingsAccess.${operation}` as never)}</Badge>
+                    <span className="font-mono text-xs leading-5 text-fg-muted">{path}</span>
                   </div>
                 ))}
                 {permissions.includes("service:network") && (
@@ -113,11 +99,13 @@ export function PluginInstallConsentDialog() {
                     <Caption>{t("settings.networkAccess.title")}</Caption>
                     {networkOrigins.length === 0 ? (
                       <Caption className="text-fg-muted">{t("settings.networkAccess.none")}</Caption>
-                    ) : networkOrigins.map(origin => (
-                      <Caption key={origin} className="break-all text-fg-muted">
-                        {origin === "*" ? t("settings.networkAccess.all") : origin}
-                      </Caption>
-                    ))}
+                    ) : (
+                      networkOrigins.map((origin) => (
+                        <Caption key={origin} className="break-all text-fg-muted">
+                          {origin === "*" ? t("settings.networkAccess.all") : origin}
+                        </Caption>
+                      ))
+                    )}
                   </div>
                 )}
               </>
@@ -133,9 +121,7 @@ export function PluginInstallConsentDialog() {
               setInvalid(false);
             }}
           />
-          {invalid && (
-            <InlineError compact>{t("settings.bookAccess.invalidBook")}</InlineError>
-          )}
+          {invalid && <InlineError compact>{t("settings.bookAccess.invalidBook")}</InlineError>}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button size="sm" variant="ghost" disabled={busy} onClick={cancel}>

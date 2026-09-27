@@ -21,54 +21,118 @@ test("inference control errors use localized copy and distinguish retryable capa
 });
 
 function fixture(capacity = new PluginInferenceSlots(), id = "sample") {
-  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
+  const lifecycle = new PluginLifecycleController([]);
+  lifecycle.promote();
   const calls: Array<{ input: OneShotInput; finish(value: unknown): void }> = [];
   const ask = (input: OneShotInput) => {
-    const source = new Promise<unknown>(resolve => { calls.push({ input, finish: resolve }); });
+    const source = new Promise<unknown>((resolve) => {
+      calls.push({ input, finish: resolve });
+    });
     input.trackSource?.(source);
     return new Promise((resolve, reject) => {
       const abort = () => reject(input.signal?.reason);
       input.signal?.addEventListener("abort", abort, { once: true });
-      void source.then(value => { input.signal?.removeEventListener("abort", abort); resolve(value); });
+      void source.then((value) => {
+        input.signal?.removeEventListener("abort", abort);
+        resolve(value);
+      });
     });
   };
   const runtime = { ask, askDetailed: ask } as Pick<AgentRuntime, "ask" | "askDetailed">;
   return { lifecycle, calls, api: createPluginLlm(id, lifecycle, () => runtime, capacity) };
 }
-const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test("inference rechecks after resource reads, and unknown remote health does not block dispatch", async () => {
-  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
-  let configured = true, calls = 0, runtimeReads = 0;
+  const lifecycle = new PluginLifecycleController([]);
+  lifecycle.promote();
+  let configured = true,
+    calls = 0,
+    runtimeReads = 0;
   const image = Promise.withResolvers<import("@read-aware/core").ModelImageInput>();
-  const runtime = { ask: async () => { calls++; return "result"; }, askDetailed: async () => { calls++; return { value: "result", attempts: [] }; } } as Pick<AgentRuntime, "ask" | "askDetailed">;
-  const api = createPluginLlm("preflight", lifecycle, () => { runtimeReads++; return runtime; }, undefined,
-    () => image.promise, undefined, { check: async query => ({ operation: query.operation, model: query.operation === "llm.infer" ? query.model ?? "fast" : undefined, remoteChecked: false,
-      state: configured ? "unknown" : "unconfigured", conditions: configured
-        ? [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }]
-        : [{ kind: "account", state: "unconfigured", reason: "credential-missing", errorCode: "ai/not-configured" }] }) });
+  const runtime = {
+    ask: async () => {
+      calls++;
+      return "result";
+    },
+    askDetailed: async () => {
+      calls++;
+      return { value: "result", attempts: [] };
+    },
+  } as Pick<AgentRuntime, "ask" | "askDetailed">;
+  const api = createPluginLlm(
+    "preflight",
+    lifecycle,
+    () => {
+      runtimeReads++;
+      return runtime;
+    },
+    undefined,
+    () => image.promise,
+    undefined,
+    {
+      check: async (query) => ({
+        operation: query.operation,
+        model: query.operation === "llm.infer" ? (query.model ?? "fast") : undefined,
+        remoteChecked: false,
+        state: configured ? "unknown" : "unconfigured",
+        conditions: configured
+          ? [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }]
+          : [{ kind: "account", state: "unconfigured", reason: "credential-missing", errorCode: "ai/not-configured" }],
+      }),
+    },
+  );
   try {
-    const pending = api.ask({ prompt: "describe", images: [{ resourceId: "image" }] }); await tick();
+    const pending = api.ask({ prompt: "describe", images: [{ resourceId: "image" }] });
+    await tick();
     configured = false;
     image.resolve({ mimeType: "image/png", data: "iVBORw0KGgo=" });
     await expect(pending).rejects.toMatchObject({ code: "ai/not-configured" });
-    expect(calls).toBe(0); expect(runtimeReads).toBe(0);
+    expect(calls).toBe(0);
+    expect(runtimeReads).toBe(0);
     configured = true;
-    expect(await api.ask({ prompt: "try" })).toBe("result"); expect(calls).toBe(1); expect(runtimeReads).toBe(1);
-  } finally { lifecycle.stop(); await lifecycle.drainCleanups(); }
+    expect(await api.ask({ prompt: "try" })).toBe("result");
+    expect(calls).toBe(1);
+    expect(runtimeReads).toBe(1);
+  } finally {
+    lifecycle.stop();
+    await lifecycle.drainCleanups();
+  }
 });
 
 test("LLM policy, validation and pre-cancellation reject before inference", async () => {
   const f = fixture();
-  expect(await f.api.policy()).toEqual({ defaultTimeoutMs: 60000, maxTimeoutMs: 110000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65536, maxImageCount: 4, maxImageBytes: 8 * 1024 * 1024, maxImageTotalBytes: 16 * 1024 * 1024, maxTotalOutputTokensLimit: 131072, maxOutputCharsLimit: 262144, maxInputChars: 262144 });
+  expect(await f.api.policy()).toEqual({
+    defaultTimeoutMs: 60000,
+    maxTimeoutMs: 110000,
+    perPluginLimit: 2,
+    appLimit: 8,
+    maxOutputTokensLimit: 65536,
+    maxImageCount: 4,
+    maxImageBytes: 8 * 1024 * 1024,
+    maxImageTotalBytes: 16 * 1024 * 1024,
+    maxTotalOutputTokensLimit: 131072,
+    maxOutputCharsLimit: 262144,
+    maxInputChars: 262144,
+  });
   for (const maxOutputTokens of [0, -1, 65537, 1.5, NaN, Infinity]) {
-    await expect(f.api.ask({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
-    await expect(f.api.askDetailed({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
+    await expect(f.api.ask({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({
+      code: "plugin/invalid-argument",
+    });
+    await expect(f.api.askDetailed({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({
+      code: "plugin/invalid-argument",
+    });
   }
-  for (const timeoutMs of [0, 110001, 1.5, NaN]) await expect(f.api.ask({ prompt: "p", timeoutMs })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
-  await expect(f.api.ask({ prompt: "p", schema: {}, onText() {} } as never)).rejects.toMatchObject({ code: "plugin/invalid-argument" });
-  const controller = new AbortController(); controller.abort();
-  await expect(f.api.ask({ prompt: "p", signal: controller.signal })).rejects.toMatchObject({ code: "ai/request-cancelled" });
+  for (const timeoutMs of [0, 110001, 1.5, NaN])
+    await expect(f.api.ask({ prompt: "p", timeoutMs })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
+  await expect(f.api.ask({ prompt: "p", schema: {}, onText() {} } as never)).rejects.toMatchObject({
+    code: "plugin/invalid-argument",
+  });
+  const controller = new AbortController();
+  controller.abort();
+  await expect(f.api.ask({ prompt: "p", signal: controller.signal })).rejects.toMatchObject({
+    code: "ai/request-cancelled",
+  });
   expect(f.calls).toHaveLength(0);
   f.lifecycle.stop();
 });
@@ -84,15 +148,28 @@ test("detailed calls forward output caps and share ordinary inference capacity a
   await expect(f.api.askDetailed({ prompt: "busy" })).rejects.toMatchObject({ code: "ai/busy" });
   controller.abort();
   expect(await cancelled).toMatchObject([{ status: "rejected", reason: { code: "ai/request-cancelled" } }]);
-  f.calls[0].finish({ value: "late", attempts: [] }); f.calls[1].finish("ok");
-  expect(await plain).toBe("ok"); await f.lifecycle.drainCleanups();
+  f.calls[0].finish({ value: "late", attempts: [] });
+  f.calls[1].finish("ok");
+  expect(await plain).toBe("ok");
+  await f.lifecycle.drainCleanups();
   const result = f.api.askDetailed({ prompt: "p", schema: { type: "object" } });
   await tick();
-  const receipt = { value: { answer: "ok" }, attempts: [{ model: { id: "probe", provider: "openai" },
-    stopReason: "stop" as const, maxOutputTokens: null, usage: null, estimatedCostUsd: null }] };
+  const receipt = {
+    value: { answer: "ok" },
+    attempts: [
+      {
+        model: { id: "probe", provider: "openai" },
+        stopReason: "stop" as const,
+        maxOutputTokens: null,
+        usage: null,
+        estimatedCostUsd: null,
+      },
+    ],
+  };
   f.calls[2].finish(receipt);
   expect(await result).toEqual(receipt);
-  f.lifecycle.stop(); await f.lifecycle.drainCleanups();
+  f.lifecycle.stop();
+  await f.lifecycle.drainCleanups();
 });
 
 test("cancelled inference keeps slots and retirement waiting until provider termination", async () => {
@@ -104,20 +181,27 @@ test("cancelled inference keeps slots and retirement waiting until provider term
   const cancelled = Promise.allSettled([first, second]);
   await tick();
   controller.abort();
-  for (const result of await cancelled) expect(result).toMatchObject({ status: "rejected", reason: { code: "ai/request-cancelled" } });
-  expect(f.calls.every(call => call.input.signal?.aborted)).toBe(true);
+  for (const result of await cancelled)
+    expect(result).toMatchObject({ status: "rejected", reason: { code: "ai/request-cancelled" } });
+  expect(f.calls.every((call) => call.input.signal?.aborted)).toBe(true);
   f.lifecycle.stop();
   const replacement = fixture(capacity);
   await expect(replacement.api.ask({ prompt: "blocked" })).rejects.toMatchObject({ code: "ai/busy" });
   let drained = false;
-  const drain = f.lifecycle.drainCleanups().then(() => { drained = true; });
-  await tick(); expect(drained).toBe(false);
+  const drain = f.lifecycle.drainCleanups().then(() => {
+    drained = true;
+  });
+  await tick();
+  expect(drained).toBe(false);
   for (const call of f.calls) call.finish("late");
-  await drain; expect(drained).toBe(true);
+  await drain;
+  expect(drained).toBe(true);
   const next = replacement.api.ask({ prompt: "next" });
-  await tick(); replacement.calls[0].finish("ok");
+  await tick();
+  replacement.calls[0].finish("ok");
   expect(await next).toBe("ok");
-  replacement.lifecycle.stop(); await replacement.lifecycle.drainCleanups();
+  replacement.lifecycle.stop();
+  await replacement.lifecycle.drainCleanups();
 });
 
 test("deadline aborts inference and a successful structured call keeps its input snapshot", async () => {
@@ -125,26 +209,36 @@ test("deadline aborts inference and a successful structured call keeps its input
   const request = f.api.ask({ prompt: "timeout", timeoutMs: 5 });
   await expect(request).rejects.toMatchObject({ code: "ai/request-timeout" });
   expect(f.calls[0].input.signal?.aborted).toBe(true);
-  f.calls[0].finish("late"); await f.lifecycle.drainCleanups();
+  f.calls[0].finish("late");
+  await f.lifecycle.drainCleanups();
   const schema = { type: "object", required: ["answer"] };
   const readingContext = { selection: "original" };
   const next = f.api.ask({ prompt: "p", schema, readingContext });
-  schema.required.push("later"); readingContext.selection = "changed";
+  schema.required.push("later");
+  readingContext.selection = "changed";
   await tick();
   expect(f.calls[1].input.schema).toEqual({ type: "object", required: ["answer"] });
   expect(f.calls[1].input.readingContext).toEqual({ selection: "original" });
-  f.calls[1].finish({ answer: "ok" }); expect(await next).toEqual({ answer: "ok" });
-  f.lifecycle.stop(); await f.lifecycle.drainCleanups();
+  f.calls[1].finish({ answer: "ok" });
+  expect(await next).toEqual({ answer: "ok" });
+  f.lifecycle.stop();
+  await f.lifecycle.drainCleanups();
 });
 
 test("global slots bound different plugin owners and service remains permission gated", () => {
   const capacity = new PluginInferenceSlots();
   const releases = Array.from({ length: 8 }, (_, i) => capacity.acquire(`plugin-${i}`));
   expect(() => capacity.acquire("another")).toThrow("capacity");
-  releases[0](); releases[0]();
-  const release = capacity.acquire("another"); release();
+  releases[0]();
+  releases[0]();
+  const release = capacity.acquire("another");
+  release();
   for (const release of releases) release();
-  const built = buildPluginContext({ id: "llm-denied", name: "Denied", version: "1.0.0", schemaVersion: 1, permissions: [], requires: {} }, "1", []);
+  const built = buildPluginContext(
+    { id: "llm-denied", name: "Denied", version: "1.0.0", schemaVersion: 1, permissions: [], requires: {} },
+    "1",
+    [],
+  );
   expect(built.context.services.llm).toBeUndefined();
   built.lifecycle.stop();
 });
@@ -155,16 +249,28 @@ test("named requests retain cancellation metadata until late provider settlement
   const outcome = Promise.allSettled([pending]);
   await tick();
   expect(await f.api.getRequest("named")).toMatchObject({ status: "running", settled: false, attempts: [] });
-  await expect(f.api.ask({ prompt: "duplicate", requestId: "named" })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
+  await expect(f.api.ask({ prompt: "duplicate", requestId: "named" })).rejects.toMatchObject({
+    code: "plugin/invalid-argument",
+  });
   expect(f.calls).toHaveLength(1);
   await f.api.cancelRequest("named");
   expect(await outcome).toMatchObject([{ status: "rejected", reason: { code: "ai/request-cancelled" } }]);
-  expect(await f.api.getRequest("named")).toMatchObject({ status: "cancelled", settled: false, errorCode: "ai/request-cancelled" });
-  const receipt = { model: { id: "probe", provider: "openai" }, stopReason: "aborted" as const,
-    maxOutputTokens: null, usage: null, estimatedCostUsd: null };
+  expect(await f.api.getRequest("named")).toMatchObject({
+    status: "cancelled",
+    settled: false,
+    errorCode: "ai/request-cancelled",
+  });
+  const receipt = {
+    model: { id: "probe", provider: "openai" },
+    stopReason: "aborted" as const,
+    maxOutputTokens: null,
+    usage: null,
+    estimatedCostUsd: null,
+  };
   f.calls[0].input.onAttempt?.(receipt);
   receipt.model.id = "mutated";
-  f.calls[0].finish("PRIVATE_OUTPUT"); await f.lifecycle.drainCleanups();
+  f.calls[0].finish("PRIVATE_OUTPUT");
+  await f.lifecycle.drainCleanups();
   const saved = (await f.api.getRequest("named"))!;
   expect(saved).toMatchObject({ status: "cancelled", settled: true, attempts: [{ model: { id: "probe" } }] });
   saved.attempts.length = 0;
@@ -173,7 +279,8 @@ test("named requests retain cancellation metadata until late provider settlement
   const other = fixture();
   expect(await other.api.getRequest("named")).toBeNull();
   expect(await other.api.cancelRequest("named")).toBeNull();
-  f.lifecycle.stop(); other.lifecycle.stop();
+  f.lifecycle.stop();
+  other.lifecycle.stop();
   await expect(f.api.listRequests()).rejects.toThrow("stopped");
 });
 
@@ -182,44 +289,84 @@ test("named receipts cover timeouts, pre-dispatch failures and bounded oldest-se
   const pending = f.api.askDetailed({ prompt: "p", requestId: "timeout", timeoutMs: 5 });
   await expect(pending).rejects.toMatchObject({ code: "ai/request-timeout" });
   expect(await f.api.getRequest("timeout")).toMatchObject({ status: "timed-out", settled: false });
-  f.calls[0].finish("late"); await f.lifecycle.drainCleanups();
+  f.calls[0].finish("late");
+  await f.lifecycle.drainCleanups();
   expect((await f.api.getRequest("timeout"))?.settled).toBe(true);
-  await expect(f.api.ask({ prompt: "p", requestId: "invalid id" })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
-  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
+  await expect(f.api.ask({ prompt: "p", requestId: "invalid id" })).rejects.toMatchObject({
+    code: "plugin/invalid-argument",
+  });
+  const lifecycle = new PluginLifecycleController([]);
+  lifecycle.promote();
   const api = createPluginLlm("unconfigured", lifecycle, () => null);
-  for (let i = 0; i < 65; i++) await expect(api.ask({ prompt: "p", requestId: `id-${i}` })).rejects.toMatchObject({ code: "ai/not-configured" });
+  for (let i = 0; i < 65; i++)
+    await expect(api.ask({ prompt: "p", requestId: `id-${i}` })).rejects.toMatchObject({ code: "ai/not-configured" });
   expect(await api.getRequest("id-0")).toBeNull();
-  expect(await api.getRequest("id-64")).toMatchObject({ status: "failed", settled: true, errorCode: "ai/not-configured", attempts: [] });
+  expect(await api.getRequest("id-64")).toMatchObject({
+    status: "failed",
+    settled: true,
+    errorCode: "ai/not-configured",
+    attempts: [],
+  });
   expect(await api.listRequests()).toHaveLength(64);
-  const controller = new AbortController(); controller.abort();
-  await expect(api.ask({ prompt: "p", requestId: "pre", signal: controller.signal })).rejects.toMatchObject({ code: "ai/request-cancelled" });
+  const controller = new AbortController();
+  controller.abort();
+  await expect(api.ask({ prompt: "p", requestId: "pre", signal: controller.signal })).rejects.toMatchObject({
+    code: "ai/request-cancelled",
+  });
   expect(await api.getRequest("pre")).toMatchObject({ status: "cancelled", settled: true });
-  lifecycle.stop(); f.lifecycle.stop();
+  lifecycle.stop();
+  f.lifecycle.stop();
 });
 
 test("plugin inference resolves only owned IDs before dispatch, snapshots input, and drains cancelled decoding", async () => {
-  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
-  const calls: OneShotInput[] = [], decoded: string[] = [];
-  const runtime = { ask: async (input: OneShotInput) => { calls.push(input); return "description"; }, askDetailed: async () => ({ value: "", attempts: [] }) } as Pick<AgentRuntime, "ask" | "askDetailed">;
+  const lifecycle = new PluginLifecycleController([]);
+  lifecycle.promote();
+  const calls: OneShotInput[] = [],
+    decoded: string[] = [];
+  const runtime = {
+    ask: async (input: OneShotInput) => {
+      calls.push(input);
+      return "description";
+    },
+    askDetailed: async () => ({ value: "", attempts: [] }),
+  } as Pick<AgentRuntime, "ask" | "askDetailed">;
   let release!: () => void;
-  const api = createPluginLlm("vision", lifecycle, () => runtime, new PluginInferenceSlots(), async id => {
-    decoded.push(id);
-    if (id === "foreign") throw new AppError("fs/not-found", "Not owned");
-    if (id === "wait") await new Promise<void>(resolve => { release = resolve; });
-    return { mimeType: "image/png", data: "AAAA" };
-  });
+  const api = createPluginLlm(
+    "vision",
+    lifecycle,
+    () => runtime,
+    new PluginInferenceSlots(),
+    async (id) => {
+      decoded.push(id);
+      if (id === "foreign") throw new AppError("fs/not-found", "Not owned");
+      if (id === "wait")
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      return { mimeType: "image/png", data: "AAAA" };
+    },
+  );
   const images = [{ resourceId: "owned" }];
-  const first = api.ask({ prompt: "describe", images }); images[0].resourceId = "foreign";
+  const first = api.ask({ prompt: "describe", images });
+  images[0].resourceId = "foreign";
   expect(await first).toBe("description");
   expect(decoded).toEqual(["owned"]);
   expect(calls[0].images).toEqual([{ mimeType: "image/png", data: "AAAA" }]);
-  await expect(api.ask({ prompt: "describe", images: [{ resourceId: "foreign" }] })).rejects.toMatchObject({ code: "fs/not-found" });
-  await expect(api.ask({ prompt: "describe", images: [{ resourceId: "owned", data: "untrusted bytes" }] as unknown as { resourceId: string }[] }))
-    .rejects.toMatchObject({ code: "plugin/invalid-argument" });
+  await expect(api.ask({ prompt: "describe", images: [{ resourceId: "foreign" }] })).rejects.toMatchObject({
+    code: "fs/not-found",
+  });
+  await expect(
+    api.ask({
+      prompt: "describe",
+      images: [{ resourceId: "owned", data: "untrusted bytes" }] as unknown as { resourceId: string }[],
+    }),
+  ).rejects.toMatchObject({ code: "plugin/invalid-argument" });
   const controller = new AbortController();
   const pending = api.ask({ prompt: "describe", images: [{ resourceId: "wait" }], signal: controller.signal });
-  await tick(); controller.abort();
+  await tick();
+  controller.abort();
   await expect(pending).rejects.toMatchObject({ code: "ai/request-cancelled" });
-  release(); await tick();
+  release();
+  await tick();
   expect(calls).toHaveLength(1);
 });

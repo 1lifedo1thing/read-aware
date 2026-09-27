@@ -15,5 +15,11 @@ export const Default: Story = {
 
 export const Plain: Story = {
   args: { label: "Search commands", placeholder: "Search commands", variant: "plain" },
-  decorators: [(Story) => <div className="border-b border-border px-4 py-3"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="border-b border-border px-4 py-3">
+        <Story />
+      </div>
+    ),
+  ],
 };

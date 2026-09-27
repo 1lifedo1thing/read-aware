@@ -10,11 +10,7 @@ function normalizeNumber(value: number): number | string {
   return value;
 }
 
-function normalizeObject(
-  value: object,
-  seen: WeakSet<object>,
-  depth: number,
-): JsonValue {
+function normalizeObject(value: object, seen: WeakSet<object>, depth: number): JsonValue {
   if (depth > MAX_DEPTH) return "[max-depth]";
   if (seen.has(value)) return "[circular]";
   seen.add(value);
@@ -103,9 +99,7 @@ export function redactJson(value: JsonValue, rawSecrets: string[] = []): JsonVal
   if (typeof value === "string") return redactString(value, secrets);
   if (Array.isArray(value)) return value.map((entry) => redactJson(entry, secrets));
   if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, redactJson(entry, secrets)]),
-    );
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, redactJson(entry, secrets)]));
   }
   return value;
 }

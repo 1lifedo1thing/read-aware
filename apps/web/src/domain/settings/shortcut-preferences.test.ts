@@ -8,29 +8,53 @@ import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-g
 
 const disk = new Map<string, string>();
 installFileGlobals({ localStorage: memoryStorage(disk) });
-beforeEach(async () => { await localKV.setItemAsync(SHORTCUT_BINDINGS_KEY, "{}"); });
+beforeEach(async () => {
+  await localKV.setItemAsync(SHORTCUT_BINDINGS_KEY, "{}");
+});
 test("both actors read current bindings but grants control actual writability", async () => {
   const plugin = createSettingsDomain("plugin:shortcuts", { read: ["shortcuts.search"] });
   const snapshot = await plugin.queries.snapshot({ section: "shortcuts" });
   expect(snapshot.settings).toHaveLength(1);
-  expect(snapshot.settings[0]).toMatchObject({ path: "shortcuts.search", value: ["mod", "k"], writable: false,
-    shortcut: { defaultBinding: ["mod", "k"], overridden: false, conflicts: [] } });
+  expect(snapshot.settings[0]).toMatchObject({
+    path: "shortcuts.search",
+    value: ["mod", "k"],
+    writable: false,
+    shortcut: { defaultBinding: ["mod", "k"], overridden: false, conflicts: [] },
+  });
   expect((await plugin.queries.discover())[0]?.shortcut).toBeUndefined();
-  await expect(plugin.commands.update([{ path: "shortcuts.search", value: ["mod", "p"] }])).rejects.toThrow("not permitted");
+  await expect(plugin.commands.update([{ path: "shortcuts.search", value: ["mod", "p"] }])).rejects.toThrow(
+    "not permitted",
+  );
 });
 test("atomic swaps reach the live atom; null resets instead of explicitly storing the default", async () => {
   const domain = createSettingsDomain("agent");
-  await domain.commands.update([{ path: "shortcuts.search", value: ["mod", ","] }, { path: "shortcuts.settings", value: ["mod", "k"] }]);
-  expect(getDefaultStore().get(shortcutBindingsAtom)).toEqual({ search: { mod: true, key: "," }, settings: { mod: true, key: "k" } });
-  await expect(domain.commands.update([{ path: "shortcuts.search", value: null }])).rejects.toMatchObject({ code: "settings/shortcut-conflict" });
-  await domain.commands.update([{ path: "shortcuts.search", value: null }, { path: "shortcuts.settings", value: null }]);
+  await domain.commands.update([
+    { path: "shortcuts.search", value: ["mod", ","] },
+    { path: "shortcuts.settings", value: ["mod", "k"] },
+  ]);
+  expect(getDefaultStore().get(shortcutBindingsAtom)).toEqual({
+    search: { mod: true, key: "," },
+    settings: { mod: true, key: "k" },
+  });
+  await expect(domain.commands.update([{ path: "shortcuts.search", value: null }])).rejects.toMatchObject({
+    code: "settings/shortcut-conflict",
+  });
+  await domain.commands.update([
+    { path: "shortcuts.search", value: null },
+    { path: "shortcuts.settings", value: null },
+  ]);
   expect(getDefaultStore().get(shortcutBindingsAtom)).toEqual({});
 });
 test("conflicts and malformed arrays reject the entire mixed-settings transaction", async () => {
   const domain = createSettingsDomain("agent");
   const before = await domain.queries.read("shelf.layout");
   for (const value of [["Escape"], ["mod", ","]]) {
-    await expect(domain.commands.update([{ path: "shelf.layout", value: "list" }, { path: "shortcuts.search", value }])).rejects.toThrow();
+    await expect(
+      domain.commands.update([
+        { path: "shelf.layout", value: "list" },
+        { path: "shortcuts.search", value },
+      ]),
+    ).rejects.toThrow();
   }
   expect(getDefaultStore().get(shortcutBindingsAtom)).toEqual({});
   expect((await domain.queries.read("shelf.layout")).value).toBe(before.value);
@@ -39,8 +63,11 @@ test("queued actors cannot allocate the same chord using stale snapshots", async
   const agent = createSettingsDomain("agent");
   const plugin = createSettingsDomain("plugin:shortcuts", { write: ["shortcuts.settings"] });
   const first = agent.commands.update([{ path: "shortcuts.search", value: ["mod", "shift", "p"] }]);
-  const second = plugin.commands.update([{ path: "shortcuts.settings", value: ["mod", "shift", "p"] }]).catch(error => error);
-  await first; expect((await second).code).toBe("settings/shortcut-conflict");
+  const second = plugin.commands
+    .update([{ path: "shortcuts.settings", value: ["mod", "shift", "p"] }])
+    .catch((error) => error);
+  await first;
+  expect((await second).code).toBe("settings/shortcut-conflict");
   expect(getDefaultStore().get(shortcutBindingsAtom).settings).toBeUndefined();
 });
 test("external KV invalidation refreshes actual shortcut consumers without a mounted panel", async () => {
@@ -48,13 +75,22 @@ test("external KV invalidation refreshes actual shortcut consumers without a mou
   expect(getDefaultStore().get(shortcutBindingsAtom).search).toEqual({ mod: true, key: "p" });
 });
 test("both actors can inspect and remove permitted dormant overrides without exposing others", async () => {
-  await localKV.setItemAsync(SHORTCUT_BINDINGS_KEY, JSON.stringify({
-    "plugin:absent:open.*": { mod: true, key: "k" }, "plugin:private:open": { mod: true, key: "s" },
-  }));
+  await localKV.setItemAsync(
+    SHORTCUT_BINDINGS_KEY,
+    JSON.stringify({
+      "plugin:absent:open.*": { mod: true, key: "k" },
+      "plugin:private:open": { mod: true, key: "s" },
+    }),
+  );
   const path = "shortcuts.plugin.absent%3Aopen%2E%2A";
   const plugin = createSettingsDomain("plugin:shortcuts", { write: [path] });
   expect((await plugin.queries.snapshot({ section: "shortcuts" })).settings).toMatchObject([
-    { path, writable: true, value: ["mod", "k"], shortcut: { available: false, overridden: true, defaultBinding: null } },
+    {
+      path,
+      writable: true,
+      value: ["mod", "k"],
+      shortcut: { available: false, overridden: true, defaultBinding: null },
+    },
   ]);
   await plugin.commands.update([{ path, value: null }]);
   expect((await plugin.queries.snapshot({ section: "shortcuts" })).settings).toEqual([]);

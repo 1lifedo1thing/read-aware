@@ -25,7 +25,11 @@ export interface ChatSelectionAttachment {
   chapterHref: string | null;
 }
 
-export interface ChatImageAttachment { kind: "image"; cacheKey: string; name: string }
+export interface ChatImageAttachment {
+  kind: "image";
+  cacheKey: string;
+  name: string;
+}
 export type ChatAttachment = ChatSelectionAttachment | ChatImageAttachment;
 
 /** Live reader viewport sampled when a book-chat message is sent. */
@@ -74,28 +78,47 @@ export interface ChatInteractionOption {
   description?: string;
 }
 
-export type ChatPermissionAction = "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "atomic-transaction" | "manage-job" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
+export type ChatPermissionAction =
+  | "delete-book"
+  | "delete-books"
+  | "delete-collection"
+  | "delete-annotation"
+  | "manage-memory"
+  | "classify-book"
+  | "generate-book-graph"
+  | "clear-conversation"
+  | "sync-now"
+  | "manage-schedule"
+  | "access-book-file"
+  | "import-resource"
+  | "merge-books"
+  | "plugin-tool"
+  | "atomic-transaction"
+  | "manage-job"
+  | "download-resource"
+  | "complete-onboarding"
+  | "update-profile"
+  | "manage-entity";
 
 export type ChatInteractionRequest = {
   id: string;
   threadKey: string;
-} &
-  (
-    | ({ kind: "form" } & import("@read-aware/core").InteractionForm)
-    | {
-        kind: "question";
-        question: string;
-        options: ChatInteractionOption[];
-        allowCustom: boolean;
-      }
-    | {
-        kind: "permission";
-        action: ChatPermissionAction;
-        subject: string;
-        maxChapters?: number;
-        onboardingSeeds?: import("@read-aware/core").OnboardingSeed[];
-      }
-  );
+} & (
+  | ({ kind: "form" } & import("@read-aware/core").InteractionForm)
+  | {
+      kind: "question";
+      question: string;
+      options: ChatInteractionOption[];
+      allowCustom: boolean;
+    }
+  | {
+      kind: "permission";
+      action: ChatPermissionAction;
+      subject: string;
+      maxChapters?: number;
+      onboardingSeeds?: import("@read-aware/core").OnboardingSeed[];
+    }
+);
 
 export interface ChatInteractionAnswer {
   values?: import("@read-aware/core").InteractionFormValues;

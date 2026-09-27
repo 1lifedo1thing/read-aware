@@ -24,10 +24,14 @@ export function AppearancePanel() {
   const [content, setContent] = useAtom(contentTypographyAtom);
   const pluginThemes = useAtomValue(pluginThemesAtom);
 
-  const contentSizeOptions: { value: ContentFontSize; label: string }[] =
-    CONTENT_FONT_SIZES.map((value) => ({ value, label: tReader(`fontSizeOption.${value}`) }));
-  const contentSpacingOptions: { value: ReaderLineSpacing; label: string }[] =
-    LINE_SPACINGS.map((value) => ({ value, label: tReader(`lineSpacingOption.${value}`) }));
+  const contentSizeOptions: { value: ContentFontSize; label: string }[] = CONTENT_FONT_SIZES.map((value) => ({
+    value,
+    label: tReader(`fontSizeOption.${value}`),
+  }));
+  const contentSpacingOptions: { value: ReaderLineSpacing; label: string }[] = LINE_SPACINGS.map((value) => ({
+    value,
+    label: tReader(`lineSpacingOption.${value}`),
+  }));
 
   const themeOptions: { value: AppThemePreference; label: string }[] = [
     ...THEME_VALUES.map((value) => ({
@@ -45,14 +49,8 @@ export function AppearancePanel() {
   ];
 
   return (
-    <SettingsPage
-      title={t("appearance.title")}
-      description={t("appearance.description")}
-    >
-      <SettingsGroup
-        title={t("appearance.theme.title")}
-        description={t("appearance.theme.description")}
-      >
+    <SettingsPage title={t("appearance.title")} description={t("appearance.description")}>
+      <SettingsGroup title={t("appearance.theme.title")} description={t("appearance.theme.description")}>
         <ChoiceGroup
           value={settings.theme}
           options={themeOptions}
@@ -63,10 +61,7 @@ export function AppearancePanel() {
       {/* Content typography — the chat transcript, notes, and plugin markdown.
           Deliberately not the chrome: nav, buttons, and labels keep their own
           scale so a larger reading size never reflows the furniture. */}
-      <SettingsGroup
-        title={t("appearance.contentType.title")}
-        description={t("appearance.contentType.description")}
-      >
+      <SettingsGroup title={t("appearance.contentType.title")} description={t("appearance.contentType.description")}>
         <Stack gap="lg">
           <ContentTypographyPreview />
           <SettingsRow
@@ -88,9 +83,7 @@ export function AppearancePanel() {
               <FontField
                 value={content.fontFamily}
                 defaultLabel={t("appearance.contentType.appDefaultFont")}
-                onChange={(fontFamily: ReaderFontFamily | null) =>
-                  setContent({ ...content, fontFamily })
-                }
+                onChange={(fontFamily: ReaderFontFamily | null) => setContent({ ...content, fontFamily })}
               />
               <ChoiceGroup
                 label={t("appearance.contentType.fontSize")}
@@ -118,9 +111,7 @@ export function AppearancePanel() {
             <Toggle
               aria-label={t("appearance.reduceMotion.title")}
               checked={settings.motion === "reduced"}
-              onChange={(reduced) =>
-                setSettings({ ...settings, motion: reduced ? "reduced" : "system" })
-              }
+              onChange={(reduced) => setSettings({ ...settings, motion: reduced ? "reduced" : "system" })}
             />
           }
         />

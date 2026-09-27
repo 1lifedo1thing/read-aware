@@ -100,11 +100,7 @@ export function TransportSyncGroupView({
             }
           />
         ))}
-        <TransportConnectDialog
-          transport={dialogTransport}
-          onClose={() => onConnectRefChange(null)}
-          sync={sync}
-        />
+        <TransportConnectDialog transport={dialogTransport} onClose={() => onConnectRefChange(null)} sync={sync} />
       </SettingsGroup>
     );
   }

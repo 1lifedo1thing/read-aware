@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type {
-  Api,
-  AssistantMessageEventStream,
-  Context,
-  Model,
-  SimpleStreamOptions,
-} from "@earendil-works/pi-ai";
+import type { Api, AssistantMessageEventStream, Context, Model, SimpleStreamOptions } from "@earendil-works/pi-ai";
 import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
 import type { LlmAccount } from "./accounts";
 import { createCompleteFn, createStreamFn } from "./complete";
@@ -26,9 +20,7 @@ function stubRegistry(onOptions: (options: unknown) => void): ProviderRegistry {
   } as unknown as ProviderRegistry;
 }
 
-function stubStreamRegistry(
-  onOptions: (options: unknown) => void,
-): ProviderRegistry {
+function stubStreamRegistry(onOptions: (options: unknown) => void): ProviderRegistry {
   return {
     streamSimple: (_model: unknown, _context: unknown, options: unknown) => {
       onOptions(options);
@@ -52,18 +44,34 @@ async function reasoningSentFor(thinking: ThinkingLevel | undefined): Promise<st
 
 describe("createCompleteFn", () => {
   test("explicit output caps survive custom/subscription sanitation without exceeding account caps", async () => {
-    const custom: LlmAccount = { kind: "api-key", provider: CUSTOM_OPENAI_PROVIDER_ID, apiKey: "k",
-      baseUrl: "https://gateway.example/v1", api: "openai-responses" };
-    for (const account of [custom, { ...custom, maxOutputTokens: 64 }, { kind: "readaware", session: "s" } as LlmAccount, ACCOUNT]) {
+    const custom: LlmAccount = {
+      kind: "api-key",
+      provider: CUSTOM_OPENAI_PROVIDER_ID,
+      apiKey: "k",
+      baseUrl: "https://gateway.example/v1",
+      api: "openai-responses",
+    };
+    for (const account of [
+      custom,
+      { ...custom, maxOutputTokens: 64 },
+      { kind: "readaware", session: "s" } as LlmAccount,
+      ACCOUNT,
+    ]) {
       for (const mode of ["complete", "stream"]) {
         let captured!: SimpleStreamOptions;
-        const capture = (value: unknown) => { captured = value as SimpleStreamOptions; };
-        if (mode === "complete") await createCompleteFn(stubRegistry(capture), account)(MODEL, CONTEXT, { maxTokens: 128 });
+        const capture = (value: unknown) => {
+          captured = value as SimpleStreamOptions;
+        };
+        if (mode === "complete")
+          await createCompleteFn(stubRegistry(capture), account)(MODEL, CONTEXT, { maxTokens: 128 });
         else createStreamFn(stubStreamRegistry(capture), account)(MODEL, CONTEXT, { maxTokens: 128 });
         const expected = account.kind === "api-key" && "maxOutputTokens" in account ? 64 : 128;
         expect(captured.maxTokens).toBe(expected);
         const payload = { model: "m", max_output_tokens: captured.maxTokens };
-        expect(captured.onPayload ? await captured.onPayload(payload, MODEL) : payload).toEqual({ model: "m", max_output_tokens: expected });
+        expect(captured.onPayload ? await captured.onPayload(payload, MODEL) : payload).toEqual({
+          model: "m",
+          max_output_tokens: expected,
+        });
       }
     }
   });
@@ -80,10 +88,7 @@ describe("createCompleteFn", () => {
   test("sanitizes compatibility fields only for Custom accounts", async () => {
     let captured:
       | {
-          onPayload?: (
-            payload: unknown,
-            model: Model<Api>,
-          ) => unknown | Promise<unknown>;
+          onPayload?: (payload: unknown, model: Model<Api>) => unknown | Promise<unknown>;
         }
       | undefined;
     const custom: LlmAccount = {
@@ -116,9 +121,7 @@ describe("createCompleteFn", () => {
 
   test("routes provider requests through the host transport", async () => {
     let captured: { fetch?: typeof globalThis.fetch } | undefined;
-    let request:
-      | { input: RequestInfo | URL; init?: RequestInit }
-      | undefined;
+    let request: { input: RequestInfo | URL; init?: RequestInit } | undefined;
     const hostFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       request = { input, init };
       return new Response("native response");
@@ -146,9 +149,7 @@ describe("createCompleteFn", () => {
   });
 
   test("preserves agent-loop options in the configured stream", () => {
-    let captured:
-      | { cacheRetention?: string; reasoning?: string; signal?: AbortSignal }
-      | undefined;
+    let captured: { cacheRetention?: string; reasoning?: string; signal?: AbortSignal } | undefined;
     const signal = new AbortController().signal;
     const stream = createStreamFn(
       stubStreamRegistry((options) => {

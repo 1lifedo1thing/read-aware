@@ -101,10 +101,7 @@ describe("extractChapterDigest", () => {
     expect(digest).toEqual({
       chapterIndex: 5,
       summary: "本章立论：群体智力低于个体。",
-      characters: [
-        { name: "群体心理", aliases: ["集体心理"], note: "个体聚成群后的共同心理状态" },
-        { name: "无意识" },
-      ],
+      characters: [{ name: "群体心理", aliases: ["集体心理"], note: "个体聚成群后的共同心理状态" }, { name: "无意识" }],
       relations: [{ from: "无意识", kind: "支配", to: "群体心理" }],
       digestVersion: DIGEST_VERSION,
       flavor: "expository",
@@ -170,15 +167,11 @@ describe("mergeRelationGraph", () => {
         digestVersion: 2,
       },
     ]);
-    expect(edges).toEqual([
-      { from: "米嘉", kind: "未婚夫", to: "卡捷琳娜", establishedAt: 3, note: "婚约已危" },
-    ]);
+    expect(edges).toEqual([{ from: "米嘉", kind: "未婚夫", to: "卡捷琳娜", establishedAt: 3, note: "婚约已危" }]);
   });
 
   test("tolerates v1 digests without a relations field", () => {
-    const edges = mergeRelationGraph([
-      { chapterIndex: 0, summary: "旧", characters: [], digestVersion: 1 } as never,
-    ]);
+    const edges = mergeRelationGraph([{ chapterIndex: 0, summary: "旧", characters: [], digestVersion: 1 } as never]);
     expect(edges).toEqual([]);
   });
 });
@@ -200,7 +193,12 @@ describe("digestMissingChapters", () => {
       },
       bookMemory: {
         runExclusive: async <T>(_bookId: Id, work: () => Promise<T>) => work(),
-        inspectDigest: async (bookId: Id, chapterIndex: number) => ({ bookId, chapterIndex, flavor, revision: `bdg1:${"a".repeat(64)}` }),
+        inspectDigest: async (bookId: Id, chapterIndex: number) => ({
+          bookId,
+          chapterIndex,
+          flavor,
+          revision: `bdg1:${"a".repeat(64)}`,
+        }),
         listDigests: async () => existing,
         saveDigest: async (bookId: Id, digest: ChapterDigest) => {
           saved.push({ bookId, digest });
@@ -264,16 +262,19 @@ describe("digestMissingChapters", () => {
   });
 
   test("a flavor-mismatched digest is recomputed (book reclassified, or pre-classification narrative rows on an expository book)", async () => {
-    const { deps, digested, saved } = harness([
-      {
-        chapterIndex: 0,
-        summary: "人物口径的旧行",
-        characters: [{ name: "勒庞" }],
-        relations: [],
-        digestVersion: DIGEST_VERSION,
-        // flavor 缺省 = narrative —— 分类为 expository 后视同缺失
-      },
-    ], "expository");
+    const { deps, digested, saved } = harness(
+      [
+        {
+          chapterIndex: 0,
+          summary: "人物口径的旧行",
+          characters: [{ name: "勒庞" }],
+          relations: [],
+          digestVersion: DIGEST_VERSION,
+          // flavor 缺省 = narrative —— 分类为 expository 后视同缺失
+        },
+      ],
+      "expository",
+    );
     const count = await digestMissingChapters({
       ...deps,
       complete: deps.complete as never,
@@ -296,7 +297,12 @@ describe("digestMissingChapters", () => {
       const base = harness();
       base.deps.bookMemory = {
         ...base.deps.bookMemory,
-        inspectDigest: async (bookId: Id, chapterIndex: number) => ({ bookId, chapterIndex, flavor: "expository" as const, revision: `bdg1:${"a".repeat(64)}` }),
+        inspectDigest: async (bookId: Id, chapterIndex: number) => ({
+          bookId,
+          chapterIndex,
+          flavor: "expository" as const,
+          revision: `bdg1:${"a".repeat(64)}`,
+        }),
         listDigests: async () => [...saved],
         saveDigest: async (_bookId: Id, digest: ChapterDigest) => {
           saved.push(digest);
@@ -339,7 +345,12 @@ describe("digestMissingChapters", () => {
       },
       bookMemory: {
         runExclusive: async <T>(_bookId: Id, work: () => Promise<T>) => work(),
-        inspectDigest: async (bookId: Id, chapterIndex: number) => ({ bookId, chapterIndex, flavor: "narrative" as const, revision: `bdg1:${"a".repeat(64)}` }),
+        inspectDigest: async (bookId: Id, chapterIndex: number) => ({
+          bookId,
+          chapterIndex,
+          flavor: "narrative" as const,
+          revision: `bdg1:${"a".repeat(64)}`,
+        }),
         listDigests: async () => [...saved],
         saveDigest: async (_bookId: Id, digest: ChapterDigest) => {
           saved.push(digest);
@@ -395,10 +406,7 @@ describe("resolveEntityNames", () => {
         chapterIndex: 1,
         summary: "a",
         digestVersion: 2,
-        characters: [
-          { name: "德米特里·费奥多罗维奇·卡拉马佐夫", aliases: ["米嘉"] },
-          { name: "费奥多尔·巴甫洛维奇" },
-        ],
+        characters: [{ name: "德米特里·费奥多罗维奇·卡拉马佐夫", aliases: ["米嘉"] }, { name: "费奥多尔·巴甫洛维奇" }],
         relations: [],
       },
       {
@@ -413,9 +421,7 @@ describe("resolveEntityNames", () => {
         summary: "c",
         digestVersion: 2,
         characters: [{ name: "米嘉" }],
-        relations: [
-          { from: "德米特里·费奥多罗维奇·卡拉马佐夫", kind: "儿子", to: "费奥多尔·巴甫洛维奇" },
-        ],
+        relations: [{ from: "德米特里·费奥多罗维奇·卡拉马佐夫", kind: "儿子", to: "费奥多尔·巴甫洛维奇" }],
       },
     ];
     const resolution = resolveEntityNames(digests);
@@ -426,9 +432,7 @@ describe("resolveEntityNames", () => {
     expect(registry.filter((c) => c.name === "米嘉")).toHaveLength(1);
     // 两条不同拼写的"儿子"边归并为一条，出处戳取最早章
     const edges = mergeRelationGraph(digests);
-    expect(edges).toEqual([
-      { from: "米嘉", kind: "儿子", to: "费奥多尔·巴甫洛维奇", establishedAt: 2 },
-    ]);
+    expect(edges).toEqual([{ from: "米嘉", kind: "儿子", to: "费奥多尔·巴甫洛维奇", establishedAt: 2 }]);
   });
 
   test("never merges two characters listed side by side in the same chapter", () => {

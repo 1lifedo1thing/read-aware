@@ -28,12 +28,8 @@ export function ChangelogPage({ locale }: { locale: Locale }) {
       <div className="mx-auto max-w-3xl px-6">
         <SiteHeader locale={locale} />
         <main className="max-w-[40rem] pb-12 pt-6 sm:pt-8">
-          <h1 className="text-[2rem] font-medium tracking-tight">
-            {strings.changelogTitle}
-          </h1>
-          <p className="mt-3 text-[1.0625rem] leading-relaxed text-fg-muted">
-            {strings.changelogLead}
-          </p>
+          <h1 className="text-[2rem] font-medium tracking-tight">{strings.changelogTitle}</h1>
+          <p className="mt-3 text-[1.0625rem] leading-relaxed text-fg-muted">{strings.changelogLead}</p>
 
           {copy.entries.map((entry) => {
             return (
@@ -41,22 +37,17 @@ export function ChangelogPage({ locale }: { locale: Locale }) {
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border pb-3">
                   <h2 className="text-[1.375rem] font-medium tracking-tight">
                     {entry.version}
-                    {entry.codename && (
-                      <span className="ml-2 font-serif italic text-fg-muted">
-                        {entry.codename}
-                      </span>
-                    )}
+                    {entry.codename && <span className="ml-2 font-serif italic text-fg-muted">{entry.codename}</span>}
                   </h2>
                   {/* The date is machine-readable for feeds and crawlers, and
                       rendered in the reader's own locale conventions. */}
-                  <time
-                    dateTime={entry.date}
-                    className="text-[0.9375rem] text-fg-subtle"
-                  >
-                    {new Date(`${entry.date}T00:00:00Z`).toLocaleDateString(
-                      LOCALE_LANG[locale],
-                      { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
-                    )}
+                  <time dateTime={entry.date} className="text-[0.9375rem] text-fg-subtle">
+                    {new Date(`${entry.date}T00:00:00Z`).toLocaleDateString(LOCALE_LANG[locale], {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
                   </time>
                   <a
                     href={`${REPO_URL}/releases/tag/v${entry.version}`}
@@ -68,9 +59,7 @@ export function ChangelogPage({ locale }: { locale: Locale }) {
                   </a>
                 </div>
 
-                <p className="mt-5 leading-relaxed text-fg-muted">
-                  {entry.summary}
-                </p>
+                <p className="mt-5 leading-relaxed text-fg-muted">{entry.summary}</p>
 
                 {entry.groups.map((group) => (
                   <div key={group.kind} className="mt-8">
@@ -93,10 +82,7 @@ export function ChangelogPage({ locale }: { locale: Locale }) {
                       )}
                     >
                       {group.items.map((item, index) => (
-                        <li
-                          key={index}
-                          className="pl-[0.15em] leading-relaxed text-fg-muted"
-                        >
+                        <li key={index} className="pl-[0.15em] leading-relaxed text-fg-muted">
                           {"title" in item && item.title && (
                             <strong className="font-medium text-fg">
                               {item.title}

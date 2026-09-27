@@ -15,14 +15,10 @@ export function ManualSessionPanel({
   onSessionChange: (session: ManualReviewSession) => void;
 }) {
   const matching = sessions.filter(
-    (session) =>
-      session.scenarioId === record.scenarioId &&
-      session.variantId === record.variantId,
+    (session) => session.scenarioId === record.scenarioId && session.variantId === record.variantId,
   );
   const active = matching.find((session) => session.active);
-  const hasSelection = (record.output?.turns ?? []).some(
-    (turn) => turn.input?.attachments?.length,
-  );
+  const hasSelection = (record.output?.turns ?? []).some((turn) => turn.input?.attachments?.length);
   const [inheritSelection, setInheritSelection] = useState(hasSelection);
   const [question, setQuestion] = useState("");
   const [sending, setSending] = useState(false);
@@ -42,8 +38,7 @@ export function ManualSessionPanel({
               inheritSelection,
             })
           : active;
-      if (!matching.some((entry) => entry.id === session.id))
-        onSessionChange(session);
+      if (!matching.some((entry) => entry.id === session.id)) onSessionChange(session);
       const turn: ManualReviewTurn = await askManualSession(session.id, {
         question: text,
       });
@@ -93,20 +88,12 @@ export function ManualSessionPanel({
         placeholder="在相同书籍、阅读位置和种子状态下提一个真实问题"
         onChange={(event) => setQuestion(event.target.value)}
         onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter")
-            void send(false);
+          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") void send(false);
         }}
       />
-      {error && (
-        <div className="mt-2 text-[11px] text-[var(--fail)]">{error}</div>
-      )}
+      {error && <div className="mt-2 text-[11px] text-[var(--fail)]">{error}</div>}
       <div className="mt-2 flex justify-end">
-        <Button
-          type="button"
-          size="sm"
-          disabled={!question.trim() || sending}
-          onClick={() => void send(false)}
-        >
+        <Button type="button" size="sm" disabled={!question.trim() || sending} onClick={() => void send(false)}>
           {sending ? "模型回答中…" : active ? "发送追问" : "提问"}
         </Button>
       </div>

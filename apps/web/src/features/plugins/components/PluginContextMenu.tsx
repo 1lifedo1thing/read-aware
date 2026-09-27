@@ -8,13 +8,17 @@ export function PluginContextMenu({ input, className }: { input: ContextActionIn
   const { t } = useTranslation("plugins");
   const items = usePluginContextItems(input);
   if (!items.length) return null;
-  return <DropdownMenu
-    items={items}
-    align="right"
-    className={className}
-    triggerLabel={t("menu.actions")}
-    trigger={<span className="flex h-8 w-8 items-center justify-center rounded-md bg-paper text-fg-muted hover:text-fg">
-      <DotsThreeVertical size={18} aria-hidden="true" />
-    </span>}
-  />;
+  return (
+    <DropdownMenu
+      items={items}
+      align="right"
+      className={className}
+      triggerLabel={t("menu.actions")}
+      trigger={
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-paper text-fg-muted hover:text-fg">
+          <DotsThreeVertical size={18} aria-hidden="true" />
+        </span>
+      }
+    />
+  );
 }

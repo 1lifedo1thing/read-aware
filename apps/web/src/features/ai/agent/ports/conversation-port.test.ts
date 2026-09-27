@@ -10,7 +10,9 @@ installFileGlobals({ localStorage: memoryStorage(storage) });
 const INSIGHTS_KEY = "read-aware-agent-insights";
 
 beforeEach(() => storage.clear());
-afterEach(() => { writeSpy?.mockRestore(); });
+afterEach(() => {
+  writeSpy?.mockRestore();
+});
 let writeSpy: ReturnType<typeof spyOn<typeof localKV, "setItemAsync">> | undefined;
 
 describe("conversation insights", () => {
@@ -33,10 +35,22 @@ describe("conversation insights", () => {
 
   test("summary writes wait for persistence and propagate its failure", async () => {
     let reject!: (error: Error) => void;
-    writeSpy = spyOn(localKV, "setItemAsync").mockImplementation(() => new Promise((_, fail) => { reject = fail; }));
+    writeSpy = spyOn(localKV, "setItemAsync").mockImplementation(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    );
     let settled = false;
     const pending = createConversationPort().putInsights("book:one", "pending summary");
-    void pending.then(() => { settled = true; }, () => { settled = true; });
+    void pending.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
     await Promise.resolve();
     expect(settled).toBe(false);
     expect(writeSpy).toHaveBeenCalledWith(INSIGHTS_KEY, JSON.stringify({ "book:one": "pending summary" }), "agent");

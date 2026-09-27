@@ -44,7 +44,7 @@ describe("book system prompt", () => {
     expect(known).toContain(
       'Reading position: about 40% through the book; currently at zero-based chapterIndex 4 ("The Turn")',
     );
-    expect(known).not.toContain('chapter #4');
+    expect(known).not.toContain("chapter #4");
     expect(known).toContain("original title from get_toc/read_chapter/search_book_text");
 
     const progressOnly = buildSystemPrompt(
@@ -79,7 +79,16 @@ describe("book system prompt", () => {
         {
           book: { id: "book-1" as Id, title: "Jumped ahead", status: "reading", narrativity: flavor },
           currentChapter: { index: 4, title: "Later section" },
-          chapterDigests: [{ chapterIndex: 0, summary: "Earlier source evidence", characters: [], relations: [], flavor, digestVersion: 2 }],
+          chapterDigests: [
+            {
+              chapterIndex: 0,
+              summary: "Earlier source evidence",
+              characters: [],
+              relations: [],
+              flavor,
+              digestVersion: 2,
+            },
+          ],
         },
       );
       expect(prompt).toContain("Earlier source evidence");
@@ -91,10 +100,7 @@ describe("book system prompt", () => {
   });
 
   test("keeps shelf cards on the global surface", () => {
-    const prompt = buildSystemPrompt(
-      { kind: "global", threadId: "thread-1" },
-      { shelfSize: 3 },
-    );
+    const prompt = buildSystemPrompt({ kind: "global", threadId: "thread-1" }, { shelfSize: 3 });
 
     expect(prompt).toContain("present them as cards");
     expect(prompt).not.toContain("Apply spoiler protection selectively");

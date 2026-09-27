@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
-import {
-  WHATS_NEW_TTL_MS,
-  changelogUrlForLocale,
-  dismissWhatsNew,
-  reconcileWhatsNew,
-} from "./whats-new";
+import { WHATS_NEW_TTL_MS, changelogUrlForLocale, dismissWhatsNew, reconcileWhatsNew } from "./whats-new";
 import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 
 // bun test 没有 DOM——按仓库惯例给 localStorage 一个 Map stub

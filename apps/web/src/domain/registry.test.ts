@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  DOMAIN_REGISTRY,
-  createActorDomainView,
-  createDomainApi,
-} from "./registry";
+import { DOMAIN_REGISTRY, createActorDomainView, createDomainApi } from "./registry";
 
 describe("domain registry", () => {
   test("is the single roster used to construct the full actor API", () => {
@@ -43,19 +39,44 @@ describe("domain registry", () => {
     expect(createActorDomainView("plugin:test", {}).annotations).toBeUndefined();
     const life = new AbortController();
     const read = createActorDomainView("plugin:test", { annotations: "read" }, life.signal).annotations!;
-    expect(read.commands).toBeUndefined(); expect(read.events.observe).toBeFunction();
+    expect(read.commands).toBeUndefined();
+    expect(read.events.observe).toBeFunction();
     life.abort();
-    expect(() => read.events.observe({ kind: "page" }, () => {})).toThrow(expect.objectContaining({ code: "annotations/cancelled" }));
+    expect(() => read.events.observe({ kind: "page" }, () => {})).toThrow(
+      expect.objectContaining({ code: "annotations/cancelled" }),
+    );
   });
   test("memory feedback requires write while inspect is read-only", () => {
     const denied = createActorDomainView("plugin:test", { library: "read" });
     expect(denied.memory).toBeUndefined();
     const granted = createActorDomainView("plugin:test", { memory: "read" });
-    expect(Object.keys(granted.memory!.queries)).toEqual(["page", "search", "bookGraph", "profile", "profileContext", "entities", "inspect", "classification", "listGraphTasks", "getGraphTask", "context"]);
+    expect(Object.keys(granted.memory!.queries)).toEqual([
+      "page",
+      "search",
+      "bookGraph",
+      "profile",
+      "profileContext",
+      "entities",
+      "inspect",
+      "classification",
+      "listGraphTasks",
+      "getGraphTask",
+      "context",
+    ]);
     expect(Object.keys(granted.memory!.queries.context)).toEqual(["history", "read", "export"]);
     expect(granted.memory!.commands).toBeUndefined();
     const writer = createActorDomainView("plugin:test", { memory: "write" }).memory!.commands!;
-    expect(Object.keys(writer)).toEqual(["mutate", "context", "updateProfile", "completeOnboarding", "decideEntity", "classify", "startGraphTask", "cancelGraphTask", "retryGraphTask"]);
+    expect(Object.keys(writer)).toEqual([
+      "mutate",
+      "context",
+      "updateProfile",
+      "completeOnboarding",
+      "decideEntity",
+      "classify",
+      "startGraphTask",
+      "cancelGraphTask",
+      "retryGraphTask",
+    ]);
     expect(Object.keys(writer.context)).toEqual(["capture"]);
   });
 });

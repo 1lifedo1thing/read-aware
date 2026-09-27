@@ -21,43 +21,77 @@ pub struct BookRemovalCleanupPage {
 
 fn require_current_projections(conn: &Connection) -> Result<(), CommandError> {
     if projections_stale_conn(conn)? {
-        return Err(CommandError::new("library/cleanup-stale", "Wait for projection recovery before releasing book files"));
+        return Err(CommandError::new(
+            "library/cleanup-stale",
+            "Wait for projection recovery before releasing book files",
+        ));
     }
     Ok(())
 }
 
-pub(crate) fn list_removal_cleanup_inner(conn: &Connection, after: Option<&str>, limit: i64) -> Result<BookRemovalCleanupPage, CommandError> {
-    if !(1..=100).contains(&limit) || after.is_some_and(|id| id.trim().is_empty() || id.encode_utf16().count() > 256) {
-        return Err(CommandError::new("library/invalid-cleanup-query", "Expected limit 1-100 and an optional book ID cursor"));
+pub(crate) fn list_removal_cleanup_inner(
+    conn: &Connection,
+    after: Option<&str>,
+    limit: i64,
+) -> Result<BookRemovalCleanupPage, CommandError> {
+    if !(1..=100).contains(&limit)
+        || after.is_some_and(|id| id.trim().is_empty() || id.encode_utf16().count() > 256)
+    {
+        return Err(CommandError::new(
+            "library/invalid-cleanup-query",
+            "Expected limit 1-100 and an optional book ID cursor",
+        ));
     }
     require_current_projections(conn)?;
     let mut stmt = conn.prepare(
         "SELECT c.book_id, c.title, c.removed_at FROM book_removal_cleanup c
          WHERE (?1 IS NULL OR c.book_id > ?1)
            AND NOT EXISTS(SELECT 1 FROM books b WHERE b.id=c.book_id)
-         ORDER BY c.book_id LIMIT ?2"
+         ORDER BY c.book_id LIMIT ?2",
     )?;
-    let mut items = stmt.query_map(params![after, limit + 1], |row| Ok(BookRemovalCleanup {
-        book_id: row.get(0)?, title: row.get(1)?, removed_at: row.get(2)?,
-    }))?.collect::<Result<Vec<_>, _>>()?;
+    let mut items = stmt
+        .query_map(params![after, limit + 1], |row| {
+            Ok(BookRemovalCleanup {
+                book_id: row.get(0)?,
+                title: row.get(1)?,
+                removed_at: row.get(2)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
     let next_cursor = if items.len() > limit as usize {
         items.truncate(limit as usize);
         items.last().map(|item| item.book_id.clone())
-    } else { None };
+    } else {
+        None
+    };
     Ok(BookRemovalCleanupPage { items, next_cursor })
 }
 
-pub(crate) fn release_book_files_inner(conn: &mut Connection, data_dir: &Path, ids: &[String]) -> Result<(), CommandError> {
+pub(crate) fn release_book_files_inner(
+    conn: &mut Connection,
+    data_dir: &Path,
+    ids: &[String],
+) -> Result<(), CommandError> {
     let tx = conn.transaction()?;
     require_current_projections(&tx)?;
     for id in ids {
-        let present: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM books WHERE id=?1)", [id], |row| row.get(0))?;
+        let present: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM books WHERE id=?1)",
+            [id],
+            |row| row.get(0),
+        )?;
         if present {
-            return Err(CommandError::new("library/book-reappeared", "Refusing to release files belonging to a current book"));
+            return Err(CommandError::new(
+                "library/book-reappeared",
+                "Refusing to release files belonging to a current book",
+            ));
         }
         let live_alias: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM book_aliases a JOIN books b ON b.id=a.keep_id WHERE a.merged_id=?1)", [id], |row| row.get(0))?;
         if live_alias {
-            return Err(CommandError::new("library/cleanup-stale", "Merged assets remain pinned while their keeper exists"));
+            return Err(CommandError::new(
+                "library/cleanup-stale",
+                "Merged assets remain pinned while their keeper exists",
+            ));
         }
     }
     // Files are not transactional. Keep every intent until both blob metadata
@@ -114,7 +148,9 @@ pub fn recover_book_removal_cleanup(db: &Db, data_dir: &Path) -> Result<(), Comm
             }
         }
         cursor = page.next_cursor;
-        if cursor.is_none() { return Ok(()); }
+        if cursor.is_none() {
+            return Ok(());
+        }
     }
 }
 

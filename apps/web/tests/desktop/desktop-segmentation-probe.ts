@@ -1,7 +1,11 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { getDefaultStore } from "jotai";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
-import { installedPluginsAtom, pluginCommandsAtom, readerModesAtom } from "../../src/features/plugins/state/plugin-store";
+import {
+  installedPluginsAtom,
+  pluginCommandsAtom,
+  readerModesAtom,
+} from "../../src/features/plugins/state/plugin-store";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { buildPluginContext } from "../../src/features/plugins/runtime/plugin-context";
 import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
@@ -16,25 +20,50 @@ let disposables: PluginDisposable[] = [];
 let restoreSentenceReader = false;
 async function isolated() {
   const path = await appDataDir();
-  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw new Error("Use isolated capability-e2e data");
+  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e"))
+    throw new Error("Use isolated capability-e2e data");
   return path;
 }
 export async function prepareSegmentationProbe(keepSentenceReader = false) {
   const dataDir = await isolated();
   if (worker) throw new Error("Clean up the existing probe first");
-  restoreSentenceReader = !keepSentenceReader && getDefaultStore().get(installedPluginsAtom).some(plugin => plugin.manifest.id === "sentence-reader" && plugin.enabled);
+  restoreSentenceReader =
+    !keepSentenceReader &&
+    getDefaultStore()
+      .get(installedPluginsAtom)
+      .some((plugin) => plugin.manifest.id === "sentence-reader" && plugin.enabled);
   if (restoreSentenceReader) await setPluginEnabled("sentence-reader", false);
-  const manifest: PluginManifest = { id, name: "Segmentation diagnostic", version: "1.0.0", schemaVersion: 1, permissions: ["reader:modes"],
-    requires: { contributions: { readerModes: "^1.1.0", commands: "^1.0.0" } } };
+  const manifest: PluginManifest = {
+    id,
+    name: "Segmentation diagnostic",
+    version: "1.0.0",
+    schemaVersion: 1,
+    permissions: ["reader:modes"],
+    requires: { contributions: { readerModes: "^1.1.0", commands: "^1.0.0" } },
+  };
   try {
-    worker = await startPluginWorker(manifest, "0.5.4", disposables, { moduleUrl: new URL("./segmentation-probe.ts", import.meta.url).href });
-    await worker.checkHealth(); worker.promote();
-    return { dataDir, restoreSentenceReader, modes: getDefaultStore().get(readerModesAtom).map(mode => mode.key) };
-  } catch (error) { await cleanupSegmentationProbe(); throw error; }
+    worker = await startPluginWorker(manifest, "0.5.4", disposables, {
+      moduleUrl: new URL("./segmentation-probe.ts", import.meta.url).href,
+    });
+    await worker.checkHealth();
+    worker.promote();
+    return {
+      dataDir,
+      restoreSentenceReader,
+      modes: getDefaultStore()
+        .get(readerModesAtom)
+        .map((mode) => mode.key),
+    };
+  } catch (error) {
+    await cleanupSegmentationProbe();
+    throw error;
+  }
 }
 export async function segmentationBehavior(behavior: "slow" | "reject") {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id && command.id === behavior);
+  const command = getDefaultStore()
+    .get(pluginCommandsAtom)
+    .find((command) => command.pluginId === id && command.id === behavior);
   if (!command) throw new Error("Probe command unavailable");
   await command.run();
 }
@@ -47,20 +76,37 @@ export async function agentMode(input: ReadingModeConfiguration) {
   await isolated();
   const bookId = readingRuntime.snapshot().bookId;
   if (!bookId) throw new Error("Open the synthetic reading probe book first");
-  const abort = new AbortController(); modeAbort = abort;
-  const tool = buildReaderTools({ kind: "book", bookId }, buildRuntimeDeps()).find(tool => tool.name === "configure_reading_mode")!;
-  try { return await tool.execute("mode-e2e", input, abort.signal); }
-  finally { if (modeAbort === abort) modeAbort = undefined; }
+  const abort = new AbortController();
+  modeAbort = abort;
+  const tool = buildReaderTools({ kind: "book", bookId }, buildRuntimeDeps()).find(
+    (tool) => tool.name === "configure_reading_mode",
+  )!;
+  try {
+    return await tool.execute("mode-e2e", input, abort.signal);
+  } finally {
+    if (modeAbort === abort) modeAbort = undefined;
+  }
 }
 export async function cancelAgentMode() {
-  await isolated(); modeAbort?.abort(new Error("Mode diagnostic cancelled"));
+  await isolated();
+  modeAbort?.abort(new Error("Mode diagnostic cancelled"));
 }
 /** Plugin-path actor for reading mode commands: a real in-page plugin context with reading:write, no compiled UI in between. */
 let readingActor: ReturnType<typeof buildPluginContext> | undefined;
 function readingCommands() {
   if (!readingActor) {
-    readingActor = buildPluginContext({ id: "capability-segmentation-reading", name: "Segmentation reading actor", version: "1.0.0", schemaVersion: 1,
-      permissions: ["reading:write"], requires: { domains: { reading: "^2.22.0" } } }, "0.5.4", disposables);
+    readingActor = buildPluginContext(
+      {
+        id: "capability-segmentation-reading",
+        name: "Segmentation reading actor",
+        version: "1.0.0",
+        schemaVersion: 1,
+        permissions: ["reading:write"],
+        requires: { domains: { reading: "^2.22.0" } },
+      },
+      "0.5.4",
+      disposables,
+    );
     readingActor.lifecycle.promote();
   }
   const reading = readingActor.context.domains.reading;
@@ -70,7 +116,11 @@ function readingCommands() {
 async function modeGuard() {
   const reading = readingCommands();
   const session = await reading.queries.session();
-  return { reading, session, guard: { sessionId: session.sessionId ?? undefined, bookId: session.bookId ?? undefined } };
+  return {
+    reading,
+    session,
+    guard: { sessionId: session.sessionId ?? undefined, bookId: session.bookId ?? undefined },
+  };
 }
 export async function pluginMode(active: boolean, unitId: string) {
   await isolated();
@@ -82,22 +132,34 @@ export async function pluginMode(active: boolean, unitId: string) {
 export async function pluginSelectMode(selectModeKey: string) {
   await isolated();
   const { reading, session, guard } = await modeGuard();
-  await reading.commands.configureMode({ active: session.mode.requestedActive, modeKey: session.mode.modeKey ?? undefined, selectModeKey }, guard);
+  await reading.commands.configureMode(
+    { active: session.mode.requestedActive, modeKey: session.mode.modeKey ?? undefined, selectModeKey },
+    guard,
+  );
   return readingRuntime.snapshot();
 }
 export async function closeProbeBook() {
-  await isolated(); await readingRuntime.close(); return readingRuntime.snapshot();
+  await isolated();
+  await readingRuntime.close();
+  return readingRuntime.snapshot();
 }
-export async function modeNavigation(action: "return-to-unit" | "away" | "next-unit" | "previous-unit", fraction = 0.8) {
+export async function modeNavigation(
+  action: "return-to-unit" | "away" | "next-unit" | "previous-unit",
+  fraction = 0.8,
+) {
   await isolated();
   const bookId = readingRuntime.snapshot().bookId;
   if (!bookId) throw new Error("Open the synthetic reading probe book first");
   const tools = buildReaderTools({ kind: "book", bookId }, buildRuntimeDeps());
-  const abort = new AbortController(); modeAbort = abort;
+  const abort = new AbortController();
+  modeAbort = abort;
   try {
-    return action === "away" ? await tools.find(tool => tool.name === "open_book")!.execute("mode-e2e", { fraction }, abort.signal)
-      : await tools.find(tool => tool.name === "navigate_reading")!.execute("mode-e2e", { action }, abort.signal);
-  } finally { if (modeAbort === abort) modeAbort = undefined; }
+    return action === "away"
+      ? await tools.find((tool) => tool.name === "open_book")!.execute("mode-e2e", { fraction }, abort.signal)
+      : await tools.find((tool) => tool.name === "navigate_reading")!.execute("mode-e2e", { action }, abort.signal);
+  } finally {
+    if (modeAbort === abort) modeAbort = undefined;
+  }
 }
 export async function pluginUnitStep(direction: "next" | "previous") {
   await isolated();
@@ -113,10 +175,25 @@ export async function pluginReturnToUnit() {
 }
 export async function cleanupSegmentationProbe() {
   await isolated();
-  await worker?.terminate(); worker = undefined;
-  if (readingActor) { readingActor.lifecycle.stop(); await readingActor.lifecycle.drainCleanups(); readingActor = undefined; }
-  for (const disposable of disposables.reverse()) disposable.dispose(); disposables = [];
-  if (restoreSentenceReader) { await setPluginEnabled("sentence-reader", true); restoreSentenceReader = false; }
-  return { remainingCommands: getDefaultStore().get(pluginCommandsAtom).filter(command => command.pluginId === id).length,
-    remainingModes: getDefaultStore().get(readerModesAtom).filter(mode => mode.pluginId === id).length };
+  await worker?.terminate();
+  worker = undefined;
+  if (readingActor) {
+    readingActor.lifecycle.stop();
+    await readingActor.lifecycle.drainCleanups();
+    readingActor = undefined;
+  }
+  for (const disposable of disposables.reverse()) disposable.dispose();
+  disposables = [];
+  if (restoreSentenceReader) {
+    await setPluginEnabled("sentence-reader", true);
+    restoreSentenceReader = false;
+  }
+  return {
+    remainingCommands: getDefaultStore()
+      .get(pluginCommandsAtom)
+      .filter((command) => command.pluginId === id).length,
+    remainingModes: getDefaultStore()
+      .get(readerModesAtom)
+      .filter((mode) => mode.pluginId === id).length,
+  };
 }

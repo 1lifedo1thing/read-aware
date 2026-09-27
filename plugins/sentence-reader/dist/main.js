@@ -217,11 +217,7 @@ function trimmedSpan(text) {
   const end = text.length - trailing;
   return end > leading ? [{ start: leading, end }] : [];
 }
-function segmentTextUnits({
-  text,
-  language,
-  unitId
-}) {
+function segmentTextUnits({ text, language, unitId }) {
   if (unitId === "paragraph")
     return trimmedSpan(text);
   if (unitId !== "sentence")

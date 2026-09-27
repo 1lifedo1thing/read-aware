@@ -14,10 +14,7 @@ import { defineAgentEvalScenario, type AgentEvalScenario } from "../../agent-har
 import { realBook } from "../../book-fixtures";
 import { seedMemory } from "../../../testing/fixtures";
 import type { AgentEvalObservation, EvalAssessment, EvalSuite } from "../../types";
-import {
-  cjkAnswerAssessment,
-  coverageAssessment,
-} from "../realbook/real-book-helpers";
+import { cjkAnswerAssessment, coverageAssessment } from "../realbook/real-book-helpers";
 
 const lebon = realBook("lebon");
 const kara = realBook("karamazov");
@@ -118,13 +115,11 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
   id: "personalization",
   displayName: "个性化回答",
   code: "S11",
-  description:
-    "记忆必须改变回答：适用于具体用户角色的风格、领域连接、类比、谨慎与透明度（无个人资料控制）。",
+  description: "记忆必须改变回答：适用于具体用户角色的风格、领域连接、类比、谨慎与透明度（无个人资料控制）。",
   scenarios: [
     defineAgentEvalScenario({
       id: "concise-preference-shapes-summary",
-      description:
-        "当记忆中有简洁偏好时，摘要请求得到简短直白的回答——被忽略的记忆无法通过严格的长度限制。",
+      description: "当记忆中有简洁偏好时，摘要请求得到简短直白的回答——被忽略的记忆无法通过严格的长度限制。",
       tags: ["memory", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -146,15 +141,11 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
         "Reads as plain, accessible prose for a reader who dislikes lectures — no dense structure, no jargon walls",
       ],
       evaluate: (observation) =>
-        combineAssessments(
-          lengthAssessment(observation, 1000),
-          cjkAnswerAssessment(observation),
-        ),
+        combineAssessments(lengthAssessment(observation, 1000), cjkAnswerAssessment(observation)),
     }),
     defineAgentEvalScenario({
       id: "style-control-no-profile",
-      description:
-        "对照：相同的摘要请求，没有个人记忆——对话对记录记忆是否改变回答。",
+      description: "对照：相同的摘要请求，没有个人记忆——对话对记录记忆是否改变回答。",
       tags: ["memory", "control", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -176,8 +167,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "domain-connection-unprompted",
-      description:
-        "当被问及书籍如何帮助“我的研究”时，代理连接记忆中的领域（政治学）而不盘问读者。",
+      description: "当被问及书籍如何帮助“我的研究”时，代理连接记忆中的领域（政治学）而不盘问读者。",
       tags: ["memory", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -213,8 +203,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "domain-control-no-profile",
-      description:
-        "对照：相同的研究问题，没有个人资料——代理不得捏造其无法知道的领域。",
+      description: "对照：相同的研究问题，没有个人资料——代理不得捏造其无法知道的领域。",
       tags: ["memory", "control", "lebon", "book"],
       scope: { kind: "book", bookId: lebon.bookId },
       seed: {
@@ -235,9 +224,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
         principle:
           "no memory → no fabricated profile; asking the field or answering field-neutrally are both acceptable",
       },
-      rubric: [
-        "Either asks what the reader studies or stays field-neutral — never assumes a specific major",
-      ],
+      rubric: ["Either asks what the reader studies or stays field-neutral — never assumes a specific major"],
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
@@ -283,8 +270,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "sensitive-memory-tact",
-      description:
-        "有家庭创伤的读者将费奥多尔视为父亲：代理可以温和但绝不照本宣科地复述档案，也不带入不相关的记忆。",
+      description: "有家庭创伤的读者将费奥多尔视为父亲：代理可以温和但绝不照本宣科地复述档案，也不带入不相关的记忆。",
       tags: ["memory", "karamazov", "book"],
       scope: { kind: "book", bookId: kara.bookId },
       seed: {
@@ -325,8 +311,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "memory-restraint-off-topic",
-      description:
-        "加载完整个人资料的技术问题：记忆不被丢弃在不该出现的地方，同时简洁偏好仍有效。",
+      description: "加载完整个人资料的技术问题：记忆不被丢弃在不该出现的地方，同时简洁偏好仍有效。",
       tags: ["memory", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -354,19 +339,14 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
       rubric: ["A crisp technical contrast in plain language — no persona trivia"],
       evaluate: (observation) =>
         combineAssessments(
-          memoryDiscretionAssessment(observation, "answer.no-offtopic-memory", [
-            "原生家庭",
-            "Minecraft",
-            "政治学",
-          ]),
+          memoryDiscretionAssessment(observation, "answer.no-offtopic-memory", ["原生家庭", "Minecraft", "政治学"]),
           lengthAssessment(observation, 1200),
           cjkAnswerAssessment(observation),
         ),
     }),
     defineAgentEvalScenario({
       id: "memory-transparency",
-      description:
-        "被问“你记得我什么”，代理诚实复述其真实记忆并将其框定为可修正——记忆不再是个黑匣。",
+      description: "被问“你记得我什么”，代理诚实复述其真实记忆并将其框定为可修正——记忆不再是个黑匣。",
       tags: ["memory", "global"],
       scope: { kind: "global", threadId: "personalization" },
       seed: {
@@ -393,8 +373,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "memory-update-correction",
-      description:
-        "读者更正过时记忆（不玩Minecraft了，现玩Factorio）：代理记录更新而非争论或忽略。",
+      description: "读者更正过时记忆（不玩Minecraft了，现玩Factorio）：代理记录更新而非争论或忽略。",
       tags: ["memory", "global"],
       scope: { kind: "global", threadId: "personalization" },
       seed: {
@@ -406,8 +385,7 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
         tools: { requiredAny: ["remember", "manage_memory"], noErrors: true },
       },
       criteria: {
-        update:
-          "the active user-scope memory state must capture Factorio via a new memory or a conditional correction",
+        update: "the active user-scope memory state must capture Factorio via a new memory or a conditional correction",
       },
       observeState: ({ stores }) => ({ memories: stores.memories }),
       rubric: ["Acknowledges the correction naturally — no arguing, no re-asking"],
@@ -418,8 +396,11 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
             : {};
         const saved = Array.isArray(state.memories) ? state.memories : [];
         const captured = saved.some(
-          (memory) => memory.scope === "user" && (!memory.status || memory.status === "active")
-            && typeof memory.content === "string" && memory.content.includes("Factorio"),
+          (memory) =>
+            memory.scope === "user" &&
+            (!memory.status || memory.status === "active") &&
+            typeof memory.content === "string" &&
+            memory.content.includes("Factorio"),
         );
         return combineAssessments(
           evaluateAgentTrace(observation, {

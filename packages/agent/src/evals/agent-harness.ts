@@ -1,11 +1,4 @@
-import type {
-  Api,
-  AssistantMessage,
-  Context,
-  Model,
-  SimpleStreamOptions,
-  Usage,
-} from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Context, Model, SimpleStreamOptions, Usage } from "@earendil-works/pi-ai";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { CompleteFn, StreamFn } from "../models/complete";
 import { createCompleteFn, createStreamFn } from "../models/complete";
@@ -26,13 +19,7 @@ import { reviewRubric } from "./rubric";
 import { captureReviewEvidence } from "./review-evidence";
 import { toJsonValue } from "./json";
 import { buildAgentObservation, captureModelRequest, type RawEvalTurn } from "./trace";
-import type {
-  AgentEvalObservation,
-  EvalAssessment,
-  EvalScenario,
-  EvalVariant,
-  JsonValue,
-} from "./types";
+import type { AgentEvalObservation, EvalAssessment, EvalScenario, EvalVariant, JsonValue } from "./types";
 import { EvalStageError } from "./types";
 
 export type AgentEvalTurn = Omit<SendTurnInput, "signal">;
@@ -127,9 +114,7 @@ function scenarioInput(options: DefineAgentEvalScenarioOptions): JsonValue {
   });
 }
 
-export function defineAgentEvalScenario(
-  options: DefineAgentEvalScenarioOptions,
-): AgentEvalScenario {
+export function defineAgentEvalScenario(options: DefineAgentEvalScenarioOptions): AgentEvalScenario {
   const expectation = options.expectation ?? {};
   options = { ...options, rubric: reviewRubric(options.rubric) };
   return {
@@ -157,8 +142,7 @@ export function createAgentEvalVariant(
   if (!options.streamFn && (!options.account || !options.registry)) {
     throw new Error("agent eval variant requires streamFn or account + registry");
   }
-  const baseStreamFn =
-    options.streamFn ?? createStreamFn(options.registry!, options.account!, thinkingLevel);
+  const baseStreamFn = options.streamFn ?? createStreamFn(options.registry!, options.account!, thinkingLevel);
   const completeFn = options.completeFn ?? noMemoryComplete;
   const baseRepairCompleteFn =
     options.repairCompleteFn ??
@@ -167,11 +151,7 @@ export function createAgentEvalVariant(
       : completeFn);
   const baseResolve =
     options.resolveModel ??
-    createModelResolver(
-      options.account!,
-      { smart: options.modelId, fast: options.modelId },
-      options.registry,
-    );
+    createModelResolver(options.account!, { smart: options.modelId, fast: options.modelId }, options.registry);
   // OpenRouter 变体统一带上 eval 的上游路由偏好（Baidu/千帆优先）。
   const resolveModel: ResolveModel = (role) => applyEvalRouting(baseResolve(role));
   const selectedModel = resolveModel("smart");
@@ -183,9 +163,7 @@ export function createAgentEvalVariant(
       provider: options.account ? accountProviderId(options.account) : selectedModel.provider,
       model: options.modelId,
       thinkingLevel,
-      ...(options.maxWindowTurns === undefined
-        ? {}
-        : { maxWindowTurns: options.maxWindowTurns }),
+      ...(options.maxWindowTurns === undefined ? {} : { maxWindowTurns: options.maxWindowTurns }),
       promptTransform: options.transformSystemPrompt ? "custom" : "default",
     },
     run: async (scenario, context) => {
@@ -199,7 +177,10 @@ export function createAgentEvalVariant(
       }
 
       const initialState = scenario.observeState ? toJsonValue(await scenario.observeState(setupContext)) : undefined;
-      const originalSources = structuredClone({ books: setupContext.stores.books, chapters: setupContext.stores.chapters });
+      const originalSources = structuredClone({
+        books: setupContext.stores.books,
+        chapters: setupContext.stores.chapters,
+      });
       const modelRequests: AgentEvalObservation["modelRequests"] = [];
       let activeTurn = 0;
       let activeRound = 0;
@@ -209,16 +190,12 @@ export function createAgentEvalVariant(
         streamOptions?: SimpleStreamOptions,
       ) => {
         activeRound += 1;
-        modelRequests.push(
-          captureModelRequest(activeTurn, activeRound, model, modelContext, streamOptions),
-        );
+        modelRequests.push(captureModelRequest(activeTurn, activeRound, model, modelContext, streamOptions));
         return baseStreamFn(model, modelContext, streamOptions);
       };
       const tracedRepairCompleteFn: CompleteFn = (model, modelContext, completeOptions) => {
         activeRound += 1;
-        modelRequests.push(
-          captureModelRequest(activeTurn, activeRound, model, modelContext, completeOptions),
-        );
+        modelRequests.push(captureModelRequest(activeTurn, activeRound, model, modelContext, completeOptions));
         return baseRepairCompleteFn(model, modelContext, completeOptions);
       };
 
@@ -226,9 +203,7 @@ export function createAgentEvalVariant(
         scope: scenario.scope,
         deps: setupContext.deps,
         resolveModel,
-        getApiKey:
-          options.getApiKey ??
-          (() => (options.account ? accountCredential(options.account) : undefined)),
+        getApiKey: options.getApiKey ?? (() => (options.account ? accountCredential(options.account) : undefined)),
         completeFn,
         repairCompleteFn: tracedRepairCompleteFn,
         streamFn: tracedStreamFn,
@@ -238,8 +213,11 @@ export function createAgentEvalVariant(
       });
       const rawTurns: RawEvalTurn[] = [];
       context.capturePartial?.(() => {
-        const observation = buildAgentObservation({ turns: rawTurns, modelRequests,
-          wallTimeMs: performance.now() - startedAt });
+        const observation = buildAgentObservation({
+          turns: rawTurns,
+          modelRequests,
+          wallTimeMs: performance.now() - startedAt,
+        });
         observation.reviewEvidence = captureReviewEvidence(scenario, originalSources, observation, initialState);
         return { observation, telemetry: observation.telemetry };
       });
@@ -250,8 +228,11 @@ export function createAgentEvalVariant(
           activeTurn = index + 1;
           activeRound = 0;
           const chunks: AgentEvalObservation["turns"][number]["chunks"] = [];
-          const rawTurn: RawEvalTurn = { input: turn, chunks,
-            ...(scenario.observeState ? { stateBefore: toJsonValue(await scenario.observeState(setupContext)) } : {}) };
+          const rawTurn: RawEvalTurn = {
+            input: turn,
+            chunks,
+            ...(scenario.observeState ? { stateBefore: toJsonValue(await scenario.observeState(setupContext)) } : {}),
+          };
           rawTurns.push(rawTurn);
           // The harness plays the chat host: it owns the transcript (ConversationPort).
           for await (const chunk of hostTurn(setupContext.stores.turns, thread, { ...turn, signal: context.signal })) {

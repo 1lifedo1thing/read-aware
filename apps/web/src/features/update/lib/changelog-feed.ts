@@ -62,8 +62,7 @@ export function siteLocaleKey(appLocale: string): string {
   return appLocale;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 function parseGroup(value: unknown): ChangelogGroup | null {
   if (!isRecord(value)) return null;
@@ -97,22 +96,15 @@ function parseEntryText(value: unknown): ChangelogEntryText | null {
  * Exact-version lookup with locale fallback (requested → en → null).
  * Defensive against a malformed registry: a bad entry is skipped, not thrown.
  */
-export function pickChangelogEntry(
-  registry: unknown,
-  version: string,
-  appLocale: string,
-): WhatsNewEntry | null {
+export function pickChangelogEntry(registry: unknown, version: string, appLocale: string): WhatsNewEntry | null {
   if (!Array.isArray(registry)) return null;
   const entry = registry.find(
-    (candidate): candidate is RegistryEntry =>
-      isRecord(candidate) && candidate.version === version,
+    (candidate): candidate is RegistryEntry => isRecord(candidate) && candidate.version === version,
   );
   if (!entry || !isRecord(entry.text)) return null;
 
   const wanted = siteLocaleKey(appLocale);
-  const keys = [wanted, "en"].filter(
-    (key, index, all) => all.indexOf(key) === index,
-  );
+  const keys = [wanted, "en"].filter((key, index, all) => all.indexOf(key) === index);
   for (const key of keys) {
     const text = parseEntryText(entry.text[key]);
     if (text) {

@@ -83,7 +83,9 @@ pub(crate) fn identity_work_read_inner(
     current(&tx, revision)?;
     let (count, base_index, checkpoint) = header(&tx)?
         .filter(|work| work.revision == revision)
-        .map_or((0, 0, None), |work| (work.page_count, work.base_index, work.checkpoint));
+        .map_or((0, 0, None), |work| {
+            (work.page_count, work.base_index, work.checkpoint)
+        });
     // Index zero is also the atomic resume/header read. Other pruned reads are stale.
     if index != 0 && index < base_index {
         return Err(conflict());

@@ -53,16 +53,8 @@ import {
 import { textUnitReaderModeAtom } from "../features/plugins/state/plugin-store";
 import { onAppEvent } from "../platform/app-events";
 import { createLogger } from "../platform/logger";
-import {
-  SHELF_VIEW_KEY,
-  getShelfView,
-  saveShelfView,
-  type ShelfView,
-} from "../features/shelf/lib/shelf-view";
-import {
-  getShortcutBindings,
-  SHORTCUT_BINDINGS_KEY,
-} from "../features/settings/lib/shortcut-bindings";
+import { SHELF_VIEW_KEY, getShelfView, saveShelfView, type ShelfView } from "../features/shelf/lib/shelf-view";
+import { getShortcutBindings, SHORTCUT_BINDINGS_KEY } from "../features/settings/lib/shortcut-bindings";
 import type { ShortcutBindings } from "../features/settings/lib/shortcuts";
 import { onLocalKVChange } from "../platform/local-store";
 import { i18n, setLocale } from "../i18n";
@@ -80,12 +72,15 @@ export type TopNav = (typeof topNavs)[number] | `plugin:${string}`;
 /** Keep provenance beside ephemeral values; it never enters persistence or plugin data. */
 function workspaceValue<T>(initial: T) {
   const source = atom(stampEventCause({ value: initial }, "system"));
-  const value = atom(get => get(source).value, (get, set, update: T | ((previous: T) => T), origin: DomainActor = "user") => {
-    const previous = get(source).value;
-    const next = typeof update === "function" ? (update as (previous: T) => T)(previous) : update;
-    if (!Object.is(previous, next)) set(source, stampEventCause({ value: next }, causalActor(origin)));
-  });
-  return { value, source: atom(get => get(source)) };
+  const value = atom(
+    (get) => get(source).value,
+    (get, set, update: T | ((previous: T) => T), origin: DomainActor = "user") => {
+      const previous = get(source).value;
+      const next = typeof update === "function" ? (update as (previous: T) => T)(previous) : update;
+      if (!Object.is(previous, next)) set(source, stampEventCause({ value: next }, causalActor(origin)));
+    },
+  );
+  return { value, source: atom((get) => get(source)) };
 }
 const topNavState = workspaceValue<TopNav>("shelf");
 export const activeTopNavAtom = topNavState.value;
@@ -97,7 +92,7 @@ const commandQueryState = workspaceValue("");
 export const commandQueryAtom = commandQueryState.value;
 const commandSearchState = workspaceValue(false);
 export const commandSearchOpenAtom = atom(
-  get => get(commandSearchState.value),
+  (get) => get(commandSearchState.value),
   (get, set, open: boolean, origin: DomainActor = "user") => {
     const source = causalActor(origin);
     if (open && !get(commandSearchState.value)) set(commandQueryAtom, "", source);
@@ -106,7 +101,7 @@ export const commandSearchOpenAtom = atom(
 );
 
 /** The settings dialog's built-in sections. */
-export type CoreSettingsSectionId = (typeof import("@read-aware/core").WORKSPACE_SETTINGS_SECTIONS)[number];
+export type CoreSettingsSectionId = typeof import("@read-aware/core").WORKSPACE_SETTINGS_SECTIONS[number];
 
 /**
  * A deep-linkable settings section: a core section, or `plugin:<id>` for an
@@ -134,9 +129,10 @@ export const syncLoginTokenAtom = atom<string | null>(null);
 /** Resolved app chrome theme (`light`/`dark`), kept current by `useAppearance`. */
 export const resolvedAppThemeStateAtom = atom(stampEventCause({ value: resolveAppTheme(getAppSettings().theme) }));
 export const resolvedAppThemeAtom = atom(
-  get => get(resolvedAppThemeStateAtom).value,
+  (get) => get(resolvedAppThemeStateAtom).value,
   (get, set, value: "light" | "dark", origin: DomainActor = "system") => {
-    if (get(resolvedAppThemeStateAtom).value !== value) set(resolvedAppThemeStateAtom, stampEventCause({ value }, origin));
+    if (get(resolvedAppThemeStateAtom).value !== value)
+      set(resolvedAppThemeStateAtom, stampEventCause({ value }, origin));
   },
 );
 
@@ -173,7 +169,7 @@ export const aiPreferencesAtom = atom(
 
 const readerPreferencesBaseAtom = atom<ReaderSettingsPreferences>(stampEventCause({ ...getReaderPreferences() }));
 const readerBookLanguagesBaseAtom = atom(stampEventCause(getReaderBookLanguages()));
-export const readerBookLanguagesAtom = atom(get => get(readerBookLanguagesBaseAtom));
+export const readerBookLanguagesAtom = atom((get) => get(readerBookLanguagesBaseAtom));
 
 export const readerPreferencesAtom = atom(
   (get) => get(readerPreferencesBaseAtom),
@@ -249,14 +245,30 @@ export const readerOverridesAtom = atom(
 onLocalKVChange((key, _value, origin) => {
   const store = getDefaultStore();
   switch (key) {
-    case APP_SETTINGS_KEY: store.set(appSettingsBaseAtom, stampEventCause({ ...getAppSettings() }, origin)); break;
-    case CONTENT_TYPOGRAPHY_KEY: store.set(contentTypographyBaseAtom, getContentTypography()); break;
-    case AI_PREFERENCES_KEY: store.set(aiPreferencesBaseAtom, getAIPreferences()); break;
-    case SHELF_VIEW_KEY: store.set(shelfViewBaseAtom, getShelfView()); break;
-    case SHORTCUT_BINDINGS_KEY: store.set(shortcutBindingsBaseAtom, getShortcutBindings()); break;
-    case READER_PREFERENCES_KEY: store.set(readerPreferencesBaseAtom, stampEventCause({ ...getReaderPreferences() }, origin)); break;
-    case READER_LANGUAGES_KEY: store.set(readerBookLanguagesBaseAtom, stampEventCause(getReaderBookLanguages(), origin)); break;
-    case READER_OVERRIDES_KEY: store.set(readerOverridesBaseAtom, stampEventCause(getReaderOverrides(), origin)); break;
+    case APP_SETTINGS_KEY:
+      store.set(appSettingsBaseAtom, stampEventCause({ ...getAppSettings() }, origin));
+      break;
+    case CONTENT_TYPOGRAPHY_KEY:
+      store.set(contentTypographyBaseAtom, getContentTypography());
+      break;
+    case AI_PREFERENCES_KEY:
+      store.set(aiPreferencesBaseAtom, getAIPreferences());
+      break;
+    case SHELF_VIEW_KEY:
+      store.set(shelfViewBaseAtom, getShelfView());
+      break;
+    case SHORTCUT_BINDINGS_KEY:
+      store.set(shortcutBindingsBaseAtom, getShortcutBindings());
+      break;
+    case READER_PREFERENCES_KEY:
+      store.set(readerPreferencesBaseAtom, stampEventCause({ ...getReaderPreferences() }, origin));
+      break;
+    case READER_LANGUAGES_KEY:
+      store.set(readerBookLanguagesBaseAtom, stampEventCause(getReaderBookLanguages(), origin));
+      break;
+    case READER_OVERRIDES_KEY:
+      store.set(readerOverridesBaseAtom, stampEventCause(getReaderOverrides(), origin));
+      break;
     case GENERAL_SETTINGS_KEY: {
       const settings = getGeneralSettings();
       store.set(generalSettingsBaseAtom, settings);
@@ -278,8 +290,12 @@ const readingStatsBaseAtom = atom<ReadingStatsStore>(getReadingStatsStore());
 const log = createLogger("reading-stats");
 onAppEvent("library-changed", () => {
   void loadReadingStatsStore().then(
-    (store) => { getDefaultStore().set(readingStatsBaseAtom, store); },
-    (error: unknown) => { log.warn("Reading stats reload failed; keeping the previous snapshot", error); },
+    (store) => {
+      getDefaultStore().set(readingStatsBaseAtom, store);
+    },
+    (error: unknown) => {
+      log.warn("Reading stats reload failed; keeping the previous snapshot", error);
+    },
   );
 });
 
@@ -292,13 +308,8 @@ onAppEvent("library-changed", () => {
  */
 export const readingStatsAtom = atom(
   (get) => get(readingStatsBaseAtom),
-  (
-    get,
-    set,
-    update: ReadingStatsStore | ((prev: ReadingStatsStore) => ReadingStatsStore),
-  ) => {
-    const next =
-      typeof update === "function" ? update(get(readingStatsBaseAtom)) : update;
+  (get, set, update: ReadingStatsStore | ((prev: ReadingStatsStore) => ReadingStatsStore)) => {
+    const next = typeof update === "function" ? update(get(readingStatsBaseAtom)) : update;
     set(readingStatsBaseAtom, next);
   },
 );
@@ -323,10 +334,15 @@ export const shelfSelectionAtom = shelfSelectionState.value;
 const activeCollectionState = workspaceValue<string | null>(null);
 export const activeCollectionAtom = activeCollectionState.value;
 /** Host-only per-field sources for the workspace commit adapter. */
-export const workspaceSourcesAtom = atom(get => ({
-  surface: get(topNavState.source), collection: get(activeCollectionState.source), selection: get(shelfSelectionState.source),
-  settingsOpen: get(settingsOpenState.source), section: get(activeSectionState.source), sectionRequest: get(sectionRequestState.source),
-  searchOpen: get(commandSearchState.source), query: get(commandQueryState.source),
+export const workspaceSourcesAtom = atom((get) => ({
+  surface: get(topNavState.source),
+  collection: get(activeCollectionState.source),
+  selection: get(shelfSelectionState.source),
+  settingsOpen: get(settingsOpenState.source),
+  section: get(activeSectionState.source),
+  sectionRequest: get(sectionRequestState.source),
+  searchOpen: get(commandSearchState.source),
+  query: get(commandQueryState.source),
 }));
 
 const shortcutBindingsBaseAtom = atom<ShortcutBindings>(getShortcutBindings());

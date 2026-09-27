@@ -24,10 +24,7 @@ import {
   updatePluginBookAccess,
   uninstallPlugin,
 } from "../../plugins/runtime/plugin-host";
-import {
-  installedPluginsAtom,
-  requestInstallConsent,
-} from "../../plugins/state/plugin-store";
+import { installedPluginsAtom, requestInstallConsent } from "../../plugins/state/plugin-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError } from "../../plugins/lib/manifest";
 import { ERR_PLUGIN_INVALID_PACKAGE, errorCode } from "@read-aware/core";
@@ -81,7 +78,9 @@ export function PluginsPanel() {
             variant: "success",
           });
         } catch (error) {
-          await candidate.discard().catch(cleanup => log.warn("plugin candidate discard failed after install failure", cleanup));
+          await candidate
+            .discard()
+            .catch((cleanup) => log.warn("plugin candidate discard failed after install failure", cleanup));
           throw error;
         }
       }
@@ -114,7 +113,9 @@ export function PluginsPanel() {
             variant: "success",
           });
         } catch (error) {
-          await candidate.discard().catch(cleanup => log.warn("plugin candidate discard failed after install failure", cleanup));
+          await candidate
+            .discard()
+            .catch((cleanup) => log.warn("plugin candidate discard failed after install failure", cleanup));
           throw error;
         }
       }
@@ -181,9 +182,7 @@ export function PluginsPanel() {
                   <span className="flex items-center gap-2">
                     <span>{manifest.name}</span>
                     <Caption className="text-fg-subtle">v{manifest.version}</Caption>
-                    {plugin.builtin && (
-                      <Badge className="text-[11px]">{t("settings.builtin")}</Badge>
-                    )}
+                    {plugin.builtin && <Badge className="text-[11px]">{t("settings.builtin")}</Badge>}
                   </span>
                 }
                 description={
@@ -191,9 +190,7 @@ export function PluginsPanel() {
                     {manifest.description && <span>{manifest.description}</span>}
                     <span className="flex flex-wrap items-center gap-1">
                       {permissions.length === 0 ? (
-                        <Caption className="text-fg-subtle">
-                          {t("settings.noPermissions")}
-                        </Caption>
+                        <Caption className="text-fg-subtle">{t("settings.noPermissions")}</Caption>
                       ) : (
                         permissions.map((permission: PluginPermission) => (
                           <Badge key={permission} className="text-[11px]">
@@ -214,9 +211,7 @@ export function PluginsPanel() {
                         </Caption>
                       )}
                       {bookAccessSource === "legacy-domain" && (
-                        <Caption className="text-fg-subtle">
-                          {t("settings.bookAccess.legacy")}
-                        </Caption>
+                        <Caption className="text-fg-subtle">{t("settings.bookAccess.legacy")}</Caption>
                       )}
                     </span>
                     {(manifest.schedules ?? []).map((schedule) => (
@@ -227,9 +222,7 @@ export function PluginsPanel() {
                         })}
                       </Caption>
                     ))}
-                    {plugin.error && (
-                      <InlineError compact>{t("settings.activationError")}</InlineError>
-                    )}
+                    {plugin.error && <InlineError compact>{t("settings.activationError")}</InlineError>}
                   </span>
                 }
                 control={
@@ -238,19 +231,11 @@ export function PluginsPanel() {
                       // Jump to the plugin's own settings section — the same
                       // sidebar entry, not a duplicate dialog. Disabled
                       // plugins have no section, so no button either.
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSectionRequest(`plugin:${manifest.id}`)}
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => setSectionRequest(`plugin:${manifest.id}`)}>
                         {t("settings.configure")}
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingBookAccessId(manifest.id)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => setEditingBookAccessId(manifest.id)}>
                       {t("settings.bookAccess.change")}
                     </Button>
                     {!plugin.builtin && (
@@ -277,7 +262,6 @@ export function PluginsPanel() {
           })
         )}
       </div>
-
     </>
   );
 
@@ -290,12 +274,7 @@ export function PluginsPanel() {
         trailing={
           activeTab === 0 ? (
             <span className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={!desktop || installing}
-                onClick={() => void handleInstall()}
-              >
+              <Button size="sm" variant="ghost" disabled={!desktop || installing} onClick={() => void handleInstall()}>
                 {installing ? t("settings.installing") : t("settings.install")}
               </Button>
               <Button
@@ -308,11 +287,7 @@ export function PluginsPanel() {
               </Button>
             </span>
           ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setMarketRefreshToken((token) => token + 1)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setMarketRefreshToken((token) => token + 1)}>
               {t("settings.refresh")}
             </Button>
           )

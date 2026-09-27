@@ -12,8 +12,9 @@ function imageAsset(url: string) {
   return {
     key: thumb ? `wikimedia:${thumb[1]}/${thumb[2]}` : parsed.href,
     width: thumb ? Number(thumb[3]) : 0,
-    decoration: (/(?:^|\.)wikipedia\.org$/.test(parsed.hostname) && parsed.pathname.startsWith("/static/images/"))
-      || (wiki && /^(?:Ambox_|Disambig_|Translation_to_|Question_book-)/i.test(name)),
+    decoration:
+      (/(?:^|\.)wikipedia\.org$/.test(parsed.hostname) && parsed.pathname.startsWith("/static/images/")) ||
+      (wiki && /^(?:Ambox_|Disambig_|Translation_to_|Question_book-)/i.test(name)),
   };
 }
 
@@ -22,7 +23,9 @@ function thumbnailUrl(value: unknown, source: string): string | undefined {
   try {
     const url = publicWebUrl(new URL(value, source).href);
     if (url.startsWith("https:") && !/\.(svg|ico)$/i.test(new URL(url).pathname)) return url;
-  } catch { /* A malformed optional thumbnail must not discard the original. */ }
+  } catch {
+    /* A malformed optional thumbnail must not discard the original. */
+  }
 }
 
 export const webImageIdentity = (url: string) => imageAsset(url).key;
@@ -31,10 +34,14 @@ export const webImageIdentity = (url: string) => imageAsset(url).key;
 export function webImages(values: unknown, source: unknown, title: unknown): WebImage[] {
   if (!Array.isArray(values) || typeof source !== "string") return [];
   let sourceUrl: string;
-  try { sourceUrl = publicWebUrl(source); } catch { return []; }
+  try {
+    sourceUrl = publicWebUrl(source);
+  } catch {
+    return [];
+  }
   const candidates = new Map<string, { image: WebImage; width: number; previewWidth?: number }>();
   for (const value of values.slice(0, 160)) {
-    const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    const row = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
     const raw = typeof value === "string" ? value : row.url;
     if (typeof raw !== "string") continue;
     try {
@@ -46,15 +53,35 @@ export function webImages(values: unknown, source: unknown, title: unknown): Web
       if (asset.decoration) continue;
       const previous = candidates.get(asset.key);
       const explicitPreview = thumbnailUrl(row.thumbnailUrl, sourceUrl);
-      const preview = asset.width >= 240 && (!previous?.previewWidth || asset.width < previous.previewWidth)
-        ? { url, width: asset.width } : previous?.previewWidth ? { url: previous.image.thumbnailUrl ?? previous.image.url, width: previous.previewWidth } : undefined;
-      const best = previous && previous.width >= asset.width ? previous.image : { url, sourceUrl,
-        title: typeof title === "string" && title.trim() ? title.trim().slice(0, 300) : new URL(sourceUrl).hostname,
-        ...(typeof row.description === "string" ? { description: row.description.slice(0, 500) } : previous?.image.description ? { description: previous.image.description } : {}) };
+      const preview =
+        asset.width >= 240 && (!previous?.previewWidth || asset.width < previous.previewWidth)
+          ? { url, width: asset.width }
+          : previous?.previewWidth
+            ? { url: previous.image.thumbnailUrl ?? previous.image.url, width: previous.previewWidth }
+            : undefined;
+      const best =
+        previous && previous.width >= asset.width
+          ? previous.image
+          : {
+              url,
+              sourceUrl,
+              title:
+                typeof title === "string" && title.trim() ? title.trim().slice(0, 300) : new URL(sourceUrl).hostname,
+              ...(typeof row.description === "string"
+                ? { description: row.description.slice(0, 500) }
+                : previous?.image.description
+                  ? { description: previous.image.description }
+                  : {}),
+            };
       const thumb = explicitPreview ?? preview?.url ?? previous?.image.thumbnailUrl;
-      candidates.set(asset.key, { width: Math.max(asset.width, previous?.width ?? 0), previewWidth: preview?.width,
-        image: { ...best, ...(thumb && thumb !== best.url ? { thumbnailUrl: thumb } : {}) } });
-    } catch { /* Ignore malformed optional media without losing page text. */ }
+      candidates.set(asset.key, {
+        width: Math.max(asset.width, previous?.width ?? 0),
+        previewWidth: preview?.width,
+        image: { ...best, ...(thumb && thumb !== best.url ? { thumbnailUrl: thumb } : {}) },
+      });
+    } catch {
+      /* Ignore malformed optional media without losing page text. */
+    }
   }
-  return [...candidates.values()].map(value => value.image).slice(0, 8);
+  return [...candidates.values()].map((value) => value.image).slice(0, 8);
 }

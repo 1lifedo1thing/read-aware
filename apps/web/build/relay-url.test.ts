@@ -19,35 +19,44 @@ async function bundle(options: { development?: boolean; relay?: string; site?: s
     VITE_READAWARE_SITE_URL: options.site ?? "",
     VITE_TAURI_DEV_HOST: options.devHost ?? "",
   };
-  const previous = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+  const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
   Object.assign(process.env, env);
   try {
     const result = await build({
-      configFile: false, root: web, logLevel: "silent",
+      configFile: false,
+      root: web,
+      logLevel: "silent",
       mode: options.development ? "development" : "production",
-      plugins: [{
-        name: "relay-url-test-entry",
-        resolveId(id) { if (id === "virtual:relay-url-test") return id; },
-        load(id) {
-          if (id !== "virtual:relay-url-test") return;
-          return [
-            ["defaultRelayUrl, resolveRelayUrl", "src/platform/sync/relay-url.ts"],
-            ["siteBaseUrl", "src/platform/site-url.ts"],
-            ["hydrateAppIdentity", "src/platform/app-identity.ts"],
-            ["parseSyncLoginUrl", "src/platform/sync/sync-login-link.ts"],
-            ["isBillingSuccessUrl", "src/platform/sync/billing-return-link.ts"],
-          ].map(([name, path]) => `export { ${name} } from ${JSON.stringify(normalizePath(resolve(web, path!)))};`).join("\n");
+      plugins: [
+        {
+          name: "relay-url-test-entry",
+          resolveId(id) {
+            if (id === "virtual:relay-url-test") return id;
+          },
+          load(id) {
+            if (id !== "virtual:relay-url-test") return;
+            return [
+              ["defaultRelayUrl, resolveRelayUrl", "src/platform/sync/relay-url.ts"],
+              ["siteBaseUrl", "src/platform/site-url.ts"],
+              ["hydrateAppIdentity", "src/platform/app-identity.ts"],
+              ["parseSyncLoginUrl", "src/platform/sync/sync-login-link.ts"],
+              ["isBillingSuccessUrl", "src/platform/sync/billing-return-link.ts"],
+            ]
+              .map(([name, path]) => `export { ${name} } from ${JSON.stringify(normalizePath(resolve(web, path!)))};`)
+              .join("\n");
+          },
         },
-      }],
+      ],
       build: {
-        write: false, minify: true,
+        write: false,
+        minify: true,
         lib: { entry: "virtual:relay-url-test", name: "endpoints", formats: ["iife"] },
         rollupOptions: { input: "virtual:relay-url-test", output: { inlineDynamicImports: true } },
       },
     });
     if ("on" in result) throw new Error("Unexpected watch build");
     const output = (Array.isArray(result) ? result[0] : result)!.output;
-    const entry = output.find(item => item.type === "chunk" && item.isEntry);
+    const entry = output.find((item) => item.type === "chunk" && item.isEntry);
     if (!entry || entry.type !== "chunk") throw new Error("Missing endpoint bundle");
     return entry.code;
   } finally {
@@ -63,11 +72,13 @@ async function runtime(code: string, url: string, productName = "ReadAware", fai
     URL,
     window: {
       location: new URL(url),
-      __TAURI_INTERNALS__: { invoke: async (command: string) => {
-        if (failIdentity) throw new Error("Identity unavailable");
-        if (command !== "plugin:app|name") throw new Error(`Unexpected IPC: ${command}`);
-        return productName;
-      } },
+      __TAURI_INTERNALS__: {
+        invoke: async (command: string) => {
+          if (failIdentity) throw new Error("Identity unavailable");
+          if (command !== "plugin:app|name") throw new Error(`Unexpected IPC: ${command}`);
+          return productName;
+        },
+      },
     },
   };
   const api = runInNewContext(`${code}\nendpoints;`, context) as {
@@ -101,7 +112,8 @@ test("release URLs ignore a leaked LAN override too", async () => {
 });
 
 test("bundled ReadAware Dev still uses explicit device-reachable dev URLs", async () => {
-  const relay = "http://192.168.1.9:8787", site = "http://192.168.1.9:5175";
+  const relay = "http://192.168.1.9:8787",
+    site = "http://192.168.1.9:5175";
   const code = await bundle({ relay, site });
   expect(await endpoints(code, "tauri://localhost", "ReadAware Dev")).toEqual({ relay, site });
 });
@@ -109,7 +121,10 @@ test("bundled ReadAware Dev still uses explicit device-reachable dev URLs", asyn
 test("without env overrides only a dev-identified bundle falls back to the local relay", async () => {
   const code = await bundle();
   expect(await endpoints(code, "http://tauri.localhost")).toEqual({ relay: productionRelay, site: productionSite });
-  expect(await endpoints(code, "tauri://localhost", "ReadAware Dev")).toEqual({ relay: localRelay, site: productionSite });
+  expect(await endpoints(code, "tauri://localhost", "ReadAware Dev")).toEqual({
+    relay: localRelay,
+    site: productionSite,
+  });
 });
 
 test("dev server keeps local defaults and follows a LAN host without using Tauri's synthetic host", async () => {
@@ -117,7 +132,10 @@ test("dev server keeps local defaults and follows a LAN host without using Tauri
   for (const origin of ["http://localhost:5173", "http://127.0.0.1:5173", "http://tauri.localhost"]) {
     expect(await endpoints(code, origin)).toEqual({ relay: localRelay, site: localSite });
   }
-  expect(await endpoints(code, "http://192.168.1.9:5173")).toEqual({ relay: "http://192.168.1.9:8787", site: localSite });
+  expect(await endpoints(code, "http://192.168.1.9:5173")).toEqual({
+    relay: "http://192.168.1.9:8787",
+    site: localSite,
+  });
 });
 
 test("dev server prefers the Tauri CLI host for devices", async () => {
@@ -147,7 +165,10 @@ test("missing dev env still selects local, and unreadable native identity stops 
 
 test("dev and release accept only their own login and billing callbacks", async () => {
   const code = await bundle();
-  for (const [name, own, other] of [["ReadAware", "readaware", "readaware-dev"], ["ReadAware Dev", "readaware-dev", "readaware"]]) {
+  for (const [name, own, other] of [
+    ["ReadAware", "readaware", "readaware-dev"],
+    ["ReadAware Dev", "readaware-dev", "readaware"],
+  ]) {
     const api = await runtime(code, "tauri://localhost", name);
     expect(api.parseSyncLoginUrl(`${own}://sync/login/test-token`)).toBe("test-token");
     expect(api.parseSyncLoginUrl(`${other}://sync/login/test-token`)).toBeNull();

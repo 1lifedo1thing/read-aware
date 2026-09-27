@@ -48,10 +48,7 @@ impl Palm {
     fn open(path: &Path) -> Result<Self, String> {
         let mut file = File::open(path)
             .map_err(|error| format!("Failed to open {}: {error}", path.display()))?;
-        let size = file
-            .metadata()
-            .map_err(|error| error.to_string())?
-            .len();
+        let size = file.metadata().map_err(|error| error.to_string())?.len();
 
         let mut header = [0u8; 78];
         file.read_exact(&mut header)
@@ -177,7 +174,11 @@ fn read_exth(record: &[u8], start: usize, encoding: u32, headers: &mut Headers) 
         offset += length as usize;
     }
     // A cover proper is preferred; the thumbnail is the documented fallback.
-    if headers.cover_offset.filter(|value| *value < NOT_SET).is_none() {
+    if headers
+        .cover_offset
+        .filter(|value| *value < NOT_SET)
+        .is_none()
+    {
         headers.cover_offset = thumbnail;
     }
 }
@@ -243,7 +244,9 @@ pub fn extract_mobi_metadata_from_path(path: &Path) -> Result<BookMetadata, Stri
             return None;
         }
         let first = resource_start as usize;
-        let last = first.saturating_add(FALLBACK_RESOURCE_RECORDS).min(palm.record_count());
+        let last = first
+            .saturating_add(FALLBACK_RESOURCE_RECORDS)
+            .min(palm.record_count());
         (first..last).find_map(|index| {
             let bytes = palm.read_record(index, MAX_COVER_BYTES).ok()?;
             crate::covers::plausible_cover(&bytes)
@@ -258,7 +261,6 @@ pub fn extract_mobi_metadata_from_path(path: &Path) -> Result<BookMetadata, Stri
         cover,
     })
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -303,7 +305,8 @@ mod tests {
         record[88..92].copy_from_slice(&(title.len() as u32).to_be_bytes());
         // Resource records start right after record 0 and the text record.
         record[108..112].copy_from_slice(&2u32.to_be_bytes());
-        record[128..132].copy_from_slice(&if records.is_empty() { 0u32 } else { 0b100_0000 }.to_be_bytes());
+        record[128..132]
+            .copy_from_slice(&if records.is_empty() { 0u32 } else { 0b100_0000 }.to_be_bytes());
         if !exth_bytes.is_empty() {
             record[16 + MOBI_HEADER_LENGTH as usize..title_offset].copy_from_slice(&exth_bytes);
         }
@@ -338,9 +341,18 @@ mod tests {
             6,
             "Header Title",
             &[
-                ExthRecord { kind: EXTH_TITLE, payload: b"EXTH &amp; Title".to_vec() },
-                ExthRecord { kind: EXTH_AUTHOR, payload: b"A. Writer".to_vec() },
-                ExthRecord { kind: EXTH_COVER_OFFSET, payload: 0u32.to_be_bytes().to_vec() },
+                ExthRecord {
+                    kind: EXTH_TITLE,
+                    payload: b"EXTH &amp; Title".to_vec(),
+                },
+                ExthRecord {
+                    kind: EXTH_AUTHOR,
+                    payload: b"A. Writer".to_vec(),
+                },
+                ExthRecord {
+                    kind: EXTH_COVER_OFFSET,
+                    payload: 0u32.to_be_bytes().to_vec(),
+                },
             ],
         );
         // record 1 is book text, record 2 is the first resource (the cover).
@@ -356,7 +368,10 @@ mod tests {
     fn falls_back_to_the_palmdb_title_when_there_is_no_exth() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("book.mobi");
-        write_palm(&path, &[record_zero(6, "Header Title", &[]), vec![b'x'; 16]]);
+        write_palm(
+            &path,
+            &[record_zero(6, "Header Title", &[]), vec![b'x'; 16]],
+        );
 
         let metadata = extract_mobi_metadata_from_path(&path).unwrap();
         assert_eq!(metadata.title.as_deref(), Some("Header Title"));
@@ -372,14 +387,23 @@ mod tests {
             6,
             "MOBI 6 Title",
             &[
-                ExthRecord { kind: EXTH_TITLE, payload: b"MOBI 6 Title".to_vec() },
-                ExthRecord { kind: EXTH_BOUNDARY, payload: 2u32.to_be_bytes().to_vec() },
+                ExthRecord {
+                    kind: EXTH_TITLE,
+                    payload: b"MOBI 6 Title".to_vec(),
+                },
+                ExthRecord {
+                    kind: EXTH_BOUNDARY,
+                    payload: 2u32.to_be_bytes().to_vec(),
+                },
             ],
         );
         let kf8 = record_zero(
             8,
             "KF8 Title",
-            &[ExthRecord { kind: EXTH_TITLE, payload: b"KF8 Title".to_vec() }],
+            &[ExthRecord {
+                kind: EXTH_TITLE,
+                payload: b"KF8 Title".to_vec(),
+            }],
         );
         write_palm(&path, &[zero, vec![b'x'; 32], kf8]);
 
@@ -405,7 +429,13 @@ mod tests {
         let zero = record_zero(6, "Title", &[]);
         write_palm(
             &path,
-            &[zero, vec![b'x'; 16], b"FONT\0\0\0\0".to_vec(), ornament.into_inner(), picture.clone()],
+            &[
+                zero,
+                vec![b'x'; 16],
+                b"FONT\0\0\0\0".to_vec(),
+                ornament.into_inner(),
+                picture.clone(),
+            ],
         );
 
         let metadata = extract_mobi_metadata_from_path(&path).unwrap();
@@ -419,7 +449,10 @@ mod tests {
         let zero = record_zero(
             6,
             "Title",
-            &[ExthRecord { kind: EXTH_COVER_OFFSET, payload: 0u32.to_be_bytes().to_vec() }],
+            &[ExthRecord {
+                kind: EXTH_COVER_OFFSET,
+                payload: 0u32.to_be_bytes().to_vec(),
+            }],
         );
         write_palm(&path, &[zero, vec![b'x'; 16], b"FONT\0\0\0\0".to_vec()]);
 

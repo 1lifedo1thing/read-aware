@@ -37,9 +37,7 @@ export function PricingPage({ locale }: { locale: Locale }) {
   // account and sends the buyer back into the app after paying. Fragment,
   // not query — it never reaches a server or an access log.
   const [upgradeTicket] = useState(() =>
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.hash.replace(/^#/, "")).get("upgrade")
-      : null,
+    typeof window !== "undefined" ? new URLSearchParams(window.location.hash.replace(/^#/, "")).get("upgrade") : null,
   );
   const [busyPlan, setBusyPlan] = useState<PricingPlanId | null>(null);
   const [checkoutError, setCheckoutError] = useState(false);
@@ -73,9 +71,7 @@ export function PricingPage({ locale }: { locale: Locale }) {
         <SiteHeader locale={locale} />
         <main className="pb-12 pt-6 sm:pt-8">
           <h1 className="text-[2rem] font-medium tracking-tight">{copy.title}</h1>
-          <p className="mt-3 max-w-[40rem] text-[1.0625rem] leading-relaxed text-fg-muted">
-            {copy.lead}
-          </p>
+          <p className="mt-3 max-w-[40rem] text-[1.0625rem] leading-relaxed text-fg-muted">{copy.lead}</p>
 
           {purchased && (
             <p
@@ -104,24 +100,14 @@ export function PricingPage({ locale }: { locale: Locale }) {
               >
                 {/* Header — rows 1-3: identity, price, pitch. */}
                 <div className="flex items-baseline justify-between gap-2">
-                  <h2 className="text-[1.0625rem] font-medium tracking-tight">
-                    {plan.name}
-                  </h2>
-                  {plan.highlight && (
-                    <span className="text-[0.75rem] text-fg-subtle">
-                      {copy.recommended}
-                    </span>
-                  )}
+                  <h2 className="text-[1.0625rem] font-medium tracking-tight">{plan.name}</h2>
+                  {plan.highlight && <span className="text-[0.75rem] text-fg-subtle">{copy.recommended}</span>}
                 </div>
                 <p className="mt-3 text-[1.75rem] font-medium tracking-tight">
                   {plan.price}
-                  <span className="ml-1 text-[0.875rem] font-normal text-fg-subtle">
-                    {copy.perMonth}
-                  </span>
+                  <span className="ml-1 text-[0.875rem] font-normal text-fg-subtle">{copy.perMonth}</span>
                 </p>
-                <p className="mt-2 mb-4 text-[0.875rem] leading-relaxed text-fg-muted">
-                  {plan.tagline}
-                </p>
+                <p className="mt-2 mb-4 text-[0.875rem] leading-relaxed text-fg-muted">{plan.tagline}</p>
                 {/* Body — row 4: the divider tops the shared track, one line
                     across all cards. */}
                 <ul className="flex flex-col gap-2 border-t border-border pt-4 text-[0.875rem] leading-relaxed text-fg-muted">
@@ -166,12 +152,7 @@ export function PricingPage({ locale }: { locale: Locale }) {
                         // Same box the label occupied (1.5em line), so the
                         // button doesn't change height while it waits.
                         <span className="flex h-[1.5em] items-center justify-center">
-                          <CircleNotch
-                            size={16}
-                            className="animate-spin"
-                            role="status"
-                            aria-label={copy.ctaPaidBusy}
-                          />
+                          <CircleNotch size={16} className="animate-spin" role="status" aria-label={copy.ctaPaidBusy} />
                         </span>
                       ) : (
                         copy.ctaPaid
@@ -199,9 +180,7 @@ export function PricingPage({ locale }: { locale: Locale }) {
           </p>
 
           <section className="mt-14 max-w-[40rem]">
-            <h2 className="text-[1.375rem] font-medium tracking-tight">
-              {copy.finePrintTitle}
-            </h2>
+            <h2 className="text-[1.375rem] font-medium tracking-tight">{copy.finePrintTitle}</h2>
             <ul className="mt-4 flex flex-col gap-3 text-[0.9375rem] leading-relaxed text-fg-muted">
               {copy.finePrint.map((item) => (
                 <li key={item} className="border-l-2 border-border pl-4">

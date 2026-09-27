@@ -20,7 +20,11 @@ import type { SettingsDomain } from "./domain";
 
 /** Validate against the caller's live catalog before resolving private storage
  * namespaces. These keys must never be accepted from or returned to a caller. */
-export async function settingsChangeKeys(domain: SettingsDomain, paths: readonly string[], bookId?: string): Promise<string[]> {
+export async function settingsChangeKeys(
+  domain: SettingsDomain,
+  paths: readonly string[],
+  bookId?: string,
+): Promise<string[]> {
   const target: SettingsQueryTarget = bookId ? { kind: "book", bookId } : { kind: "global" };
   const keys = new Set<string>();
   for (const path of paths) {
@@ -35,7 +39,10 @@ export async function settingsChangeKeys(domain: SettingsDomain, paths: readonly
     else if (path.startsWith("shortcuts.")) key = SHORTCUT_BINDINGS_KEY;
     else if (path.startsWith("reading.")) {
       key = READER_PREFERENCES_KEY;
-      if (bookId) { keys.add(READER_OVERRIDES_KEY); keys.add(READER_LANGUAGES_KEY); }
+      if (bookId) {
+        keys.add(READER_OVERRIDES_KEY);
+        keys.add(READER_LANGUAGES_KEY);
+      }
     } else if (path.startsWith("ai.preferences.")) key = AI_PREFERENCES_KEY;
     else if (path.startsWith("ai.connection.")) key = AI_CONFIG_KEY;
     else if (path.startsWith("menus.")) key = MENU_CONFIG_KEY;
@@ -47,7 +54,11 @@ export async function settingsChangeKeys(domain: SettingsDomain, paths: readonly
 }
 
 /** Only validated catalog edits reach this host-owned transaction. Secrets are never written here. */
-export function settingsDraftEntries(before: SettingsDraft, next: SettingsDraft, applyStartup = false): Map<string, string> {
+export function settingsDraftEntries(
+  before: SettingsDraft,
+  next: SettingsDraft,
+  applyStartup = false,
+): Map<string, string> {
   const entries = new Map<string, string>();
   const record = (key: string, previous: unknown, value: unknown) => {
     const encoded = JSON.stringify(value);
@@ -76,6 +87,11 @@ export function settingsDraftEntries(before: SettingsDraft, next: SettingsDraft,
 }
 
 /** Domain commands return the exact failure to their UI, Agent or Worker owner. */
-export function commitSettingsDraft(before: SettingsDraft, next: SettingsDraft, origin: DomainActor, applyStartup = false): Promise<void> {
+export function commitSettingsDraft(
+  before: SettingsDraft,
+  next: SettingsDraft,
+  origin: DomainActor,
+  applyStartup = false,
+): Promise<void> {
   return setLocalKVBatch(settingsDraftEntries(before, next, applyStartup), origin, "local", "caller");
 }

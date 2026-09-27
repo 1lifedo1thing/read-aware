@@ -1,17 +1,7 @@
 import type { BookFormat } from "./library-types";
 import { readPalmDocFormat } from "./palmdb-header";
 
-const IMAGE_EXTENSIONS = [
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".bmp",
-  ".webp",
-  ".svg",
-  ".jxl",
-  ".avif",
-];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".jxl", ".avif"];
 
 /**
  * Detect a book's format from its leading bytes (magic numbers).
@@ -70,9 +60,7 @@ export async function sniffBookFormat(file: File): Promise<BookFormat | null> {
 function looksLikeHtml(ascii: string): boolean {
   const start = ascii.slice(0, 1024).toLowerCase();
   return (
-    start.includes("<!doctype html") ||
-    start.includes("<html") ||
-    (start.includes("<head") && start.includes("<body"))
+    start.includes("<!doctype html") || start.includes("<html") || (start.includes("<head") && start.includes("<body"))
   );
 }
 

@@ -49,9 +49,17 @@ struct DesktopUpdateProgress {
 /// rolling `beta` pointer release that the Beta channel follows.
 #[cfg(desktop)]
 fn is_release_manifest_path(path: &str, asset: &str) -> bool {
-    let Some(rest) = path.strip_prefix("/ahpxex/read-aware/releases/download/") else { return false };
-    let Some((tag, name)) = rest.split_once('/') else { return false };
-    name == asset && (tag == "beta" || tag.strip_prefix('v').is_some_and(|v| v.starts_with(|c: char| c.is_ascii_digit())))
+    let Some(rest) = path.strip_prefix("/ahpxex/read-aware/releases/download/") else {
+        return false;
+    };
+    let Some((tag, name)) = rest.split_once('/') else {
+        return false;
+    };
+    name == asset
+        && (tag == "beta"
+            || tag
+                .strip_prefix('v')
+                .is_some_and(|v| v.starts_with(|c: char| c.is_ascii_digit())))
 }
 
 /// Only manifests that live under our own repo's release assets are accepted
@@ -59,7 +67,8 @@ fn is_release_manifest_path(path: &str, asset: &str) -> bool {
 #[cfg(desktop)]
 fn validate_manifest_url(raw: &str) -> Result<url::Url, CommandError> {
     let invalid = |message: String| CommandError::new(CODE_UPDATE_INVALID_RELEASE, message);
-    let url = url::Url::parse(raw).map_err(|err| invalid(format!("Invalid manifest URL: {err}")))?;
+    let url =
+        url::Url::parse(raw).map_err(|err| invalid(format!("Invalid manifest URL: {err}")))?;
     let path_ok = is_release_manifest_path(url.path(), "latest.json");
     if url.scheme() != "https"
         || url.host_str() != Some("github.com")
@@ -77,7 +86,11 @@ fn validate_manifest_url(raw: &str) -> Result<url::Url, CommandError> {
 /// Transport failures are worth retrying; anything the updater rejected about
 /// the release itself (manifest, platform entry, signature) is not.
 #[cfg(desktop)]
-fn updater_error(context: &str, fallback: &str, error: tauri_plugin_updater::Error) -> CommandError {
+fn updater_error(
+    context: &str,
+    fallback: &str,
+    error: tauri_plugin_updater::Error,
+) -> CommandError {
     use tauri_plugin_updater::Error;
     let code = match &error {
         Error::Reqwest(_) | Error::Network(_) | Error::ReleaseNotFound => CODE_UPDATE_NETWORK,
@@ -90,7 +103,9 @@ fn updater_error(context: &str, fallback: &str, error: tauri_plugin_updater::Err
         | Error::SignatureUtf8(_)
         | Error::InvalidUpdaterFormat
         | Error::BinaryNotFoundInArchive => CODE_UPDATE_INVALID_RELEASE,
-        Error::Io(io) => return CommandError::context(context, std::io::Error::new(io.kind(), io.to_string())),
+        Error::Io(io) => {
+            return CommandError::context(context, std::io::Error::new(io.kind(), io.to_string()))
+        }
         _ => fallback,
     };
     CommandError::new(code, format!("{context}: {error}"))
@@ -115,13 +130,21 @@ pub async fn desktop_update_check(
     let mut builder = app.updater_builder();
     if let Some(raw) = endpoint {
         let url = validate_manifest_url(&raw)?;
-        builder = builder
-            .endpoints(vec![url])
-            .map_err(|err| updater_error("Could not set the update endpoint", CODE_UPDATE_INVALID_RELEASE, err))?;
+        builder = builder.endpoints(vec![url]).map_err(|err| {
+            updater_error(
+                "Could not set the update endpoint",
+                CODE_UPDATE_INVALID_RELEASE,
+                err,
+            )
+        })?;
     }
-    let updater = builder
-        .build()
-        .map_err(|err| updater_error("Could not start the update check", CODE_UPDATE_UNAVAILABLE, err))?;
+    let updater = builder.build().map_err(|err| {
+        updater_error(
+            "Could not start the update check",
+            CODE_UPDATE_UNAVAILABLE,
+            err,
+        )
+    })?;
     let update = updater
         .check()
         .await
@@ -154,7 +177,10 @@ pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), Command
         let state: tauri::State<'_, DesktopUpdateState> = app.state();
         let taken = state.0.lock().await.take();
         taken.ok_or_else(|| {
-            CommandError::new(CODE_UPDATE_NOT_READY, "No software update is ready to install.")
+            CommandError::new(
+                CODE_UPDATE_NOT_READY,
+                "No software update is ready to install.",
+            )
         })?
     };
 
@@ -168,13 +194,21 @@ pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), Command
                 // Progress is advisory; a closed webview must not fail the install.
                 let _ = progress_app.emit(
                     "ra-desktop-update-progress",
-                    DesktopUpdateProgress { downloaded, total, finished: false },
+                    DesktopUpdateProgress {
+                        downloaded,
+                        total,
+                        finished: false,
+                    },
                 );
             },
             move || {
                 let _ = finish_app.emit(
                     "ra-desktop-update-progress",
-                    DesktopUpdateProgress { downloaded: 0, total: None, finished: true },
+                    DesktopUpdateProgress {
+                        downloaded: 0,
+                        total: None,
+                        finished: true,
+                    },
                 );
             },
         )
@@ -207,11 +241,29 @@ mod tests {
 
     #[test]
     fn accepts_versioned_and_beta_manifests_only() {
-        assert!(is_release_manifest_path("/ahpxex/read-aware/releases/download/v0.6.1-3/latest.json", "latest.json"));
-        assert!(is_release_manifest_path("/ahpxex/read-aware/releases/download/beta/latest.json", "latest.json"));
-        assert!(!is_release_manifest_path("/ahpxex/read-aware/releases/download/beta/latest-android.json", "latest.json"));
-        assert!(!is_release_manifest_path("/ahpxex/read-aware/releases/download/nightly/latest.json", "latest.json"));
-        assert!(!is_release_manifest_path("/ahpxex/read-aware/releases/download/beta/../v1/latest.json", "latest.json"));
-        assert!(!is_release_manifest_path("/someone/else/releases/download/beta/latest.json", "latest.json"));
+        assert!(is_release_manifest_path(
+            "/ahpxex/read-aware/releases/download/v0.6.1-3/latest.json",
+            "latest.json"
+        ));
+        assert!(is_release_manifest_path(
+            "/ahpxex/read-aware/releases/download/beta/latest.json",
+            "latest.json"
+        ));
+        assert!(!is_release_manifest_path(
+            "/ahpxex/read-aware/releases/download/beta/latest-android.json",
+            "latest.json"
+        ));
+        assert!(!is_release_manifest_path(
+            "/ahpxex/read-aware/releases/download/nightly/latest.json",
+            "latest.json"
+        ));
+        assert!(!is_release_manifest_path(
+            "/ahpxex/read-aware/releases/download/beta/../v1/latest.json",
+            "latest.json"
+        ));
+        assert!(!is_release_manifest_path(
+            "/someone/else/releases/download/beta/latest.json",
+            "latest.json"
+        ));
     }
 }

@@ -11,16 +11,11 @@ type PluginControlGroupProps = {
 };
 
 /** Host-owned rendering for compact semantic controls declared by plugins. */
-export function PluginControlGroup({
-  controls,
-  busy,
-  onResult,
-}: PluginControlGroupProps) {
+export function PluginControlGroup({ controls, busy, onResult }: PluginControlGroupProps) {
   return (
     <Stack direction="horizontal" gap="sm" align="center" justify="end" wrap>
       {controls.map((control) => {
-        const selected =
-          control.options.find((option) => option.value === control.value) ?? control.options[0];
+        const selected = control.options.find((option) => option.value === control.value) ?? control.options[0];
         return (
           <DropdownMenu
             key={control.id}

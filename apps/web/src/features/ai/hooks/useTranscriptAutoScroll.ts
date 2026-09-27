@@ -133,8 +133,7 @@ export function useTranscriptAutoScroll({
     }
     const turn = liveTurnRef.current;
     if (!turn) return;
-    const turnTop =
-      turn.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+    const turnTop = turn.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
     scroller.scrollTo({ top: turnTop - TURN_TOP_GAP, behavior: "smooth" });
   }, [liveTurn, follow]);
 

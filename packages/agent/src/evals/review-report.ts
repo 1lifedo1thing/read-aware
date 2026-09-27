@@ -1,7 +1,14 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readHumanReviews, readManualSessions } from "./review-store";
-import { manualReviewRecords, plannedRunsComplete, qualityGatePassed, qualitySummaryText, qualityVerdict, summarizeQuality } from "./reviews";
+import {
+  manualReviewRecords,
+  plannedRunsComplete,
+  qualityGatePassed,
+  qualitySummaryText,
+  qualityVerdict,
+  summarizeQuality,
+} from "./reviews";
 import { formatEvalReport } from "./report";
 import type { EvalRunPlan, EvalRunRecord, EvalSummary } from "./types";
 
@@ -13,9 +20,13 @@ export async function refreshReviewReport(directory: string) {
     readFile(join(directory, "runs.jsonl"), "utf8"),
     readFile(join(directory, "summary.json"), "utf8"),
     readFile(join(directory, "manifest.json"), "utf8"),
-    readHumanReviews(directory), readManualSessions(directory),
+    readHumanReviews(directory),
+    readManualSessions(directory),
   ]);
-  const records = raw.split("\n").filter(Boolean).map(line => JSON.parse(line) as EvalRunRecord);
+  const records = raw
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as EvalRunRecord);
   const summary = JSON.parse(summaryText) as EvalSummary;
   const { plan } = JSON.parse(manifestText) as { plan: EvalRunPlan };
   const expected = plan.scenarios.length * plan.variants.length * plan.repetitions;
@@ -23,34 +34,58 @@ export async function refreshReviewReport(directory: string) {
   summary.quality = summarizeQuality(records, reviews);
   const manualRecords = manualReviewRecords(sessions);
   const manualQuality = summarizeQuality(manualRecords, reviews);
-  const accepted = complete && qualityGatePassed(summary.quality)
-    && (manualQuality.total === 0 || qualityGatePassed(manualQuality));
+  const accepted =
+    complete && qualityGatePassed(summary.quality) && (manualQuality.total === 0 || qualityGatePassed(manualQuality));
   summary.manualQuality = manualQuality;
-  summary.qualityByVariant = plan.variants.map(v => ({ variantId: v.id, ...summarizeQuality(records.filter(r => r.variantId === v.id), reviews) }));
+  summary.qualityByVariant = plan.variants.map((v) => ({
+    variantId: v.id,
+    ...summarizeQuality(
+      records.filter((r) => r.variantId === v.id),
+      reviews,
+    ),
+  }));
   const lines = [
     formatEvalReport(summary),
-    "## Primary review evidence", "",
-    `Planned samples: ${expected}; complete: ${complete}. Acceptance: ${accepted ? "pass" : "not passed"}.`, "",
-    `Freeform follow-ups: ${qualitySummaryText(manualQuality)}`, "",
+    "## Primary review evidence",
+    "",
+    `Planned samples: ${expected}; complete: ${complete}. Acceptance: ${accepted ? "pass" : "not passed"}.`,
+    "",
+    `Freeform follow-ups: ${qualitySummaryText(manualQuality)}`,
+    "",
   ];
   for (const record of [...records, ...manualRecords]) {
     const target = ("reviewTargetId" in record ? record.reviewTargetId : undefined) ?? `run:${record.id}`;
     const review = reviews[target];
     const verdict = qualityVerdict(record, reviews);
-    lines.push(`### ${record.id}: ${verdict}`, "",
-      review?.notes || (verdict === "pending" ? "Pending primary review of question, source, full answer, tools and actual state."
-        : verdict === "error" ? "Execution did not complete; see the recorded error and partial trace."
-        : "Deterministic action evaluated from completed execution and state checks."), "");
-    for (const finding of review?.findings ?? []) lines.push(`- ${finding.attribution}: ${finding.explanation} [${finding.evidence.join(", ")}]`, "");
+    lines.push(
+      `### ${record.id}: ${verdict}`,
+      "",
+      review?.notes ||
+        (verdict === "pending"
+          ? "Pending primary review of question, source, full answer, tools and actual state."
+          : verdict === "error"
+            ? "Execution did not complete; see the recorded error and partial trace."
+            : "Deterministic action evaluated from completed execution and state checks."),
+      "",
+    );
+    for (const finding of review?.findings ?? [])
+      lines.push(`- ${finding.attribution}: ${finding.explanation} [${finding.evidence.join(", ")}]`, "");
     if ("assessment" in record && record.assessment?.modelReview) {
-      lines.push(`Automated opinion (provisional): ${record.assessment.modelReview.verdict}`, "",
-        ...record.assessment.modelReview.criteria.map(c => `- ${c.score}: ${c.criterion} — ${c.rationale}`), "");
+      lines.push(
+        `Automated opinion (provisional): ${record.assessment.modelReview.verdict}`,
+        "",
+        ...record.assessment.modelReview.criteria.map((c) => `- ${c.score}: ${c.criterion} — ${c.rationale}`),
+        "",
+      );
     }
   }
   await Promise.all([
     writeFile(join(directory, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`),
     writeFile(join(directory, "report.md"), lines.join("\n")),
-    writeFile(join(directory, "review-summary.json"), `${JSON.stringify({ quality: summary.quality, manualQuality, complete, accepted }, null, 2)}\n`),
+    writeFile(
+      join(directory, "review-summary.json"),
+      `${JSON.stringify({ quality: summary.quality, manualQuality, complete, accepted }, null, 2)}\n`,
+    ),
   ]);
   return { summary, manualQuality, complete, accepted };
 }

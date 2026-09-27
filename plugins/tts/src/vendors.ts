@@ -51,17 +51,13 @@ function text(value: unknown): string {
 }
 
 export function normalizeSettings(raw: unknown): TtsSettings {
-  const record =
-    typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
-  const vendor = VENDORS.includes(record.vendor as Vendor)
-    ? (record.vendor as Vendor)
-    : "custom";
+  const record = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const vendor = VENDORS.includes(record.vendor as Vendor) ? (record.vendor as Vendor) : "custom";
   // Values are per-vendor keys; the pre-0.3 flat keys (voiceId/model/
   // endpoint) back-fill only while their per-vendor key has never been
   // written — the first settings edit persists every declared field and
   // retires the legacy object.
-  const pick = (key: string, legacy: unknown) =>
-    record[key] !== undefined ? text(record[key]) : text(legacy);
+  const pick = (key: string, legacy: unknown) => (record[key] !== undefined ? text(record[key]) : text(legacy));
   return {
     vendor,
     voiceId: pick(`${vendor}Voice`, record.voiceId),
@@ -70,11 +66,7 @@ export function normalizeSettings(raw: unknown): TtsSettings {
   };
 }
 
-export function buildSpeechRequest(
-  settings: TtsSettings,
-  apiKey: string | null,
-  text: string,
-): SpeechRequest {
+export function buildSpeechRequest(settings: TtsSettings, apiKey: string | null, text: string): SpeechRequest {
   const json = { "content-type": "application/json" };
   switch (settings.vendor) {
     case "elevenlabs": {
@@ -179,9 +171,7 @@ export function buildVoiceListRequests(
       const endpoint = text(settings.endpoint);
       const match = endpoint.match(/^(.*)\/audio\/speech\/?(?:[?#].*)?$/);
       if (!match) return [];
-      const headers: Record<string, string> = apiKey
-        ? { authorization: `Bearer ${apiKey}` }
-        : {};
+      const headers: Record<string, string> = apiKey ? { authorization: `Bearer ${apiKey}` } : {};
       return [
         { url: `${match[1]}/audio/voices`, headers },
         { url: `${match[1]}/voices`, headers },
@@ -213,9 +203,7 @@ function optionFrom(entry: unknown): VoiceOption | null {
 export function parseVoiceList(payload: unknown): VoiceOption[] {
   if (typeof payload !== "object" || payload === null) return [];
   const record = payload as Record<string, unknown>;
-  const entries = [record.voices, record.items, record.data, record.models].find(
-    Array.isArray,
-  );
+  const entries = [record.voices, record.items, record.data, record.models].find(Array.isArray);
   if (!entries) return [];
   const seen = new Set<string>();
   const options: VoiceOption[] = [];

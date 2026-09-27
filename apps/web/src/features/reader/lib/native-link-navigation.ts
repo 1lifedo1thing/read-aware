@@ -21,11 +21,18 @@ export function createNativeLinkNavigator(
       if (!current()) return;
       const attempt = ++request;
       onStart?.();
-      return runtime.navigate({ bookId: identity.bookId, contentVersion: identity.contentVersion, href: event.detail.href }, lifetime.signal)
-        .then(() => undefined, error => {
-          // Retired or superseded jumps belong to an obsolete interaction.
-          if (current() && attempt === request && errorCode(error) !== "reader/superseded") onError(error);
-        });
+      return runtime
+        .navigate(
+          { bookId: identity.bookId, contentVersion: identity.contentVersion, href: event.detail.href },
+          lifetime.signal,
+        )
+        .then(
+          () => undefined,
+          (error) => {
+            // Retired or superseded jumps belong to an obsolete interaction.
+            if (current() && attempt === request && errorCode(error) !== "reader/superseded") onError(error);
+          },
+        );
     },
     dispose: () => lifetime.abort(),
   };

@@ -1,8 +1,4 @@
-import {
-  HeadContent,
-  Outlet,
-  createRootRouteWithContext,
-} from "@tanstack/react-router";
+import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { I18nextProvider } from "react-i18next";
 import { sitePageMeta, type LandingRouterContext } from "../i18n";
 

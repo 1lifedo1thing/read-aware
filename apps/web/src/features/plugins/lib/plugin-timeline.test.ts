@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { PluginListItem } from "./plugin-types";
-import {
-  filterPluginTimelineItems,
-  groupPluginTimelineItems,
-} from "./plugin-timeline";
+import { filterPluginTimelineItems, groupPluginTimelineItems } from "./plugin-timeline";
 
 const now = new Date(2026, 6, 24, 12);
 const item = (id: string, date: Date | string): PluginListItem => ({
@@ -22,14 +19,8 @@ const items = [
 
 describe("plugin timeline", () => {
   test("filters by local day, ISO week, month, and all", () => {
-    expect(filterPluginTimelineItems(items, "today", now).map(({ id }) => id)).toEqual([
-      "today",
-    ]);
-    expect(filterPluginTimelineItems(items, "week", now).map(({ id }) => id)).toEqual([
-      "today",
-      "yesterday",
-      "week",
-    ]);
+    expect(filterPluginTimelineItems(items, "today", now).map(({ id }) => id)).toEqual(["today"]);
+    expect(filterPluginTimelineItems(items, "week", now).map(({ id }) => id)).toEqual(["today", "yesterday", "week"]);
     expect(filterPluginTimelineItems(items, "month", now).map(({ id }) => id)).toEqual([
       "today",
       "yesterday",

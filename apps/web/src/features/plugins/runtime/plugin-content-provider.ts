@@ -14,14 +14,23 @@ export function registerPluginContentProvider(
 ) {
   let registration: ReturnType<typeof registerContentProviderContribution> | undefined;
   const check = () => {
-    if (signal.aborted || !registration?.isCurrent()) throw new AppError("library/content-unavailable", "Book content provider has retired");
+    if (signal.aborted || !registration?.isCurrent())
+      throw new AppError("library/content-unavailable", "Book content provider has retired");
   };
-  registration = registerContentProviderContribution({
-    key: `${pluginId}:${provider.id}`, pluginId, providerId: String(provider.id),
-    load: async key => {
-      check();
-      return consumePluginResult(provider.load(key), value => { check(); return normalizePluginBookContent(value); });
+  registration = registerContentProviderContribution(
+    {
+      key: `${pluginId}:${provider.id}`,
+      pluginId,
+      providerId: String(provider.id),
+      load: async (key) => {
+        check();
+        return consumePluginResult(provider.load(key), (value) => {
+          check();
+          return normalizePluginBookContent(value);
+        });
+      },
     },
-  }, source);
+    source,
+  );
   return registration;
 }

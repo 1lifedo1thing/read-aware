@@ -1,6 +1,15 @@
 import { fetchFeed, isHttpFeedUrl } from "./feed";
 import { cachedContent, prepareContent } from "./content-cache";
-import { discardUnreferencedContent, getFeed, loadFeeds, markFeedRemoval, pendingFeedRemovals, reclaimFeedContent, removeFeed, upsertFeed } from "./storage";
+import {
+  discardUnreferencedContent,
+  getFeed,
+  loadFeeds,
+  markFeedRemoval,
+  pendingFeedRemovals,
+  reclaimFeedContent,
+  removeFeed,
+  upsertFeed,
+} from "./storage";
 import { PROVIDER_ID, type FeedSubscription, type RssPluginContext } from "./types";
 
 const recoveries = new WeakMap<RssPluginContext["lifecycle"], Promise<unknown>>();
@@ -8,16 +17,29 @@ const queues = new WeakMap<RssPluginContext["lifecycle"], Map<string, Promise<un
 function serial<T>(ctx: RssPluginContext, url: string, work: () => Promise<T>): Promise<T> {
   let queue = queues.get(ctx.lifecycle);
   if (!queue) {
-    queue = new Map(); queues.set(ctx.lifecycle, queue);
+    queue = new Map();
+    queues.set(ctx.lifecycle, queue);
     // activate() is staging and cannot mutate storage. First actual work runs
     // after promotion; a failed recovery must not disable offline reading.
-    const recovery = recoverFeedRemovals(ctx).catch(error => { console.warn("RSS removal recovery deferred", error); })
-      .then(() => reclaimFeedContent(ctx)).catch(error => { console.warn("RSS cache recovery deferred", error); });
+    const recovery = recoverFeedRemovals(ctx)
+      .catch((error) => {
+        console.warn("RSS removal recovery deferred", error);
+      })
+      .then(() => reclaimFeedContent(ctx))
+      .catch((error) => {
+        console.warn("RSS cache recovery deferred", error);
+      });
     recoveries.set(ctx.lifecycle, recovery);
   }
-  const next = (queue.get(url) ?? recoveries.get(ctx.lifecycle)!).catch(() => { /* A failed operation must not block later explicit retries. */ }).then(work);
+  const next = (queue.get(url) ?? recoveries.get(ctx.lifecycle)!)
+    .catch(() => {
+      /* A failed operation must not block later explicit retries. */
+    })
+    .then(work);
   queue.set(url, next);
-  const cleanup = () => { if (queue.get(url) === next) queue.delete(url); };
+  const cleanup = () => {
+    if (queue.get(url) === next) queue.delete(url);
+  };
   void next.then(cleanup, cleanup);
   return next;
 }
@@ -26,15 +48,29 @@ async function saveRefresh(ctx: RssPluginContext, url: string, notify: boolean):
   const existing = await getFeed(ctx, url);
   assertNotRemoving(existing);
   const { title, articles, content } = await fetchFeed(ctx, url);
-  const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: url, title, author: "RSS" });
+  const book = await ctx.domains.library.commands.books.addVirtualBook({
+    providerId: PROVIDER_ID,
+    key: url,
+    title,
+    author: "RSS",
+  });
   const prepared = await prepareContent(url, content);
   const contentId = prepared.id;
   const now = new Date().toISOString();
   const pending = notify && (contentId !== existing?.contentId || existing.contentPending === true);
-  let feed: FeedSubscription = { url, title, bookId: book.id, addedAt: existing?.addedAt || now, lastFetched: now, articles, contentId,
-    ...(pending ? { contentPending: true } : {}) };
-  try { await upsertFeed(ctx, feed, prepared.data); }
-  catch (error) {
+  let feed: FeedSubscription = {
+    url,
+    title,
+    bookId: book.id,
+    addedAt: existing?.addedAt || now,
+    lastFetched: now,
+    articles,
+    contentId,
+    ...(pending ? { contentPending: true } : {}),
+  };
+  try {
+    await upsertFeed(ctx, feed, prepared.data);
+  } catch (error) {
     if (contentId !== existing?.contentId) await discardUnreferencedContent(ctx, contentId);
     throw error;
   }
@@ -42,10 +78,12 @@ async function saveRefresh(ctx: RssPluginContext, url: string, notify: boolean):
     if (pending) {
       await ctx.domains.library.commands.books.invalidateVirtualBook({ providerId: PROVIDER_ID, key: url });
       const { contentPending: _pending, ...published } = feed;
-      await upsertFeed(ctx, published); feed = published;
+      await upsertFeed(ctx, published);
+      feed = published;
     }
   } finally {
-    if (existing?.contentId && existing.contentId !== contentId) await discardUnreferencedContent(ctx, existing.contentId);
+    if (existing?.contentId && existing.contentId !== contentId)
+      await discardUnreferencedContent(ctx, existing.contentId);
   }
   return feed;
 }
@@ -57,8 +95,12 @@ export function subscribe(ctx: RssPluginContext, rawUrl: string): Promise<FeedSu
 }
 
 /** Imports never refresh an existing subscription, even when two imports race. */
-export function subscribeIfMissing(ctx: RssPluginContext, url: string): Promise<{ created: boolean; feed: FeedSubscription }> {
-  if (!isHttpFeedUrl(url)) return Promise.reject(Object.assign(new Error("Invalid feed URL"), { code: "plugin/invalid-input" }));
+export function subscribeIfMissing(
+  ctx: RssPluginContext,
+  url: string,
+): Promise<{ created: boolean; feed: FeedSubscription }> {
+  if (!isHttpFeedUrl(url))
+    return Promise.reject(Object.assign(new Error("Invalid feed URL"), { code: "plugin/invalid-input" }));
   return serial(ctx, url, async () => {
     const existing = await getFeed(ctx, url);
     assertNotRemoving(existing);
@@ -72,9 +114,16 @@ export function ensureBook(ctx: RssPluginContext, input: FeedSubscription): Prom
     const feed = await getFeed(ctx, input.url);
     if (!feed) throw Object.assign(new Error("RSS subscription was removed"), { code: "library/book-not-found" });
     assertNotRemoving(feed);
-    const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: feed.url, title: feed.title, author: "RSS" });
+    const book = await ctx.domains.library.commands.books.addVirtualBook({
+      providerId: PROVIDER_ID,
+      key: feed.url,
+      title: feed.title,
+      author: "RSS",
+    });
     if (book.id === feed.bookId) return feed;
-    const healed = { ...feed, bookId: book.id }; await upsertFeed(ctx, healed); return healed;
+    const healed = { ...feed, bookId: book.id };
+    await upsertFeed(ctx, healed);
+    return healed;
   });
 }
 
@@ -98,12 +147,13 @@ export function unsubscribeFeed(ctx: RssPluginContext, url: string, expectedBook
   return serial(ctx, url, async () => {
     const feed = await markFeedRemoval(ctx, url, expectedBookId);
     if (feed) await finishFeedRemoval(ctx, feed);
-    else await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: url, expectedBookId });
+    else
+      await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: url, expectedBookId });
   });
 }
 
 export async function forgetRemovedBook(ctx: RssPluginContext, bookId: string): Promise<FeedSubscription | null> {
-  const feed = (await loadFeeds(ctx)).find(feed => feed.bookId === bookId);
+  const feed = (await loadFeeds(ctx)).find((feed) => feed.bookId === bookId);
   if (!feed) return null;
   return serial(ctx, feed.url, async () => {
     const current = await getFeed(ctx, feed.url);
@@ -117,8 +167,10 @@ export async function openFeed(ctx: RssPluginContext, input: FeedSubscription, a
   let feed = await ensureBook(ctx, input);
   await loadFeedContent(ctx, feed.url);
   const current = await getFeed(ctx, feed.url);
-  if (!current || articleId && !current.articles.some(article => article.id === articleId)) {
-    throw Object.assign(new Error("RSS article no longer exists in this snapshot"), { code: "reader/target-not-found" });
+  if (!current || (articleId && !current.articles.some((article) => article.id === articleId))) {
+    throw Object.assign(new Error("RSS article no longer exists in this snapshot"), {
+      code: "reader/target-not-found",
+    });
   }
   feed = current;
   let session = await ctx.domains.reading.queries.session();
@@ -130,12 +182,19 @@ export async function openFeed(ctx: RssPluginContext, input: FeedSubscription, a
   }
   await ctx.domains.reading.commands.openBook(feed.bookId);
   session = await ctx.domains.reading.queries.session();
-  if (articleId) await ctx.domains.reading.commands.goTo({ bookId: feed.bookId, href: articleId, contentVersion: session.location?.contentVersion });
+  if (articleId)
+    await ctx.domains.reading.commands.goTo({
+      bookId: feed.bookId,
+      href: articleId,
+      contentVersion: session.location?.contentVersion,
+    });
 }
 
-
 function assertNotRemoving(feed: FeedSubscription | null): void {
-  if (feed?.removalId) throw Object.assign(new Error("RSS removal is pending; finish unsubscribe before opening or refreshing"), { code: "plugin/storage-conflict" });
+  if (feed?.removalId)
+    throw Object.assign(new Error("RSS removal is pending; finish unsubscribe before opening or refreshing"), {
+      code: "plugin/storage-conflict",
+    });
 }
 async function finishFeedRemoval(ctx: RssPluginContext, feed: FeedSubscription): Promise<void> {
   const current = await getFeed(ctx, feed.url);
@@ -143,14 +202,22 @@ async function finishFeedRemoval(ctx: RssPluginContext, feed: FeedSubscription):
   if (!feed.removalId || current.removalId !== feed.removalId || current.bookId !== feed.bookId) {
     throw Object.assign(new Error("RSS removal intent was replaced"), { code: "plugin/storage-conflict" });
   }
-  await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: feed.url, expectedBookId: feed.bookId });
+  await ctx.domains.library.commands.books.removeVirtualBook({
+    providerId: PROVIDER_ID,
+    key: feed.url,
+    expectedBookId: feed.bookId,
+  });
   await removeFeed(ctx, feed.url, { bookId: feed.bookId, removalId: feed.removalId });
 }
 export async function recoverFeedRemovals(ctx: RssPluginContext): Promise<void> {
   let failure: unknown;
   for (const feed of await pendingFeedRemovals(ctx)) {
-    try { await finishFeedRemoval(ctx, feed); }
-    catch (error) { failure ??= error; console.warn("RSS pending removal failed", error); }
+    try {
+      await finishFeedRemoval(ctx, feed);
+    } catch (error) {
+      failure ??= error;
+      console.warn("RSS pending removal failed", error);
+    }
   }
   if (failure) throw failure;
 }
@@ -161,7 +228,10 @@ export function refreshFeed(ctx: RssPluginContext, url: string): Promise<FeedSub
   return serial(ctx, url, async () => {
     const feed = await getFeed(ctx, url);
     if (!feed) return null;
-    if (feed.removalId) { await finishFeedRemoval(ctx, feed); return null; }
+    if (feed.removalId) {
+      await finishFeedRemoval(ctx, feed);
+      return null;
+    }
     return saveRefresh(ctx, url, true);
   });
 }

@@ -4,41 +4,76 @@ import type { RssPluginContext } from "./types";
 import { importOpml } from "./opml-import";
 
 export function feedToolLimit(value: unknown): number {
-  return typeof value === "number" && value > 0
-    ? Math.min(30, Math.floor(value))
-    : 10;
+  return typeof value === "number" && value > 0 ? Math.min(30, Math.floor(value)) : 10;
 }
 
 export function registerAgentTools(ctx: RssPluginContext): void {
   ctx.contributions.agentTools.register({
-    name: "storage_policy", label: "RSS stored data", contexts: ["global"],
-    description: "Query this RSS plugin's persisted payload usage, actual write limits and per-store backup/roaming policy. No other plugin data or credential values. Full app backup differs from OPML URL export. Roaming eligibility does not prove sync delivery; null quotas mean no enforced total limit, not infinite disk. Document usage includes feed metadata and article caches.",
+    name: "storage_policy",
+    label: "RSS stored data",
+    contexts: ["global"],
+    description:
+      "Query this RSS plugin's persisted payload usage, actual write limits and per-store backup/roaming policy. No other plugin data or credential values. Full app backup differs from OPML URL export. Roaming eligibility does not prove sync delivery; null quotas mean no enforced total limit, not infinite disk. Document usage includes feed metadata and article caches.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
-    execute: async () => { await ctx.services.storage.flush(); return ctx.services.storage.policy(); },
-  });
-  ctx.contributions.agentTools.register({
-    name: "import_opml", label: "Import OPML", contexts: ["global"], approval: "required",
-    description: "Import one page of RSS/Atom subscriptions from user-provided OPML XML after host approval. Fetches the selected feed URLs and adds virtual books with cached articles. Existing subscriptions are skipped, not refreshed. Each page is separately approved; pass the unchanged XML and returned nextOffset to continue. Results distinguish added/existing/failed; failures may have persisted a subscription or pending source notification, so this is not an atomic transaction. XML input is at most 8000 characters for the confirmation surface; larger files use the RSS plugin's native file-import action. Does not open a book, change the current reading position or remove existing subscriptions.",
-    parameters: { type: "object", properties: {
-      opml: { type: "string", minLength: 1, maxLength: 8000 },
-      offset: { type: "integer", minimum: 0 }, limit: { type: "integer", minimum: 1, maximum: 20 },
-    }, required: ["opml"], additionalProperties: false },
-    execute: async params => {
-      if (typeof params.opml !== "string" || !params.opml.trim() || params.opml.length > 8000) {
-        throw Object.assign(new Error("Invalid OPML tool input"), { code: "plugin/invalid-input" });
-      }
-      return importOpml(ctx, params.opml, params.offset === undefined ? 0 : params.offset as number, params.limit === undefined ? 10 : params.limit as number);
+    execute: async () => {
+      await ctx.services.storage.flush();
+      return ctx.services.storage.policy();
     },
   });
   ctx.contributions.agentTools.register({
-    name: "unsubscribe_feed", label: "Unsubscribe from RSS", contexts: ["global"], approval: "required",
-    description: "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused. The deletion intent is saved before host removal and retried after interruptions; list_feeds exposes removalPending. Pending removal is not a completed unsubscribe, and refresh/open will not recreate its book.",
-    parameters: { type: "object", properties: {
-      url: { type: "string", minLength: 1, maxLength: 2048 }, bookId: { type: "string", minLength: 1, maxLength: 256 },
-    }, required: ["url", "bookId"], additionalProperties: false },
-    execute: async params => {
-      if (typeof params.url !== "string" || !params.url.trim() || params.url.length > 2048
-        || typeof params.bookId !== "string" || !params.bookId.trim() || params.bookId.length > 256) {
+    name: "import_opml",
+    label: "Import OPML",
+    contexts: ["global"],
+    approval: "required",
+    description:
+      "Import one page of RSS/Atom subscriptions from user-provided OPML XML after host approval. Fetches the selected feed URLs and adds virtual books with cached articles. Existing subscriptions are skipped, not refreshed. Each page is separately approved; pass the unchanged XML and returned nextOffset to continue. Results distinguish added/existing/failed; failures may have persisted a subscription or pending source notification, so this is not an atomic transaction. XML input is at most 8000 characters for the confirmation surface; larger files use the RSS plugin's native file-import action. Does not open a book, change the current reading position or remove existing subscriptions.",
+    parameters: {
+      type: "object",
+      properties: {
+        opml: { type: "string", minLength: 1, maxLength: 8000 },
+        offset: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 20 },
+      },
+      required: ["opml"],
+      additionalProperties: false,
+    },
+    execute: async (params) => {
+      if (typeof params.opml !== "string" || !params.opml.trim() || params.opml.length > 8000) {
+        throw Object.assign(new Error("Invalid OPML tool input"), { code: "plugin/invalid-input" });
+      }
+      return importOpml(
+        ctx,
+        params.opml,
+        params.offset === undefined ? 0 : (params.offset as number),
+        params.limit === undefined ? 10 : (params.limit as number),
+      );
+    },
+  });
+  ctx.contributions.agentTools.register({
+    name: "unsubscribe_feed",
+    label: "Unsubscribe from RSS",
+    contexts: ["global"],
+    approval: "required",
+    description:
+      "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused. The deletion intent is saved before host removal and retried after interruptions; list_feeds exposes removalPending. Pending removal is not a completed unsubscribe, and refresh/open will not recreate its book.",
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", minLength: 1, maxLength: 2048 },
+        bookId: { type: "string", minLength: 1, maxLength: 256 },
+      },
+      required: ["url", "bookId"],
+      additionalProperties: false,
+    },
+    execute: async (params) => {
+      if (
+        typeof params.url !== "string" ||
+        !params.url.trim() ||
+        params.url.length > 2048 ||
+        typeof params.bookId !== "string" ||
+        !params.bookId.trim() ||
+        params.bookId.length > 256
+      ) {
         throw Object.assign(new Error("Invalid RSS subscription target"), { code: "plugin/invalid-input" });
       }
       await unsubscribeFeed(ctx, params.url.trim(), params.bookId);
@@ -97,7 +132,11 @@ export function registerAgentTools(ctx: RssPluginContext): void {
       const url = typeof params.url === "string" ? params.url.trim() : "";
       const existing = await getFeed(ctx, url);
       if (existing) {
-        return { subscribed: false, reason: existing.removalId ? "unsubscribe pending" : "already subscribed", feed: existing.title };
+        return {
+          subscribed: false,
+          reason: existing.removalId ? "unsubscribe pending" : "already subscribed",
+          feed: existing.title,
+        };
       }
       const feed = await subscribe(ctx, url);
       return {

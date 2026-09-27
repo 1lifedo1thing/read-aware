@@ -25,7 +25,8 @@ const PLUGINS: InstalledPlugin[] = [
   {
     name: "Dictionary",
     version: "1.4.0",
-    description: "Look up words while you read, save them, and revisit full dictionary entries on a searchable timeline.",
+    description:
+      "Look up words while you read, save them, and revisit full dictionary entries on a searchable timeline.",
     permissions: ["Read reading activity", "Read library", "AI requests", "Agent tools", "Agent retrieval"],
     bookAccess: true,
   },
@@ -154,7 +155,11 @@ function AgentPage({ frame }: { frame: number }) {
           <UserTurn text={QUESTION} style={arrive(progress(frame, ASK_IN, 10), 10, 3)} />
           {frame >= TOOL.from && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {toolsDone ? <ToolActivity summary="1 tool call" /> : <ToolStep label="Look up word" running frame={frame} />}
+              {toolsDone ? (
+                <ToolActivity summary="1 tool call" />
+              ) : (
+                <ToolStep label="Look up word" running frame={frame} />
+              )}
               {frame >= CARD_IN && (
                 <WordReferenceCard
                   term="entail"

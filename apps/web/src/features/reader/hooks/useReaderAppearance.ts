@@ -51,11 +51,25 @@ export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
   // (e.g. the reader re-injecting CSS) only react to genuine changes, not to
   // every render — a fresh object each render would reset reader scroll position.
   const projection = useMemo(
-    () => projectReaderAppearance({ bookId, scope, prefs, source: scope === "book" ? overrides : globalPrefs,
-      language, languageSource: languages, scopeSource: overrides, theme: appTheme }, committed.current),
+    () =>
+      projectReaderAppearance(
+        {
+          bookId,
+          scope,
+          prefs,
+          source: scope === "book" ? overrides : globalPrefs,
+          language,
+          languageSource: languages,
+          scopeSource: overrides,
+          theme: appTheme,
+        },
+        committed.current,
+      ),
     [bookId, scope, prefs, overrides, globalPrefs, appTheme, language, languages],
   );
-  useLayoutEffect(() => { committed.current = projection; }, [projection]);
+  useLayoutEffect(() => {
+    committed.current = projection;
+  }, [projection]);
   const effective = projection.value;
 
   const setScope = useCallback(

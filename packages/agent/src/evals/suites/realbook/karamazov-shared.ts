@@ -50,11 +50,10 @@ export function editionFidelityAssessment(observation: AgentEvalObservation): Ev
   ]);
 }
 
-
 /** 场景级包装：把版本保真检查叠到任意场景的 evaluate 上（保留场景其余字段）。 */
-export function withEditionFidelity<T extends { evaluate: (observation: AgentEvalObservation) => EvalAssessment | Promise<EvalAssessment> }>(
-  scenario: T,
-): T {
+export function withEditionFidelity<
+  T extends { evaluate: (observation: AgentEvalObservation) => EvalAssessment | Promise<EvalAssessment> },
+>(scenario: T): T {
   const base = scenario.evaluate.bind(scenario);
   return {
     ...scenario,

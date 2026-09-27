@@ -9,12 +9,7 @@ import { runConsolidationPass, type ConsolidationReport } from "../memory/consol
 import { ConsolidationCheckpoint } from "../memory/consolidation-checkpoint";
 import { runIdentityConsolidation } from "../memory/identity-consolidation";
 import { runMemoryBuild } from "../memory/build-policy";
-import {
-  accountCredential,
-  createModelResolver,
-  type LlmAccount,
-  type RoleModels,
-} from "../models/accounts";
+import { accountCredential, createModelResolver, type LlmAccount, type RoleModels } from "../models/accounts";
 import { createCompleteFn, createStreamFn, type CompleteFn, type StreamFn } from "../models/complete";
 import { buildProviderRegistry } from "../models/registry";
 import type { ModelRole, RoleThinking } from "../models/roles";
@@ -60,37 +55,15 @@ export class AgentRuntime {
     this.deps = options.deps;
     const registry = buildProviderRegistry();
     const baseResolve = createModelResolver(options.account, options.models, registry);
-    this.resolveModel = options.transformModel
-      ? (role) => options.transformModel!(baseResolve(role))
-      : baseResolve;
+    this.resolveModel = options.transformModel ? (role) => options.transformModel!(baseResolve(role)) : baseResolve;
     this.thinking = options.thinking ?? { smart: "off", fast: "off" };
     this.completeFns = {
-      smart: createCompleteFn(
-        registry,
-        options.account,
-        this.thinking.smart,
-        options.fetch,
-      ),
-      fast: createCompleteFn(
-        registry,
-        options.account,
-        this.thinking.fast,
-        options.fetch,
-      ),
+      smart: createCompleteFn(registry, options.account, this.thinking.smart, options.fetch),
+      fast: createCompleteFn(registry, options.account, this.thinking.fast, options.fetch),
     };
     this.streamFns = {
-      smart: createStreamFn(
-        registry,
-        options.account,
-        this.thinking.smart,
-        options.fetch,
-      ),
-      fast: createStreamFn(
-        registry,
-        options.account,
-        this.thinking.fast,
-        options.fetch,
-      ),
+      smart: createStreamFn(registry, options.account, this.thinking.smart, options.fetch),
+      fast: createStreamFn(registry, options.account, this.thinking.fast, options.fetch),
     };
   }
 
@@ -158,8 +131,12 @@ export class AgentRuntime {
     });
   }
 
-  async askDetailed(input: OneShotInput & { schema?: never }): Promise<import("@read-aware/core").InferenceResult<string>>;
-  async askDetailed(input: OneShotInput & { schema: Record<string, unknown>; onText?: never }): Promise<import("@read-aware/core").InferenceResult>;
+  async askDetailed(
+    input: OneShotInput & { schema?: never },
+  ): Promise<import("@read-aware/core").InferenceResult<string>>;
+  async askDetailed(
+    input: OneShotInput & { schema: Record<string, unknown>; onText?: never },
+  ): Promise<import("@read-aware/core").InferenceResult>;
   async askDetailed(input: OneShotInput): Promise<import("@read-aware/core").InferenceResult> {
     return askOneShotDetailed(input, {
       resolveModel: this.resolveModel,
@@ -193,19 +170,18 @@ export class AgentRuntime {
    * `throughChapterHref` 是读者当前所在章——只提炼它之前的章节；缺失时
    * 仅已读完的书提炼全书。跑在 fast 档；报告已提交、失败和剩余章节。
    */
-  async digestBook(
-    bookId: Id,
-    options?: { throughChapterHref?: string; maxChapters?: number },
-  ): Promise<DigestReport> {
-    return runMemoryBuild(this.options.deps, operation => digestBookTick({
-      deps: operation.protect(this.options.deps),
-      complete: operation.complete(this.completeFns.fast),
-      model: this.resolveModel("fast"),
-      bookId,
-      throughChapterHref: options?.throughChapterHref,
-      maxChapters: options?.maxChapters,
-      signal: operation.signal,
-    }));
+  async digestBook(bookId: Id, options?: { throughChapterHref?: string; maxChapters?: number }): Promise<DigestReport> {
+    return runMemoryBuild(this.options.deps, (operation) =>
+      digestBookTick({
+        deps: operation.protect(this.options.deps),
+        complete: operation.complete(this.completeFns.fast),
+        model: this.resolveModel("fast"),
+        bookId,
+        throughChapterHref: options?.throughChapterHref,
+        maxChapters: options?.maxChapters,
+        signal: operation.signal,
+      }),
+    );
   }
 
   /**
@@ -221,64 +197,107 @@ export class AgentRuntime {
       onProgress?: (digestedSoFar: number) => void;
     },
   ): Promise<DigestReport> {
-    return runMemoryBuild(this.options.deps, operation => digestBookCatchUp({
-      deps: operation.protect(this.options.deps),
-      complete: operation.complete(this.completeFns.fast),
-      model: this.resolveModel("fast"),
-      bookId,
-      throughChapterHref: options?.throughChapterHref,
-      concurrency: options?.concurrency,
-      signal: operation.signal,
-      onProgress: count => { operation.assertAllowed(); options?.onProgress?.(count); },
-    }), options?.signal);
+    return runMemoryBuild(
+      this.options.deps,
+      (operation) =>
+        digestBookCatchUp({
+          deps: operation.protect(this.options.deps),
+          complete: operation.complete(this.completeFns.fast),
+          model: this.resolveModel("fast"),
+          bookId,
+          throughChapterHref: options?.throughChapterHref,
+          concurrency: options?.concurrency,
+          signal: operation.signal,
+          onProgress: (count) => {
+            operation.assertAllowed();
+            options?.onProgress?.(count);
+          },
+        }),
+      options?.signal,
+    );
   }
 
   /** Public task execution uses the same queue and protected write lifetime as automatic upkeep. */
-  async runBookGraphTask(input: import("../memory/book-graph-tasks").BookGraphTaskExecution & {
-    resolveBoundary(): Promise<number | undefined>;
-    /** Host-bound write port preserves the initiating task actor; never supplied by a model. */
-    bookMemory?: RuntimeDeps["bookMemory"];
-    /** Host-bound text reads may start extraction and must retain the same task source. */
-    bookText?: RuntimeDeps["bookText"];
-    classifyBookIfUnclassified?: RuntimeDeps["library"]["classifyBookIfUnclassified"];
-  }): Promise<DigestReport> {
-    return runMemoryBuild(this.options.deps, operation => digestBookTick({
-      deps: operation.protect({ ...this.options.deps, bookMemory: input.bookMemory ?? this.options.deps.bookMemory,
-        bookText: input.bookText ?? this.options.deps.bookText,
-        library: { ...this.options.deps.library, classifyBookIfUnclassified: input.classifyBookIfUnclassified ?? this.options.deps.library.classifyBookIfUnclassified } }), complete: operation.complete(this.completeFns.fast), model: this.resolveModel("fast"),
-      bookId: input.bookId, rebuild: input.rebuild, targets: input.targets, preparedDigest: input.preparedDigest, maxChapters: input.maxChapters, concurrency: 2, signal: operation.signal,
-      onStarted: input.onStarted, onPlan: input.onPlan, onChapterAttempted: input.onChapterAttempted, onChapterCommitted: input.onChapterCommitted, onReport: input.onReport,
-      resolveBoundary: operation.guard(input.resolveBoundary),
-      checkChapter: operation.guard(async index => {
-        const ceiling = await input.resolveBoundary();
-        if (ceiling === undefined || index >= ceiling) throw new AppError("memory/conflict", "Reading boundary changed during graph generation");
-      }),
-    }), input.signal);
+  async runBookGraphTask(
+    input: import("../memory/book-graph-tasks").BookGraphTaskExecution & {
+      resolveBoundary(): Promise<number | undefined>;
+      /** Host-bound write port preserves the initiating task actor; never supplied by a model. */
+      bookMemory?: RuntimeDeps["bookMemory"];
+      /** Host-bound text reads may start extraction and must retain the same task source. */
+      bookText?: RuntimeDeps["bookText"];
+      classifyBookIfUnclassified?: RuntimeDeps["library"]["classifyBookIfUnclassified"];
+    },
+  ): Promise<DigestReport> {
+    return runMemoryBuild(
+      this.options.deps,
+      (operation) =>
+        digestBookTick({
+          deps: operation.protect({
+            ...this.options.deps,
+            bookMemory: input.bookMemory ?? this.options.deps.bookMemory,
+            bookText: input.bookText ?? this.options.deps.bookText,
+            library: {
+              ...this.options.deps.library,
+              classifyBookIfUnclassified:
+                input.classifyBookIfUnclassified ?? this.options.deps.library.classifyBookIfUnclassified,
+            },
+          }),
+          complete: operation.complete(this.completeFns.fast),
+          model: this.resolveModel("fast"),
+          bookId: input.bookId,
+          rebuild: input.rebuild,
+          targets: input.targets,
+          preparedDigest: input.preparedDigest,
+          maxChapters: input.maxChapters,
+          concurrency: 2,
+          signal: operation.signal,
+          onStarted: input.onStarted,
+          onPlan: input.onPlan,
+          onChapterAttempted: input.onChapterAttempted,
+          onChapterCommitted: input.onChapterCommitted,
+          onReport: input.onReport,
+          resolveBoundary: operation.guard(input.resolveBoundary),
+          checkChapter: operation.guard(async (index) => {
+            const ceiling = await input.resolveBoundary();
+            if (ceiling === undefined || index >= ceiling)
+              throw new AppError("memory/conflict", "Reading boundary changed during graph generation");
+          }),
+        }),
+      input.signal,
+    );
   }
 
   private runConsolidation(force: boolean): Promise<ConsolidationReport | null> {
     if (this.consolidationWork) return this.consolidationWork;
-    this.consolidationWork = runMemoryBuild(this.options.deps, async operation => {
+    this.consolidationWork = runMemoryBuild(this.options.deps, async (operation) => {
       await operation.guard(() => this.flushBackgroundWork())();
       const snapshots = await operation.guard(() => this.options.deps.memory.snapshotMemories())();
       const now = this.options.now?.() ?? Date.now();
       let report: ConsolidationReport | null = null;
       if (force || this.consolidationCheckpoint.needed(snapshots, now)) {
-        const pass = await operation.guard(() => runConsolidationPass({
-          log: this.options.deps.log,
-          memory: operation.protect(this.options.deps).memory,
-          complete: operation.complete(this.completeFns.fast),
-          model: this.resolveModel("fast"),
-          snapshots,
-          now,
-        }))();
+        const pass = await operation.guard(() =>
+          runConsolidationPass({
+            log: this.options.deps.log,
+            memory: operation.protect(this.options.deps).memory,
+            complete: operation.complete(this.completeFns.fast),
+            model: this.resolveModel("fast"),
+            snapshots,
+            now,
+          }),
+        )();
         // Use the transaction receipt, not a later read that could hide new work.
         this.consolidationCheckpoint.settle(pass.snapshots, pass.judgmentSucceeded);
         report = pass.report;
       }
-      const identity = await runIdentityConsolidation({ deps: operation.protect(this.options.deps),
-        complete: operation.complete(this.completeFns.fast), model: this.resolveModel("fast"), signal: operation.signal });
-      return identity.status === "skipped" ? report : { ...report ?? { decayed: 0, forgotten: 0, merged: 0, promoted: 0 }, identity };
+      const identity = await runIdentityConsolidation({
+        deps: operation.protect(this.options.deps),
+        complete: operation.complete(this.completeFns.fast),
+        model: this.resolveModel("fast"),
+        signal: operation.signal,
+      });
+      return identity.status === "skipped"
+        ? report
+        : { ...(report ?? { decayed: 0, forgotten: 0, merged: 0, promoted: 0 }), identity };
     }).finally(() => {
       this.consolidationWork = null;
     });

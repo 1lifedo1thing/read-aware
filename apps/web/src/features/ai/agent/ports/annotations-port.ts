@@ -21,24 +21,30 @@ export function createAnnotationsPort(): AnnotationsPort {
         kind: filter?.kind,
       }),
     createHighlight: async ({ bookId, text, anchor, chapter, color, style, range }, signal) =>
-      annotations.commands.createHighlight({
-        bookId: String(bookId),
-        text,
-        range,
-        anchor: anchor ?? null,
-        chapterHref: chapter ?? null,
-        color,
-        style,
-      }, signal),
+      annotations.commands.createHighlight(
+        {
+          bookId: String(bookId),
+          text,
+          range,
+          anchor: anchor ?? null,
+          chapterHref: chapter ?? null,
+          color,
+          style,
+        },
+        signal,
+      ),
     createNote: async ({ bookId, body, quotedText, anchor, chapter, range }, signal) =>
-      annotations.commands.createNote({
-        bookId: String(bookId),
-        body,
-        range,
-        quotedText,
-        anchor: anchor ?? null,
-        chapterHref: chapter ?? null,
-      }, signal),
+      annotations.commands.createNote(
+        {
+          bookId: String(bookId),
+          body,
+          range,
+          quotedText,
+          anchor: anchor ?? null,
+          chapterHref: chapter ?? null,
+        },
+        signal,
+      ),
     recordAsk: async ({ bookId, question, anchor, chapter }) => {
       await annotations.commands.createAsk({
         bookId: String(bookId),

@@ -17,7 +17,9 @@ export function useChatActivity(part: ChatActivityPart, streaming: boolean, thin
     running ? label : thinking ? t("chat.thinking") : pendingStatus,
     t("chat.tools.calls", { count: tools.length }),
     failed ? t("chat.tools.failures", { count: failed }) : null,
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return { contentId, expanded, busy, failed, summary, toggle: () => setExpanded((open) => !open) };
 }

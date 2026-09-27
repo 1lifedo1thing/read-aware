@@ -57,7 +57,8 @@ pub(crate) fn initialize(app: &tauri::AppHandle, conn: &Connection) -> Result<()
         .optional()?;
     let enabled = parse(stored.as_deref())?.file_associations;
     crate::file_associations::commit(app, enabled, || {
-        app.state::<crate::external_open::ExternalOpenQueue>().publish(enabled)
+        app.state::<crate::external_open::ExternalOpenQueue>()
+            .publish(enabled)
     })?;
     Ok(())
 }

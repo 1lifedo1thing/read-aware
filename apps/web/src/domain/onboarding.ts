@@ -6,11 +6,19 @@ import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from
 import { initializeUserProfile } from "./user-profile";
 import { getAIPreferences } from "../features/settings/lib/ai-preferences";
 
-type Host = { allowed(): boolean; initialize(): Promise<void>; invoke: typeof invoke; mint: typeof mintEventRows; broadcast: typeof broadcastDomainEventDrafts };
+type Host = {
+  allowed(): boolean;
+  initialize(): Promise<void>;
+  invoke: typeof invoke;
+  mint: typeof mintEventRows;
+  broadcast: typeof broadcastDomainEventDrafts;
+};
 export function createOnboardingService(host: Host) {
   return async (input: OnboardingChange, origin: DomainActor, signal?: AbortSignal): Promise<OnboardingReceipt> => {
     const accepted = normalizeOnboardingChange(input);
-    const allowed = () => { if (!host.allowed()) throw new AppError("ai/memory-disabled", "Building memory is disabled"); };
+    const allowed = () => {
+      if (!host.allowed()) throw new AppError("ai/memory-disabled", "Building memory is disabled");
+    };
     allowed();
     signal?.throwIfAborted();
     await host.initialize();
@@ -29,4 +37,10 @@ export function createOnboardingService(host: Host) {
   };
 }
 
-export const completeOnboarding = createOnboardingService({ allowed: () => getAIPreferences().buildMemory, initialize: initializeUserProfile, invoke, mint: mintEventRows, broadcast: broadcastDomainEventDrafts });
+export const completeOnboarding = createOnboardingService({
+  allowed: () => getAIPreferences().buildMemory,
+  initialize: initializeUserProfile,
+  invoke,
+  mint: mintEventRows,
+  broadcast: broadcastDomainEventDrafts,
+});

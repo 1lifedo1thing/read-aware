@@ -59,10 +59,10 @@ function DockTarget({ icon, label, danger = false, onDropBooks }: DockTargetProp
     >
       {/* Drop targets swallow pointer events on children so enter/leave depth
           stays about DOM crossings, not hit-test quirks mid-drag. */}
-      <span className="pointer-events-none" aria-hidden="true">{icon}</span>
-      <span className="pointer-events-none w-full truncate text-center font-sans text-xs font-medium">
-        {label}
+      <span className="pointer-events-none" aria-hidden="true">
+        {icon}
       </span>
+      <span className="pointer-events-none w-full truncate text-center font-sans text-xs font-medium">{label}</span>
     </div>
   );
 }

@@ -11,94 +11,140 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
   if (!("__TAURI_INTERNALS__" in window)) throw new Error("Run this suite inside Tauri");
   const results: Result[] = [];
   const check = async (name: string, run: () => Promise<void>) => {
-    try { await run(); results.push({ name, passed: true }); }
-    catch (error) { results.push({ name, passed: false, details: String(error) }); }
+    try {
+      await run();
+      results.push({ name, passed: true });
+    } catch (error) {
+      results.push({ name, passed: false, details: String(error) });
+    }
   };
   const equal = (actual: unknown, expected: unknown) => {
     if (actual !== expected) throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
   };
   const mount = () => {
     const renderer = new PaginatorClass();
-    renderer.style.cssText = "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
+    renderer.style.cssText =
+      "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
     document.body.append(renderer);
     return renderer;
   };
-  const page = (text: string, style = "") => URL.createObjectURL(new Blob([
-    `<!doctype html><html><head><style>${style}</style></head><body><p>${text}</p></body></html>`,
-  ], { type: "text/html" }));
+  const page = (text: string, style = "") =>
+    URL.createObjectURL(
+      new Blob([`<!doctype html><html><head><style>${style}</style></head><body><p>${text}</p></body></html>`], {
+        type: "text/html",
+      }),
+    );
   const dispose = (renderer: Paginator, urls: string[]) => {
-    renderer.destroy(); renderer.remove(); urls.forEach(url => URL.revokeObjectURL(url));
+    renderer.destroy();
+    renderer.remove();
+    urls.forEach((url) => URL.revokeObjectURL(url));
   };
 
-  for (const flow of ["paginated", "scrolled"]) await check(`${flow} navigation and expansion retain context while a native step starts a new one`, async () => {
-    const urls = [page("First ".repeat(200)), page("Second ".repeat(200))], renderer = mount();
-    const initial = {}, target = {}, events: RelocateDetail[] = [], loads: LoadDetail[] = [];
-    renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
-    renderer.addEventListener("load", event => loads.push((event as CustomEvent<LoadDetail>).detail));
-    try {
-      renderer.setAttribute("flow", flow);
-      renderer.open({ sections: urls.map((url, id) => ({ id, size: 1000, load: () => url })) });
-      await renderer.goTo({ index: 0, context: initial });
-      equal(events.at(-1)?.context, initial); equal(loads.at(-1)?.context, initial);
-      await renderer.goTo({ index: 1, context: target });
-      equal(events.at(-1)?.context, target); equal(loads.at(-1)?.context, target);
-      renderer.render();
-      equal(events.at(-1)?.context, target);
-      const settings = {}, dimensions = {};
-      renderer.setStyles('body { font-size: 23px !important; line-height: 1.8 !important; }', settings);
-      await renderer.getContents()[0]?.doc.fonts.ready;
-      // CSS expansion keeps its operation while source-document font work settles.
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      equal(events.at(-1)?.context, settings);
-      renderer.setLayoutAttributes({ 'max-inline-size': '470px', gap: '8%' }, dimensions);
-      equal(events.at(-1)?.context, dimensions);
-      await renderer.prev();
-      equal(!!events.at(-1)?.context, true); equal(events.at(-1)?.context === dimensions, false);
-    } finally { dispose(renderer, urls); }
-  });
+  for (const flow of ["paginated", "scrolled"])
+    await check(`${flow} navigation and expansion retain context while a native step starts a new one`, async () => {
+      const urls = [page("First ".repeat(200)), page("Second ".repeat(200))],
+        renderer = mount();
+      const initial = {},
+        target = {},
+        events: RelocateDetail[] = [],
+        loads: LoadDetail[] = [];
+      renderer.addEventListener("relocate", (event) => events.push((event as CustomEvent<RelocateDetail>).detail));
+      renderer.addEventListener("load", (event) => loads.push((event as CustomEvent<LoadDetail>).detail));
+      try {
+        renderer.setAttribute("flow", flow);
+        renderer.open({ sections: urls.map((url, id) => ({ id, size: 1000, load: () => url })) });
+        await renderer.goTo({ index: 0, context: initial });
+        equal(events.at(-1)?.context, initial);
+        equal(loads.at(-1)?.context, initial);
+        await renderer.goTo({ index: 1, context: target });
+        equal(events.at(-1)?.context, target);
+        equal(loads.at(-1)?.context, target);
+        renderer.render();
+        equal(events.at(-1)?.context, target);
+        const settings = {},
+          dimensions = {};
+        renderer.setStyles("body { font-size: 23px !important; line-height: 1.8 !important; }", settings);
+        await renderer.getContents()[0]?.doc.fonts.ready;
+        // CSS expansion keeps its operation while source-document font work settles.
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        equal(events.at(-1)?.context, settings);
+        renderer.setLayoutAttributes({ "max-inline-size": "470px", gap: "8%" }, dimensions);
+        equal(events.at(-1)?.context, dimensions);
+        await renderer.prev();
+        equal(!!events.at(-1)?.context, true);
+        equal(events.at(-1)?.context === dimensions, false);
+      } finally {
+        dispose(renderer, urls);
+      }
+    });
 
-  await check("native document focus retains its source and a later navigation retires the queued focus scroll", async () => {
-    const urls = [page("Focusable content ".repeat(1500))], renderer = mount();
-    const events: RelocateDetail[] = [];
-    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-    renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
-    try {
-      renderer.open({ sections: [{ id: 0, size: 20000, load: () => urls[0] }] });
-      renderer.inputBridge = readingNativeInput;
-      await renderer.goTo({ index: 0, context: {} });
-      const doc = renderer.getContents()[0]!.doc;
-      const first = doc.createElement("button"), second = doc.createElement("button");
-      first.textContent = "First focus"; second.textContent = "Superseded focus";
-      doc.body.append(first, second);
-      await frame();
-      const origin = causalActor("plugin:focus-regression");
-      const cause = (event?: RelocateDetail) => event?.context ? actorCause(readingRenderActor(event.context)) : undefined;
-      const start = events.length;
-      focusWithReadingSource(first, origin);
-      equal(doc.activeElement, first);
-      await frame();
-      equal(events.slice(start).some(event => cause(event) === actorCause(origin)), true);
-      equal(cause(events.at(-1)), actorCause(origin));
-      const old = causalActor("plugin:retired-focus"), current = {};
-      const next = events.length;
-      focusWithReadingSource(second, old);
-      await renderer.goTo({ index: 0, anchor: 0, context: current });
-      await frame();
-      equal(events.slice(next).some(event => cause(event) === actorCause(old)), false);
-      equal(events.at(-1)?.context, current);
-    } finally { dispose(renderer, urls); }
-  });
+  await check(
+    "native document focus retains its source and a later navigation retires the queued focus scroll",
+    async () => {
+      const urls = [page("Focusable content ".repeat(1500))],
+        renderer = mount();
+      const events: RelocateDetail[] = [];
+      const frame = () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      renderer.addEventListener("relocate", (event) => events.push((event as CustomEvent<RelocateDetail>).detail));
+      try {
+        renderer.open({ sections: [{ id: 0, size: 20000, load: () => urls[0] }] });
+        renderer.inputBridge = readingNativeInput;
+        await renderer.goTo({ index: 0, context: {} });
+        const doc = renderer.getContents()[0]!.doc;
+        const first = doc.createElement("button"),
+          second = doc.createElement("button");
+        first.textContent = "First focus";
+        second.textContent = "Superseded focus";
+        doc.body.append(first, second);
+        await frame();
+        const origin = causalActor("plugin:focus-regression");
+        const cause = (event?: RelocateDetail) =>
+          event?.context ? actorCause(readingRenderActor(event.context)) : undefined;
+        const start = events.length;
+        focusWithReadingSource(first, origin);
+        equal(doc.activeElement, first);
+        await frame();
+        equal(
+          events.slice(start).some((event) => cause(event) === actorCause(origin)),
+          true,
+        );
+        equal(cause(events.at(-1)), actorCause(origin));
+        const old = causalActor("plugin:retired-focus"),
+          current = {};
+        const next = events.length;
+        focusWithReadingSource(second, old);
+        await renderer.goTo({ index: 0, anchor: 0, context: current });
+        await frame();
+        equal(
+          events.slice(next).some((event) => cause(event) === actorCause(old)),
+          false,
+        );
+        equal(events.at(-1)?.context, current);
+      } finally {
+        dispose(renderer, urls);
+      }
+    },
+  );
 
   await check("page boundaries skip non-linear sections and remain usable after a failed load", async () => {
-    const urls = ["First", "Footnote", "Last"].map(text => page(text));
+    const urls = ["First", "Footnote", "Last"].map((text) => page(text));
     let fail = true;
     const unloaded: number[] = [];
-    const book: Book = { sections: urls.map((url, index) => ({ id: index, size: 10,
-      linear: index === 1 ? "no" : "yes", load: async () => {
-        if (index === 2 && fail) throw new Error("Expected fixture read failure");
-        return url;
-      }, unload: () => { unloaded.push(index); },
-    })) };
+    const book: Book = {
+      sections: urls.map((url, index) => ({
+        id: index,
+        size: 10,
+        linear: index === 1 ? "no" : "yes",
+        load: async () => {
+          if (index === 2 && fail) throw new Error("Expected fixture read failure");
+          return url;
+        },
+        unload: () => {
+          unloaded.push(index);
+        },
+      })),
+    };
     const renderer = mount();
     try {
       renderer.open(book);
@@ -106,7 +152,11 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       await renderer.prev();
       equal(renderer.getContents()[0]?.index, 0);
       let rejected = false;
-      try { await renderer.next(); } catch { rejected = true; }
+      try {
+        await renderer.next();
+      } catch {
+        rejected = true;
+      }
       equal(rejected, true);
       equal(renderer.getContents()[0]?.index, 0);
       fail = false;
@@ -117,22 +167,42 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       equal(renderer.getContents()[0]?.index, 2);
       await renderer.prev();
       equal(renderer.getContents()[0]?.index, 0);
-    } finally { dispose(renderer, urls); }
+    } finally {
+      dispose(renderer, urls);
+    }
   });
 
   await check("a newer navigation wins over a late section load", async () => {
-    const urls = ["Slow", "Current"].map(text => page(text));
-    let complete: (url: string) => void = () => { throw new Error("Load not started"); };
-    const loading = new Promise<string>(resolve => { complete = resolve; });
+    const urls = ["Slow", "Current"].map((text) => page(text));
+    let complete: (url: string) => void = () => {
+      throw new Error("Load not started");
+    };
+    const loading = new Promise<string>((resolve) => {
+      complete = resolve;
+    });
     const renderer = mount();
     let released = 0;
-    const old = {}, current = {}, observed: object[] = [];
-    renderer.addEventListener("relocate", event => {
+    const old = {},
+      current = {},
+      observed: object[] = [];
+    renderer.addEventListener("relocate", (event) => {
       const context = (event as CustomEvent<RelocateDetail>).detail.context;
       if (context) observed.push(context);
     });
     try {
-      renderer.open({ sections: [{ id: 0, size: 10, load: () => loading, unload: () => { released++; } }, { id: 1, size: 10, load: () => urls[1] }] });
+      renderer.open({
+        sections: [
+          {
+            id: 0,
+            size: 10,
+            load: () => loading,
+            unload: () => {
+              released++;
+            },
+          },
+          { id: 1, size: 10, load: () => urls[1] },
+        ],
+      });
       const first = renderer.goTo({ index: 0, context: old });
       await Promise.resolve();
       await renderer.goTo({ index: 1, context: current });
@@ -141,16 +211,23 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       equal(renderer.getContents()[0]?.index, 1);
       equal(renderer.getContents()[0]?.doc.querySelector("p")?.textContent, "Current");
       equal(released, 1);
-      equal(observed.includes(old), false); equal(observed.at(-1), current);
-    } finally { dispose(renderer, urls); }
+      equal(observed.includes(old), false);
+      equal(observed.at(-1), current);
+    } finally {
+      dispose(renderer, urls);
+    }
   });
 
   await check("closing a paginator cancels late work and is safe before first navigation", async () => {
     const empty = mount();
     dispose(empty, []);
     const url = page("Late");
-    let complete: (url: string) => void = () => { throw new Error("Load not started"); };
-    const loading = new Promise<string>(resolve => { complete = resolve; });
+    let complete: (url: string) => void = () => {
+      throw new Error("Load not started");
+    };
+    const loading = new Promise<string>((resolve) => {
+      complete = resolve;
+    });
     const renderer = mount();
     try {
       renderer.open({ sections: [{ id: 0, size: 10, load: () => loading }] });
@@ -160,59 +237,80 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       complete(url);
       await pending;
       equal(renderer.getContents().length, 0);
-    } finally { dispose(renderer, [url]); }
+    } finally {
+      dispose(renderer, [url]);
+    }
   });
 
-  for (const vertical of [false, true]) await check(`${vertical ? "vertical" : "horizontal"} scroll: a chapter near EOF aligns at the viewport start without a blank next step`, async () => {
-    const styles = `body { margin:0; font:18px/28px serif; ${vertical ? "writing-mode:vertical-rl;" : ""} } p,h2 { margin:0; }`;
-    const first = URL.createObjectURL(new Blob([
-      `<!doctype html><html><head><style>${styles}</style></head><body><p>${"Previous chapter text. ".repeat(600)}</p><h2 id="chapter">New chapter</h2><p>Short opening fragment.</p></body></html>`,
-    ], { type: "text/html" }));
-    const second = page("The chapter continues in the next source file.", styles);
-    const renderer = mount();
-    const events: RelocateDetail[] = [];
-    renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
-    try {
-      renderer.setLayoutAttributes({ flow: "scrolled", margin: "40px" });
-      renderer.open({ sections: [first, second].map((url, index) => ({ id: index, size: 1000, load: () => url })) });
-      await renderer.goTo({ index: 0 });
-      const doc = renderer.getContents()[0]!.doc;
-      await doc.fonts.ready;
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const contentSize = renderer.viewSize;
-      const chapter = doc.getElementById("chapter")!;
-      const target = { index: 0, anchor: (doc: Document) => doc.getElementById("chapter") };
-      const verify = () => {
-        const rect = chapter.getBoundingClientRect();
-        const offset = vertical ? renderer.viewSize - rect.right - 80 : rect.top;
-        // The configured outer margin is 40px per side; viewSize includes it.
-        if (Math.abs(renderer.start - offset) > 1) throw new Error(`Target was clamped: ${renderer.start} vs ${offset}`);
-        if (!events.at(-1)?.range?.toString().trim().startsWith("New chapter")) throw new Error("Previous chapter remains above the selected chapter");
-        equal(renderer.viewSize, contentSize);
-      };
-      await renderer.goTo(target);
-      verify();
-      renderer.render(); renderer.render();
-      verify();
-      // Fraction/end navigation must not land in the temporary trailing space.
-      await renderer.goTo({ index: 0, anchor: 1 });
-      if (renderer.end > contentSize + 1) throw new Error("End navigation landed after the content");
-      await renderer.goTo(target);
-      verify();
-      await renderer.next();
-      equal(renderer.getContents()[0]?.index, 1);
-      await renderer.prev();
-      equal(renderer.getContents()[0]?.index, 0);
-      const previous = renderer.getContents()[0]!.doc;
-      if (!events.at(-1)?.range?.toString().includes("Short opening fragment.")) throw new Error("Returning to the previous section lost its last text");
-      // Switching flow retires the trailing space, keeping paged geometry finite.
-      await renderer.goTo(target);
-      renderer.setAttribute("flow", "paginated");
-      if (!Number.isFinite(renderer.pages) || renderer.pages <= 2 || previous !== renderer.getContents()[0]?.doc) throw new Error("Flow switch broke the current section");
-      const view = previous.defaultView?.frameElement?.parentElement;
-      if (!view || parseFloat(view.style.marginBottom) !== 0 || parseFloat(view.style.marginLeft) !== 0) throw new Error("Scroll-only space leaked into pagination");
-    } finally { dispose(renderer, [first, second]); }
-  });
+  for (const vertical of [false, true])
+    await check(
+      `${vertical ? "vertical" : "horizontal"} scroll: a chapter near EOF aligns at the viewport start without a blank next step`,
+      async () => {
+        const styles = `body { margin:0; font:18px/28px serif; ${vertical ? "writing-mode:vertical-rl;" : ""} } p,h2 { margin:0; }`;
+        const first = URL.createObjectURL(
+          new Blob(
+            [
+              `<!doctype html><html><head><style>${styles}</style></head><body><p>${"Previous chapter text. ".repeat(600)}</p><h2 id="chapter">New chapter</h2><p>Short opening fragment.</p></body></html>`,
+            ],
+            { type: "text/html" },
+          ),
+        );
+        const second = page("The chapter continues in the next source file.", styles);
+        const renderer = mount();
+        const events: RelocateDetail[] = [];
+        renderer.addEventListener("relocate", (event) => events.push((event as CustomEvent<RelocateDetail>).detail));
+        try {
+          renderer.setLayoutAttributes({ flow: "scrolled", margin: "40px" });
+          renderer.open({
+            sections: [first, second].map((url, index) => ({ id: index, size: 1000, load: () => url })),
+          });
+          await renderer.goTo({ index: 0 });
+          const doc = renderer.getContents()[0]!.doc;
+          await doc.fonts.ready;
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const contentSize = renderer.viewSize;
+          const chapter = doc.getElementById("chapter")!;
+          const target = { index: 0, anchor: (doc: Document) => doc.getElementById("chapter") };
+          const verify = () => {
+            const rect = chapter.getBoundingClientRect();
+            const offset = vertical ? renderer.viewSize - rect.right - 80 : rect.top;
+            // The configured outer margin is 40px per side; viewSize includes it.
+            if (Math.abs(renderer.start - offset) > 1)
+              throw new Error(`Target was clamped: ${renderer.start} vs ${offset}`);
+            if (!events.at(-1)?.range?.toString().trim().startsWith("New chapter"))
+              throw new Error("Previous chapter remains above the selected chapter");
+            equal(renderer.viewSize, contentSize);
+          };
+          await renderer.goTo(target);
+          verify();
+          renderer.render();
+          renderer.render();
+          verify();
+          // Fraction/end navigation must not land in the temporary trailing space.
+          await renderer.goTo({ index: 0, anchor: 1 });
+          if (renderer.end > contentSize + 1) throw new Error("End navigation landed after the content");
+          await renderer.goTo(target);
+          verify();
+          await renderer.next();
+          equal(renderer.getContents()[0]?.index, 1);
+          await renderer.prev();
+          equal(renderer.getContents()[0]?.index, 0);
+          const previous = renderer.getContents()[0]!.doc;
+          if (!events.at(-1)?.range?.toString().includes("Short opening fragment."))
+            throw new Error("Returning to the previous section lost its last text");
+          // Switching flow retires the trailing space, keeping paged geometry finite.
+          await renderer.goTo(target);
+          renderer.setAttribute("flow", "paginated");
+          if (!Number.isFinite(renderer.pages) || renderer.pages <= 2 || previous !== renderer.getContents()[0]?.doc)
+            throw new Error("Flow switch broke the current section");
+          const view = previous.defaultView?.frameElement?.parentElement;
+          if (!view || parseFloat(view.style.marginBottom) !== 0 || parseFloat(view.style.marginLeft) !== 0)
+            throw new Error("Scroll-only space leaked into pagination");
+        } finally {
+          dispose(renderer, [first, second]);
+        }
+      },
+    );
 
   await check("scrolled images have finite limits and vertical/RTL pages retain readable geometry", async () => {
     const canvas = document.createElement("canvas");
@@ -228,7 +326,9 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
     const rtl = page("نص عربي للقراءة ".repeat(250), "body {direction:rtl;line-height:2}");
     const renderer = mount();
     try {
-      renderer.open({ sections: [image, vertical, rtl].map((url, index) => ({ id: index, size: 1000, load: () => url })) });
+      renderer.open({
+        sections: [image, vertical, rtl].map((url, index) => ({ id: index, size: 1000, load: () => url })),
+      });
       renderer.setAttribute("flow", "scrolled");
       await renderer.goTo({ index: 0 });
       const img = renderer.getContents()[0]?.doc.querySelector("img");
@@ -245,7 +345,9 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       equal(renderer.getAttribute("dir"), "rtl");
       equal(renderer.scrollProp, "scrollLeft");
       if (!Number.isFinite(renderer.start)) throw new Error("Invalid RTL geometry");
-    } finally { dispose(renderer, [image, vertical, rtl]); }
+    } finally {
+      dispose(renderer, [image, vertical, rtl]);
+    }
   });
   return results;
 }

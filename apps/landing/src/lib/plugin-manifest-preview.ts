@@ -8,12 +8,7 @@ type SettingsOperation = "discover" | "read" | "write";
 
 export const KNOWN_PERMISSION_SET = new Set<string>(PLUGIN_PERMISSIONS);
 const SETTINGS_PATH = /^[a-z][a-zA-Z0-9-]*(?:\.[a-z][a-zA-Z0-9-]*)*(?:\.\*)?$/;
-const REQUIREMENT_FAMILIES: RequirementFamily[] = [
-  "domains",
-  "contributions",
-  "services",
-  "schemas",
-];
+const REQUIREMENT_FAMILIES: RequirementFamily[] = ["domains", "contributions", "services", "schemas"];
 const SETTINGS_OPERATIONS: SettingsOperation[] = ["discover", "read", "write"];
 
 export type PluginPermissionPreviewCopy = {
@@ -84,17 +79,12 @@ export function pluginPermissionPreviewCopy(
   resource: PluginPermissionPreviewResource,
   format: PluginPermissionPreviewFormat,
 ): PluginPermissionPreviewCopy {
-  const value = (key: ValueMessage) => (input: string) =>
-    format.value(key, input);
-  const count = (key: CountMessage) => (input: number) =>
-    format.count(key, input);
+  const value = (key: ValueMessage) => (input: string) => format.value(key, input);
+  const count = (key: CountMessage) => (input: number) => format.count(key, input);
   return {
     ...resource,
     permissionDescriptions: Object.fromEntries(
-      Object.entries(resource.permissionDescriptions).map(([key, text]) => [
-        key.replace("__", ":"),
-        text,
-      ]),
+      Object.entries(resource.permissionDescriptions).map(([key, text]) => [key.replace("__", ":"), text]),
     ) as PluginPermissionPreviewCopy["permissionDescriptions"],
     schedules: count("schedules"),
     themes: count("themes"),
@@ -131,10 +121,7 @@ function recordOf(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-export function inspectManifest(
-  value: unknown,
-  copy: PluginPermissionPreviewCopy,
-): ManifestPreview {
+export function inspectManifest(value: unknown, copy: PluginPermissionPreviewCopy): ManifestPreview {
   const manifest = recordOf(value);
   const issues: string[] = [];
   const warnings: string[] = [];
@@ -157,13 +144,9 @@ export function inspectManifest(
   }
 
   for (const field of ["id", "name", "version", "requires"] as const) {
-    if (manifest[field] == null || manifest[field] === "")
-      issues.push(copy.missingField(field));
+    if (manifest[field] == null || manifest[field] === "") issues.push(copy.missingField(field));
   }
-  if (
-    !Number.isInteger(manifest.schemaVersion) ||
-    Number(manifest.schemaVersion) < 1
-  ) {
+  if (!Number.isInteger(manifest.schemaVersion) || Number(manifest.schemaVersion) < 1) {
     issues.push(copy.invalidSchemaVersion);
   }
 
@@ -174,8 +157,7 @@ export function inspectManifest(
     for (const permission of (manifest.permissions ?? []) as unknown[]) {
       const label = String(permission);
       permissions.push(label);
-      if (!KNOWN_PERMISSION_SET.has(label))
-        issues.push(copy.unknownPermission(label));
+      if (!KNOWN_PERMISSION_SET.has(label)) issues.push(copy.unknownPermission(label));
     }
   }
 
@@ -191,19 +173,13 @@ export function inspectManifest(
           continue;
         }
         const paths = settingsAccess[operation];
-        if (
-          !Array.isArray(paths) ||
-          paths.some(
-            (path) => typeof path !== "string" || !SETTINGS_PATH.test(path),
-          )
-        ) {
+        if (!Array.isArray(paths) || paths.some((path) => typeof path !== "string" || !SETTINGS_PATH.test(path))) {
           issues.push(copy.invalidSettingsGrant(operation));
           continue;
         }
         for (const path of paths as string[]) {
           grants.push({ operation: operation as SettingsOperation, path });
-          if (path.endsWith(".*"))
-            warnings.push(copy.sectionGrantWarning(path));
+          if (path.endsWith(".*")) warnings.push(copy.sectionGrantWarning(path));
         }
       }
     }
@@ -216,10 +192,7 @@ export function inspectManifest(
   } else {
     for (const [family, rawEntries] of Object.entries(requires)) {
       const entries = recordOf(rawEntries);
-      if (
-        !REQUIREMENT_FAMILIES.includes(family as RequirementFamily) ||
-        !entries
-      ) {
+      if (!REQUIREMENT_FAMILIES.includes(family as RequirementFamily) || !entries) {
         issues.push(copy.invalidRequires);
         continue;
       }
@@ -229,9 +202,7 @@ export function inspectManifest(
           id,
           range: String(range),
         });
-        const capability = CAPABILITIES.find(
-          (entry) => entry.key === `${family}:${id}`,
-        );
+        const capability = CAPABILITIES.find((entry) => entry.key === `${family}:${id}`);
         if (!capability) {
           issues.push(copy.unknownRequirement(`${family}:${id}`));
           continue;
@@ -241,21 +212,13 @@ export function inspectManifest(
           !validRange(range) ||
           !satisfies(capability.version, range, { includePrerelease: true })
         ) {
-          issues.push(
-            copy.incompatibleRequirement(
-              `${family}:${id} ${String(range)} (host ${capability.version})`,
-            ),
-          );
+          issues.push(copy.incompatibleRequirement(`${family}:${id} ${String(range)} (host ${capability.version})`));
         }
         if (
           capability.permissions.length &&
-          !capability.permissions.some((permission) =>
-            permissions.includes(permission),
-          )
+          !capability.permissions.some((permission) => permissions.includes(permission))
         ) {
-          issues.push(
-            copy.missingPermission(capability.permissions.join(" / ")),
-          );
+          issues.push(copy.missingPermission(capability.permissions.join(" / ")));
         }
       }
     }
@@ -263,14 +226,9 @@ export function inspectManifest(
 
   const origins: string[] = [];
   if (manifest.networkAccess != null) {
-    if (!permissions.includes("service:network"))
-      issues.push(copy.missingPermission("service:network"));
+    if (!permissions.includes("service:network")) issues.push(copy.missingPermission("service:network"));
     const networkRange = recordOf(requires?.services)?.network;
-    if (
-      typeof networkRange !== "string" ||
-      !validRange(networkRange) ||
-      intersects(networkRange, ">=0.0.0 <2.0.0")
-    ) {
+    if (typeof networkRange !== "string" || !validRange(networkRange) || intersects(networkRange, ">=0.0.0 <2.0.0")) {
       issues.push(copy.incompatibleRequirement("services:network >=2.0.0"));
     }
     const network = recordOf(manifest.networkAccess);
@@ -294,23 +252,15 @@ export function inspectManifest(
       Object.keys(network).some((key) => key !== "origins") ||
       !Array.isArray(values) ||
       values.length > 32 ||
-      (!(values.length === 1 && values[0] === "*") &&
-        values.some((value) => !isOrigin(value)))
+      (!(values.length === 1 && values[0] === "*") && values.some((value) => !isOrigin(value)))
     ) {
       issues.push(copy.invalidNetworkAccess);
     } else {
-      origins.push(
-        ...new Set(
-          (values as string[]).map((value) =>
-            value === "*" ? value : new URL(value).origin,
-          ),
-        ),
-      );
+      origins.push(...new Set((values as string[]).map((value) => (value === "*" ? value : new URL(value).origin))));
       if (origins.includes("*")) warnings.push(copy.allOriginsWarning);
     }
   }
-  if (permissions.includes("service:network") && !origins.length)
-    issues.push(copy.missingNetworkAccess);
+  if (permissions.includes("service:network") && !origins.length) issues.push(copy.missingNetworkAccess);
 
   return {
     permissions: [...new Set(permissions)],
@@ -319,9 +269,7 @@ export function inspectManifest(
     requirements,
     declarations: {
       schemaVersion: manifest.schemaVersion,
-      schedules: Array.isArray(manifest.schedules)
-        ? manifest.schedules.length
-        : 0,
+      schedules: Array.isArray(manifest.schedules) ? manifest.schedules.length : 0,
       themes: Array.isArray(manifest.themes) ? manifest.themes.length : 0,
       fonts: Array.isArray(manifest.fonts) ? manifest.fonts.length : 0,
     },

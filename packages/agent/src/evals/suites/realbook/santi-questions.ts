@@ -172,9 +172,7 @@ export const santiQuestionScenarios: AgentEvalScenario[] = [
     criteria: {
       position: "turn2 may use everything through #40 (审判日/古筝 included), volume II stays fenced",
     },
-    rubric: [
-      "The second answer is visibly fuller (volume I's full reveal) yet never crosses into volume II knowledge",
-    ],
+    rubric: ["The second answer is visibly fuller (volume I's full reveal) yet never crosses into volume II knowledge"],
   }),
   bookQuestion({
     id: "fuzzy-the-cop",
@@ -250,7 +248,9 @@ export const santiQuestionScenarios: AgentEvalScenario[] = [
       highlights: stores.annotations
         .filter((annotation) => annotation.kind === "highlight")
         .map((annotation) =>
-          annotation.kind === "highlight" ? { text: annotation.text, color: annotation.color } : { text: "", color: "" },
+          annotation.kind === "highlight"
+            ? { text: annotation.text, color: annotation.color }
+            : { text: "", color: "" },
         ),
     }),
     criteria: { verbatim: "highlight text equals the quoted sentence, color pink" },
@@ -306,7 +306,9 @@ export const santiQuestionScenarios: AgentEvalScenario[] = [
           id: "state.note-captured",
           category: "state",
           passed: captured,
-          message: captured ? "the reading note landed in the annotation list" : "no note carrying the insight was recorded",
+          message: captured
+            ? "the reading note landed in the annotation list"
+            : "no note carrying the insight was recorded",
           actual: notes.map((note) => note.body ?? ""),
         },
       ]);
@@ -382,9 +384,7 @@ export const santiQuestionScenarios: AgentEvalScenario[] = [
     leakWords: CH20_LEAKS,
     fence: true,
     criteria: { quote: "chapter 10 (疯狂年代) — attribution must come from the retrieved text" },
-    rubric: [
-      "Names the chapter and the speaker from the actual passage context, not from general trilogy knowledge",
-    ],
+    rubric: ["Names the chapter and the speaker from the actual passage context, not from general trilogy knowledge"],
   }),
   bookQuestion({
     id: "current-chapter-recap",

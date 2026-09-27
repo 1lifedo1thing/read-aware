@@ -1,5 +1,11 @@
 import { getDefaultStore } from "jotai";
-import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  actorFromEvent,
+  causalActor,
+  mergeEventCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { activeGlobalThreadSourceAtom } from "../state/global-thread";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,16 +16,8 @@ import { createLogger } from "../../../platform/logger";
 import { conversationCommands, conversationRuntime } from "../../../domain/conversation-control";
 import { appendStreamChunk, finalizeParts, partsText } from "../lib/chat-stream";
 import { getChatTransport } from "../lib/chat-transport";
-import type {
-  ChatAssistantPart,
-  ChatAttachment,
-  ChatMessage,
-  ChatReadingCursor,
-} from "../lib/chat-types";
-import {
-  loadConversation,
-  saveConversation,
-} from "../lib/conversation-store";
+import type { ChatAssistantPart, ChatAttachment, ChatMessage, ChatReadingCursor } from "../lib/chat-types";
+import { loadConversation, saveConversation } from "../lib/conversation-store";
 
 function useConversationValue<T>(initial: T, id: string) {
   const [state, setState] = useState(() => stampEventCause({ value: initial, id }, "system"));
@@ -90,24 +88,37 @@ export function useBookConversation(
   readingCursorRef.current = readingCursor;
   const bindingRef = useRef<ReturnType<typeof conversationRuntime.bind> | null>(null);
   const openingSource = useRef<DomainActor>("system");
-  const published = useRef<{ messages: typeof messagesSource; loading: typeof loadingSource; streaming: typeof streamingSource } | null>(null);
+  const published = useRef<{
+    messages: typeof messagesSource;
+    loading: typeof loadingSource;
+    streaming: typeof streamingSource;
+  } | null>(null);
   useEffect(() => {
-    const source = thread === "global" ? getDefaultStore().get(activeGlobalThreadSourceAtom) : readingRuntime.snapshot();
-    openingSource.current = ("id" in source ? source.id : source.bookId) === bookId ? actorFromEvent(source) : causalActor("system");
+    const source =
+      thread === "global" ? getDefaultStore().get(activeGlobalThreadSourceAtom) : readingRuntime.snapshot();
+    openingSource.current =
+      ("id" in source ? source.id : source.bookId) === bookId ? actorFromEvent(source) : causalActor("system");
     const binding = conversationRuntime.bind({ kind: thread, id: bookId }, openingSource.current);
     published.current = null;
     bindingRef.current = binding;
-    return () => { binding.dispose(); if (bindingRef.current === binding) bindingRef.current = null; };
+    return () => {
+      binding.dispose();
+      if (bindingRef.current === binding) bindingRef.current = null;
+    };
   }, [bookId, thread]);
   useEffect(() => {
-    if ([messagesSource, loadingSource, streamingSource].some(value => value.id !== bookId)) return;
+    if ([messagesSource, loadingSource, streamingSource].some((value) => value.id !== bookId)) return;
     const previous = published.current;
     const sources = [
       ...(!previous || previous.messages.value.length !== messages.length ? [messagesSource] : []),
       ...(!previous || previous.loading.value !== isLoading ? [loadingSource] : []),
       ...(!previous || previous.streaming.value !== isStreaming ? [streamingSource] : []),
     ];
-    if (sources.length) bindingRef.current?.update({ loading: isLoading, streaming: isStreaming, messageCount: messages.length }, actorFromEvent(mergeEventCauses(sources, {})));
+    if (sources.length)
+      bindingRef.current?.update(
+        { loading: isLoading, streaming: isStreaming, messageCount: messages.length },
+        actorFromEvent(mergeEventCauses(sources, {})),
+      );
     published.current = { messages: messagesSource, loading: loadingSource, streaming: streamingSource };
   }, [bookId, thread, isLoading, isStreaming, messages.length, messagesSource, loadingSource, streamingSource]);
 
@@ -116,16 +127,20 @@ export function useBookConversation(
   useEffect(() => {
     let alive = true;
     const source = openingSource.current;
-    reloadRevision.current++; pendingReloadRef.current = null;
-    setMessages([], source); setIsStreaming(false, source);
+    reloadRevision.current++;
+    pendingReloadRef.current = null;
+    setMessages([], source);
+    setIsStreaming(false, source);
     setIsLoading(true, source);
-    void loadConversation(bookId).then((loaded) => {
-      if (!alive) return;
-      setMessages(loaded, source);
-      setIsLoading(false, source);
-    }).catch(error => {
-      if (alive) log.warn("Conversation load failed", error);
-    });
+    void loadConversation(bookId)
+      .then((loaded) => {
+        if (!alive) return;
+        setMessages(loaded, source);
+        setIsLoading(false, source);
+      })
+      .catch((error) => {
+        if (alive) log.warn("Conversation load failed", error);
+      });
     return () => {
       alive = false;
       stopRef.current?.(causalActor("system"));
@@ -139,23 +154,38 @@ export function useBookConversation(
    * transcript under a streaming reply would race its final persist — and
    * re-checked when the load resolves, since a turn may have started meanwhile.
    */
-  const reloadFromStore = useCallback((origin: DomainActor) => {
-    const source = actorFromEvent(mergeEventCauses([...(pendingReloadRef.current ? [pendingReloadRef.current] : []), stampEventCause({}, origin)], {}));
-    pendingReloadRef.current = stampEventCause({}, source);
-    const revision = ++reloadRevision.current;
-    if (inFlightRef.current) return;
-    const id = mountedIdRef.current, owner = bindingRef.current;
-    void loadConversation(id).then((loaded) => {
-      if (mountedIdRef.current !== id || bindingRef.current !== owner || revision !== reloadRevision.current) return;
+  const reloadFromStore = useCallback(
+    (origin: DomainActor) => {
+      const source = actorFromEvent(
+        mergeEventCauses(
+          [...(pendingReloadRef.current ? [pendingReloadRef.current] : []), stampEventCause({}, origin)],
+          {},
+        ),
+      );
+      pendingReloadRef.current = stampEventCause({}, source);
+      const revision = ++reloadRevision.current;
       if (inFlightRef.current) return;
-      pendingReloadRef.current = null;
-      setMessages(loaded, source);
-    }).catch(error => log.warn("Conversation refresh failed", error));
-  }, [setMessages]);
+      const id = mountedIdRef.current,
+        owner = bindingRef.current;
+      void loadConversation(id)
+        .then((loaded) => {
+          if (mountedIdRef.current !== id || bindingRef.current !== owner || revision !== reloadRevision.current)
+            return;
+          if (inFlightRef.current) return;
+          pendingReloadRef.current = null;
+          setMessages(loaded, source);
+        })
+        .catch((error) => log.warn("Conversation refresh failed", error));
+    },
+    [setMessages],
+  );
 
   const reloadRef = useRef(reloadFromStore);
   reloadRef.current = reloadFromStore;
-  useEffect(() => onAppEvent("conversations-changed", event => reloadFromStore(actorFromEvent(event))), [reloadFromStore]);
+  useEffect(
+    () => onAppEvent("conversations-changed", (event) => reloadFromStore(actorFromEvent(event))),
+    [reloadFromStore],
+  );
 
   const persist = useCallback(
     (next: ChatMessage[], source: DomainActor, owner = bindingRef.current) => {
@@ -172,7 +202,8 @@ export function useBookConversation(
    */
   const runTurn = useCallback(
     (history: ChatMessage[], userMessage: ChatMessage, mode?: "retry" | "regenerate") => {
-      const source = causalActor("user"), owner = bindingRef.current;
+      const source = causalActor("user"),
+        owner = bindingRef.current;
       let completionSource = source;
       const withUser = [...history, userMessage];
       inFlightRef.current = true;
@@ -186,7 +217,9 @@ export function useBookConversation(
       abortRef.current = controller;
       const stop = (origin: DomainActor) => {
         if (controller.signal.aborted) return;
-        completionSource = actorFromEvent(mergeEventCauses([stampEventCause({}, source), stampEventCause({}, causalActor(origin))], {}));
+        completionSource = actorFromEvent(
+          mergeEventCauses([stampEventCause({}, source), stampEventCause({}, causalActor(origin))], {}),
+        );
         controller.abort();
       };
       stopRef.current = stop;
@@ -223,16 +256,13 @@ export function useBookConversation(
             }
           }
         } catch (err) {
-          const aborted =
-            controller.signal.aborted ||
-            (err instanceof DOMException && err.name === "AbortError");
+          const aborted = controller.signal.aborted || (err instanceof DOMException && err.name === "AbortError");
           if (!aborted) {
             // Raw detail goes to the log and (as diagnostics context) into the
             // message's `error` column; the UI renders localized copy from the
             // stable `errorCode` instead of ever showing the raw text.
             log.error("chat turn failed", err);
-            failure =
-              err instanceof Error && err.message ? err.message : t("chat.error.generic");
+            failure = err instanceof Error && err.message ? err.message : t("chat.error.generic");
             failureCode = errorCode(err);
           }
         } finally {
@@ -243,9 +273,7 @@ export function useBookConversation(
           // the retry affordance has a message to live on.
           const parts = finalizeParts(assembled);
           const content = partsText(parts);
-          const hasStructuredOutput = parts.some(
-            (part) => part.type === "reference" || part.type === "interaction",
-          );
+          const hasStructuredOutput = parts.some((part) => part.type === "reference" || part.type === "interaction");
           let committed: Promise<void> = Promise.resolve();
           if (content || hasStructuredOutput || failure) {
             const assistantMessage: ChatMessage = {
@@ -274,7 +302,9 @@ export function useBookConversation(
           if (pendingReloadRef.current) {
             const deferredSource = actorFromEvent(pendingReloadRef.current);
             pendingReloadRef.current = null;
-            void committed.then(() => reloadRef.current(deferredSource)).catch(error => log.warn("Deferred conversation reload failed", error));
+            void committed
+              .then(() => reloadRef.current(deferredSource))
+              .catch((error) => log.warn("Deferred conversation reload failed", error));
           }
           await committed;
         }
@@ -288,7 +318,8 @@ export function useBookConversation(
     (text: string, attachments?: ChatAttachment[]) => {
       const trimmed = text.trim();
       const hasAttachment = !!attachments && attachments.length > 0;
-      if ((!trimmed && !hasAttachment) || isLoading || inFlightRef.current || !conversationRuntime.canStart(bookId)) return false;
+      if ((!trimmed && !hasAttachment) || isLoading || inFlightRef.current || !conversationRuntime.canStart(bookId))
+        return false;
 
       const userMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -315,7 +346,7 @@ export function useBookConversation(
     }
     if (lastUserIndex < 0) return false;
     // Same user message object — id, attachments and timestamp preserved.
-    const failed = current.slice(lastUserIndex + 1).some(message => message.role === "assistant" && message.error);
+    const failed = current.slice(lastUserIndex + 1).some((message) => message.role === "assistant" && message.error);
     runTurn(current.slice(0, lastUserIndex), current[lastUserIndex], failed ? "retry" : "regenerate");
     return true;
   }, [bookId, isLoading, runTurn]);
@@ -325,7 +356,8 @@ export function useBookConversation(
   }, []);
 
   const clear = useCallback(async () => {
-    const source = causalActor("user"), owner = bindingRef.current;
+    const source = causalActor("user"),
+      owner = bindingRef.current;
     await conversationCommands(source).clear({ kind: thread, id: bookId });
     if (mountedIdRef.current === bookId && bindingRef.current === owner) setMessages([], source);
   }, [bookId, thread, setMessages]);

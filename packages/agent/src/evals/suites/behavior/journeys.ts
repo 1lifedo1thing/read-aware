@@ -9,11 +9,7 @@ import { assessmentFromChecks, combineAssessments, evaluateAgentTrace } from "..
 import { defineAgentEvalScenario, type AgentEvalScenario } from "../../agent-harness";
 import { realBook } from "../../book-fixtures";
 import type { AgentEvalObservation, EvalAssessment, EvalSuite } from "../../types";
-import {
-  cjkAnswerAssessment,
-  fenceDisciplineAssessment,
-  noFenceAssessment,
-} from "../realbook/real-book-helpers";
+import { cjkAnswerAssessment, fenceDisciplineAssessment, noFenceAssessment } from "../realbook/real-book-helpers";
 import {
   highlightVerbatimAssessment,
   observeSelectionAnnotations,
@@ -84,10 +80,7 @@ function annotationsAssessment(
   const checks = [];
   if (options.highlightWithin !== undefined) {
     const highlightOk = state.some(
-      (entry) =>
-        entry.kind === "highlight" &&
-        entry.text.length > 0 &&
-        options.highlightWithin!.includes(entry.text),
+      (entry) => entry.kind === "highlight" && entry.text.length > 0 && options.highlightWithin!.includes(entry.text),
     );
     checks.push({
       id: "state.journey-highlight-verbatim",
@@ -117,17 +110,13 @@ function memorySavedAssessment(observation: AgentEvalObservation, fragment: stri
       ? (observation.state as { memories?: Array<{ content?: string }> })
       : {};
   const saved = Array.isArray(state.memories) ? state.memories : [];
-  const ok = saved.some(
-    (memory) => typeof memory.content === "string" && memory.content.includes(fragment),
-  );
+  const ok = saved.some((memory) => typeof memory.content === "string" && memory.content.includes(fragment));
   return assessmentFromChecks([
     {
       id: "state.journey-memory-saved",
       category: "state",
       passed: ok,
-      message: ok
-        ? "the explicitly requested memory was saved"
-        : `no durable memory captured "${fragment}"`,
+      message: ok ? "the explicitly requested memory was saved" : `no durable memory captured "${fragment}"`,
       actual: saved.map((memory) => memory.content ?? ""),
     },
   ]);
@@ -172,13 +161,11 @@ export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
   id: "journeys",
   displayName: "完整阅读旅程",
   code: "S06",
-  description:
-    "完整的多轮阅读会话：选段提问、追问、标注、跨章节、显式记忆、会话末总结，逐轮断言。",
+  description: "完整的多轮阅读会话：选段提问、追问、标注、跨章节、显式记忆、会话末总结，逐轮断言。",
   scenarios: [
     defineAgentEvalScenario({
       id: "karamazov-reading-session",
-      description:
-        "六轮文学阅读会话：选段→追问→高亮+笔记→跨章→记忆→总结。",
+      description: "六轮文学阅读会话：选段→追问→高亮+笔记→跨章→记忆→总结。",
       tags: ["state", "memory", "continuity", "multi-turn", "karamazov", "book"],
       scope: { kind: "book", bookId: kara.bookId },
       seed: {
@@ -267,8 +254,7 @@ export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "refactoring-work-session",
-      description:
-        "五轮技术著作会话：机制→应用至我的代码→边界问题→记录原则→关联坏味道。",
+      description: "五轮技术著作会话：机制→应用至我的代码→边界问题→记录原则→关联坏味道。",
       tags: ["state", "memory", "continuity", "multi-turn", "refactoring", "book"],
       scope: { kind: "book", bookId: fowler.bookId },
       seed: {
@@ -310,12 +296,13 @@ export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           turnCoverage(observation, 2, "answer.applies-to-reader-code", ["processOrder"], 1),
-          turnCoverage(observation, 5, "answer.smell-connection", [
-            "Long Function",
-            "Duplicated Code",
-            "Comments",
-            "Mysterious Name",
-          ], 1),
+          turnCoverage(
+            observation,
+            5,
+            "answer.smell-connection",
+            ["Long Function", "Duplicated Code", "Comments", "Mysterious Name"],
+            1,
+          ),
           annotationsAssessment(observation, { requireNote: true }),
           noFenceAssessment(observation),
           cjkAnswerAssessment(observation),

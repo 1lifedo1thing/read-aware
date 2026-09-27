@@ -32,12 +32,7 @@ export function interactionGrantsSpoilerPermission(input: {
 }): boolean {
   if (input.answer.cancelled) return false;
   const selected = input.options.find((option) => option.id === input.answer.optionId);
-  const responseParts = [
-    input.answer.text,
-    selected?.label,
-    selected?.description,
-    input.answer.optionId,
-  ]
+  const responseParts = [input.answer.text, selected?.label, selected?.description, input.answer.optionId]
     .filter((value): value is string => !!value?.trim())
     .map((value) => value.normalize("NFKC").trim());
   if (!responseParts.length || responseParts.some((value) => EXPLICIT_DENIAL.test(value))) {

@@ -15,15 +15,8 @@ type AccordionProps = {
   className?: string;
 };
 
-export function Accordion({
-  items,
-  type = "single",
-  defaultOpen = [],
-  className,
-}: AccordionProps) {
-  const [openIndices, setOpenIndices] = useLocalAtom<Set<number>>(
-    new Set(defaultOpen),
-  );
+export function Accordion({ items, type = "single", defaultOpen = [], className }: AccordionProps) {
+  const [openIndices, setOpenIndices] = useLocalAtom<Set<number>>(new Set(defaultOpen));
 
   function toggle(index: number) {
     setOpenIndices((prev) => {
@@ -82,10 +75,7 @@ function AccordionItem({
           <CaretDown
             size={16}
             weight="bold"
-            className={cn(
-              "shrink-0 text-fg-subtle transition-transform duration-200",
-              open && "rotate-180",
-            )}
+            className={cn("shrink-0 text-fg-subtle transition-transform duration-200", open && "rotate-180")}
           />
         </button>
       </h3>
@@ -102,9 +92,7 @@ function AccordionItem({
         )}
       >
         <div className="min-h-0">
-          <div className={cn("text-sm leading-relaxed text-fg-muted", open && "pb-4")}>
-            {content}
-          </div>
+          <div className={cn("text-sm leading-relaxed text-fg-muted", open && "pb-4")}>{content}</div>
         </div>
       </div>
     </div>

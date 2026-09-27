@@ -128,7 +128,10 @@ pub(crate) fn hash_file(path: &Path) -> Result<(String, i64), CommandError> {
     Ok((format!("{:x}", hasher.finalize()), size))
 }
 
-fn stage_import(app: &AppHandle, request: StageImportRequest) -> Result<StagedImport, CommandError> {
+fn stage_import(
+    app: &AppHandle,
+    request: StageImportRequest,
+) -> Result<StagedImport, CommandError> {
     if let Some(epoch) = &request.external_open_epoch {
         app.state::<crate::external_open::ExternalOpenQueue>()
             .admit(epoch)?;
@@ -137,14 +140,19 @@ fn stage_import(app: &AppHandle, request: StageImportRequest) -> Result<StagedIm
     let data_dir: PathBuf = app.state::<DataDir>().0.clone();
     let db = app.state::<Db>();
     let own_key = format!("bookfile:{}", request.book_id);
-    let mime = request.mime_type.as_deref().filter(|value| !value.is_empty());
+    let mime = request
+        .mime_type
+        .as_deref()
+        .filter(|value| !value.is_empty());
 
     // ── 1–3: bytes into the store, or a duplicate verdict ─────────────────
     let (sha256, byte_size, local_path) = match &request.source {
         StageSource::Path { .. } | StageSource::Resource { .. } => {
             let source = match &request.source {
                 StageSource::Path { path } => crate::native_path::materialize(app, path)?,
-                StageSource::Resource { id } => crate::native_path::materialize_reader(app, crate::resources::reader(app, id)?)?,
+                StageSource::Resource { id } => {
+                    crate::native_path::materialize_reader(app, crate::resources::reader(app, id)?)?
+                }
                 StageSource::Blob => unreachable!(),
             };
             let (sha256, byte_size) = hash_file(&source.path)?;
@@ -162,7 +170,14 @@ fn stage_import(app: &AppHandle, request: StageImportRequest) -> Result<StagedIm
                     // A synced-in shell: the picked file is exactly what it lacks.
                     let (size, file_name) = copy_blob_file(&data_dir, &existing_key, &source.path)?;
                     let conn = db.0.lock()?;
-                    register_blob_inner(&conn, &existing_key, mime, size, sha256.clone(), file_name)?;
+                    register_blob_inner(
+                        &conn,
+                        &existing_key,
+                        mime,
+                        size,
+                        sha256.clone(),
+                        file_name,
+                    )?;
                 }
                 return Ok(StagedImport {
                     sha256,
@@ -177,7 +192,14 @@ fn stage_import(app: &AppHandle, request: StageImportRequest) -> Result<StagedIm
             let (size, file_name) = copy_blob_file(&data_dir, &own_key, &source.path)?;
             {
                 let conn = db.0.lock()?;
-                register_blob_inner(&conn, &own_key, mime, size, sha256.clone(), file_name.clone())?;
+                register_blob_inner(
+                    &conn,
+                    &own_key,
+                    mime,
+                    size,
+                    sha256.clone(),
+                    file_name.clone(),
+                )?;
             }
             (sha256, byte_size, data_dir.join("blobs").join(file_name))
         }
@@ -192,16 +214,27 @@ fn stage_import(app: &AppHandle, request: StageImportRequest) -> Result<StagedIm
                 )
                 .map_err(|_| format!("stage import: no staged bytes under {own_key}"))?;
             let Some((path, _)) = get_blob_record_inner(&conn, &data_dir, &own_key)? else {
-                return Err(CommandError::internal(format!("stage import: {own_key} has no file")));
+                return Err(CommandError::internal(format!(
+                    "stage import: {own_key} has no file"
+                )));
             };
-            if let Some(existing_id) = find_book_by_sha_inner(&conn, &sha256, Some(&request.book_id))? {
+            if let Some(existing_id) =
+                find_book_by_sha_inner(&conn, &sha256, Some(&request.book_id))?
+            {
                 let existing_key = format!("bookfile:{existing_id}");
                 if get_blob_record_inner(&conn, &data_dir, &existing_key)?.is_none() {
                     // Move our staged file under the existing record's key.
                     let target_name = blob_file_name(&existing_key);
                     let target = data_dir.join("blobs").join(&target_name);
                     std::fs::rename(&path, &target)?;
-                    register_blob_inner(&conn, &existing_key, mime, byte_size, sha256.clone(), target_name)?;
+                    register_blob_inner(
+                        &conn,
+                        &existing_key,
+                        mime,
+                        byte_size,
+                        sha256.clone(),
+                        target_name,
+                    )?;
                     // Our own row now points at a file that moved away.
                     conn.execute(
                         "DELETE FROM blob_sync_state WHERE blob_key = ?1",

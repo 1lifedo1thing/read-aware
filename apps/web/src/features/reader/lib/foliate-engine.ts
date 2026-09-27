@@ -9,15 +9,27 @@ import type { EngineAPI } from "../../../../foliate-js/src/engine-api";
 import type { DrawFunction } from "../../../../foliate-js/src/overlayer";
 
 export type { FoliateBook, FoliateLanguageMap, FoliateView, FoliateRenderer };
-export type { BookMetadata as FoliateMetadata, TOCItem as FoliateTocItem, ResolvedNavigation as FoliateResolved } from "../../../../foliate-js/src/book";
-export type { RelocateReason as FoliateRelocateReason, LoadDetail as FoliateLoadDetail, Content as FoliateContent, EdgeDetail as FoliateEdgeDetail } from "../../../../foliate-js/src/renderer";
 export type {
-  Annotation as FoliateAnnotation, DrawAnnotationDetail as FoliateDrawAnnotationDetail,
-  ShowAnnotationDetail as FoliateShowAnnotationDetail, LinkDetail as FoliateLinkDetail,
+  BookMetadata as FoliateMetadata,
+  TOCItem as FoliateTocItem,
+  ResolvedNavigation as FoliateResolved,
+} from "../../../../foliate-js/src/book";
+export type {
+  RelocateReason as FoliateRelocateReason,
+  LoadDetail as FoliateLoadDetail,
+  Content as FoliateContent,
+  EdgeDetail as FoliateEdgeDetail,
+} from "../../../../foliate-js/src/renderer";
+export type {
+  Annotation as FoliateAnnotation,
+  DrawAnnotationDetail as FoliateDrawAnnotationDetail,
+  ShowAnnotationDetail as FoliateShowAnnotationDetail,
+  LinkDetail as FoliateLinkDetail,
   ViewRelocateDetail as FoliateRelocateDetail,
 } from "../../../../foliate-js/src/view";
 export type {
-  FootnoteHandler as FoliateFootnoteHandler, FootnoteRenderDetail as FoliateFootnoteRenderDetail,
+  FootnoteHandler as FoliateFootnoteHandler,
+  FootnoteRenderDetail as FoliateFootnoteRenderDetail,
   FootnoteBeforeRenderDetail as FoliateFootnoteBeforeRenderDetail,
 } from "../../../../foliate-js/src/footnotes";
 import type { FootnoteHandler as FoliateFootnoteHandler } from "../../../../foliate-js/src/footnotes";
@@ -59,8 +71,7 @@ function loadEngine(): Promise<EngineAPI> {
       if (engine) resolve(engine);
       else reject(new Error("The reading engine loaded but did not initialize."));
     });
-    script.addEventListener("error", () =>
-      reject(new Error("Failed to load the reading engine.")));
+    script.addEventListener("error", () => reject(new Error("Failed to load the reading engine.")));
     document.head.append(script);
   });
   // Don't cache a failure: drop the promise so the next open (or the idle
@@ -71,7 +82,9 @@ function loadEngine(): Promise<EngineAPI> {
   return enginePromise;
 }
 
-export async function loadContentNavigation(): Promise<Pick<EngineAPI, "contentCFI" | "searchContentSection" | "resolveTextQuote" | "readContentRange">> {
+export async function loadContentNavigation(): Promise<
+  Pick<EngineAPI, "contentCFI" | "searchContentSection" | "resolveTextQuote" | "readContentRange">
+> {
   const { contentCFI, searchContentSection, resolveTextQuote, readContentRange } = await loadEngine();
   return { contentCFI, searchContentSection, resolveTextQuote, readContentRange };
 }
@@ -142,9 +155,7 @@ export function isAtEndOfBook(view: FoliateView | null | undefined): boolean {
  * Whether the continuous-scroll viewport is at the top/bottom of the current
  * section. Returns null when not in scrolled mode or geometry is unavailable.
  */
-export function getScrollEdges(
-  view: FoliateView | null | undefined,
-): { atTop: boolean; atBottom: boolean } | null {
+export function getScrollEdges(view: FoliateView | null | undefined): { atTop: boolean; atBottom: boolean } | null {
   const renderer = view?.renderer;
   if (!renderer?.scrolled) return null;
   try {
@@ -179,12 +190,8 @@ export function foliateTitle(book: Pick<FoliateBook, "metadata">): string {
 export function foliateAuthor(book: Pick<FoliateBook, "metadata">): string {
   const author = book.metadata?.author;
   if (!author) return "";
-  const one = (
-    contributor: string | { name?: string | FoliateLanguageMap },
-  ): string =>
-    typeof contributor === "string"
-      ? contributor
-      : firstLanguageValue(contributor?.name);
+  const one = (contributor: string | { name?: string | FoliateLanguageMap }): string =>
+    typeof contributor === "string" ? contributor : firstLanguageValue(contributor?.name);
   if (Array.isArray(author)) {
     return author.map(one).filter(Boolean).join(", ").trim();
   }

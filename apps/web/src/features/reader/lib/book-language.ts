@@ -32,7 +32,9 @@ export async function detectBookLanguage(book: FoliateBook): Promise<string> {
     if (language) return language;
   }
   let sample = "";
-  for (const section of book.sections.filter(section => section.linear !== "no" && section.createDocument).slice(0, 3)) {
+  for (const section of book.sections
+    .filter((section) => section.linear !== "no" && section.createDocument)
+    .slice(0, 3)) {
     try {
       const doc = await section.createDocument!();
       const language = normalizeBookLanguage(doc.documentElement.lang || doc.documentElement.getAttribute("xml:lang"));

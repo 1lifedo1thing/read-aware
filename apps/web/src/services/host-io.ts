@@ -1,4 +1,14 @@
-import { assertOperationConditions, type HostIOAvailabilityQuery, type OperationCondition, describeHostExport, normalizeHostExportDescription, normalizeClipboardText, normalizeExternalUrl, normalizeHostExport, type HostExportFile } from "@read-aware/core";
+import {
+  assertOperationConditions,
+  type HostIOAvailabilityQuery,
+  type OperationCondition,
+  describeHostExport,
+  normalizeHostExportDescription,
+  normalizeClipboardText,
+  normalizeExternalUrl,
+  normalizeHostExport,
+  type HostExportFile,
+} from "@read-aware/core";
 import { exportTextFile } from "../platform/export-file";
 import { openExternalUrl } from "../platform/external-link";
 import { isTauri } from "../platform/environment";
@@ -9,26 +19,48 @@ export function hostIOConditions(query: HostIOAvailabilityQuery): OperationCondi
   if (query.operation === "ui.exportFile") {
     const { operation, ...description } = query;
     normalizeHostExportDescription(description);
-    const present = isTauri() || typeof document !== "undefined" && !!document.body
-      && typeof document.createElement === "function" && typeof Blob !== "undefined"
-      && typeof URL.createObjectURL === "function" && typeof URL.revokeObjectURL === "function"
-      && typeof window !== "undefined" && typeof window.setTimeout === "function";
-    return [{ kind: "input", state: "satisfied", reason: "input-valid" },
-      { kind: "provider", state: present ? "unknown" : "unavailable",
+    const present =
+      isTauri() ||
+      (typeof document !== "undefined" &&
+        !!document.body &&
+        typeof document.createElement === "function" &&
+        typeof Blob !== "undefined" &&
+        typeof URL.createObjectURL === "function" &&
+        typeof URL.revokeObjectURL === "function" &&
+        typeof window !== "undefined" &&
+        typeof window.setTimeout === "function");
+    return [
+      { kind: "input", state: "satisfied", reason: "input-valid" },
+      {
+        kind: "provider",
+        state: present ? "unknown" : "unavailable",
         reason: present ? "save-access-not-probed" : "export-entry-unavailable",
-        ...(present ? {} : { errorCode: "ui/unavailable" }) }];
+        ...(present ? {} : { errorCode: "ui/unavailable" }),
+      },
+    ];
   }
   if (query.operation === "clipboard.writeText") normalizeClipboardText(query.text);
   else normalizeExternalUrl(query.url);
-  const present = query.operation === "clipboard.writeText"
-    ? typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function"
-    : isTauri() || typeof window !== "undefined" && typeof window.open === "function";
-  return [{ kind: "input", state: "satisfied", reason: "input-valid" },
-    { kind: "provider", state: present ? "unknown" : "unavailable",
-      reason: query.operation === "clipboard.writeText"
-        ? present ? "clipboard-access-not-probed" : "clipboard-entry-unavailable"
-        : present ? "browser-dispatch-not-probed" : "browser-entry-unavailable",
-      ...(present ? {} : { errorCode: "ui/unavailable" }) }];
+  const present =
+    query.operation === "clipboard.writeText"
+      ? typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function"
+      : isTauri() || (typeof window !== "undefined" && typeof window.open === "function");
+  return [
+    { kind: "input", state: "satisfied", reason: "input-valid" },
+    {
+      kind: "provider",
+      state: present ? "unknown" : "unavailable",
+      reason:
+        query.operation === "clipboard.writeText"
+          ? present
+            ? "clipboard-access-not-probed"
+            : "clipboard-entry-unavailable"
+          : present
+            ? "browser-dispatch-not-probed"
+            : "browser-entry-unavailable",
+      ...(present ? {} : { errorCode: "ui/unavailable" }),
+    },
+  ];
 }
 
 /** The same bounded host effects for Agent ports and permission-gated plugins. */

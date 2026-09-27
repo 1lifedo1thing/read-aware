@@ -21,45 +21,34 @@ const ACCESS_MODES: PluginBookAccess["mode"][] = ["all", "current", "book"];
  * picker never emits an empty or unknown book id, even if a stale caller
  * supplied one or the library changed while the dialog was open.
  */
-export function availablePluginBooks(
-  books: readonly PluginBookOption[],
-): PluginBookOption[] {
+export function availablePluginBooks(books: readonly PluginBookOption[]): PluginBookOption[] {
   const seen = new Set<string>();
-  return books.filter((book) => {
-    const id = book.id.trim();
-    if (!id || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  }).map((book) => ({ id: book.id.trim(), title: book.title || book.id.trim() }));
+  return books
+    .filter((book) => {
+      const id = book.id.trim();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .map((book) => ({ id: book.id.trim(), title: book.title || book.id.trim() }));
 }
 
 /** A grant is valid only when a book-scoped grant names a current library row. */
-export function isValidPluginBookAccess(
-  value: PluginBookAccess,
-  books: readonly PluginBookOption[],
-): boolean {
+export function isValidPluginBookAccess(value: PluginBookAccess, books: readonly PluginBookOption[]): boolean {
   if (value.mode === "all" || value.mode === "current") return true;
   const id = value.bookId.trim();
   return id.length > 0 && availablePluginBooks(books).some((book) => book.id === id);
 }
 
-export function PluginBookAccessSelector({
-  value,
-  books,
-  onChange,
-  disabled = false,
-}: PluginBookAccessSelectorProps) {
+export function PluginBookAccessSelector({ value, books, onChange, disabled = false }: PluginBookAccessSelectorProps) {
   const { t } = useTranslation("plugins");
   const availableBooks = availablePluginBooks(books);
-  const options = ACCESS_MODES
-    .filter((mode) => mode !== "book" || availableBooks.length > 0)
-    .map((mode) => ({
-      value: mode,
-      label: t(`settings.bookAccess.${mode}` as never),
-    }));
+  const options = ACCESS_MODES.filter((mode) => mode !== "book" || availableBooks.length > 0).map((mode) => ({
+    value: mode,
+    label: t(`settings.bookAccess.${mode}` as never),
+  }));
   const selectedBookId = value.mode === "book" ? value.bookId : "";
-  const selectedBookIsValid = value.mode !== "book"
-    || availableBooks.some((book) => book.id === value.bookId.trim());
+  const selectedBookIsValid = value.mode !== "book" || availableBooks.some((book) => book.id === value.bookId.trim());
 
   const selectMode = (mode: PluginBookAccess["mode"]) => {
     if (mode === "all" || mode === "current") {
@@ -80,8 +69,8 @@ export function PluginBookAccessSelector({
         onChange={selectMode}
       />
 
-      {value.mode === "book" && (
-        availableBooks.length > 0 ? (
+      {value.mode === "book" &&
+        (availableBooks.length > 0 ? (
           <Select
             label={t("settings.bookAccess.bookLabel")}
             ariaLabel={t("settings.bookAccess.bookLabel")}
@@ -98,16 +87,13 @@ export function PluginBookAccessSelector({
           />
         ) : (
           <InlineError compact>{t("settings.bookAccess.noBooks")}</InlineError>
-        )
-      )}
+        ))}
 
       <Caption className="leading-5 text-fg-muted">
         {t(`settings.bookAccess.${value.mode}Description` as never)}
       </Caption>
       {value.mode !== "all" && (
-        <Caption className="leading-5 text-fg-muted">
-          {t("settings.bookAccess.restrictedNotice")}
-        </Caption>
+        <Caption className="leading-5 text-fg-muted">{t("settings.bookAccess.restrictedNotice")}</Caption>
       )}
     </div>
   );

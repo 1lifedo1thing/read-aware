@@ -43,8 +43,10 @@ export function splitToolbarActions(actions: readonly PluginAction[]): ToolbarAc
   for (const action of actions) {
     if (isPrimary(action)) inline.push(action);
     else if (action.priority === "secondary") overflow.push(action);
-    else if (slots > 0) { inline.push(action); slots -= 1; }
-    else overflow.push(action);
+    else if (slots > 0) {
+      inline.push(action);
+      slots -= 1;
+    } else overflow.push(action);
   }
   return { inline, overflow };
 }

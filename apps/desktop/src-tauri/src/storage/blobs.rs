@@ -7,8 +7,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- Filesystem blob store ----------------------------------------------------
 //
@@ -157,8 +157,7 @@ pub(crate) fn register_blob_inner(
             storage_uri,
             sync_required as i64
         ],
-    )
-    ?;
+    )?;
     if sync_required {
         // (Re)writes decide the outbox by CONTENT: changed bytes push again,
         // identical bytes never do.
@@ -171,8 +170,7 @@ pub(crate) fn register_blob_inner(
                 last_error = NULL,
                 updated_at = excluded.updated_at",
             params![key, next_state],
-        )
-        ?;
+        )?;
     }
     Ok(BlobPutResult { sha256, byte_size })
 }
@@ -239,7 +237,9 @@ pub(crate) fn get_blob_record_inner(
             )
         })
     {
-        return Err(CommandError::internal(format!("Invalid managed blob path for {key}")));
+        return Err(CommandError::internal(format!(
+            "Invalid managed blob path for {key}"
+        )));
     }
 
     let path = data_dir.join(relative);
@@ -273,7 +273,11 @@ pub(crate) fn get_blob_record_inner(
 
 /// Empty vec means "no such blob" (the raw-response contract; no real payload
 /// is zero-length). A registry row whose file went missing is treated the same.
-pub(crate) fn get_blob_inner(conn: &Connection, data_dir: &Path, key: &str) -> Result<Vec<u8>, CommandError> {
+pub(crate) fn get_blob_inner(
+    conn: &Connection,
+    data_dir: &Path,
+    key: &str,
+) -> Result<Vec<u8>, CommandError> {
     let Some((path, _)) = get_blob_record_inner(conn, data_dir, key)? else {
         return Ok(Vec::new());
     };
@@ -298,19 +302,20 @@ pub(crate) fn get_blob_range_inner(
     let capacity = usize::try_from(read_len)
         .map_err(|_| format!("Requested blob range is too large: {read_len} bytes"))?;
     let mut file = std::fs::File::open(path)?;
-    file.seek(SeekFrom::Start(offset))
-        ?;
+    file.seek(SeekFrom::Start(offset))?;
     let mut bytes = Vec::with_capacity(capacity);
-    file.take(read_len)
-        .read_to_end(&mut bytes)
-        ?;
+    file.take(read_len).read_to_end(&mut bytes)?;
     Ok(bytes)
 }
 
 /// Remove the bytes and tombstone the registry row (`deleted_at` set,
 /// `storage_uri` cleared, outbox row dropped). The tombstone keeps sync and
 /// backup-restore from resurrecting a deliberately deleted file.
-pub(crate) fn delete_blob_inner(conn: &Connection, data_dir: &Path, key: &str) -> Result<(), CommandError> {
+pub(crate) fn delete_blob_inner(
+    conn: &Connection,
+    data_dir: &Path,
+    key: &str,
+) -> Result<(), CommandError> {
     let storage_uri: Option<String> = conn
         .query_row(
             "SELECT storage_uri FROM blob_objects WHERE key = ?1",
@@ -334,13 +339,11 @@ pub(crate) fn delete_blob_inner(conn: &Connection, data_dir: &Path, key: &str) -
             storage_uri = NULL
          WHERE key = ?1",
         params![key],
-    )
-    ?;
+    )?;
     conn.execute(
         "DELETE FROM blob_sync_state WHERE blob_key = ?1",
         params![key],
-    )
-    ?;
+    )?;
     Ok(())
 }
 
@@ -350,33 +353,29 @@ pub(crate) fn delete_blob_inner(conn: &Connection, data_dir: &Path, key: &str) -
 /// under crashes: file writes are keyed deterministically and registry rows are
 /// upserts, so a re-run after a partial pass simply overwrites its own work
 /// before dropping the table.
-pub(crate) fn externalize_inline_blobs(conn: &Connection, data_dir: &Path) -> Result<(), CommandError> {
-    let has_inline_table: bool = conn
-        .query_row(
-            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'blobs')",
-            [],
-            |row| row.get(0),
-        )
-        ?;
+pub(crate) fn externalize_inline_blobs(
+    conn: &Connection,
+    data_dir: &Path,
+) -> Result<(), CommandError> {
+    let has_inline_table: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'blobs')",
+        [],
+        |row| row.get(0),
+    )?;
     if !has_inline_table {
         return Ok(());
     }
     {
-        let mut stmt = conn
-            .prepare("SELECT key, data FROM blobs")
-            ?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?))
-            })
-            ?;
+        let mut stmt = conn.prepare("SELECT key, data FROM blobs")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })?;
         for row in rows {
             let (key, data) = row?;
             put_blob_inner(conn, data_dir, &key, None, &data)?;
         }
     }
-    conn.execute_batch("DROP TABLE blobs;")
-        ?;
+    conn.execute_batch("DROP TABLE blobs;")?;
     // The inline pages are gone but the file doesn't shrink by itself; with the
     // library's book bytes leaving the database this is the one reclaim that is
     // actually worth a VACUUM.
@@ -424,7 +423,10 @@ pub fn init_db(app: &AppHandle) -> Result<(Connection, PathBuf), CommandError> {
 /// The `book.coverExtracted` events these rows lack are synthesized by the
 /// boot-time genesis pass (platform/event-genesis.ts), which reads the
 /// projection this pass leaves behind.
-pub(crate) fn materialize_legacy_covers(conn: &Connection, data_dir: &Path) -> Result<(), CommandError> {
+pub(crate) fn materialize_legacy_covers(
+    conn: &Connection,
+    data_dir: &Path,
+) -> Result<(), CommandError> {
     let has_cover_url: bool = conn.query_row(
         "SELECT EXISTS(SELECT 1 FROM pragma_table_info('books') WHERE name = 'cover_url')",
         [],
@@ -471,7 +473,6 @@ pub(crate) fn materialize_legacy_covers(conn: &Connection, data_dir: &Path) -> R
     log::info!("lifted {lifted} inline cover(s) into the blob store");
     Ok(())
 }
-
 
 // --- Blob commands (book files + derivatives) ---
 
@@ -527,7 +528,6 @@ pub async fn get_blob(
     .await
 }
 
-
 /// Metadata-only lookup used to create a random-access book source in the
 /// webview without first transferring the whole file.
 #[tauri::command]
@@ -566,10 +566,7 @@ pub async fn get_blob_range(
 }
 
 #[tauri::command]
-pub async fn delete_blob(
-    key: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn delete_blob(key: String, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("delete_blob", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let data_dir = tauri::Manager::state::<DataDir>(&app);
@@ -601,10 +598,7 @@ pub struct BlobWriteSessions(Mutex<std::collections::HashMap<String, Vec<u8>>>);
 /// Stage a blob for chunked download and return its byte length.
 /// 0 = no such key (same convention as `get_blob`'s empty body).
 #[tauri::command]
-pub async fn blob_read_open(
-    key: String,
-    app: tauri::AppHandle,
-) -> Result<usize, CommandError> {
+pub async fn blob_read_open(key: String, app: tauri::AppHandle) -> Result<usize, CommandError> {
     crate::storage::blocking("blob_read_open", move || {
         let sessions = tauri::Manager::state::<BlobReadSessions>(&app);
         let db = tauri::Manager::state::<Db>(&app);
@@ -615,11 +609,7 @@ pub async fn blob_read_open(
         };
         let len = bytes.len();
         if len > 0 {
-            sessions
-                .0
-                .lock()
-                ?
-                .insert(key, bytes);
+            sessions.0.lock()?.insert(key, bytes);
         }
         Ok(len)
     })
@@ -649,10 +639,7 @@ pub async fn blob_read_chunk(
 
 /// Drop a staged download once the webview has pulled every chunk.
 #[tauri::command]
-pub async fn blob_read_close(
-    key: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn blob_read_close(key: String, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("blob_read_close", move || {
         let sessions = tauri::Manager::state::<BlobReadSessions>(&app);
         sessions.0.lock()?.remove(&key);
@@ -663,17 +650,10 @@ pub async fn blob_read_close(
 
 /// Open (or reset) an upload buffer for `key`.
 #[tauri::command]
-pub async fn blob_write_open(
-    key: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn blob_write_open(key: String, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("blob_write_open", move || {
         let sessions = tauri::Manager::state::<BlobWriteSessions>(&app);
-        sessions
-            .0
-            .lock()
-            ?
-            .insert(key, Vec::new());
+        sessions.0.lock()?.insert(key, Vec::new());
         Ok(())
     })
     .await
@@ -747,8 +727,7 @@ pub async fn blob_write_commit(
         let data_dir = tauri::Manager::state::<DataDir>(&app);
         let data = sessions
             .0
-            .lock()
-            ?
+            .lock()?
             .remove(&key)
             .ok_or_else(|| format!("blob_write_commit: no open session for {key}"))?;
         let conn = db.0.lock()?;
@@ -759,10 +738,7 @@ pub async fn blob_write_commit(
 
 /// Discard an upload buffer after a failed transfer.
 #[tauri::command]
-pub async fn blob_write_abort(
-    key: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn blob_write_abort(key: String, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("blob_write_abort", move || {
         let sessions = tauri::Manager::state::<BlobWriteSessions>(&app);
         sessions.0.lock()?.remove(&key);

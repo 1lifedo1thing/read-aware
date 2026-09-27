@@ -18,7 +18,8 @@ export function builtinThemesFor(surface: AppearanceSurface): {
   value: string;
   polarity: ThemePolarity | null;
 }[] {
-  return BUILTIN_APPEARANCE_THEMES.filter((theme) =>
-    theme.surfaces.includes(surface),
-  ).map(({ value, polarity }) => ({ value, polarity }));
+  return BUILTIN_APPEARANCE_THEMES.filter((theme) => theme.surfaces.includes(surface)).map(({ value, polarity }) => ({
+    value,
+    polarity,
+  }));
 }

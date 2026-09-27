@@ -57,14 +57,10 @@ describe("plugin update transaction", () => {
   test("a failed health check leaves the live runtime and its data untouched", async () => {
     const log: string[] = [];
 
-    await expect(
-      runPluginUpdateTransaction(transaction(log, "verify-candidate")),
-    ).rejects.toThrow("verify-candidate failed");
-    expect(log).toEqual([
-      "start",
-      "verify-candidate",
-      "cleanup",
-    ]);
+    await expect(runPluginUpdateTransaction(transaction(log, "verify-candidate"))).rejects.toThrow(
+      "verify-candidate failed",
+    );
+    expect(log).toEqual(["start", "verify-candidate", "cleanup"]);
   });
 
   test("failed candidate teardown prevents rollback underneath a possibly live writer", async () => {
@@ -75,26 +71,14 @@ describe("plugin update transaction", () => {
       throw new Error("cleanup failed");
     };
 
-    await expect(runPluginUpdateTransaction(value)).rejects.toThrow(
-      /verify-commit failed.*cleanup failed/,
-    );
-    expect(log).toEqual([
-      "start",
-      "verify-candidate",
-      "quiesce",
-      "snapshot",
-      "commit",
-      "verify-commit",
-      "cleanup",
-    ]);
+    await expect(runPluginUpdateTransaction(value)).rejects.toThrow(/verify-commit failed.*cleanup failed/);
+    expect(log).toEqual(["start", "verify-candidate", "quiesce", "snapshot", "commit", "verify-commit", "cleanup"]);
   });
 
   test("a migration failure restores files, data, and the quiesced runtime", async () => {
     const log: string[] = [];
 
-    await expect(runPluginUpdateTransaction(transaction(log, "migrate"))).rejects.toThrow(
-      "migrate failed",
-    );
+    await expect(runPluginUpdateTransaction(transaction(log, "migrate"))).rejects.toThrow("migrate failed");
     expect(log).toEqual([
       "start",
       "verify-candidate",
@@ -114,10 +98,19 @@ describe("plugin update transaction", () => {
     const value = transaction([]);
     let data = "before";
     let snapshot: string | undefined;
-    value.verifyCandidate = async () => { data = "saved-by-old-runtime"; };
-    value.snapshotData = async () => { snapshot = data; };
-    value.migrateCandidate = async () => { data = "candidate-schema"; throw new Error("migration failed"); };
-    value.restoreData = async () => { data = snapshot!; };
+    value.verifyCandidate = async () => {
+      data = "saved-by-old-runtime";
+    };
+    value.snapshotData = async () => {
+      snapshot = data;
+    };
+    value.migrateCandidate = async () => {
+      data = "candidate-schema";
+      throw new Error("migration failed");
+    };
+    value.restoreData = async () => {
+      data = snapshot!;
+    };
     await expect(runPluginUpdateTransaction(value)).rejects.toThrow("migration failed");
     expect(data).toBe("saved-by-old-runtime");
   });
@@ -138,11 +131,16 @@ describe("plugin update transaction", () => {
     const log: string[] = [];
     const value = transaction(log);
     let release!: () => void;
-    value.quiescePrevious = () => new Promise<void>(resolve => { log.push("quiesce-pending"); release = resolve; });
+    value.quiescePrevious = () =>
+      new Promise<void>((resolve) => {
+        log.push("quiesce-pending");
+        release = resolve;
+      });
     const update = runPluginUpdateTransaction(value);
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(log).toEqual(["start", "verify-candidate", "quiesce-pending"]);
-    release(); await update;
+    release();
+    await update;
     expect(log.indexOf("snapshot")).toBeGreaterThan(log.indexOf("quiesce-pending"));
   });
 
@@ -150,7 +148,10 @@ describe("plugin update transaction", () => {
     test(`${failure} failure never restarts old code against unrecovered state`, async () => {
       const log: string[] = [];
       const value = transaction(log, failure);
-      value.migrateCandidate = async () => { log.push("migrate"); throw new Error("migration failed"); };
+      value.migrateCandidate = async () => {
+        log.push("migrate");
+        throw new Error("migration failed");
+      };
       await expect(runPluginUpdateTransaction(value)).rejects.toThrow(`${failure} failed`);
       expect(log).toContain("rollback-files");
       expect(log).toContain("restore-data");

@@ -7,10 +7,19 @@
 // `<foliate-view>` custom element (side effect of importing view.js) and hangs
 // the entry points off the global for the app to pick up.
 import { makeBook, View } from "./view.js";
-import type { EngineAPI } from './engine-api.js';
+import type { EngineAPI } from "./engine-api.js";
 import { Overlayer } from "./overlayer.js";
 import { FootnoteHandler } from "./footnotes.js";
-import { contentCFI, searchContentSection, resolveTextQuote } from './content-navigation.js';
-import { readContentRange } from './content-range.js';
+import { contentCFI, searchContentSection, resolveTextQuote } from "./content-navigation.js";
+import { readContentRange } from "./content-range.js";
 
-globalThis.__readawareFoliate = { makeBook, View, Overlayer, FootnoteHandler, contentCFI, searchContentSection, resolveTextQuote, readContentRange } satisfies EngineAPI;
+globalThis.__readawareFoliate = {
+  makeBook,
+  View,
+  Overlayer,
+  FootnoteHandler,
+  contentCFI,
+  searchContentSection,
+  resolveTextQuote,
+  readContentRange,
+} satisfies EngineAPI;

@@ -143,7 +143,9 @@ export function useReaderPagination({
         // started for a replacement engine (see resetCrossing) owns the fade
         // from then on, so an abandoned run must not reveal under it.
         const ownsFade = () => crossingRef.current === crossing || crossingRef.current === null;
-        window.requestAnimationFrame(() => { if (ownsFade()) setIsCrossing(false); });
+        window.requestAnimationFrame(() => {
+          if (ownsFade()) setIsCrossing(false);
+        });
         await new Promise((resolve) => window.setTimeout(resolve, SECTION_CROSS_COOLDOWN_MS));
         if (crossingRef.current === crossing) crossingRef.current = null;
         // A jump that arrived during the settle still lands, as its own crossing.
@@ -348,9 +350,7 @@ export function useReaderPagination({
         }
       }
       clearSelection();
-      enqueuePageTurn(() =>
-        direction === 1 ? viewRef.current?.next() : viewRef.current?.prev(),
-      );
+      enqueuePageTurn(() => (direction === 1 ? viewRef.current?.next() : viewRef.current?.prev()));
     },
     [
       clearSelection,

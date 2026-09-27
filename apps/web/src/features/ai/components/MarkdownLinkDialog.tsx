@@ -12,11 +12,26 @@ export function MarkdownLinkDialog({ isOpen, onClose, url }: LinkSafetyModalProp
   const { copied, copy } = useCopyToClipboard();
 
   return (
-    <Dialog open={isOpen} onClose={onClose} title={t("chat.externalLink.title")} backdrop="dim" className="max-w-md p-6">
-      <IconButton icon={<X size={16} />} label={t("chat.externalLink.close")} size="sm" onClick={onClose} className="absolute right-3 top-3" />
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      title={t("chat.externalLink.title")}
+      backdrop="dim"
+      className="max-w-md p-6"
+    >
+      <IconButton
+        icon={<X size={16} />}
+        label={t("chat.externalLink.close")}
+        size="sm"
+        onClick={onClose}
+        className="absolute right-3 top-3"
+      />
       <div className="mt-3 space-y-4">
         <p>{t("chat.externalLink.description")}</p>
-        <div dir="ltr" className="max-h-32 select-text overflow-y-auto break-all rounded bg-fill px-3 py-2 font-mono text-xs text-fg-muted">
+        <div
+          dir="ltr"
+          className="max-h-32 select-text overflow-y-auto break-all rounded bg-fill px-3 py-2 font-mono text-xs text-fg-muted"
+        >
           {url}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">

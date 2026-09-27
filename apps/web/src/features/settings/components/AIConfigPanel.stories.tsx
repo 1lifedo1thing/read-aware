@@ -58,9 +58,7 @@ export const WithHostAdvancedContent: Story = {
   args: {
     advancedContent: (
       <SettingsGroup title="From the hosting panel">
-        <p className="text-sm text-fg-muted">
-          Sections the AI settings page folds into the advanced block.
-        </p>
+        <p className="text-sm text-fg-muted">Sections the AI settings page folds into the advanced block.</p>
       </SettingsGroup>
     ),
   },

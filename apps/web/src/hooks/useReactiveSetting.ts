@@ -48,10 +48,7 @@ export function useReactiveSetting<T>({
 
   const flush = useCallback(() => {
     clearTimer();
-    if (
-      !enabledRef.current ||
-      latestRevisionRef.current <= persistedRevisionRef.current
-    ) {
+    if (!enabledRef.current || latestRevisionRef.current <= persistedRevisionRef.current) {
       return;
     }
     persistRef.current(latestValueRef.current);

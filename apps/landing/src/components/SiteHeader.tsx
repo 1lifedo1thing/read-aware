@@ -27,42 +27,18 @@ export function SiteHeader({ locale = "en" }: { locale?: Locale }) {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-y-2 py-7">
-      <Link
-        to={localizePath("/", locale) as never}
-        className="flex items-center gap-2.5"
-      >
-        <img
-          src={HEADER_ICON_URL}
-          alt=""
-          width={26}
-          height={26}
-          className="h-[26px] w-[26px]"
-        />
-        <span className="text-[1.0625rem] font-medium tracking-tight">
-          ReadAware
-        </span>
+      <Link to={localizePath("/", locale) as never} className="flex items-center gap-2.5">
+        <img src={HEADER_ICON_URL} alt="" width={26} height={26} className="h-[26px] w-[26px]" />
+        <span className="text-[1.0625rem] font-medium tracking-tight">ReadAware</span>
       </Link>
       <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[0.9375rem] text-fg-muted">
-        <Link
-          to={docsPath(locale)}
-          activeProps={{ className: "text-fg" }}
-          className="transition-colors hover:text-fg"
-        >
+        <Link to={docsPath(locale)} activeProps={{ className: "text-fg" }} className="transition-colors hover:text-fg">
           {strings.docs}
         </Link>
-        <Link
-          to={localizePath("/", locale) as never}
-          hash="download"
-          className="transition-colors hover:text-fg"
-        >
+        <Link to={localizePath("/", locale) as never} hash="download" className="transition-colors hover:text-fg">
           {strings.download}
         </Link>
-        <a
-          href={REPO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="transition-colors hover:text-fg"
-        >
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-fg">
           GitHub
         </a>
         <MoreMenu locale={locale} pathname={pathname} />

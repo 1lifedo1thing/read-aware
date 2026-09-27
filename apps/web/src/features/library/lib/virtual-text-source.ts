@@ -22,14 +22,20 @@ export async function getVirtualTextSource(bookId: string, load: boolean): Promi
   if (!available) throw new AppError("library/content-unavailable", "Virtual text provider is unavailable");
   // Same guarded parser acquisition as reading/navigation, including provider
   // retirement, binding changes, deletion and content invalidation checks.
-  const version = await withBookContent(bookId, undefined, undefined, async content => content.contentVersion);
+  const version = await withBookContent(bookId, undefined, undefined, async (content) => content.contentVersion);
   const current = identity(bookId);
-  if (current.revision !== source.revision || current.binding?.pluginId !== source.binding?.pluginId
-    || current.binding?.providerId !== source.binding?.providerId || current.binding?.key !== source.binding?.key) {
+  if (
+    current.revision !== source.revision ||
+    current.binding?.pluginId !== source.binding?.pluginId ||
+    current.binding?.providerId !== source.binding?.providerId ||
+    current.binding?.key !== source.binding?.key
+  ) {
     throw new AppError("reader/stale-location", "Virtual text source changed while resolving its version");
   }
   known.set(bookId, { revision: source.revision, contentVersion: version });
   return { ...result, contentVersion: version };
 }
 
-export function forgetVirtualTextSource(bookId: string): void { known.delete(bookId); }
+export function forgetVirtualTextSource(bookId: string): void {
+  known.delete(bookId);
+}

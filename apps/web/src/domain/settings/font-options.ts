@@ -4,7 +4,9 @@ import { findRegisteredByRef, toPluginRef } from "../../features/plugins/lib/plu
 import type { ReaderFontFamily } from "../../features/settings/lib/reader-settings";
 import type { SettingsDraft } from "./catalog";
 
-function option(value: SettingValue, label: string): SettingOption { return { value, label }; }
+function option(value: SettingValue, label: string): SettingOption {
+  return { value, label };
+}
 
 export function fontOptions(draft: SettingsDraft): SettingOption[] {
   return [
@@ -23,7 +25,7 @@ export function isFontSetting(path: string): boolean {
 }
 
 export function systemFontOptions(families: readonly string[]): SettingOption[] {
-  return families.map(family => ({ value: `system:${family}`, label: family, source: "system" }));
+  return families.map((family) => ({ value: `system:${family}`, label: family, source: "system" }));
 }
 
 export function cleanFontFamily(
@@ -35,10 +37,7 @@ export function cleanFontFamily(
     throw new Error(`${path} must be a string`);
   }
   const font = value.trim();
-  if (
-    font.startsWith("curated:") &&
-    getCuratedFont(font.slice("curated:".length))
-  ) {
+  if (font.startsWith("curated:") && getCuratedFont(font.slice("curated:".length))) {
     return font as `curated:${string}`;
   }
   if (font.startsWith("plugin:")) {
@@ -48,15 +47,9 @@ export function cleanFontFamily(
   }
   if (font.startsWith("system:")) {
     const family = font.slice("system:".length).trim();
-    if (
-      family &&
-      family.length <= 120 &&
-      !/[\u0000-\u001f\u007f]/.test(family)
-    ) {
+    if (family && family.length <= 120 && !/[\u0000-\u001f\u007f]/.test(family)) {
       return `system:${family}`;
     }
   }
-  throw new Error(
-    `${path} must be a catalog option or a non-empty system:<family> value`,
-  );
+  throw new Error(`${path} must be a catalog option or a non-empty system:<family> value`);
 }

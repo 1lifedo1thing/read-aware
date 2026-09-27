@@ -10,7 +10,9 @@ export function usePluginViewSession(
 ) {
   const [owned] = useState(() => new PluginViewSession());
   const session = provided ?? owned;
-  useLayoutEffect(() => { session.configure({ close: onClose, refresh: onRefresh }); }, [session, onClose, onRefresh]);
+  useLayoutEffect(() => {
+    session.configure({ close: onClose, refresh: onRefresh });
+  }, [session, onClose, onRefresh]);
   useLayoutEffect(() => {
     if (provided) return;
     session.resume();

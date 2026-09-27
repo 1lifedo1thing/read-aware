@@ -3,19 +3,10 @@ import reference from "./plugin-api.generated.json";
 
 export type CapabilityFamily = keyof typeof HOST_CAPABILITY_CATALOG;
 export type CapabilityKey = {
-  [
-    F in CapabilityFamily
-  ]: `${F}:${keyof (typeof HOST_CAPABILITY_CATALOG)[F] & string}`;
+  [F in CapabilityFamily]: `${F}:${keyof (typeof HOST_CAPABILITY_CATALOG)[F] & string}`;
 }[CapabilityFamily];
-export type CapabilityAuthority =
-  "permission" | "permission-free" | "settings-grant";
-export type CapabilityTopic =
-  | "reading"
-  | "library"
-  | "intelligence"
-  | "automation"
-  | "interface"
-  | "integration";
+export type CapabilityAuthority = "permission" | "permission-free" | "settings-grant";
+export type CapabilityTopic = "reading" | "library" | "intelligence" | "automation" | "interface" | "integration";
 export type CapabilityMethod = {
   path: string;
   signatures: string[];
@@ -23,10 +14,7 @@ export type CapabilityMethod = {
   line: number;
 };
 export type CapabilityDescription = { purpose: string; hostOwns: string };
-export type CapabilityDescriptions = Record<
-  CapabilityKey,
-  CapabilityDescription
->;
+export type CapabilityDescriptions = Record<CapabilityKey, CapabilityDescription>;
 
 const TOPICS: Record<CapabilityKey, CapabilityTopic[]> = {
   "domains:library": ["library", "reading"],
@@ -85,9 +73,7 @@ export type CapabilityEntry = {
   bundledOnly: boolean;
 };
 
-export const CAPABILITIES: CapabilityEntry[] = Object.entries(
-  HOST_CAPABILITY_CATALOG,
-).flatMap(([family, catalog]) =>
+export const CAPABILITIES: CapabilityEntry[] = Object.entries(HOST_CAPABILITY_CATALOG).flatMap(([family, catalog]) =>
   Object.entries(catalog).map(([id, definition]) => {
     const key = `${family}:${id}` as CapabilityKey;
     // Theme schema admission uses the same explicit authority as theme contributions.
@@ -117,14 +103,9 @@ export const CAPABILITIES: CapabilityEntry[] = Object.entries(
     };
   }),
 );
-export const API_METHOD_COUNT = CAPABILITIES.reduce(
-  (count, item) => count + item.methods.length,
-  0,
-);
+export const API_METHOD_COUNT = CAPABILITIES.reduce((count, item) => count + item.methods.length, 0);
 const KEYS = new Set<string>(CAPABILITIES.map((item) => item.key));
-export const CAPABILITY_FAMILIES = Object.keys(
-  HOST_CAPABILITY_CATALOG,
-) as CapabilityFamily[];
+export const CAPABILITY_FAMILIES = Object.keys(HOST_CAPABILITY_CATALOG) as CapabilityFamily[];
 export const CAPABILITY_TOPICS: CapabilityTopic[] = [
   "reading",
   "library",
@@ -133,11 +114,7 @@ export const CAPABILITY_TOPICS: CapabilityTopic[] = [
   "interface",
   "integration",
 ];
-export const CAPABILITY_AUTHORITIES: CapabilityAuthority[] = [
-  "permission",
-  "permission-free",
-  "settings-grant",
-];
+export const CAPABILITY_AUTHORITIES: CapabilityAuthority[] = ["permission", "permission-free", "settings-grant"];
 export type ExplorerSearch = {
   view?: "manifest";
   q?: string;
@@ -147,30 +124,19 @@ export type ExplorerSearch = {
   cap?: CapabilityKey;
 };
 
-export function validateExplorerSearch(
-  input: Record<string, unknown>,
-): ExplorerSearch {
+export function validateExplorerSearch(input: Record<string, unknown>): ExplorerSearch {
   const member = <T extends string>(value: unknown, options: readonly T[]) =>
-    typeof value === "string" && options.includes(value as T)
-      ? (value as T)
-      : undefined;
+    typeof value === "string" && options.includes(value as T) ? (value as T) : undefined;
   return {
     view: input.view === "manifest" ? "manifest" : undefined,
-    q:
-      typeof input.q === "string" && input.q
-        ? input.q.slice(0, 512)
-        : undefined,
+    q: typeof input.q === "string" && input.q ? input.q.slice(0, 512) : undefined,
     family: member(input.family, CAPABILITY_FAMILIES),
     authority: member(input.authority, CAPABILITY_AUTHORITIES),
     topic: member(input.topic, CAPABILITY_TOPICS),
-    cap:
-      typeof input.cap === "string" && KEYS.has(input.cap)
-        ? (input.cap as CapabilityKey)
-        : undefined,
+    cap: typeof input.cap === "string" && KEYS.has(input.cap) ? (input.cap as CapabilityKey) : undefined,
   };
 }
-export const normalizeSearchText = (text: string) =>
-  text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
+export const normalizeSearchText = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
 
 export function filterCapabilities(
   search: ExplorerSearch,
@@ -203,35 +169,22 @@ export function filterCapabilities(
 }
 
 /** A starting fragment, not an inferred grant for every method in a capability. */
-export function capabilityManifest(
-  entry: CapabilityEntry,
-  access: "read" | "write" = "read",
-): Record<string, unknown> {
+export function capabilityManifest(entry: CapabilityEntry, access: "read" | "write" = "read"): Record<string, unknown> {
   const fragment: Record<string, unknown> = {
     requires: { [entry.family]: { [entry.id]: `^${entry.version}` } },
   };
   const permissions =
-    entry.family === "domains" && entry.permissions.length
-      ? [`${entry.id}:${access}`]
-      : entry.permissions;
+    entry.family === "domains" && entry.permissions.length ? [`${entry.id}:${access}`] : entry.permissions;
   if (permissions.length) fragment.permissions = permissions;
-  if (entry.key === "domains:settings")
-    fragment.settingsAccess = { read: ["appearance.theme"] };
-  if (entry.key === "services:network")
-    fragment.networkAccess = { origins: ["https://api.example.com"] };
+  if (entry.key === "domains:settings") fragment.settingsAccess = { read: ["appearance.theme"] };
+  if (entry.key === "services:network") fragment.networkAccess = { origins: ["https://api.example.com"] };
   return fragment;
 }
 
-export function groupCapabilityMethods(
-  entry: CapabilityEntry,
-  methods: CapabilityMethod[],
-) {
+export function groupCapabilityMethods(entry: CapabilityEntry, methods: CapabilityMethod[]) {
   const groups = new Map<string, (CapabilityMethod & { name: string })[]>();
   for (const method of methods) {
-    const relative = method.path.replace(
-      `ctx.${entry.family}.${entry.id}.`,
-      "",
-    );
+    const relative = method.path.replace(`ctx.${entry.family}.${entry.id}.`, "");
     const separator = relative.lastIndexOf(".");
     const group = separator < 0 ? "" : relative.slice(0, separator);
     const name = relative.slice(separator + 1);

@@ -77,8 +77,7 @@ export function TimeField({
 
   // Half a time is not a time: completing the other half from zero keeps
   // every emitted value valid, whatever order the two are touched in.
-  const emit = (nextHours: string, nextMinutes: string) =>
-    onChange?.(`${nextHours || "00"}:${nextMinutes || "00"}`);
+  const emit = (nextHours: string, nextMinutes: string) => onChange?.(`${nextHours || "00"}:${nextMinutes || "00"}`);
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
@@ -115,12 +114,8 @@ export function TimeField({
           onChange={(next) => emit(hours, next)}
         />
       </div>
-      {hasError && (
-        <p className="text-[11px] leading-tight text-red-700">{error}</p>
-      )}
-      {!hasError && helperText && (
-        <p className="text-[11px] leading-tight text-fg-muted">{helperText}</p>
-      )}
+      {hasError && <p className="text-[11px] leading-tight text-red-700">{error}</p>}
+      {!hasError && helperText && <p className="text-[11px] leading-tight text-fg-muted">{helperText}</p>}
     </div>
   );
 }

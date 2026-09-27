@@ -8,14 +8,36 @@ test("only net durable changes of the accepted owner survive, including deletion
   const scope = Publication.begin("publish-net", baseline);
   baseline.replaced = "999";
   expect(Publication.record("read-aware-plugin.other.same", "2")).toBe(false);
-  for (const [key, raw] of [["same", "1"], ["replaced", "2"], ["replaced", "3"], ["removed", null], ["transient", "true"], ["transient", null]] as const) {
+  for (const [key, raw] of [
+    ["same", "1"],
+    ["replaced", "2"],
+    ["replaced", "3"],
+    ["removed", null],
+    ["transient", "true"],
+    ["transient", null],
+  ] as const) {
     expect(Publication.record(`read-aware-plugin.publish-net.${key}`, raw)).toBe(true);
   }
   expect(Publication.blocks("read-aware-plugin.publish-net.unwritten")).toBe(true);
   const batches: unknown[] = [];
-  await scope.accept(async changes => { batches.push([...changes]); }, () => {});
-  expect(batches).toEqual([[["read-aware-plugin.publish-net.replaced", "3"], ["read-aware-plugin.publish-net.removed", null]]]);
-  await scope.accept(async changes => { batches.push([...changes]); }, () => {});
+  await scope.accept(
+    async (changes) => {
+      batches.push([...changes]);
+    },
+    () => {},
+  );
+  expect(batches).toEqual([
+    [
+      ["read-aware-plugin.publish-net.replaced", "3"],
+      ["read-aware-plugin.publish-net.removed", null],
+    ],
+  ]);
+  await scope.accept(
+    async (changes) => {
+      batches.push([...changes]);
+    },
+    () => {},
+  );
   expect(batches).toHaveLength(1);
   expect(Publication.blocks("read-aware-plugin.publish-net.same")).toBe(false);
 });
@@ -25,7 +47,15 @@ test("rolled-back candidates publish nothing and retired scopes cannot clear a n
   Publication.record("read-aware-plugin.publish-rollback.setting", "2");
   old.rollback();
   const next = Publication.begin("publish-rollback", {});
-  old.rollback(); await old.accept(async () => { throw new Error("Must not publish"); }, () => { throw new Error("Must not report"); });
+  old.rollback();
+  await old.accept(
+    async () => {
+      throw new Error("Must not publish");
+    },
+    () => {
+      throw new Error("Must not report");
+    },
+  );
   expect(Publication.blocks("read-aware-plugin.publish-rollback.setting")).toBe(true);
   expect(() => Publication.begin("publish-rollback", {})).toThrow();
   next.rollback();
@@ -33,37 +63,57 @@ test("rolled-back candidates publish nothing and retired scopes cannot clear a n
 
 test("unsafe recovery retains quarantine against publication, settings writes and further updates", async () => {
   const scope = Publication.begin("publish-quarantine", {});
-  Publication.record("read-aware-plugin.publish-quarantine.setting", "2"); scope.quarantine();
+  Publication.record("read-aware-plugin.publish-quarantine.setting", "2");
+  scope.quarantine();
   expect(Publication.isQuarantined("read-aware-plugin.publish-quarantine.setting")).toBe(true);
-  expect(() => scope.accept(async () => {}, () => {})).toThrow();
-  await expect(withPluginDataWrites(["publish-quarantine"], () => {})).rejects.toMatchObject({ code: "plugin/recovery-required" });
-  await expect(withPluginDataUpdate("publish-quarantine", async () => {})).rejects.toMatchObject({ code: "plugin/recovery-required" });
+  expect(() =>
+    scope.accept(
+      async () => {},
+      () => {},
+    ),
+  ).toThrow();
+  await expect(withPluginDataWrites(["publish-quarantine"], () => {})).rejects.toMatchObject({
+    code: "plugin/recovery-required",
+  });
+  await expect(withPluginDataUpdate("publish-quarantine", async () => {})).rejects.toMatchObject({
+    code: "plugin/recovery-required",
+  });
   await withPluginDataWrites(["publish-healthy"], () => {});
   // Only a host which actually restored the baseline may release it.
   scope.rollback();
 });
 
-
 test("accepted append failures retain final values, block stale overlays, and retry in order with later writes", async () => {
   const scope = Publication.begin("publish-retry", { settings: "1" });
-  const first = causalActor("plugin:first"), later = causalActor("plugin:later"), sources: DomainActor[] = [];
+  const first = causalActor("plugin:first"),
+    later = causalActor("plugin:later"),
+    sources: DomainActor[] = [];
   Publication.record("read-aware-plugin.publish-retry.settings", "2", first);
-  const batches: unknown[] = [], errors: unknown[] = []; let fail = true; let finish!: () => void;
+  const batches: unknown[] = [],
+    errors: unknown[] = [];
+  let fail = true;
+  let finish!: () => void;
   const publish = async (changes: ReadonlyMap<string, string | null>, actors: ReadonlyMap<string, DomainActor>) => {
     sources.push(actors.get("read-aware-plugin.publish-retry.settings")!);
     batches.push([...changes]);
     if (fail) throw new Error("log unavailable");
-    if (batches.length === 2) await new Promise<void>(resolve => { finish = resolve; });
+    if (batches.length === 2)
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
   };
-  await scope.accept(publish, error => errors.push(error));
+  await scope.accept(publish, (error) => errors.push(error));
   expect(errors).toHaveLength(1);
   expect(Publication.suppressesOverlay("read-aware-plugin.publish-retry.settings")).toBe(true);
   await withPluginDataWrites(["publish-retry"], () => {});
   fail = false;
-  const retry = Publication.flushAccepted(); await Bun.sleep(0);
+  const retry = Publication.flushAccepted();
+  await Bun.sleep(0);
   Publication.record("read-aware-plugin.publish-retry.settings", "3", later);
   expect(batches).toHaveLength(2);
-  finish(); await retry; await Publication.flushAccepted();
+  finish();
+  await retry;
+  await Publication.flushAccepted();
   expect(batches).toEqual([
     [["read-aware-plugin.publish-retry.settings", "2"]],
     [["read-aware-plugin.publish-retry.settings", "2"]],
@@ -78,11 +128,17 @@ test("every owned KV suffix stays inside the migration publication boundary", as
   const keys = ["line\nbreak", "trailing\n", "\0", "__proto__", "", "nested.setting"];
   for (const suffix of keys) {
     const key = `read-aware-plugin.publish-keys.${suffix}`;
-    expect(Publication.blocks(key)).toBe(true); expect(Publication.record(key, "1")).toBe(true);
+    expect(Publication.blocks(key)).toBe(true);
+    expect(Publication.record(key, "1")).toBe(true);
   }
   const received: string[] = [];
-  await scope.accept(async values => { received.push(...values.keys()); }, () => {});
-  expect(received).toEqual(keys.map(key => `read-aware-plugin.publish-keys.${key}`));
+  await scope.accept(
+    async (values) => {
+      received.push(...values.keys());
+    },
+    () => {},
+  );
+  expect(received).toEqual(keys.map((key) => `read-aware-plugin.publish-keys.${key}`));
 });
 
 test("native acceptance rebases already logged values while retaining later durable writes", async () => {
@@ -91,6 +147,11 @@ test("native acceptance rebases already logged values while retaining later dura
   Publication.record("read-aware-plugin.publish-native.settings", "3");
   scope.rebase({ settings: "2" });
   const batches: unknown[] = [];
-  await scope.accept(async values => { batches.push([...values]); }, () => {});
+  await scope.accept(
+    async (values) => {
+      batches.push([...values]);
+    },
+    () => {},
+  );
   expect(batches).toEqual([[["read-aware-plugin.publish-native.settings", "3"]]]);
 });

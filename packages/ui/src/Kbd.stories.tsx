@@ -27,8 +27,7 @@ export const Combination: Story = {
 export const InContext: Story = {
   render: () => (
     <p className="text-sm text-fg-muted">
-      Press <Kbd>Esc</Kbd> to close or <Kbd>Cmd</Kbd>+<Kbd>Enter</Kbd> to
-      confirm.
+      Press <Kbd>Esc</Kbd> to close or <Kbd>Cmd</Kbd>+<Kbd>Enter</Kbd> to confirm.
     </p>
   ),
   args: { children: "" },

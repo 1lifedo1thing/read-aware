@@ -34,14 +34,21 @@ const base = {
 
 describe("classifyBookReadingPolicy", () => {
   test("keeps factual narrative classification separate and rejects incomplete policies", async () => {
-    expect(await classifyBookReadingPolicy({ ...base, complete: async () => reply('{"narrativity":"narrative","spoilerSensitive":false,"confidence":0.95}') }))
-      .toEqual({ narrativity: "narrative", spoilerSensitive: false });
+    expect(
+      await classifyBookReadingPolicy({
+        ...base,
+        complete: async () => reply('{"narrativity":"narrative","spoilerSensitive":false,"confidence":0.95}'),
+      }),
+    ).toEqual({ narrativity: "narrative", spoilerSensitive: false });
     for (const value of [
       { narrativity: "narrative", confidence: 0.95 },
       { narrativity: "narrative", spoilerSensitive: "false", confidence: 0.95 },
       { narrativity: "narrative", spoilerSensitive: false },
       { narrativity: "narrative", spoilerSensitive: false, confidence: 2 },
-    ]) expect(await classifyBookReadingPolicy({ ...base, complete: async () => reply(JSON.stringify(value)) })).toBeUndefined();
+    ])
+      expect(
+        await classifyBookReadingPolicy({ ...base, complete: async () => reply(JSON.stringify(value)) }),
+      ).toBeUndefined();
   });
   test("parses a confident verdict", async () => {
     const verdict = await classifyBookReadingPolicy({
@@ -60,9 +67,7 @@ describe("classifyBookReadingPolicy", () => {
   });
 
   test("malformed output and provider failure both degrade to undefined", async () => {
-    expect(
-      await classifyBookReadingPolicy({ ...base, complete: async () => reply("是小说吧我觉得") }),
-    ).toBeUndefined();
+    expect(await classifyBookReadingPolicy({ ...base, complete: async () => reply("是小说吧我觉得") })).toBeUndefined();
     expect(
       await classifyBookReadingPolicy({
         ...base,

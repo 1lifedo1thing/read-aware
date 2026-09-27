@@ -9,10 +9,7 @@ import type {
 import type { CustomOpenAIApi, ThinkingLevel } from "@read-aware/agent";
 import { LOCALES, LOCALE_LABELS } from "../../i18n/config";
 import { detectInitialLocale } from "../../i18n/detect";
-import type {
-  AppSettings,
-  AppThemePreference,
-} from "../../features/settings/lib/app-settings";
+import type { AppSettings, AppThemePreference } from "../../features/settings/lib/app-settings";
 import type { AIPreferences } from "../../features/settings/lib/ai-preferences";
 import { AI_FEATURE_KEYS } from "../../features/settings/lib/ai-preferences";
 import type { GeneralSettings } from "../../features/settings/lib/general-settings";
@@ -29,24 +26,14 @@ import { builtinThemesFor } from "../../features/settings/lib/appearance-control
 import { contributionText } from "../../features/plugins/lib/plugin-i18n";
 import { isTimeOfDay } from "../../features/plugins/lib/time-of-day";
 import { toPluginRef } from "../../features/plugins/lib/plugin-theme";
-import type {
-  RegisteredPluginFont,
-  RegisteredPluginTheme,
-} from "../../features/plugins/lib/plugin-types";
-import {
-  DEFAULT_THINKING_LEVEL,
-  type AIConfig,
-} from "../../features/ai/lib/ai-config";
+import type { RegisteredPluginFont, RegisteredPluginTheme } from "../../features/plugins/lib/plugin-types";
+import { DEFAULT_THINKING_LEVEL, type AIConfig } from "../../features/ai/lib/ai-config";
 import {
   knownSurfaceItems,
   resolvedSurfaceLayout,
   type MenuPluginState,
 } from "../../features/menus/lib/agent-menu-items";
-import {
-  SURFACE_RULES,
-  type MenuConfig,
-  type MenuSurface,
-} from "../../features/menus/state/menu-config";
+import { SURFACE_RULES, type MenuConfig, type MenuSurface } from "../../features/menus/state/menu-config";
 import type { AgentPluginSettings } from "../../features/plugins/lib/plugin-settings";
 import type { ContentTypographySettings } from "../../features/settings/lib/content-typography";
 import type { UpdateChannel } from "../../features/update/lib/update-channel";
@@ -58,10 +45,7 @@ import { shortcutPreferenceDefinitions } from "./shortcut-preferences";
 import type { ShortcutEnvironment } from "../../features/settings/lib/shortcut-catalog";
 import type { ShortcutBindings } from "../../features/settings/lib/shortcuts";
 import { cleanFontFamily, fontOptions } from "./font-options";
-import type {
-  PluginFormField,
-  PluginFormValues,
-} from "../../features/plugins/lib/plugin-types";
+import type { PluginFormField, PluginFormValues } from "../../features/plugins/lib/plugin-types";
 
 export type SettingsDraft = {
   general: GeneralSettings;
@@ -101,35 +85,17 @@ export type SettingDefinition = {
   kind: SettingDescriptor["kind"];
   nullable?: boolean;
   dynamicOptions?: boolean;
-  options?:
-    SettingOption[] | ((draft: SettingsDraft) => SettingOption[]);
+  options?: SettingOption[] | ((draft: SettingsDraft) => SettingOption[]);
   supportedTargets?: SettingsTarget["kind"][];
-  read: (
-    draft: SettingsDraft,
-    target: SettingsQueryTarget,
-  ) => SettingValue;
-  write?: (
-    draft: SettingsDraft,
-    value: SettingValue,
-    target: SettingsTarget,
-  ) => void;
-  validate?: (
-    value: SettingValue,
-    draft: SettingsDraft,
-  ) => SettingValue;
+  read: (draft: SettingsDraft, target: SettingsQueryTarget) => SettingValue;
+  write?: (draft: SettingsDraft, value: SettingValue, target: SettingsTarget) => void;
+  validate?: (value: SettingValue, draft: SettingsDraft) => SettingValue;
 };
 
 const GLOBAL_TARGETS: SettingsTarget["kind"][] = ["global"];
-const READING_TARGETS: SettingsTarget["kind"][] = [
-  "global",
-  "all-books",
-  "book",
-];
+const READING_TARGETS: SettingsTarget["kind"][] = ["global", "all-books", "book"];
 
-function option(
-  value: SettingValue,
-  label = String(value),
-): SettingOption {
+function option(value: SettingValue, label = String(value)): SettingOption {
   return { value, label };
 }
 
@@ -151,10 +117,7 @@ const BUILTIN_THEME_LABELS: Record<string, string> = {
   dark: "Dark",
 };
 
-function themeOptions(
-  draft: SettingsDraft,
-  surface: "app" | "reader",
-): SettingOption[] {
+function themeOptions(draft: SettingsDraft, surface: "app" | "reader"): SettingOption[] {
   return [
     ...builtinThemesFor(surface).map((builtin) => ({
       value: builtin.value,
@@ -182,15 +145,8 @@ function readerThemeOptions(draft: SettingsDraft): SettingOption[] {
   return themeOptions(draft, "reader");
 }
 
-function enumValue(
-  definition: SettingDefinition,
-  value: SettingValue,
-  draft: SettingsDraft,
-): SettingValue {
-  const options =
-    typeof definition.options === "function"
-      ? definition.options(draft)
-      : (definition.options ?? []);
+function enumValue(definition: SettingDefinition, value: SettingValue, draft: SettingsDraft): SettingValue {
+  const options = typeof definition.options === "function" ? definition.options(draft) : (definition.options ?? []);
   if (!options.some((candidate) => Object.is(candidate.value, value))) {
     throw new Error(
       `${definition.path} must be one of: ${options.map((candidate) => String(candidate.value)).join(", ")}`,
@@ -216,16 +172,10 @@ export function validateSettingValue(
   if (definition.kind === "string" && typeof value !== "string") {
     throw new Error(`${definition.path} must be a string`);
   }
-  if (
-    definition.kind === "integer" &&
-    (typeof value !== "number" || !Number.isInteger(value))
-  ) {
+  if (definition.kind === "integer" && (typeof value !== "number" || !Number.isInteger(value))) {
     throw new Error(`${definition.path} must be an integer`);
   }
-  if (
-    definition.kind === "number" &&
-    (typeof value !== "number" || !Number.isFinite(value))
-  ) {
+  if (definition.kind === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
     throw new Error(`${definition.path} must be a number`);
   }
   return value;
@@ -238,13 +188,12 @@ function cleanModel(value: SettingValue, path: string): string {
   return value.trim();
 }
 
-function readingPrefs(
-  draft: SettingsDraft,
-  target: SettingsQueryTarget,
-): ReaderSettingsPreferences {
+function readingPrefs(draft: SettingsDraft, target: SettingsQueryTarget): ReaderSettingsPreferences {
   if (target.kind !== "book") return draft.reading;
   const override = draft.readerOverrides[target.bookId];
-  return override?.scope === "book" ? override.settings : readerPreferencesForLanguage(draft.reading, draft.bookLanguages?.[target.bookId]);
+  return override?.scope === "book"
+    ? override.settings
+    : readerPreferencesForLanguage(draft.reading, draft.bookLanguages?.[target.bookId]);
 }
 
 function writeReading(
@@ -259,10 +208,12 @@ function writeReading(
   if (target.kind === "all-books") {
     draft.reading = update(draft.reading);
     if (draft.reading.languageFonts) {
-      draft.reading.languageFonts = Object.fromEntries(Object.entries(draft.reading.languageFonts).map(([language, font]) => {
-        const next = update({ ...draft.reading, ...font });
-        return [language, { fontFamily: next.fontFamily, fontWeight: next.fontWeight }];
-      }));
+      draft.reading.languageFonts = Object.fromEntries(
+        Object.entries(draft.reading.languageFonts).map(([language, font]) => {
+          const next = update({ ...draft.reading, ...font });
+          return [language, { fontFamily: next.fontFamily, fontWeight: next.fontWeight }];
+        }),
+      );
     }
     for (const [bookId, override] of Object.entries(draft.readerOverrides)) {
       draft.readerOverrides[bookId] = {
@@ -275,20 +226,15 @@ function writeReading(
   const bookId = target.bookId.trim();
   if (!bookId) throw new Error("book target requires bookId");
   const existing = draft.readerOverrides[bookId];
-  const base = existing?.scope === "book" ? existing.settings : readerPreferencesForLanguage(draft.reading, draft.bookLanguages?.[bookId]);
+  const base =
+    existing?.scope === "book"
+      ? existing.settings
+      : readerPreferencesForLanguage(draft.reading, draft.bookLanguages?.[bookId]);
   draft.readerOverrides[bookId] = { scope: "book", settings: update(base) };
 }
 
 function assertThinkingLevel(value: SettingValue): ThinkingLevel {
-  const levels: ThinkingLevel[] = [
-    "off",
-    "minimal",
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-  ];
+  const levels: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
   if (typeof value !== "string" || !levels.includes(value as ThinkingLevel)) {
     throw new Error(`unsupported thinking level: ${String(value)}`);
   }
@@ -305,17 +251,11 @@ type AIConnectionPatch = Partial<{
   customMaxOutputTokens: number | null;
 }>;
 
-function nextAIConfig(
-  config: AIConfig | null,
-  patch: AIConnectionPatch,
-): AIConfig {
-  if (!config)
-    throw new Error("AI connection settings have not been configured yet");
+function nextAIConfig(config: AIConfig | null, patch: AIConnectionPatch): AIConfig {
+  if (!config) throw new Error("AI connection settings have not been configured yet");
 
   const primaryModel = patch.primaryModel ?? config.model;
-  const hadSeparateFastModel = Boolean(
-    config.fastModel && config.fastModel !== config.model,
-  );
+  const hadSeparateFastModel = Boolean(config.fastModel && config.fastModel !== config.model);
   let fastModel: string | undefined;
   if (patch.fastModel === null) {
     fastModel = undefined;
@@ -327,22 +267,17 @@ function nextAIConfig(
   }
 
   if (patch.fastThinkingLevel !== undefined && !fastModel) {
-    throw new Error(
-      "ai.connection.fastThinkingLevel requires a separate Fast model",
-    );
+    throw new Error("ai.connection.fastThinkingLevel requires a separate Fast model");
   }
   const customPatchRequested =
     patch.customApi !== undefined ||
     patch.customSupportsThinking !== undefined ||
     patch.customMaxOutputTokens !== undefined;
   if (customPatchRequested && config.provider !== "custom") {
-    throw new Error(
-      "Custom compatibility settings require the active Custom provider",
-    );
+    throw new Error("Custom compatibility settings require the active Custom provider");
   }
 
-  const thinkingLevel =
-    patch.thinkingLevel ?? config.thinkingLevel ?? DEFAULT_THINKING_LEVEL;
+  const thinkingLevel = patch.thinkingLevel ?? config.thinkingLevel ?? DEFAULT_THINKING_LEVEL;
   return {
     ...config,
     model: primaryModel,
@@ -354,8 +289,7 @@ function nextAIConfig(
     ...(config.provider === "custom"
       ? {
           customApi: patch.customApi ?? config.customApi,
-          customSupportsThinking:
-            patch.customSupportsThinking ?? config.customSupportsThinking,
+          customSupportsThinking: patch.customSupportsThinking ?? config.customSupportsThinking,
           customMaxOutputTokens:
             patch.customMaxOutputTokens === null
               ? undefined
@@ -365,18 +299,14 @@ function nextAIConfig(
   };
 }
 
-function globalDefinition(
-  definition: Omit<SettingDefinition, "supportedTargets">,
-): SettingDefinition {
+function globalDefinition(definition: Omit<SettingDefinition, "supportedTargets">): SettingDefinition {
   return {
     ...definition,
     supportedTargets: definition.write ? GLOBAL_TARGETS : undefined,
   };
 }
 
-function readingDefinition(
-  definition: Omit<SettingDefinition, "section" | "supportedTargets">,
-): SettingDefinition {
+function readingDefinition(definition: Omit<SettingDefinition, "section" | "supportedTargets">): SettingDefinition {
   return {
     ...definition,
     section: "reading",
@@ -392,8 +322,7 @@ const MENU_SURFACES: Array<{
   {
     surface: "primaryNav",
     label: "Primary navigation",
-    description:
-      "The centered destination switcher; 1–4 visible destinations, in order",
+    description: "The centered destination switcher; 1–4 visible destinations, in order",
   },
   { surface: "shelfHeader", label: "Shelf header" },
   { surface: "readerHeader", label: "Reader header" },
@@ -407,10 +336,7 @@ const MENU_SURFACES: Array<{
 ];
 
 function menuListValue(path: string, value: SettingValue): string[] {
-  if (
-    !Array.isArray(value) ||
-    value.some((entry) => typeof entry !== "string")
-  ) {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
     throw new Error(`${path} must be an array of item ids`);
   }
   if (new Set(value).size !== value.length) {
@@ -429,10 +355,7 @@ function menuListDefinition(
   return {
     path,
     section: "menus",
-    label:
-      zone === "visible"
-        ? `${surfaceLabel} — shown`
-        : `${surfaceLabel} — overflow menu`,
+    label: zone === "visible" ? `${surfaceLabel} — shown` : `${surfaceLabel} — overflow menu`,
     ...(description ? { description } : {}),
     kind: "id-list",
     options: (draft) =>
@@ -443,32 +366,21 @@ function menuListDefinition(
         ...(item.pluginName ? { pluginName: item.pluginName } : {}),
       })),
     supportedTargets: GLOBAL_TARGETS,
-    read: (draft) =>
-      resolvedSurfaceLayout(surface, draft.menus.config, draft.menus.plugins)[
-        zone
-      ],
+    read: (draft) => resolvedSurfaceLayout(surface, draft.menus.config, draft.menus.plugins)[zone],
     validate: (value, draft) => {
       const ids = menuListValue(path, value);
-      const known = new Set(
-        knownSurfaceItems(surface, draft.menus.plugins).map((item) => item.id),
-      );
+      const known = new Set(knownSurfaceItems(surface, draft.menus.plugins).map((item) => item.id));
       const unknown = ids.filter((id) => !known.has(id));
       if (unknown.length > 0) {
-        throw new Error(
-          `${path}: unknown ids ${unknown.join(", ")} — use ids from this path's options`,
-        );
+        throw new Error(`${path}: unknown ids ${unknown.join(", ")} — use ids from this path's options`);
       }
       const rules = SURFACE_RULES[surface];
       if (zone === "visible") {
         if (ids.length < rules.minVisible) {
-          throw new Error(
-            `${path} needs at least ${rules.minVisible} item(s)`,
-          );
+          throw new Error(`${path} needs at least ${rules.minVisible} item(s)`);
         }
         if (rules.maxVisible !== null && ids.length > rules.maxVisible) {
-          throw new Error(
-            `${path} allows at most ${rules.maxVisible} items`,
-          );
+          throw new Error(`${path} allows at most ${rules.maxVisible} items`);
         }
       }
       return ids;
@@ -478,11 +390,7 @@ function menuListDefinition(
       const sibling = zone === "visible" ? "overflow" : "visible";
       // Work from the RESOLVED layout (what read reported), so items the
       // stored config never placed still move coherently.
-      const current = resolvedSurfaceLayout(
-        surface,
-        draft.menus.config,
-        draft.menus.plugins,
-      );
+      const current = resolvedSurfaceLayout(surface, draft.menus.config, draft.menus.plugins);
       // "This zone contains exactly these": anything evicted moves to the
       // other zone (hide = drop from visible → lands in overflow), anything
       // adopted leaves it.
@@ -496,21 +404,14 @@ function menuListDefinition(
       const nextVisible = zone === "visible" ? ids : siblingIds;
       const rules = SURFACE_RULES[surface];
       if (nextVisible.length < rules.minVisible) {
-        throw new Error(
-          `${path} would leave fewer than ${rules.minVisible} visible item(s)`,
-        );
+        throw new Error(`${path} would leave fewer than ${rules.minVisible} visible item(s)`);
       }
       if (rules.maxVisible !== null && nextVisible.length > rules.maxVisible) {
-        throw new Error(
-          `${path} would exceed ${rules.maxVisible} visible items`,
-        );
+        throw new Error(`${path} would exceed ${rules.maxVisible} visible items`);
       }
       draft.menus.config = {
         ...draft.menus.config,
-        [surface]:
-          zone === "visible"
-            ? { visible: ids, overflow: siblingIds }
-            : { visible: siblingIds, overflow: ids },
+        [surface]: zone === "visible" ? { visible: ids, overflow: siblingIds } : { visible: siblingIds, overflow: ids },
       };
     },
   };
@@ -519,16 +420,10 @@ function menuListDefinition(
 /** Path segments must fit the settings tool's dotted-path grammar. */
 const PATH_SEGMENT_RE = /^[a-z][a-zA-Z0-9-]*$/;
 
-function pluginFieldDefinition(
-  plugin: AgentPluginSettings,
-  field: PluginFormField,
-): SettingDefinition | null {
+function pluginFieldDefinition(plugin: AgentPluginSettings, field: PluginFormField): SettingDefinition | null {
   // Credentials never enter the agent's settings surface.
   if (field.kind === "secret") return null;
-  if (
-    !PATH_SEGMENT_RE.test(plugin.pluginId) ||
-    !PATH_SEGMENT_RE.test(field.id)
-  ) {
+  if (!PATH_SEGMENT_RE.test(plugin.pluginId) || !PATH_SEGMENT_RE.test(field.id)) {
     return null;
   }
   const path = `plugins.${plugin.pluginId}.${field.id}`;
@@ -568,10 +463,7 @@ function pluginFieldDefinition(
         }
       : {}),
     supportedTargets: GLOBAL_TARGETS,
-    read: (draft) =>
-      draft.pluginSettings.values[plugin.pluginId]?.[field.id] ??
-      field.value ??
-      null,
+    read: (draft) => draft.pluginSettings.values[plugin.pluginId]?.[field.id] ?? field.value ?? null,
     validate: (value) => {
       if (value === null) return value;
       if (kind === "boolean" && typeof value !== "boolean") {
@@ -584,8 +476,7 @@ function pluginFieldDefinition(
         throw new Error(`${path} must be a time of day as HH:MM (24-hour)`);
       }
       if (kind === "enum") {
-        const choices =
-          "options" in field ? field.options.map((choice) => choice.value) : [];
+        const choices = "options" in field ? field.options.map((choice) => choice.value) : [];
         if (typeof value !== "string" || !choices.includes(value)) {
           throw new Error(`${path} must be one of: ${choices.join(", ")}`);
         }
@@ -620,9 +511,7 @@ function pluginFieldDefinition(
   };
 }
 
-export function buildSettingDefinitions(
-  draft: SettingsDraft,
-): SettingDefinition[] {
+export function buildSettingDefinitions(draft: SettingsDraft): SettingDefinition[] {
   const definitions: SettingDefinition[] = [
     ...contentPreferenceDefinitions(),
     ...shelfPreferenceDefinitions(),
@@ -685,10 +574,7 @@ export function buildSettingDefinitions(
       section: "appearance",
       label: "Motion",
       kind: "enum",
-      options: [
-        option("system", "Follow system"),
-        option("reduced", "Reduced"),
-      ],
+      options: [option("system", "Follow system"), option("reduced", "Reduced")],
       read: (state) => state.appearance.motion,
       write: (state, value) => {
         state.appearance.motion = value as AppSettings["motion"];
@@ -702,11 +588,7 @@ export function buildSettingDefinitions(
       read: (state, target) => readingPrefs(state, target).theme,
       write: (state, value, target) => {
         writeReading(state, target, (current) =>
-          applyReaderThemeSelection(
-            current,
-            value as ReaderThemePreference,
-            state.pluginThemes,
-          ),
+          applyReaderThemeSelection(current, value as ReaderThemePreference, state.pluginThemes),
         );
       },
     }),
@@ -733,16 +615,7 @@ export function buildSettingDefinitions(
           "reading.fontSize",
           "Font size",
           "fontSize",
-          [
-            "xx-small",
-            "x-small",
-            "small",
-            "medium",
-            "large",
-            "x-large",
-            "xx-large",
-            "xxx-large",
-          ],
+          ["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large"],
         ],
         [
           "reading.fontWeight",
@@ -750,30 +623,10 @@ export function buildSettingDefinitions(
           "fontWeight",
           ["light", "regular", "medium", "semibold", "bold", "extra-bold", "black"],
         ],
-        [
-          "reading.lineSpacing",
-          "Line spacing",
-          "lineSpacing",
-          ["compact", "comfortable", "relaxed"],
-        ],
-        [
-          "reading.paragraphSpacing",
-          "Paragraph spacing",
-          "paragraphSpacing",
-          ["tight", "normal", "loose"],
-        ],
-        [
-          "reading.pageMargins",
-          "Page margins",
-          "pageMargins",
-          ["narrow", "medium", "wide"],
-        ],
-        [
-          "reading.readingMode",
-          "Reading mode",
-          "readingMode",
-          ["scroll", "paginated-single", "paginated-double"],
-        ],
+        ["reading.lineSpacing", "Line spacing", "lineSpacing", ["compact", "comfortable", "relaxed"]],
+        ["reading.paragraphSpacing", "Paragraph spacing", "paragraphSpacing", ["tight", "normal", "loose"]],
+        ["reading.pageMargins", "Page margins", "pageMargins", ["narrow", "medium", "wide"]],
+        ["reading.readingMode", "Reading mode", "readingMode", ["scroll", "paginated-single", "paginated-double"]],
         [
           "reading.fixedLayoutReadingMode",
           "Reading mode for fixed-layout books (PDF, comics)",
@@ -811,21 +664,9 @@ export function buildSettingDefinitions(
     ...(
       [
         ["ai.preferences.buildMemory", "Build memory", "buildMemory"],
-        [
-          "ai.preferences.sendHighlightedText",
-          "Send highlighted text",
-          "sendHighlightedText",
-        ],
-        [
-          "ai.preferences.sendSurroundingContext",
-          "Send surrounding context",
-          "sendSurroundingContext",
-        ],
-        [
-          "ai.preferences.followStreaming",
-          "Follow streaming",
-          "followStreaming",
-        ],
+        ["ai.preferences.sendHighlightedText", "Send highlighted text", "sendHighlightedText"],
+        ["ai.preferences.sendSurroundingContext", "Send surrounding context", "sendSurroundingContext"],
+        ["ai.preferences.followStreaming", "Follow streaming", "followStreaming"],
       ] as const
     ).map(([path, label, key]) =>
       globalDefinition({
@@ -871,19 +712,8 @@ export function buildSettingDefinitions(
 
   if (!draft.aiConfig) return definitions;
 
-  const thinkingOptions = enumOptions([
-    "off",
-    "minimal",
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-    "max",
-  ]);
-  const separateFastModel = Boolean(
-    draft.aiConfig.fastModel &&
-    draft.aiConfig.fastModel !== draft.aiConfig.model,
-  );
+  const thinkingOptions = enumOptions(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+  const separateFastModel = Boolean(draft.aiConfig.fastModel && draft.aiConfig.fastModel !== draft.aiConfig.model);
   definitions.push(
     globalDefinition({
       path: "ai.connection.provider",
@@ -915,12 +745,9 @@ export function buildSettingDefinitions(
       read: (state) => {
         const config = state.aiConfig;
         if (!config) return null;
-        return config.fastModel && config.fastModel !== config.model
-          ? config.fastModel
-          : null;
+        return config.fastModel && config.fastModel !== config.model ? config.fastModel : null;
       },
-      validate: (value) =>
-        value === null ? null : cleanModel(value, "ai.connection.fastModel"),
+      validate: (value) => (value === null ? null : cleanModel(value, "ai.connection.fastModel")),
       write: (state, value) => {
         state.aiConfig = nextAIConfig(state.aiConfig, {
           fastModel: value as string | null,
@@ -951,8 +778,7 @@ export function buildSettingDefinitions(
         label: "Fast thinking effort",
         kind: "enum",
         options: thinkingOptions,
-        read: (state) =>
-          state.aiConfig?.fastThinkingLevel ?? DEFAULT_THINKING_LEVEL,
+        read: (state) => state.aiConfig?.fastThinkingLevel ?? DEFAULT_THINKING_LEVEL,
         validate: assertThinkingLevel,
         write: (state, value) => {
           state.aiConfig = nextAIConfig(state.aiConfig, {
@@ -977,10 +803,7 @@ export function buildSettingDefinitions(
         section: "ai",
         label: "Custom API format",
         kind: "enum",
-        options: [
-          option("openai-completions", "Chat Completions"),
-          option("openai-responses", "Responses"),
-        ],
+        options: [option("openai-completions", "Chat Completions"), option("openai-responses", "Responses")],
         read: (state) => state.aiConfig?.customApi ?? "openai-completions",
         write: (state, value) => {
           state.aiConfig = nextAIConfig(state.aiConfig, {
@@ -1010,14 +833,8 @@ export function buildSettingDefinitions(
         read: (state) => state.aiConfig?.customMaxOutputTokens ?? null,
         validate: (value) => {
           if (value === null) return null;
-          if (
-            typeof value !== "number" ||
-            !Number.isInteger(value) ||
-            value <= 0
-          ) {
-            throw new Error(
-              "ai.connection.custom.maxOutputTokens must be a positive integer or null",
-            );
+          if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+            throw new Error("ai.connection.custom.maxOutputTokens must be a positive integer or null");
           }
           return value;
         },

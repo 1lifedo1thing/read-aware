@@ -34,8 +34,7 @@ function readState(): CheckState {
     return {
       at: typeof parsed?.at === "number" ? parsed.at : 0,
       failedAt: typeof parsed?.failedAt === "number" ? parsed.failedAt : 0,
-      notified:
-        parsed?.notified && typeof parsed.notified === "object" ? parsed.notified : {},
+      notified: parsed?.notified && typeof parsed.notified === "object" ? parsed.notified : {},
     };
   } catch {
     return { at: 0, failedAt: 0, notified: {} };
@@ -69,10 +68,7 @@ export async function checkPluginUpdates(): Promise<void> {
     // user. The warn is what separates "quiet" from "permanently broken":
     // a mirror that 404s forever shows up here on every expired cooldown.
     log.warn("plugin update check failed; cooling down", error);
-    localKV.setItem(
-      CHECK_KEY,
-      JSON.stringify({ ...state, failedAt: now } satisfies CheckState),
-    );
+    localKV.setItem(CHECK_KEY, JSON.stringify({ ...state, failedAt: now } satisfies CheckState));
     return;
   }
 
@@ -86,13 +82,8 @@ export async function checkPluginUpdates(): Promise<void> {
     if (!versionNewer(entry.version, plugin.manifest.version)) continue;
     if (notified[entry.id] === entry.version) continue;
     notified[entry.id] = entry.version;
-    showPluginToast(
-      String(t("settings.updateAvailableToast", { name: entry.name, version: entry.version })),
-    );
+    showPluginToast(String(t("settings.updateAvailableToast", { name: entry.name, version: entry.version })));
   }
 
-  localKV.setItem(
-    CHECK_KEY,
-    JSON.stringify({ at: Date.now(), failedAt: 0, notified } satisfies CheckState),
-  );
+  localKV.setItem(CHECK_KEY, JSON.stringify({ at: Date.now(), failedAt: 0, notified } satisfies CheckState));
 }

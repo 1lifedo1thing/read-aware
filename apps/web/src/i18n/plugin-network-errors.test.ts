@@ -29,5 +29,7 @@ test("network and HTTP errors have eight-locale copy and truthful retry metadata
         expect(copy.body).not.toContain("PRIVATE_NETWORK_FAILURE");
       }
     }
-  } finally { await i18n.changeLanguage(original); }
+  } finally {
+    await i18n.changeLanguage(original);
+  }
 });

@@ -15,31 +15,70 @@ import { READER_LANGUAGES_KEY } from "../../features/settings/lib/reader-languag
 import { CONTENT_TYPOGRAPHY_KEY } from "../../features/settings/lib/content-typography";
 import { DEFAULT_COLOR_KEY } from "../../features/annotations/lib/annotation-prefs";
 import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
-import { headerActionsAtom, installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, selectionActionsAtom, readerModesAtom, pluginCommandsAtom, activeReaderModeSourceAtom } from "../../features/plugins/state/plugin-store";
+import {
+  headerActionsAtom,
+  installedPluginsAtom,
+  pluginFontsAtom,
+  pluginThemesAtom,
+  selectionActionsAtom,
+  readerModesAtom,
+  pluginCommandsAtom,
+  activeReaderModeSourceAtom,
+} from "../../features/plugins/state/plugin-store";
 import { SettingsObservationHub } from "./observation";
 import { copyEventCause } from "../../platform/domain-actor";
 
-const keys = new Set([AI_CONFIG_KEY, MENU_CONFIG_KEY, APP_SETTINGS_KEY, GENERAL_SETTINGS_KEY, SHELF_VIEW_KEY,
-  SHORTCUT_BINDINGS_KEY, AI_PREFERENCES_KEY, READER_PREFERENCES_KEY, READER_OVERRIDES_KEY, READER_LANGUAGES_KEY, CONTENT_TYPOGRAPHY_KEY, DEFAULT_COLOR_KEY, CHANNEL_KV_KEY]);
+const keys = new Set([
+  AI_CONFIG_KEY,
+  MENU_CONFIG_KEY,
+  APP_SETTINGS_KEY,
+  GENERAL_SETTINGS_KEY,
+  SHELF_VIEW_KEY,
+  SHORTCUT_BINDINGS_KEY,
+  AI_PREFERENCES_KEY,
+  READER_PREFERENCES_KEY,
+  READER_OVERRIDES_KEY,
+  READER_LANGUAGES_KEY,
+  CONTENT_TYPOGRAPHY_KEY,
+  DEFAULT_COLOR_KEY,
+  CHANNEL_KV_KEY,
+]);
 const log = createLogger("settings-observation");
-export const settingsObservation = new SettingsObservationHub(error => log.warn("Settings observer failed", error));
+export const settingsObservation = new SettingsObservationHub((error) => log.warn("Settings observer failed", error));
 let started = false;
 export function initializeSettingsObservation(): void {
   if (started) return;
   started = true;
-  onLocalKVCommit(commit => {
-    if (!commit.entries.some(({ key }) => keys.has(key) || (key.startsWith("read-aware-plugin.") && key.endsWith(".settings")))) return;
+  onLocalKVCommit((commit) => {
+    if (
+      !commit.entries.some(
+        ({ key }) => keys.has(key) || (key.startsWith("read-aware-plugin.") && key.endsWith(".settings")),
+      )
+    )
+      return;
     settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.actor }));
   });
   onSecretCommit((key, _source, commit) => {
-    if (key === "ai-api-key" || key.startsWith("ai-api-key.")) settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.origin }));
+    if (key === "ai-api-key" || key.startsWith("ai-api-key."))
+      settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.origin }));
   });
   const store = getDefaultStore();
-  const sources: Atom<object>[] = [installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, headerActionsAtom, selectionActionsAtom, readerModesAtom, pluginCommandsAtom, activeReaderModeSourceAtom];
+  const sources: Atom<object>[] = [
+    installedPluginsAtom,
+    pluginFontsAtom,
+    pluginThemesAtom,
+    headerActionsAtom,
+    selectionActionsAtom,
+    readerModesAtom,
+    pluginCommandsAtom,
+    activeReaderModeSourceAtom,
+  ];
   for (const atom of sources) {
     // Subscribe to the stamped producer, not a derived catalog object which
     // has lost provenance. The settings read still uses its normal selectors.
-    store.sub(atom, () => settingsObservation.invalidate(copyEventCause(store.get(atom), { source: "catalog", origin: null })));
+    store.sub(atom, () =>
+      settingsObservation.invalidate(copyEventCause(store.get(atom), { source: "catalog", origin: null })),
+    );
   }
 }
 
@@ -47,7 +86,9 @@ export function initializeSettingsObservation(): void {
 export async function afterSettingsWrites<T>(read: () => T | Promise<T>): Promise<T> {
   while (true) {
     await afterLocalKVWrites(() => {});
-    const result = await afterSecretWrites(() => hasPendingLocalKVWrites() ? { retry: true as const } : { value: read() });
+    const result = await afterSecretWrites(() =>
+      hasPendingLocalKVWrites() ? { retry: true as const } : { value: read() },
+    );
     if (!("retry" in result)) return result.value;
   }
 }

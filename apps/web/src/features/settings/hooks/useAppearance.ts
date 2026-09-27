@@ -2,10 +2,7 @@ import { useEffect, useEffectEvent, useRef } from "react";
 import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { useAtomValue, useSetAtom } from "jotai";
 import { appSettingsAtom, resolvedAppThemeAtom } from "../../../state/ui";
-import {
-  pluginThemesAtom,
-  pluginsReadyAtom,
-} from "../../plugins/state/plugin-store";
+import { pluginThemesAtom, pluginsReadyAtom } from "../../plugins/state/plugin-store";
 import { isPluginRef } from "../../plugins/lib/plugin-theme";
 import { useRegisteredContribution } from "../../plugins/hooks/useRegisteredContribution";
 import type { RegisteredPluginTheme } from "../../plugins/lib/plugin-types";
@@ -27,10 +24,15 @@ import { applyAppSkin, getAppSkinSnapshot } from "../lib/app-skin";
  */
 export function useAppearance(): void {
   const appSettings = useAtomValue(appSettingsAtom);
-  const theme = useRegisteredContribution(pluginThemesAtom, isPluginRef(appSettings.theme) ? appSettings.theme.slice(7) : "");
+  const theme = useRegisteredContribution(
+    pluginThemesAtom,
+    isPluginRef(appSettings.theme) ? appSettings.theme.slice(7) : "",
+  );
   const pluginsReady = useAtomValue(pluginsReadyAtom);
   const setResolvedTheme = useSetAtom(resolvedAppThemeAtom);
-  const previous = useRef<{ preference: string; theme: typeof theme; ready: boolean; origin: DomainActor } | undefined>(undefined);
+  const previous = useRef<{ preference: string; theme: typeof theme; ready: boolean; origin: DomainActor } | undefined>(
+    undefined,
+  );
   // The actor of the settings write that changed the theme; other settings never re-apply it.
   const settingsSource = useEffectEvent(() => actorFromEvent(appSettings));
   const pref = appSettings.theme;
@@ -72,9 +74,14 @@ export function useAppearance(): void {
     };
 
     const before = previous.current;
-    const source = before?.preference !== pref ? settingsSource()
-      : before.theme !== theme ? actorFromEvent(theme)
-      : before.ready !== pluginsReady ? causalActor("system") : before.origin;
+    const source =
+      before?.preference !== pref
+        ? settingsSource()
+        : before.theme !== theme
+          ? actorFromEvent(theme)
+          : before.ready !== pluginsReady
+            ? causalActor("system")
+            : before.origin;
     previous.current = { preference: pref, theme, ready: pluginsReady, origin: source };
     apply(source);
     const systemChanged = () => apply(causalActor("system"));

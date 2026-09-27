@@ -3,8 +3,7 @@ import { cn } from "./lib/cn";
 
 const variantClasses = {
   solid: "bg-fg text-inverse-fg px-4 hover:bg-fg/90 active:bg-fg/80",
-  outline:
-    "border border-border-strong text-fg px-4 hover:border-fg-subtle hover:bg-fg/5 active:bg-fg/10",
+  outline: "border border-border-strong text-fg px-4 hover:border-fg-subtle hover:bg-fg/5 active:bg-fg/10",
   ghost: "text-fg-muted px-4 hover:text-fg hover:bg-fg/5 active:bg-fg/10",
   link: "text-fg p-0 hover:text-fg-muted underline-offset-4 hover:underline",
   danger: "bg-red-900 text-red-50 px-4 hover:bg-red-800 active:bg-red-900",
@@ -39,18 +38,9 @@ export function buttonClassName(options?: {
   );
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  function Button(
-    { variant = "solid", size = "md", className, type = "button", ...props },
-    ref,
-  ) {
-    return (
-      <button
-        ref={ref}
-        type={type}
-        className={buttonClassName({ variant, size, className })}
-        {...props}
-      />
-    );
-  },
-);
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "solid", size = "md", className, type = "button", ...props },
+  ref,
+) {
+  return <button ref={ref} type={type} className={buttonClassName({ variant, size, className })} {...props} />;
+});

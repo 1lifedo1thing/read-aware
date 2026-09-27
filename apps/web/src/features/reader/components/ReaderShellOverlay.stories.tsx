@@ -84,15 +84,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div
-        className="relative h-[36rem] w-full overflow-hidden"
-        style={{ backgroundColor: page.bg, color: page.text }}
-      >
+      <div className="relative h-[36rem] w-full overflow-hidden" style={{ backgroundColor: page.bg, color: page.text }}>
         <div className="px-16 py-24 font-serif text-sm leading-7">
           <p>
-            I was the shadow of the waxwing slain by the false azure in the
-            windowpane; I was the smudge of ashen fluff — and I lived on, flew
-            on, in the reflected sky.
+            I was the shadow of the waxwing slain by the false azure in the windowpane; I was the smudge of ashen fluff
+            — and I lived on, flew on, in the reflected sky.
           </p>
         </div>
         <Story />

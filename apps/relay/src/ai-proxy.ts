@@ -76,8 +76,7 @@ export type AiUsage = {
 export function usageFromOpenAI(value: unknown): AiUsage | null {
   if (typeof value !== "object" || value === null) return null;
   const u = value as Record<string, unknown>;
-  const num = (v: unknown): number | null =>
-    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
   const prompt = num(u.prompt_tokens);
   const completion = num(u.completion_tokens);
   if (prompt === null || completion === null) return null;
@@ -99,8 +98,7 @@ export function costMicroUsd(model: AiModel, usage: AiUsage): number {
   return Math.ceil(raw / 1_000_000);
 }
 
-export const creditsFromMicroUsd = (microUsd: number): number =>
-  Math.ceil(microUsd / MICRO_USD_PER_CREDIT);
+export const creditsFromMicroUsd = (microUsd: number): number => Math.ceil(microUsd / MICRO_USD_PER_CREDIT);
 
 /**
  * A byte-transparent SSE tap: forwards every chunk untouched while scanning

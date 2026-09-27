@@ -12,11 +12,7 @@ import type { PluginManifest } from "../../plugins/lib/plugin-types";
 import { SettingsPage } from "../components/SettingsPage";
 import { TransportSyncGroup } from "./TransportSyncGroup";
 
-export function PluginSettingsSectionPanel({
-  manifest,
-}: {
-  manifest: PluginManifest;
-}) {
+export function PluginSettingsSectionPanel({ manifest }: { manifest: PluginManifest }) {
   // Rebuild the settings view when the plugin's storage changes — an agent
   // write or another surface editing the same settings must reach an open
   // form (which then adopts the fresh values for fields without a live
@@ -35,7 +31,7 @@ export function PluginSettingsSectionPanel({
   const view = useMemo(() => {
     const built = buildPluginSettingsView(manifest);
     return built ? { ...built, title: undefined } : null;
-  // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates the storage-backed values the builder reads
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates the storage-backed values the builder reads
   }, [manifest, revision]);
   // A plugin that provides a sync backend (`sync:transport`) gets its whole
   // sync surface here — connect, status, sync now, disconnect — instead of

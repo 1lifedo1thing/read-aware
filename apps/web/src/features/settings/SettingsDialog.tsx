@@ -20,8 +20,20 @@ import { cn } from "@read-aware/ui/cn";
 import { usePhoneViewport } from "@read-aware/ui/media";
 import { useBackInterceptor } from "../../hooks/useBackInterceptor";
 import { useTranslation } from "../../i18n";
-import { activeSettingsSectionAtom, settingsSectionRequestAtom, workspaceSourcesAtom, type CoreSettingsSectionId, type SettingsSectionId } from "../../state/ui";
-import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../platform/domain-actor";
+import {
+  activeSettingsSectionAtom,
+  settingsSectionRequestAtom,
+  workspaceSourcesAtom,
+  type CoreSettingsSectionId,
+  type SettingsSectionId,
+} from "../../state/ui";
+import {
+  actorFromEvent,
+  causalActor,
+  mergeEventCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../platform/domain-actor";
 import { workspace } from "../../services/workspace";
 import { installedPluginsAtom } from "../plugins/state/plugin-store";
 import type { PluginManifest } from "../plugins/lib/plugin-types";
@@ -66,9 +78,7 @@ const SECTIONS: SettingsSection[] = [
  * one section per ENABLED plugin that declares settings. Plugins get real
  * settings tabs, not just a buried button on their Plugins-panel card.
  */
-type NavEntry =
-  | { kind: "core"; section: SettingsSection }
-  | { kind: "plugin"; manifest: PluginManifest };
+type NavEntry = { kind: "core"; section: SettingsSection } | { kind: "plugin"; manifest: PluginManifest };
 
 const entryKey = (entry: NavEntry): SettingsSectionId =>
   entry.kind === "core" ? entry.section.id : `plugin:${entry.manifest.id}`;
@@ -108,13 +118,13 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
       .map((plugin): NavEntry => ({ kind: "plugin", manifest: plugin.manifest })),
   ];
   const entryLabel = (entry: NavEntry) =>
-    entry.kind === "core"
-      ? t(`sections.${entry.section.id}`)
-      : entry.manifest.name;
+    entry.kind === "core" ? t(`sections.${entry.section.id}`) : entry.manifest.name;
 
   // Phone: two-level drill-in navigation — `null` shows the section list,
   // an index shows that section's panel. Reset to the list on every open.
-  const [phoneNavigation, setPhoneNavigation] = useState(() => stampEventCause({ index: null as number | null }, "system"));
+  const [phoneNavigation, setPhoneNavigation] = useState(() =>
+    stampEventCause({ index: null as number | null }, "system"),
+  );
   const phoneSectionIndex = phoneNavigation.index;
   function setPhoneSectionIndex(index: number | null, source: DomainActor = "user") {
     setPhoneNavigation(stampEventCause({ index }, causalActor(source)));
@@ -135,7 +145,8 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
 
   // The opening actor is read when the dialog opens; a new source alone never resets it.
   const resetPhoneNavigation = useEffectEvent(() =>
-    setPhoneSectionIndex(null, actorFromEvent(workspaceSources.settingsOpen)));
+    setPhoneSectionIndex(null, actorFromEvent(workspaceSources.settingsOpen)),
+  );
   useEffect(() => {
     if (closeTimerRef.current != null) {
       window.clearTimeout(closeTimerRef.current);
@@ -211,7 +222,11 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
   // A plugin toggling off can shrink the entry list under the active index.
   const safeActiveIndex = Math.min(activeIndex, entries.length - 1);
   const setActiveSection = useSetAtom(activeSettingsSectionAtom);
-  const currentEntry = isPhone ? (phoneSectionIndex === null ? null : entries[Math.min(phoneSectionIndex, entries.length - 1)]) : entries[safeActiveIndex];
+  const currentEntry = isPhone
+    ? phoneSectionIndex === null
+      ? null
+      : entries[Math.min(phoneSectionIndex, entries.length - 1)]
+    : entries[safeActiveIndex];
   const currentSection = open && isPresent && !isClosing && currentEntry ? entryKey(currentEntry) : null;
   const navigation = isPhone ? phoneNavigation : activeNavigation;
   const visible = open && isPresent && !isClosing;
@@ -269,10 +284,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
     entries[index]?.kind === "plugin" && entries[index - 1]?.kind === "core";
 
   if (isPhone) {
-    const phoneEntry =
-      phoneSectionIndex != null
-        ? entries[Math.min(phoneSectionIndex, entries.length - 1)]
-        : null;
+    const phoneEntry = phoneSectionIndex != null ? entries[Math.min(phoneSectionIndex, entries.length - 1)] : null;
 
     return (
       <div
@@ -312,10 +324,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
             )}
             <h2
               id={titleId}
-              className={cn(
-                "min-w-0 flex-1 truncate font-serif text-base font-medium text-fg",
-                !phoneEntry && "pl-2",
-              )}
+              className={cn("min-w-0 flex-1 truncate font-serif text-base font-medium text-fg", !phoneEntry && "pl-2")}
             >
               {phoneEntry ? entryLabel(phoneEntry) : t("dialog.title")}
             </h2>
@@ -330,10 +339,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
 
           <ScrollArea className="min-h-0 flex-1">
             {phoneEntry ? (
-              <div
-                key={entryKey(phoneEntry)}
-                className="ra-motion-tab-panel-in-forward pb-[var(--ra-safe-bottom)]"
-              >
+              <div key={entryKey(phoneEntry)} className="ra-motion-tab-panel-in-forward pb-[var(--ra-safe-bottom)]">
                 {phoneEntry.kind === "core" ? (
                   <phoneEntry.section.Panel />
                 ) : (
@@ -350,8 +356,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
                 )}
               >
                 {entries.map((entry, index) => {
-                  const EntryIcon =
-                    entry.kind === "core" ? entry.section.icon : PuzzlePiece;
+                  const EntryIcon = entry.kind === "core" ? entry.section.icon : PuzzlePiece;
                   return (
                     // oxlint-disable-next-line react/forbid-elements -- full-width phone section row (icon, title, chevron); Button has no list-row form
                     <button
@@ -363,21 +368,9 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
                         isFirstPluginEntry(index) && "mt-2 border-t border-border/50",
                       )}
                     >
-                      <EntryIcon
-                        size={18}
-                        weight="regular"
-                        aria-hidden="true"
-                        className="shrink-0 text-fg-muted"
-                      />
-                      <span className="min-w-0 flex-1 truncate font-sans text-sm text-fg">
-                        {entryLabel(entry)}
-                      </span>
-                      <CaretRight
-                        size={14}
-                        weight="regular"
-                        aria-hidden="true"
-                        className="shrink-0 text-fg-subtle"
-                      />
+                      <EntryIcon size={18} weight="regular" aria-hidden="true" className="shrink-0 text-fg-muted" />
+                      <span className="min-w-0 flex-1 truncate font-sans text-sm text-fg">{entryLabel(entry)}</span>
+                      <CaretRight size={14} weight="regular" aria-hidden="true" className="shrink-0 text-fg-subtle" />
                     </button>
                   );
                 })}
@@ -433,15 +426,11 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
 
           {entries.map((entry, index) => {
             const active = index === safeActiveIndex;
-            const EntryIcon =
-              entry.kind === "core" ? entry.section.icon : PuzzlePiece;
+            const EntryIcon = entry.kind === "core" ? entry.section.icon : PuzzlePiece;
             return (
               <div key={entryKey(entry)} className="contents">
                 {isFirstPluginEntry(index) && (
-                  <div
-                    aria-hidden="true"
-                    className="mx-3 my-1.5 h-px shrink-0 bg-border/70"
-                  />
+                  <div aria-hidden="true" className="mx-3 my-1.5 h-px shrink-0 bg-border/70" />
                 )}
                 {/* oxlint-disable-next-line react/forbid-elements -- section nav rail item with roving focus refs and aria-current */}
                 <button
@@ -456,15 +445,8 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
                     active ? "font-medium text-fg" : "text-fg-muted hover:text-fg",
                   )}
                 >
-                  <EntryIcon
-                    size={16}
-                    weight={active ? "fill" : "regular"}
-                    aria-hidden="true"
-                    className="shrink-0"
-                  />
-                  <span className="min-w-0 flex-1 truncate">
-                    {entryLabel(entry)}
-                  </span>
+                  <EntryIcon size={16} weight={active ? "fill" : "regular"} aria-hidden="true" className="shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{entryLabel(entry)}</span>
                 </button>
               </div>
             );
@@ -483,11 +465,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
           <ScrollArea className="min-h-0 flex-1">
             <div
               key={entryKey(activeEntry)}
-              className={
-                direction === "forward"
-                  ? "ra-motion-tab-panel-in-forward"
-                  : "ra-motion-tab-panel-in-backward"
-              }
+              className={direction === "forward" ? "ra-motion-tab-panel-in-forward" : "ra-motion-tab-panel-in-backward"}
             >
               {activeEntry.kind === "core" ? (
                 <activeEntry.section.Panel />

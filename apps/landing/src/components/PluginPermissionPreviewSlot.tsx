@@ -24,7 +24,5 @@ export default function PermissionPreviewSlot({
     });
   }, [i18n, t]);
 
-  return (
-    <PluginPermissionPreview copy={copy} source={source} onChange={onChange} />
-  );
+  return <PluginPermissionPreview copy={copy} source={source} onChange={onChange} />;
 }

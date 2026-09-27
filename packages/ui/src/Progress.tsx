@@ -16,27 +16,18 @@ type ProgressProps = {
   className?: string;
 };
 
-export function Progress({
-  value,
-  max = 100,
-  size = "md",
-  label,
-  showValue = false,
-  className,
-}: ProgressProps) {
+export function Progress({ value, max = 100, size = "md", label, showValue = false, className }: ProgressProps) {
   const { t } = useTranslation("ui");
   const maximum = Number.isFinite(max) && max > 0 ? max : 100;
   const current = value === null ? undefined : Math.min(maximum, Math.max(0, Number.isFinite(value) ? value : 0));
-  const percent = current === undefined ? undefined : current / maximum * 100;
+  const percent = current === undefined ? undefined : (current / maximum) * 100;
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {(label || showValue) && (
         <div className="flex min-w-0 items-center justify-between gap-2">
           {label && (
-            <span className="min-w-0 break-words font-sans text-[13px] font-medium text-fg-muted">
-              {label}
-            </span>
+            <span className="min-w-0 break-words font-sans text-[13px] font-medium text-fg-muted">{label}</span>
           )}
           {showValue && (
             <span className="min-w-10 shrink-0 text-end font-sans text-caption text-fg-muted">
@@ -55,7 +46,10 @@ export function Progress({
         className={cn("w-full overflow-hidden rounded-full bg-fill-strong", sizeClasses[size])}
       >
         <div
-          className={cn("h-full rounded-full bg-fg transition-[width] duration-300", current === undefined && "animate-pulse motion-reduce:animate-none")}
+          className={cn(
+            "h-full rounded-full bg-fg transition-[width] duration-300",
+            current === undefined && "animate-pulse motion-reduce:animate-none",
+          )}
           style={{ width: current === undefined ? "33%" : `${percent}%` }}
         />
       </div>

@@ -16,12 +16,7 @@ type ReaderResizeHandleProps = {
  * keeps tracking even when the cursor passes over the book's iframe; shows a
  * hairline accent on hover/drag.
  */
-export function ReaderResizeHandle({
-  edge,
-  ariaLabel,
-  onResize,
-  onCommit,
-}: ReaderResizeHandleProps) {
+export function ReaderResizeHandle({ edge, ariaLabel, onResize, onCommit }: ReaderResizeHandleProps) {
   const lastXRef = useRef(0);
 
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {

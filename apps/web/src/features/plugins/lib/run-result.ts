@@ -26,19 +26,27 @@ export async function runPluginContribution(
   run: () => PluginViewResult | Promise<PluginViewResult>,
   options?: { presentation?: "dialog"; owner?: unknown },
 ): Promise<void> {
-  try { observePluginCallbackOwners(options?.owner ?? run, () => {})(); }
-  catch (error) { log.warn("Contribution owner is unavailable", error); return; }
-  const pendingDialogId = options?.presentation === "dialog"
-    ? openPluginDialog({ pluginId, pluginName, view: null, owner: options?.owner ?? run })
-    : null;
+  try {
+    observePluginCallbackOwners(options?.owner ?? run, () => {})();
+  } catch (error) {
+    log.warn("Contribution owner is unavailable", error);
+    return;
+  }
+  const pendingDialogId =
+    options?.presentation === "dialog"
+      ? openPluginDialog({ pluginId, pluginName, view: null, owner: options?.owner ?? run })
+      : null;
   let result: PluginViewResult;
   try {
     result = await run();
   } catch (error) {
     log.error(`contribution from "${pluginId}" failed`, error);
     // Retiring a Worker must not emit a late failure notification from its action.
-    try { observePluginCallbackOwners(options?.owner ?? run, () => {})(); }
-    catch { return; }
+    try {
+      observePluginCallbackOwners(options?.owner ?? run, () => {})();
+    } catch {
+      return;
+    }
     if (pendingDialogId) {
       // The user is looking at the dialog — fail it in place (with retry and
       // code-specific copy) instead of snapping it away for a corner toast.
@@ -58,8 +66,9 @@ export async function runPluginContribution(
       return;
     }
   }
-  try { observePluginCallbackOwners([options?.owner ?? run, result], () => {})(); }
-  catch (error) {
+  try {
+    observePluginCallbackOwners([options?.owner ?? run, result], () => {})();
+  } catch (error) {
     log.warn("Contribution owner stopped before completion", error);
     releasePluginCallbacks(result);
     return;
@@ -68,11 +77,14 @@ export async function runPluginContribution(
     if (pendingDialogId) closePluginDialog(pendingDialogId);
     return;
   }
-  try { if (result.toast !== undefined) showPluginToast(result.toast); }
-  catch (error) {
+  try {
+    if (result.toast !== undefined) showPluginToast(result.toast);
+  } catch (error) {
     log.warn("Plugin returned an invalid toast", error);
     if (pendingDialogId) closePluginDialog(pendingDialogId);
-    releasePluginCallbacks(result); showPluginFailureToast(pluginName, error); return;
+    releasePluginCallbacks(result);
+    showPluginFailureToast(pluginName, error);
+    return;
   }
   if (result.view) {
     const accepted = pendingDialogId

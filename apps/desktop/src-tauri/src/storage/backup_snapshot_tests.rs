@@ -299,13 +299,19 @@ fn full_backup_snapshot_cancel_and_staged_tampering_are_detected() {
     }
     let snapshot = capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(())).unwrap();
     assert_eq!(
-        verify_capture(&snapshot, || Err(CommandError::new(CODE_CANCELLED, "cancelled")))
-            .unwrap_err()
-            .code,
+        verify_capture(&snapshot, || Err(CommandError::new(
+            CODE_CANCELLED,
+            "cancelled"
+        )))
+        .unwrap_err()
+        .code,
         CODE_CANCELLED
     );
     fs::write(snapshot.directory().join("database.sqlite"), "tampered").unwrap();
-    assert_eq!(verify_capture(&snapshot, || Ok(())).unwrap_err().code, CODE_CHANGED);
+    assert_eq!(
+        verify_capture(&snapshot, || Ok(())).unwrap_err().code,
+        CODE_CHANGED
+    );
 }
 
 #[cfg(unix)]

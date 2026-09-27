@@ -49,9 +49,7 @@ export { SyncConnectionBusyError, WrongPassphraseError };
 export function parseMagicToken(input: string): string {
   const trimmed = input.trim();
   const afterHash = trimmed.includes("#") ? trimmed.slice(trimmed.indexOf("#") + 1) : trimmed;
-  const afterSlash = afterHash.includes("/")
-    ? afterHash.slice(afterHash.lastIndexOf("/") + 1)
-    : afterHash;
+  const afterSlash = afterHash.includes("/") ? afterHash.slice(afterHash.lastIndexOf("/") + 1) : afterHash;
   return afterSlash;
 }
 
@@ -59,11 +57,7 @@ export const MIN_PASSPHRASE_LENGTH = 8;
 
 export function useSyncConnection() {
   const status = useSyncExternalStore(subscribeSyncStatus, getSyncStatusSnapshot);
-  const busy = useSyncExternalStore(
-    subscribeSyncConnectionBusy,
-    getSyncConnectionBusy,
-    getSyncConnectionBusy,
-  );
+  const busy = useSyncExternalStore(subscribeSyncConnectionBusy, getSyncConnectionBusy, getSyncConnectionBusy);
   const [profile, setProfile] = useState<SyncProfile | null>(null);
 
   const reloadProfile = useCallback(async () => {
@@ -80,18 +74,11 @@ export function useSyncConnection() {
 
   const connected = Boolean(profile?.syncEnabled && profile.remoteAccountId);
   /** Non-null when the connection is a plugin transport, not the relay. */
-  const connectedTransport = connected
-    ? parseTransportAccountId(profile?.remoteAccountId)
-    : null;
+  const connectedTransport = connected ? parseTransportAccountId(profile?.remoteAccountId) : null;
 
   // Plugin-provided sync backends, live against plugin enable/disable.
-  const [transports, setTransports] = useState<RegisteredSyncTransport[]>(() =>
-    listSyncTransports(),
-  );
-  useEffect(
-    () => onSyncTransportsChanged(() => setTransports(listSyncTransports())),
-    [],
-  );
+  const [transports, setTransports] = useState<RegisteredSyncTransport[]>(() => listSyncTransports());
+  useEffect(() => onSyncTransportsChanged(() => setTransports(listSyncTransports())), []);
 
   const sendLink = useCallback(
     (email: string): Promise<string | null> =>
@@ -124,7 +111,7 @@ export function useSyncConnection() {
    *  didn't pass through the email being shown. */
   const finishConnect = useCallback(
     (verification: SignInVerification, passphrase: string, source?: DomainActor): Promise<void> =>
-      runSyncConnectionOperation(async origin => {
+      runSyncConnectionOperation(async (origin) => {
         // The fresh session lives in this closure until the whole connect
         // succeeds — establishEncryption's publishKeys must already carry it
         // (the regression that once burned a live sign-in token), while
@@ -137,11 +124,14 @@ export function useSyncConnection() {
           verification,
           passphrase,
         );
-        await persistConnection({
-          session: verification.session,
-          accountId: verification.accountId,
-          masterKeyBase64,
-        }, origin);
+        await persistConnection(
+          {
+            session: verification.session,
+            accountId: verification.accountId,
+            masterKeyBase64,
+          },
+          origin,
+        );
         await reloadProfile();
       }, source),
     [reloadProfile],
@@ -149,7 +139,7 @@ export function useSyncConnection() {
 
   const disconnect = useCallback(
     (source?: DomainActor): Promise<void> =>
-      runSyncConnectionOperation(async origin => {
+      runSyncConnectionOperation(async (origin) => {
         await disconnectSync(origin);
         await reloadProfile();
       }, source),
@@ -157,22 +147,20 @@ export function useSyncConnection() {
   );
 
   const deleteAccount = useCallback(
-    (source?: DomainActor): Promise<void> => runSyncConnectionOperation(async origin => {
-      // Keep the account/session stable through both remote deletion and local disconnect.
-      await syncRelayClient().deleteAccount();
-      await disconnectSync(origin);
-      await reloadProfile();
-    }, source),
+    (source?: DomainActor): Promise<void> =>
+      runSyncConnectionOperation(async (origin) => {
+        // Keep the account/session stable through both remote deletion and local disconnect.
+        await syncRelayClient().deleteAccount();
+        await disconnectSync(origin);
+        await reloadProfile();
+      }, source),
     [reloadProfile],
   );
 
   const openTransport = async (ref: string) => {
     const transport = findSyncTransport(ref);
     if (!transport) {
-      throw new AppError(
-        ERR_SYNC_TRANSPORT_UNAVAILABLE,
-        `sync transport "${ref}" is not registered`,
-      );
+      throw new AppError(ERR_SYNC_TRANSPORT_UNAVAILABLE, `sync transport "${ref}" is not registered`);
     }
     return transport.open();
   };
@@ -197,16 +185,19 @@ export function useSyncConnection() {
    *  the remote's key-material object, then a durable profile binding. */
   const connectTransport = useCallback(
     (ref: string, passphrase: string, source?: DomainActor): Promise<void> =>
-      runSyncConnectionOperation(async origin => {
+      runSyncConnectionOperation(async (origin) => {
         const session = await openTransport(ref);
         const masterKeyBase64 = await withTransportSession(session, () =>
           establishEncryptionWithStore(transportKeyMaterialStore(session), passphrase),
         );
-        await persistTransportConnection({
-          ref,
-          endpointId: session.endpointId,
-          masterKeyBase64,
-        }, origin);
+        await persistTransportConnection(
+          {
+            ref,
+            endpointId: session.endpointId,
+            masterKeyBase64,
+          },
+          origin,
+        );
         await reloadProfile();
       }, source),
     [reloadProfile],

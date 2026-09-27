@@ -111,11 +111,7 @@ const log = createLogger("sync");
  * transport-side (coded) counterpart of the relay's 4xx statuses. Anything
  * else coded or uncoded is treated as transient and retried.
  */
-const PERMANENT_BLOB_CODES: ReadonlySet<string> = new Set([
-  ERR_SYNC_QUOTA,
-  ERR_SYNC_FILE_TOO_LARGE,
-  ERR_SYNC_REJECTED,
-]);
+const PERMANENT_BLOB_CODES: ReadonlySet<string> = new Set([ERR_SYNC_QUOTA, ERR_SYNC_FILE_TOO_LARGE, ERR_SYNC_REJECTED]);
 
 /**
  * The relay predates an endpoint: `/v1/events/have` and `/v1/snapshots`
@@ -227,10 +223,7 @@ export type SyncRelayApi = {
   /** `seqs` (parallel to `events`) when the backend numbers events — the
    *  first-party relay does; a plugin transport's journal positions are not
    *  mailbox seqs and stay absent. */
-  pullEvents(
-    after: number,
-    limit: number,
-  ): Promise<{ events: SealedEvent[]; next: number; seqs?: number[] }>;
+  pullEvents(after: number, limit: number): Promise<{ events: SealedEvent[]; next: number; seqs?: number[] }>;
   putBlob(key: string, bytes: Uint8Array): Promise<void>;
   getBlob(key: string): Promise<Uint8Array | null>;
   /** Chunked transport (sync-envelope v2) for blobs over one request's worth. */
@@ -343,8 +336,7 @@ const maxStamp = (stamps: HlcStamp[]): HlcStamp | null => {
       !best ||
       s.wallMs > best.wallMs ||
       (s.wallMs === best.wallMs &&
-        (s.counter > best.counter ||
-          (s.counter === best.counter && s.deviceId > best.deviceId)))
+        (s.counter > best.counter || (s.counter === best.counter && s.deviceId > best.deviceId)))
     ) {
       best = s;
     }
@@ -647,7 +639,9 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     return { appended, remaining };
   }
 
-  async function checkpointOnce(options: { pushedThisCycle?: number } = {}): Promise<{ cut: boolean; published: boolean }> {
+  async function checkpointOnce(
+    options: { pushedThisCycle?: number } = {},
+  ): Promise<{ cut: boolean; published: boolean }> {
     report({ phase: "checkpoint" });
     const cut = (await store.maintainCheckpoint()) !== null;
     let published = false;
@@ -689,9 +683,7 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
       lastPublishAttemptAt = Date.now();
       return false;
     }
-    const due = existing
-      ? cursor - existing.frontierSeq >= publishEveryEvents
-      : cursor >= publishMinEvents;
+    const due = existing ? cursor - existing.frontierSeq >= publishEveryEvents : cursor >= publishMinEvents;
     if (!due) return false;
     let info: CheckpointInfo;
     try {

@@ -34,12 +34,7 @@ export function isEditableKeyTarget(target: EventTarget | null): boolean {
   let node = target as DomLikeNode | null;
   while (node?.nodeType === 1) {
     const tag = node.localName?.toLowerCase();
-    if (
-      node.isContentEditable ||
-      tag === "input" ||
-      tag === "textarea" ||
-      tag === "select"
-    ) {
+    if (node.isContentEditable || tag === "input" || tag === "textarea" || tag === "select") {
       return true;
     }
 

@@ -29,8 +29,8 @@
 //! contract replay's `ensure_blob_manifest` upholds), and a `checkpoint_meta`
 //! key/value table. Restoring demands an exact `SCHEMA_VERSION` match; a
 //! checkpoint from another build is simply not used and the log wins.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 use rusqlite::types::Value as SqlValue;
 use rusqlite::OpenFlags;
@@ -224,7 +224,10 @@ pub(crate) fn delete_checkpoint(
     blob_key: &str,
 ) -> Result<(), CommandError> {
     delete_blob_inner(conn, data_dir, blob_key)?;
-    conn.execute("DELETE FROM projection_checkpoints WHERE id = ?1", params![id])?;
+    conn.execute(
+        "DELETE FROM projection_checkpoints WHERE id = ?1",
+        params![id],
+    )?;
     Ok(())
 }
 
@@ -249,7 +252,10 @@ fn quoted(cols: &[String]) -> String {
 }
 
 fn placeholders(n: usize) -> String {
-    (1..=n).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ")
+    (1..=n)
+        .map(|i| format!("?{i}"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Copy every row of `main.<table>` into `out.<table>` (created here with the
@@ -261,11 +267,12 @@ fn copy_table_out(
     select_sql: &str,
 ) -> Result<i64, CommandError> {
     let mut select = main.prepare(select_sql)?;
-    let cols: Vec<String> = select.column_names().iter().map(|c| c.to_string()).collect();
-    out.execute(
-        &format!("CREATE TABLE \"{table}\" ({})", quoted(&cols)),
-        [],
-    )?;
+    let cols: Vec<String> = select
+        .column_names()
+        .iter()
+        .map(|c| c.to_string())
+        .collect();
+    out.execute(&format!("CREATE TABLE \"{table}\" ({})", quoted(&cols)), [])?;
     let mut insert = out.prepare(&format!(
         "INSERT INTO \"{table}\" ({}) VALUES ({})",
         quoted(&cols),
@@ -346,19 +353,27 @@ pub(crate) fn read_checkpoint_meta(file: &Connection) -> Result<CheckpointFileMe
         .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
         .collect::<Result<_, _>>()?;
     let get = |k: &str| -> Result<String, CommandError> {
-        pairs
-            .get(k)
-            .cloned()
-            .ok_or_else(|| CommandError::new(CODE_SYNC_CHECKPOINT_MISMATCH, format!("checkpoint meta lacks `{k}`")))
+        pairs.get(k).cloned().ok_or_else(|| {
+            CommandError::new(
+                CODE_SYNC_CHECKPOINT_MISMATCH,
+                format!("checkpoint meta lacks `{k}`"),
+            )
+        })
     };
     let int = |k: &str| -> Result<i64, CommandError> {
-        get(k)?
-            .parse::<i64>()
-            .map_err(|_| CommandError::new(CODE_SYNC_CHECKPOINT_MISMATCH, format!("checkpoint meta `{k}` is not an integer")))
+        get(k)?.parse::<i64>().map_err(|_| {
+            CommandError::new(
+                CODE_SYNC_CHECKPOINT_MISMATCH,
+                format!("checkpoint meta `{k}` is not an integer"),
+            )
+        })
     };
     let remote_seq = match pairs.get("remote_seq") {
         Some(v) if !v.is_empty() => Some(v.parse::<i64>().map_err(|_| {
-            CommandError::new(CODE_SYNC_CHECKPOINT_MISMATCH, "checkpoint meta `remote_seq` is not an integer")
+            CommandError::new(
+                CODE_SYNC_CHECKPOINT_MISMATCH,
+                "checkpoint meta `remote_seq` is not an integer",
+            )
         })?),
         _ => None,
     };
@@ -400,7 +415,8 @@ fn restore_tables_from_file(tx: &Transaction<'_>, file: &Connection) -> Result<(
     for table in apply::DERIVED_TABLES.iter().rev() {
         let live_cols = table_columns(tx, table)?;
         let file_cols = table_columns(file, table)?;
-        let mut select = file.prepare(&format!("SELECT {} FROM \"{table}\"", quoted(&file_cols)))?;
+        let mut select =
+            file.prepare(&format!("SELECT {} FROM \"{table}\"", quoted(&file_cols)))?;
         let mut insert = tx.prepare(&format!(
             "INSERT INTO \"{table}\" ({}) VALUES ({})",
             quoted(&live_cols),
@@ -525,7 +541,10 @@ pub(crate) fn create_checkpoint(
         ("hlc_wall_ms", frontier.0.to_string()),
         ("hlc_counter", frontier.1.to_string()),
         ("hlc_device", frontier.2.clone()),
-        ("remote_seq", remote_seq.map(|s| s.to_string()).unwrap_or_default()),
+        (
+            "remote_seq",
+            remote_seq.map(|s| s.to_string()).unwrap_or_default(),
+        ),
         ("event_count", event_count.to_string()),
         ("device_id", device_id.clone()),
         ("created_at", created_at.clone()),
@@ -541,7 +560,14 @@ pub(crate) fn create_checkpoint(
     std::fs::rename(&tmp_path, &final_path)?;
 
     let tx = conn.transaction()?;
-    register_blob_inner(&tx, &blob_key, Some("application/vnd.sqlite3"), byte_size, sha256, file_name)?;
+    register_blob_inner(
+        &tx,
+        &blob_key,
+        Some("application/vnd.sqlite3"),
+        byte_size,
+        sha256,
+        file_name,
+    )?;
     tx.execute(
         "INSERT INTO projection_checkpoints
             (blob_key, schema_version, hlc_wall_ms, hlc_counter, hlc_device, remote_seq,
@@ -642,15 +668,24 @@ pub(crate) fn create_publish_checkpoint(
         }
     };
     precondition(log_complete(conn)?, "the log is still backfilling")?;
-    precondition(!events::projections_stale_conn(conn)?, "projections are stale")?;
+    precondition(
+        !events::projections_stale_conn(conn)?,
+        "projections are stale",
+    )?;
     let unconfirmed: i64 = conn.query_row(
         "SELECT COUNT(*) FROM event_sync_state WHERE push_state != 'synced'",
         [],
         |r| r.get(0),
     )?;
-    precondition(unconfirmed == 0, "some events are not confirmed in the mailbox")?;
+    precondition(
+        unconfirmed == 0,
+        "some events are not confirmed in the mailbox",
+    )?;
     let Some(cursor) = events_cursor_seq(conn)? else {
-        return Err(CommandError::new(CODE_SYNC_CHECKPOINT_PRECONDITION, "no pull cursor yet"));
+        return Err(CommandError::new(
+            CODE_SYNC_CHECKPOINT_PRECONDITION,
+            "no pull cursor yet",
+        ));
     };
     let max_confirmed: Option<i64> = conn.query_row(
         "SELECT MAX(CAST(remote_id AS INTEGER)) FROM event_sync_state WHERE remote_id IS NOT NULL",
@@ -866,7 +901,9 @@ pub(crate) fn backfill_remote_events(
     seqs: &[i64],
 ) -> Result<BackfillReport, CommandError> {
     if events_in.len() != seqs.len() {
-        return Err(CommandError::internal("backfill: events and seqs differ in length"));
+        return Err(CommandError::internal(
+            "backfill: events and seqs differ in length",
+        ));
     }
     let Some(status) = backfill_status(conn)? else {
         return Err(CommandError::new(
@@ -881,7 +918,10 @@ pub(crate) fn backfill_remote_events(
         if *seq > status.frontier_seq {
             return Err(CommandError::new(
                 CODE_SYNC_CHECKPOINT_PRECONDITION,
-                format!("backfill received seq {seq} past the frontier {}", status.frontier_seq),
+                format!(
+                    "backfill received seq {seq} past the frontier {}",
+                    status.frontier_seq
+                ),
             ));
         }
         if events::insert_event_row_with_seq(&tx, ev, events::EventSource::Remote, Some(*seq))? {
@@ -921,7 +961,10 @@ pub(crate) fn backfill_remote_events(
 /// The pull loop's shortcut for a device whose backfill finished by other
 /// means (the tail pull ran past the frontier while the backfill cursor sat
 /// at it): re-evaluate completeness from the cursors alone.
-pub(crate) fn settle_backfill(conn: &mut Connection, data_dir: &Path) -> Result<Option<BackfillStatus>, CommandError> {
+pub(crate) fn settle_backfill(
+    conn: &mut Connection,
+    data_dir: &Path,
+) -> Result<Option<BackfillStatus>, CommandError> {
     let Some(status) = backfill_status(conn)? else {
         return Ok(None);
     };
@@ -931,11 +974,15 @@ pub(crate) fn settle_backfill(conn: &mut Connection, data_dir: &Path) -> Result<
     let tx = conn.transaction()?;
     set_log_complete(&tx, true)?;
     set_backfill_frontier(&tx, None)?;
-    if events::projections_stale_conn(&tx)? && events::replay_projections(&tx, data_dir)?.is_some() {
+    if events::projections_stale_conn(&tx)? && events::replay_projections(&tx, data_dir)?.is_some()
+    {
         events::set_projections_stale_conn(&tx, false)?;
     }
     tx.commit()?;
-    Ok(Some(BackfillStatus { complete: true, ..status }))
+    Ok(Some(BackfillStatus {
+        complete: true,
+        ..status
+    }))
 }
 
 fn now_iso() -> String {
@@ -983,10 +1030,7 @@ pub async fn checkpoint_prepare_publish(app: AppHandle) -> Result<CheckpointInfo
 }
 
 #[tauri::command]
-pub async fn checkpoint_mark_published(
-    id: i64,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn checkpoint_mark_published(id: i64, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("checkpoint_mark_published", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -996,7 +1040,10 @@ pub async fn checkpoint_mark_published(
 }
 
 #[tauri::command]
-pub async fn checkpoint_restore_bootstrap(blob_key: String, app: AppHandle) -> Result<CheckpointInfo, CommandError> {
+pub async fn checkpoint_restore_bootstrap(
+    blob_key: String,
+    app: AppHandle,
+) -> Result<CheckpointInfo, CommandError> {
     tauri::async_runtime::spawn_blocking(move || {
         let db = app.state::<Db>();
         let data_dir = app.state::<DataDir>();

@@ -31,16 +31,11 @@ export function WordReferenceCard({ reference }: { reference: ChatWordReference 
           <div key={index} className="flex flex-col gap-1">
             <p className="leading-relaxed text-fg">
               {numbered && <span className="text-fg-subtle">{index + 1}&ensp;</span>}
-              {sense.partOfSpeech && (
-                <span className="font-serif italic text-fg-muted">{sense.partOfSpeech} · </span>
-              )}
+              {sense.partOfSpeech && <span className="font-serif italic text-fg-muted">{sense.partOfSpeech} · </span>}
               {sense.definition}
             </p>
             {sense.examples.map((example, exampleIndex) => (
-              <p
-                key={exampleIndex}
-                className="pl-3 font-serif italic leading-relaxed text-fg-subtle"
-              >
+              <p key={exampleIndex} className="pl-3 font-serif italic leading-relaxed text-fg-subtle">
                 {example}
               </p>
             ))}

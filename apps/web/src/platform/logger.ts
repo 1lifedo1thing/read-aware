@@ -31,7 +31,8 @@ function describe(value: unknown): string {
   if (value instanceof Error) {
     const head = `${value.name}: ${value.message}`;
     const stack = value.stack ?? "";
-    let text = stack.includes(value.message) && stack.startsWith(value.name) ? stack : [head, stack].filter(Boolean).join("\n");
+    let text =
+      stack.includes(value.message) && stack.startsWith(value.name) ? stack : [head, stack].filter(Boolean).join("\n");
     if (value.cause instanceof Error) {
       text += `\ncaused by ${value.cause.name}: ${value.cause.message}`;
     } else if (value.cause !== undefined) {

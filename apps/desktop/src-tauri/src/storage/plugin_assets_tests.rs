@@ -27,7 +27,11 @@ fn save(
         owner,
         key,
         revision,
-        AssetInput { filename: "image.png", mime: "image/png", source: input(data) },
+        AssetInput {
+            filename: "image.png",
+            mime: "image/png",
+            source: input(data),
+        },
     )
     .unwrap()
 }
@@ -84,7 +88,11 @@ fn plugin_assets_cas_and_atomic_metadata_failure_preserve_the_old_file() {
             "a",
             "cover",
             None,
-            AssetInput { filename: "a", mime: "text/plain", source: input(b"wrong") },
+            AssetInput {
+                filename: "a",
+                mime: "text/plain",
+                source: input(b"wrong")
+            },
         )
         .unwrap_err()
         .code,
@@ -97,7 +105,11 @@ fn plugin_assets_cas_and_atomic_metadata_failure_preserve_the_old_file() {
         "a",
         "cover",
         Some(&a.revision),
-        AssetInput { filename: "a", mime: "text/plain", source: input(b"new") },
+        AssetInput {
+            filename: "a",
+            mime: "text/plain",
+            source: input(b"new")
+        },
     )
     .is_err());
     assert_eq!(bytes(&conn, dir.path(), "a", &a), b"old");
@@ -182,7 +194,11 @@ fn plugin_assets_quota_and_corrupt_source_fail_before_false_success() {
             "a",
             "big",
             None,
-            AssetInput { filename: "big", mime: "text/plain", source: huge },
+            AssetInput {
+                filename: "big",
+                mime: "text/plain",
+                source: huge
+            },
         )
         .unwrap_err()
         .code,
@@ -221,7 +237,11 @@ fn plugin_assets_join_namespace_snapshots_and_reject_writes_during_upgrade() {
             "a",
             "cover",
             Some(&a.revision),
-            AssetInput { filename: "a", mime: "text/plain", source: input(b"new") },
+            AssetInput {
+                filename: "a",
+                mime: "text/plain",
+                source: input(b"new")
+            },
         )
         .unwrap_err()
         .code,
@@ -358,7 +378,11 @@ fn plugin_assets_do_not_follow_symlinked_immutable_files() {
         "a",
         "second",
         None,
-        AssetInput { filename: "a", mime: "text/plain", source: input(b"same") },
+        AssetInput {
+            filename: "a",
+            mime: "text/plain",
+            source: input(b"same")
+        },
     )
     .is_err());
     delete_inner(&mut conn, dir.path(), "a", "cover", &a.revision).unwrap();
@@ -398,7 +422,11 @@ fn plugin_assets_enforce_name_and_logical_byte_quotas_without_evicting_existing_
             "a",
             "overflow",
             None,
-            AssetInput { filename: "a", mime: "text/plain", source: input(b"new") },
+            AssetInput {
+                filename: "a",
+                mime: "text/plain",
+                source: input(b"new")
+            },
         )
         .unwrap_err()
         .code,
@@ -431,7 +459,11 @@ fn plugin_assets_enforce_name_and_logical_byte_quotas_without_evicting_existing_
             "a",
             "overflow",
             None,
-            AssetInput { filename: "a", mime: "text/plain", source: input(b"new") },
+            AssetInput {
+                filename: "a",
+                mime: "text/plain",
+                source: input(b"new")
+            },
         )
         .unwrap_err()
         .code,

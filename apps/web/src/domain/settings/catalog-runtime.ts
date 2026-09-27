@@ -8,32 +8,19 @@ import type {
   SettingsSnapshot,
   SettingsTarget,
 } from "@read-aware/core";
-import {
-  buildSettingDefinitions,
-  validateSettingValue,
-  type SettingDefinition,
-  type SettingsDraft,
-} from "./catalog";
+import { buildSettingDefinitions, validateSettingValue, type SettingDefinition, type SettingsDraft } from "./catalog";
 
 export type { SettingsDraft } from "./catalog";
 import { shortcutMetadata } from "./shortcut-preferences";
 import { assertShortcutChanges } from "../../features/settings/lib/shortcut-catalog";
 import { DEFAULT_READER_PREFERENCES } from "../../features/settings/lib/reader-settings";
 
-function definitionOptions(
-  definition: SettingDefinition,
-  draft: SettingsDraft,
-): SettingOption[] | undefined {
+function definitionOptions(definition: SettingDefinition, draft: SettingsDraft): SettingOption[] | undefined {
   if (!definition.options) return undefined;
-  return typeof definition.options === "function"
-    ? definition.options(draft)
-    : definition.options;
+  return typeof definition.options === "function" ? definition.options(draft) : definition.options;
 }
 
-function activeOverrides(
-  draft: SettingsDraft,
-  section?: SettingsSection,
-): SettingsOverrideSummary[] {
+function activeOverrides(draft: SettingsDraft, section?: SettingsSection): SettingsOverrideSummary[] {
   if (section && section !== "reading") return [];
   const paths = buildSettingDefinitions(draft)
     .filter((definition) => definition.section === "reading")
@@ -43,23 +30,14 @@ function activeOverrides(
     .map(([bookId]) => ({ target: { kind: "book" as const, bookId }, paths }));
 }
 
-export function settingsSnapshotFromDraft(
-  draft: SettingsDraft,
-  query: SettingsQuery = {},
-): SettingsSnapshot {
+export function settingsSnapshotFromDraft(draft: SettingsDraft, query: SettingsQuery = {}): SettingsSnapshot {
   const target = query.target ?? { kind: "global" as const };
   if (target.kind === "book" && query.section && query.section !== "reading") {
     throw new Error("book targets are available only for reading settings");
   }
   const settings = buildSettingDefinitions(draft)
-    .filter(
-      (definition) => !query.section || definition.section === query.section,
-    )
-    .filter(
-      (definition) =>
-        target.kind === "global" ||
-        definition.supportedTargets?.includes("book"),
-    )
+    .filter((definition) => !query.section || definition.section === query.section)
+    .filter((definition) => target.kind === "global" || definition.supportedTargets?.includes("book"))
     .map<SettingDescriptor>((definition) => {
       const options = definitionOptions(definition, draft);
       const override = target.kind === "book" ? draft.readerOverrides[target.bookId] : undefined;
@@ -67,26 +45,31 @@ export function settingsSnapshotFromDraft(
         path: definition.path,
         section: definition.section,
         label: definition.label,
-        ...(definition.description
-          ? { description: definition.description }
-          : {}),
+        ...(definition.description ? { description: definition.description } : {}),
         kind: definition.kind,
         ...(definition.dynamicOptions ? { dynamicOptions: true } : {}),
         value: definition.read(draft, target),
         writable: Boolean(definition.write),
-        ...(definition.section === "reading" && definition.supportedTargets?.includes("book") ? {
-          reading: {
-            source: override?.scope === "book" ? "book" as const : "global" as const,
-            override: override ? override.scope === "book" ? "active" as const : "inactive" as const : "absent" as const,
-            defaultValue: definition.read({ ...draft, reading: { ...DEFAULT_READER_PREFERENCES } }, { kind: "global" }),
-          },
-        } : {}),
+        ...(definition.section === "reading" && definition.supportedTargets?.includes("book")
+          ? {
+              reading: {
+                source: override?.scope === "book" ? ("book" as const) : ("global" as const),
+                override: override
+                  ? override.scope === "book"
+                    ? ("active" as const)
+                    : ("inactive" as const)
+                  : ("absent" as const),
+                defaultValue: definition.read(
+                  { ...draft, reading: { ...DEFAULT_READER_PREFERENCES } },
+                  { kind: "global" },
+                ),
+              },
+            }
+          : {}),
         ...(definition.kind === "key-chord" ? { shortcut: shortcutMetadata(draft, definition.path) } : {}),
         ...(definition.nullable ? { nullable: true } : {}),
         ...(options ? { options } : {}),
-        ...(definition.write && definition.supportedTargets
-          ? { supportedTargets: definition.supportedTargets }
-          : {}),
+        ...(definition.write && definition.supportedTargets ? { supportedTargets: definition.supportedTargets } : {}),
       };
     });
   return { revision: 0, target, settings, overrides: activeOverrides(draft, query.section) };
@@ -128,19 +111,14 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     pluginSettings: {
       declared: draft.pluginSettings.declared,
       values: Object.fromEntries(
-        Object.entries(draft.pluginSettings.values).map(([id, values]) => [
-          id,
-          { ...values },
-        ]),
+        Object.entries(draft.pluginSettings.values).map(([id, values]) => [id, { ...values }]),
       ),
     },
   };
 }
 
 function mutableFingerprint(draft: SettingsDraft): string {
-  const aiConfig = draft.aiConfig
-    ? { ...draft.aiConfig, apiKey: draft.aiConfig.apiKey ? "configured" : "" }
-    : null;
+  const aiConfig = draft.aiConfig ? { ...draft.aiConfig, apiKey: draft.aiConfig.apiKey ? "configured" : "" } : null;
   return JSON.stringify({
     general: draft.general,
     shelf: draft.shelf,
@@ -170,9 +148,7 @@ export function applySettingChangesToDraft(
     throw new Error("at least one settings change is required");
   }
   const draft = cloneDraft(source);
-  const definitions = new Map(
-    buildSettingDefinitions(draft).map((entry) => [entry.path, entry]),
-  );
+  const definitions = new Map(buildSettingDefinitions(draft).map((entry) => [entry.path, entry]));
   const seen = new Set<string>();
   const changed: SettingChange[] = [];
 
@@ -182,15 +158,11 @@ export function applySettingChangesToDraft(
       throw new Error(`unknown or read-only setting: ${change.path}`);
     }
     if (!change.target && definition.supportedTargets.length > 1) {
-      throw new Error(
-        `${change.path} requires an explicit target: ${definition.supportedTargets.join(", ")}`,
-      );
+      throw new Error(`${change.path} requires an explicit target: ${definition.supportedTargets.join(", ")}`);
     }
     const requestedTarget = change.target ?? { kind: "global" as const };
     const target: SettingsTarget =
-      requestedTarget.kind === "book"
-        ? { kind: "book", bookId: requestedTarget.bookId.trim() }
-        : requestedTarget;
+      requestedTarget.kind === "book" ? { kind: "book", bookId: requestedTarget.bookId.trim() } : requestedTarget;
     if (!definition.supportedTargets.includes(target.kind)) {
       throw new Error(`${change.path} does not support target ${target.kind}`);
     }

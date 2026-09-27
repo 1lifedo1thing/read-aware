@@ -22,13 +22,16 @@ import { resolveReaderPalette } from "../../settings/lib/reader-theme";
 import { pluginFontFaceCss } from "../../settings/hooks/usePluginFonts";
 import { findRegisteredByRef, isPluginRef } from "../../plugins/lib/plugin-theme";
 import { useRegisteredContribution } from "../../plugins/hooks/useRegisteredContribution";
-import {
-  pluginFontsAtom,
-  pluginThemesAtom,
-} from "../../plugins/state/plugin-store";
+import { pluginFontsAtom, pluginThemesAtom } from "../../plugins/state/plugin-store";
 import { fixedLayoutPageColors } from "../lib/fixed-layout-colors";
 import type { FoliateRenderer, FoliateView } from "../lib/foliate-engine";
-import { actorFromEvent, eventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  actorFromEvent,
+  eventCause,
+  mergeEventCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 import { readingRenderContext } from "../lib/reading-render-context";
 import { normalizeReaderTextSizes } from "../lib/reader-document-layout";
 
@@ -69,7 +72,13 @@ export function useReaderTypography({
   const settingsRef = useRef(readerSettings);
   const styleRequests = useRef(new WeakMap<FoliateRenderer, object>());
   const needsStyles = useRef(true);
-  useEffect(() => () => { styleRequests.current = new WeakMap(); needsStyles.current = true; }, []);
+  useEffect(
+    () => () => {
+      styleRequests.current = new WeakMap();
+      needsStyles.current = true;
+    },
+    [],
+  );
 
   /**
    * Drive the responsive text measure through foliate's `max-inline-size`
@@ -78,45 +87,49 @@ export function useReaderTypography({
    * ignored — the attribute is the only lever, and it must be recomputed from
    * the live reader width (it cannot use vw).
    */
-  const applyMaxInlineSize = useCallback((origin: DomainActor = "system") => {
-    const renderer = viewRef.current?.renderer;
-    if (!renderer || isFixedLayoutRef.current) return;
-    const width =
-      readerRootRef.current?.clientWidth ??
-      viewportRef.current?.clientWidth ??
-      window.innerWidth;
-    const height =
-      readerRootRef.current?.clientHeight ??
-      viewportRef.current?.clientHeight ??
-      window.innerHeight;
-    const { maxColumnCount } = layoutForReadingMode(readingModeRef.current);
-    // foliate renders a single column in portrait containers regardless of
-    // max-column-count, so size the measure for the columns that will
-    // actually show — halving it in portrait would just shrink the one column.
-    const effectiveColumns = width > height ? maxColumnCount : 1;
-    const margins = settingsRef.current.pageMargins;
-    const { gap, margin } = readerLayoutSpacing(margins, readingModeRef.current);
-    const px = computeReaderMaxInlineSize(width, margins, effectiveColumns);
-    if ("setLayoutAttributes" in renderer) renderer.setLayoutAttributes({
-      "max-inline-size": `${px}px`, gap, margin,
-    }, readingRenderContext(origin));
-  }, [
-    isFixedLayoutRef,
-    layoutForReadingMode,
-    readerRootRef,
-    readingModeRef,
-    viewRef,
-    viewportRef,
-  ]);
+  const applyMaxInlineSize = useCallback(
+    (origin: DomainActor = "system") => {
+      const renderer = viewRef.current?.renderer;
+      if (!renderer || isFixedLayoutRef.current) return;
+      const width = readerRootRef.current?.clientWidth ?? viewportRef.current?.clientWidth ?? window.innerWidth;
+      const height = readerRootRef.current?.clientHeight ?? viewportRef.current?.clientHeight ?? window.innerHeight;
+      const { maxColumnCount } = layoutForReadingMode(readingModeRef.current);
+      // foliate renders a single column in portrait containers regardless of
+      // max-column-count, so size the measure for the columns that will
+      // actually show — halving it in portrait would just shrink the one column.
+      const effectiveColumns = width > height ? maxColumnCount : 1;
+      const margins = settingsRef.current.pageMargins;
+      const { gap, margin } = readerLayoutSpacing(margins, readingModeRef.current);
+      const px = computeReaderMaxInlineSize(width, margins, effectiveColumns);
+      if ("setLayoutAttributes" in renderer)
+        renderer.setLayoutAttributes(
+          {
+            "max-inline-size": `${px}px`,
+            gap,
+            margin,
+          },
+          readingRenderContext(origin),
+        );
+    },
+    [isFixedLayoutRef, layoutForReadingMode, readerRootRef, readingModeRef, viewRef, viewportRef],
+  );
 
   // Plugin contributions feed the injected CSS two ways: the palette behind a
   // plugin page color, and the @font-face + family stack behind a plugin
   // font. Subscribing here re-injects when a plugin (de)activates mid-read.
   const pluginThemes = useAtomValue(pluginThemesAtom);
   const pluginFonts = useAtomValue(pluginFontsAtom);
-  const font = useRegisteredContribution(pluginFontsAtom, isPluginFont(readerSettings.fontFamily) ? readerSettings.fontFamily.slice(7) : "");
-  const theme = useRegisteredContribution(pluginThemesAtom, isPluginRef(readerSettings.theme) ? readerSettings.theme.slice(7) : "");
-  const previousInputs = useRef<{ settings: ReaderSettings; font: typeof font; theme: typeof theme; origin: DomainActor } | undefined>(undefined);
+  const font = useRegisteredContribution(
+    pluginFontsAtom,
+    isPluginFont(readerSettings.fontFamily) ? readerSettings.fontFamily.slice(7) : "",
+  );
+  const theme = useRegisteredContribution(
+    pluginThemesAtom,
+    isPluginRef(readerSettings.theme) ? readerSettings.theme.slice(7) : "",
+  );
+  const previousInputs = useRef<
+    { settings: ReaderSettings; font: typeof font; theme: typeof theme; origin: DomainActor } | undefined
+  >(undefined);
 
   /**
    * Inject the reader stylesheet, first ensuring the active curated webfont is
@@ -127,7 +140,8 @@ export function useReaderTypography({
   const injectStyles = useCallback(
     async (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor) => {
       if (!renderer || !("setStyles" in renderer)) return;
-      const request = {}, context = readingRenderContext(origin ?? (eventCause(settings) ? actorFromEvent(settings) : "system"));
+      const request = {},
+        context = readingRenderContext(origin ?? (eventCause(settings) ? actorFromEvent(settings) : "system"));
       styleRequests.current.set(renderer, request);
       const id = curatedFontId(settings.fontFamily);
       const pluginFont = isPluginFont(settings.fontFamily)
@@ -142,10 +156,7 @@ export function useReaderTypography({
           : "";
       const palette = resolveReaderPalette(settings.theme, pluginThemes);
       if (styleRequests.current.get(renderer) !== request || viewRef.current?.renderer !== renderer) return;
-      renderer.setStyles(
-        buildReaderContentCss(settings, { palette, fontFaceCss, pluginFont }),
-        context,
-      );
+      renderer.setStyles(buildReaderContentCss(settings, { palette, fontFaceCss, pluginFont }), context);
       // Re-evaluate fixed publisher sizes too: a readable 14px note can become
       // too small when the reader increases their body font to 24px.
       for (const { doc } of renderer.getContents()) normalizeReaderTextSizes(doc);
@@ -155,12 +166,9 @@ export function useReaderTypography({
 
   const applyPageColors = useCallback(
     (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor) => {
-      if (!renderer || !('setPageColors' in renderer)) return;
+      if (!renderer || !("setPageColors" in renderer)) return;
       renderer.setPageColors(
-        fixedLayoutPageColors(
-          resolveReaderPalette(settings.theme, pluginThemes),
-          settings.fixedLayoutColor,
-        ),
+        fixedLayoutPageColors(resolveReaderPalette(settings.theme, pluginThemes), settings.fixedLayoutColor),
         readingRenderContext(origin ?? (eventCause(settings) ? actorFromEvent(settings) : "system")),
       );
     },
@@ -172,7 +180,8 @@ export function useReaderTypography({
   useEffect(() => {
     const previous = previousInputs.current;
     const sources: object[] = [];
-    if (previous?.settings !== readerSettings) sources.push(eventCause(readerSettings) ? readerSettings : stampEventCause({}));
+    if (previous?.settings !== readerSettings)
+      sources.push(eventCause(readerSettings) ? readerSettings : stampEventCause({}));
     // Choosing a different preference belongs to that settings write. Only a
     // change to the already selected registration contributes its own cause.
     if (previous?.settings.fontFamily === readerSettings.fontFamily && previous.font !== font) sources.push(font);

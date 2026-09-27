@@ -31,9 +31,7 @@ function snapshotContent(value: unknown): JsonValue {
       data: `[omitted image data: ${record.data.length} chars]`,
     };
   }
-  return Object.fromEntries(
-    Object.entries(record).map(([key, entry]) => [key, snapshotContent(entry)]),
-  );
+  return Object.fromEntries(Object.entries(record).map(([key, entry]) => [key, snapshotContent(entry)]));
 }
 
 export function snapshotModelContext(context: Context): JsonObject {
@@ -44,9 +42,7 @@ export function snapshotModelContext(context: Context): JsonObject {
       name: tool.name,
       description: tool.description,
       parameters: snapshotContent(tool.parameters),
-      ...(tool.constrainedSampling
-        ? { constrainedSampling: snapshotContent(tool.constrainedSampling) }
-        : {}),
+      ...(tool.constrainedSampling ? { constrainedSampling: snapshotContent(tool.constrainedSampling) } : {}),
     })),
   };
 }
@@ -102,9 +98,7 @@ function collectTools(turns: AgentEvalTurnObservation[]): EvalToolCall[] {
         });
         continue;
       }
-      const call = [...tools]
-        .reverse()
-        .find((entry) => entry.turn === turn.turn && entry.id === chunk.id);
+      const call = [...tools].reverse().find((entry) => entry.turn === turn.turn && entry.id === chunk.id);
       if (!call) continue;
       if (chunk.output !== undefined) call.output = chunk.output;
       if (chunk.phase === "end") call.isError = chunk.isError ?? false;
@@ -153,18 +147,12 @@ function addTokens(target: EvalTokenUsage, chunk: Extract<ThreadChunk, { type: "
   target.output += chunk.tokens.output;
   target.cacheRead += chunk.tokens.cacheRead;
   target.cacheWrite += chunk.tokens.cacheWrite;
-  target.total +=
-    chunk.tokens.input +
-    chunk.tokens.output +
-    chunk.tokens.cacheRead +
-    chunk.tokens.cacheWrite;
+  target.total += chunk.tokens.input + chunk.tokens.output + chunk.tokens.cacheRead + chunk.tokens.cacheWrite;
 }
 
 function collectTelemetry(turns: AgentEvalTurnObservation[], wallTimeMs: number): EvalTelemetry {
   const metrics = turns.flatMap((turn) =>
-    turn.chunks.filter(
-      (chunk): chunk is Extract<ThreadChunk, { type: "metric" }> => chunk.type === "metric",
-    ),
+    turn.chunks.filter((chunk): chunk is Extract<ThreadChunk, { type: "metric" }> => chunk.type === "metric"),
   );
   const tokens: EvalTokenUsage = {
     input: 0,
@@ -174,16 +162,12 @@ function collectTelemetry(turns: AgentEvalTurnObservation[], wallTimeMs: number)
     total: 0,
   };
   for (const metric of metrics) addTokens(tokens, metric);
-  const costs = metrics.flatMap((metric) =>
-    metric.costUsd === undefined ? [] : [metric.costUsd],
-  );
+  const costs = metrics.flatMap((metric) => (metric.costUsd === undefined ? [] : [metric.costUsd]));
   return {
     wallTimeMs,
     modelTimeMs: metrics.reduce((total, metric) => total + metric.totalMs, 0),
     meanTtfbMs:
-      metrics.length === 0
-        ? undefined
-        : metrics.reduce((total, metric) => total + metric.ttfbMs, 0) / metrics.length,
+      metrics.length === 0 ? undefined : metrics.reduce((total, metric) => total + metric.ttfbMs, 0) / metrics.length,
     rounds: metrics.length,
     tokens: metrics.some((metric) => metric.tokens) ? tokens : undefined,
     costUsd: costs.length === 0 ? undefined : costs.reduce((total, cost) => total + cost, 0),
@@ -208,8 +192,7 @@ export function buildAgentObservation(input: {
       (state, chunk) => {
         if (chunk.type === "text") {
           return {
-            text:
-              state.boundary && state.text ? `${state.text}\n\n${chunk.text}` : state.text + chunk.text,
+            text: state.boundary && state.text ? `${state.text}\n\n${chunk.text}` : state.text + chunk.text,
             boundary: false,
           };
         }
@@ -221,9 +204,7 @@ export function buildAgentObservation(input: {
       { text: "", boundary: false },
     ).text,
     thinking: turn.chunks
-      .filter(
-        (chunk): chunk is Extract<ThreadChunk, { type: "thinking" }> => chunk.type === "thinking",
-      )
+      .filter((chunk): chunk is Extract<ThreadChunk, { type: "thinking" }> => chunk.type === "thinking")
       .map((chunk) => chunk.text)
       .join(""),
     chunks: turn.chunks,
@@ -232,7 +213,10 @@ export function buildAgentObservation(input: {
   return {
     turns,
     answer: finalTurn?.answer ?? "",
-    thinking: turns.map((turn) => turn.thinking).filter(Boolean).join("\n"),
+    thinking: turns
+      .map((turn) => turn.thinking)
+      .filter(Boolean)
+      .join("\n"),
     tools: collectTools(turns),
     interactions: collectInteractions(turns),
     modelRequests: input.modelRequests,

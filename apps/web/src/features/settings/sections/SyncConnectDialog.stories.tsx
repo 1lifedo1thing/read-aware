@@ -5,9 +5,7 @@ import type { useSyncConnection } from "../hooks/useSyncConnection";
 import { SyncConnectDialog } from "./SyncConnectDialog";
 
 /** A stand-in connection: the dialog only calls these, never a live relay. */
-function connection(
-  patch: Partial<ReturnType<typeof useSyncConnection>> = {},
-): ReturnType<typeof useSyncConnection> {
+function connection(patch: Partial<ReturnType<typeof useSyncConnection>> = {}): ReturnType<typeof useSyncConnection> {
   return {
     status: idle,
     profile: null,

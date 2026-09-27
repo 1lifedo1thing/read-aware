@@ -16,7 +16,7 @@ pub(crate) use rows::{
     FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest, RowPlan,
     RowStructureReceipt,
 };
-pub(crate) use rows::{RestoreRequest, RestoreReceipt};
+pub(crate) use rows::{RestoreReceipt, RestoreRequest};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -205,4 +205,4 @@ pub(crate) fn plan_events(
 #[path = "backup_event_plan_tests.rs"]
 mod tests;
 
-pub(crate) use rows::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};
+pub(crate) use rows::{ProgramStageQuery, ProgramStageReceipt, ProgramStageRequest};

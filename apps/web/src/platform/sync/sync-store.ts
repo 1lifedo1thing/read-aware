@@ -26,15 +26,13 @@ export function createIpcSyncStore(): SyncLocalStore {
   return {
     outboxEvents: (limit) => invoke<PlainEvent[]>("sync_outbox_events", { limit }),
     markEventsPushed: (assigned) => invoke("sync_mark_events_pushed", { assigned }),
-    markEventsFailed: (eventIds, error) =>
-      invoke("sync_mark_events_failed", { eventIds, error }),
+    markEventsFailed: (eventIds, error) => invoke("sync_mark_events_failed", { eventIds, error }),
     applyRemote: async (events, seqs) => {
       const result = await invoke<MergeReport>("apply_remote_events", { events, seqs: seqs ?? null });
       if (result.applied > 0 || result.replayed) emitAppEvent("projections-invalidated", { source: "remote" });
       return result;
     },
-    stageRemote: (events, seqs) =>
-      invoke<number>("stage_remote_events", { events, seqs: seqs ?? null }),
+    stageRemote: (events, seqs) => invoke<number>("stage_remote_events", { events, seqs: seqs ?? null }),
     finalizeStaged: async () => {
       await invoke("finalize_staged_events");
       emitAppEvent("projections-invalidated", { source: "remote" });
@@ -83,8 +81,7 @@ export function createIpcSyncStore(): SyncLocalStore {
     markBlobsPushed: (keys) => invoke("sync_mark_blobs_pushed", { keys }),
     markBlobsFailed: (keys, error) => invoke("sync_mark_blobs_failed", { keys, error }),
     markBlobsRejected: (keys, error) => invoke("sync_mark_blobs_rejected", { keys, error }),
-    quotaRejectedBlobs: () =>
-      invoke<Array<{ key: string; byteSize: number | null }>>("sync_quota_rejected_blobs"),
+    quotaRejectedBlobs: () => invoke<Array<{ key: string; byteSize: number | null }>>("sync_quota_rejected_blobs"),
     requeueBlobs: (keys) => invoke("sync_requeue_blobs", { keys }),
     readBlob: (key) => getDesktopBlob(key),
     async writeBlob(key, bytes) {
@@ -121,5 +118,4 @@ export const setSyncProfile = (profile: SyncProfile) => invoke("sync_profile_set
  * outbox, the pull cursor rewinds), because "already pushed" was only ever
  * true of the previous account's mailbox. Resolves to whether a reset ran.
  */
-export const adoptSyncAccount = (accountId: string) =>
-  invoke<boolean>("sync_adopt_account", { accountId });
+export const adoptSyncAccount = (accountId: string) => invoke<boolean>("sync_adopt_account", { accountId });

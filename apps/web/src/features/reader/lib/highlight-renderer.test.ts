@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { FoliateAnnotation, FoliateView } from "./foliate-engine";
-import {
-  applyNavigatorHighlight,
-  navigatorLineBox,
-  removeNavigatorHighlight,
-} from "./highlight-renderer";
+import { applyNavigatorHighlight, navigatorLineBox, removeNavigatorHighlight } from "./highlight-renderer";
 
 function recordingView() {
   const added: FoliateAnnotation[] = [];
@@ -55,9 +51,7 @@ describe("navigator overlay identity", () => {
 
 describe("navigator indicator geometry", () => {
   test("adds vertical breathing room without crossing into adjacent text", () => {
-    expect(
-      navigatorLineBox({ left: 389.5, top: 1786, width: 646, height: 25 }, 2),
-    ).toEqual({
+    expect(navigatorLineBox({ left: 389.5, top: 1786, width: 646, height: 25 }, 2)).toEqual({
       x: 389.5,
       y: 1784,
       width: 646,
@@ -66,13 +60,7 @@ describe("navigator indicator geometry", () => {
   });
 
   test("keeps the inline axis exact in vertical text too", () => {
-    expect(
-      navigatorLineBox(
-        { left: 389.5, top: 1786, width: 25, height: 646 },
-        2,
-        "vertical-rl",
-      ),
-    ).toEqual({
+    expect(navigatorLineBox({ left: 389.5, top: 1786, width: 25, height: 646 }, 2, "vertical-rl")).toEqual({
       x: 387.5,
       y: 1786,
       width: 29,

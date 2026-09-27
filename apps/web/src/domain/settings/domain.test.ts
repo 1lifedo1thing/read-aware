@@ -24,21 +24,17 @@ describe("Settings Domain actor policy", () => {
       events.push(event.changes.map((change) => change.path));
     });
 
-    expect((await settings.queries.discover()).map((entry) => entry.path)).toEqual([
-      "appearance.theme",
-    ]);
+    expect((await settings.queries.discover()).map((entry) => entry.path)).toEqual(["appearance.theme"]);
     expect(await settings.queries.read("appearance.theme")).toMatchObject({
       path: "appearance.theme",
       value: DEFAULT_APP_SETTINGS.theme,
     });
 
-    const result = await settings.commands.update([
-      { path: "appearance.theme", value: "light" },
-    ]);
+    const result = await settings.commands.update([{ path: "appearance.theme", value: "light" }]);
 
     expect(getDefaultStore().get(appSettingsAtom).theme).toBe("light");
     expect(events).toEqual([["appearance.theme"]]);
-    expect(result.settings.settings.map(entry => entry.path)).toEqual(["appearance.theme"]);
+    expect(result.settings.settings.map((entry) => entry.path)).toEqual(["appearance.theme"]);
     await expect(
       settings.commands.update([
         { path: "appearance.theme", value: "dark" },
@@ -60,9 +56,7 @@ describe("Settings Domain actor policy", () => {
 
 test("retired localOnly path cannot be discovered or updated", async () => {
   const settings = createSettingsDomain("user");
-  expect((await settings.queries.discover()).map(entry => entry.path))
-    .not.toContain("ai.preferences.localOnly");
+  expect((await settings.queries.discover()).map((entry) => entry.path)).not.toContain("ai.preferences.localOnly");
   await expect(settings.queries.read("ai.preferences.localOnly")).rejects.toThrow();
-  await expect(settings.commands.update([{ path: "ai.preferences.localOnly", value: true }]))
-    .rejects.toThrow();
+  await expect(settings.commands.update([{ path: "ai.preferences.localOnly", value: true }])).rejects.toThrow();
 });

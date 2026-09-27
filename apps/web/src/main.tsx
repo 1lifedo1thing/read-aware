@@ -80,13 +80,15 @@ void (async () => {
   mountApp();
   log.info("mounted");
 
-  void import("./platform/local-api").then(({ startLocalApiBridge }) => startLocalApiBridge())
-    .catch(error => log.error("Local API initialization failed", error));
+  void import("./platform/local-api")
+    .then(({ startLocalApiBridge }) => startLocalApiBridge())
+    .catch((error) => log.error("Local API initialization failed", error));
 
   // Coordinated close/quit: the native close button and app exit wait for reading
   // traces, plugin quiescence, dispatched events and the KV queue before the window goes.
   const [{ registerShutdownOwners }, { installNativeCloseCoordination }] = await Promise.all([
-    import("./platform/shutdown-owners"), import("./platform/window-close"),
+    import("./platform/shutdown-owners"),
+    import("./platform/window-close"),
   ]);
   registerShutdownOwners();
   await installNativeCloseCoordination();
@@ -98,7 +100,7 @@ void (async () => {
   const { registerAgentChatTransport } = await import("./features/ai/agent/register");
   registerAgentChatTransport();
   const { recoverAgentJobs } = await import("./features/ai/agent/ports/jobs-port");
-  void recoverAgentJobs().catch(error => log.error("saved Agent task recovery failed", error));
+  void recoverAgentJobs().catch((error) => log.error("saved Agent task recovery failed", error));
 })().catch((error: unknown) => {
   // A failed boot used to be the worst diagnostic hole in the app: React
   // never mounts, the router's error boundary never renders, and the user

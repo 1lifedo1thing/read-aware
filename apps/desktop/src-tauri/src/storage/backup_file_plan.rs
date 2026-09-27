@@ -22,10 +22,10 @@ pub(crate) use programs::{ProgramChoice, ProgramDecision, ProgramFacts};
 mod credentials;
 #[path = "backup_restore_apply.rs"]
 mod restore;
-pub(crate) use restore::{RestoreRequest, RestoreReceipt};
+pub(crate) use restore::{RestoreReceipt, RestoreRequest};
 #[path = "backup_program_stage.rs"]
 mod program_stage;
-pub(crate) use program_stage::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};
+pub(crate) use program_stage::{ProgramStageQuery, ProgramStageReceipt, ProgramStageRequest};
 #[path = "backup_file_inventory.rs"]
 mod inventory;
 pub(crate) use credentials::{CredentialChoice, CredentialFacts, PreparedCredentials};

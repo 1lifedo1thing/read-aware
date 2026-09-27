@@ -20,10 +20,12 @@ beforeEach(() => storage.clear());
 
 describe("text-unit mode state migrations", () => {
   test("treats state older than granularity as sentence-based", () => {
-    expect(normalizeTextUnitModeState({
-      active: true,
-      resting: { sectionIndex: 4, ordinal: 8, cfiRange: "epubcfi(/6/4)" },
-    })).toEqual({
+    expect(
+      normalizeTextUnitModeState({
+        active: true,
+        resting: { sectionIndex: 4, ordinal: 8, cfiRange: "epubcfi(/6/4)" },
+      }),
+    ).toEqual({
       active: true,
       resting: { sectionIndex: 4, ordinal: 8, cfiRange: "epubcfi(/6/4)" },
       modeKey: null,
@@ -40,15 +42,13 @@ describe("text-unit mode state migrations", () => {
       contentVersion: "v1",
     });
 
-    expect(
-      isTextUnitModeStateCompatible(state, "paced-reader:guided-reading", "stanza", "v1"),
-    ).toBe(true);
-    expect(
-      isTextUnitModeStateCompatible(state, "other-reader:guided-reading", "stanza", "v1"),
-    ).toBe(false);
+    expect(isTextUnitModeStateCompatible(state, "paced-reader:guided-reading", "stanza", "v1")).toBe(true);
+    expect(isTextUnitModeStateCompatible(state, "other-reader:guided-reading", "stanza", "v1")).toBe(false);
     expect(isTextUnitModeStateCompatible(state, "paced-reader:guided-reading", "stanza", "v2")).toBe(false);
     expect(isTextUnitModeStateCompatible(state, "paced-reader:guided-reading", "stanza", null)).toBe(false);
-    expect(isTextUnitModeStateCompatible({ ...state, contentVersion: null }, "paced-reader:guided-reading", "stanza", "v1")).toBe(false);
+    expect(
+      isTextUnitModeStateCompatible({ ...state, contentVersion: null }, "paced-reader:guided-reading", "stanza", "v1"),
+    ).toBe(false);
   });
 
   test("invalid persisted ordinals cannot become a unit address", () => {
@@ -117,10 +117,7 @@ describe("text-unit mode settings (plugin-owned)", () => {
 
   test("migration never overwrites values the plugin object already has", () => {
     storage.set(PLUGIN_SETTINGS_KEY, JSON.stringify({ unitId: "sentence" }));
-    storage.set(
-      LEGACY_PREFS_KEY,
-      JSON.stringify({ unitId: "paragraph", tapToAdvance: false }),
-    );
+    storage.set(LEGACY_PREFS_KEY, JSON.stringify({ unitId: "paragraph", tapToAdvance: false }));
 
     expect(readTextUnitModeSettings(MODE_KEY)).toMatchObject({
       unitId: "sentence",
@@ -140,7 +137,10 @@ describe("text-unit mode settings (plugin-owned)", () => {
     expect(storage.has(LEGACY_PREFS_KEY)).toBe(true);
     await updateTextUnitModeSettings("other-reader:guided-reading", {});
     expect(storage.has(LEGACY_PREFS_KEY)).toBe(false);
-    expect(readTextUnitModeSettings("other-reader:guided-reading")).toMatchObject({ unitId: "stanza", tapToAdvance: false });
+    expect(readTextUnitModeSettings("other-reader:guided-reading")).toMatchObject({
+      unitId: "stanza",
+      tapToAdvance: false,
+    });
   });
 
   test("updates merge a patch into the stored object", async () => {

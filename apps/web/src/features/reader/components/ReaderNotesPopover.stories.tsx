@@ -45,7 +45,11 @@ const annotations: Annotation[] = [
   highlight("poem.xhtml", "I was the shadow of the waxwing slain"),
   note("poem.xhtml", "by the false azure in the windowpane", "The mirror image again."),
   highlight("commentary.xhtml", "There is a very loud amusement park right in front of my present lodgings."),
-  note("foreword.xhtml", "I have no desire to twist and batter an unambiguous apparatus criticus", "Kinbote protesting too much."),
+  note(
+    "foreword.xhtml",
+    "I have no desire to twist and batter an unambiguous apparatus criticus",
+    "Kinbote protesting too much.",
+  ),
 ];
 
 /**

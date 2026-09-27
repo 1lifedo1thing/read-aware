@@ -57,12 +57,18 @@ export function Toggle({
         <span
           id={labelId}
           className="font-sans text-sm text-fg select-none cursor-pointer"
-          onClick={() => { if (!disabled) onChange(!checked); }}
+          onClick={() => {
+            if (!disabled) onChange(!checked);
+          }}
         >
           {label}
         </span>
       )}
-      {error && <p id={`${id}-error`} className="basis-full text-[11px] leading-tight text-red-700">{error}</p>}
+      {error && (
+        <p id={`${id}-error`} className="basis-full text-[11px] leading-tight text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

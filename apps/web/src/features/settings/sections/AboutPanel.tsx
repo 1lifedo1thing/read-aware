@@ -6,11 +6,7 @@ import { isAndroid, isIOS, isTauri } from "../../../platform/environment";
 import { PROJECT_AUTHOR_URL, PROJECT_DISCORD_URL, PROJECT_REPOSITORY_URL } from "../../../platform/site-url";
 import { Trans, useTranslation } from "../../../i18n";
 import { useSoftwareUpdate } from "../../update/hooks/useSoftwareUpdate";
-import {
-  getUpdateChannel,
-  setUpdateChannel,
-  subscribeUpdateChannel,
-} from "../../update/lib/update-channel";
+import { getUpdateChannel, setUpdateChannel, subscribeUpdateChannel } from "../../update/lib/update-channel";
 import { versionCodename } from "../../update/lib/version-codename";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
@@ -63,9 +59,7 @@ export function AboutPanel() {
   }, [loadCurrentVersion]);
 
   const busy =
-    update.state.phase === "checking" ||
-    update.state.phase === "downloading" ||
-    update.state.phase === "installing";
+    update.state.phase === "checking" || update.state.phase === "downloading" || update.state.phase === "installing";
   const updateAvailable =
     update.state.phase === "available" ||
     update.state.phase === "permission-required" ||
@@ -97,20 +91,13 @@ export function AboutPanel() {
           title={t("about.version")}
           control={valueText(formatVersion(update.state.currentVersion, t("about.versionUnknown")))}
         />
-        <SettingsRow
-          title={t("about.build")}
-          control={valueText(buildLabel)}
-        />
+        <SettingsRow title={t("about.build")} control={valueText(buildLabel)} />
         <SettingsRow
           title={t("about.updates.title")}
           description={t("about.updates.description")}
           control={
             <span className="flex items-center gap-2">
-              {status && (
-                <span className="line-clamp-3 max-w-64 text-right text-caption text-fg-muted">
-                  {status}
-                </span>
-              )}
+              {status && <span className="line-clamp-3 max-w-64 text-right text-caption text-fg-muted">{status}</span>}
               <Button
                 ref={updateControlRef}
                 variant="outline"
@@ -151,21 +138,30 @@ export function AboutPanel() {
 
       <SettingsGroup title={t("common:community.title")} description={t("common:community.description")}>
         <div className="flex flex-wrap gap-2">
-          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName()}>
+          <a
+            href={PROJECT_REPOSITORY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={openLink}
+            className={buttonClassName()}
+          >
             <Star size={16} aria-hidden="true" />
             {t("common:community.star")}
           </a>
-          <a href={PROJECT_DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName({ variant: "outline" })}>
+          <a
+            href={PROJECT_DISCORD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={openLink}
+            className={buttonClassName({ variant: "outline" })}
+          >
             <DiscordLogo size={18} aria-hidden="true" />
             {t("common:community.discord")}
           </a>
         </div>
       </SettingsGroup>
 
-      <SettingsGroup
-        title={t("about.engine.title")}
-        description={t("about.engine.description")}
-      >
+      <SettingsGroup title={t("about.engine.title")} description={t("about.engine.description")}>
         <SettingsRow
           borderless
           title="foliate-js"
@@ -194,8 +190,24 @@ export function AboutPanel() {
           ns="common"
           i18nKey="community.madeBy"
           components={{
-            heart: <Heart size={12} weight="fill" role="img" aria-label={t("common:community.love")} className="mx-0.5 inline-block align-[-2px]" />,
-            author: <a href={PROJECT_AUTHOR_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className="underline-offset-4 hover:text-fg hover:underline" />,
+            heart: (
+              <Heart
+                size={12}
+                weight="fill"
+                role="img"
+                aria-label={t("common:community.love")}
+                className="mx-0.5 inline-block align-[-2px]"
+              />
+            ),
+            author: (
+              <a
+                href={PROJECT_AUTHOR_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={openLink}
+                className="underline-offset-4 hover:text-fg hover:underline"
+              />
+            ),
           }}
         />
       </footer>

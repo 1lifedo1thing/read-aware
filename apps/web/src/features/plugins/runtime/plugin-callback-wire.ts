@@ -18,11 +18,16 @@ const remoteRetains = new WeakMap<Callback, () => () => void>();
 const remoteOwners = new WeakMap<object, AbortSignal>();
 
 /** Internal identity, attached by the bridge rather than supplied by plugin data. */
-export function pluginCallbackOwner(callback: object): AbortSignal | undefined { return remoteOwners.get(callback); }
+export function pluginCallbackOwner(callback: object): AbortSignal | undefined {
+  return remoteOwners.get(callback);
+}
 
 /** Host guards keep the original activation identity without transferring callback leases. */
 export function guardPluginCallback<T extends (...args: never[]) => unknown>(callback: T, guard: () => void): T {
-  const wrapped = ((...args: never[]) => { guard(); return callback(...args); }) as T;
+  const wrapped = ((...args: never[]) => {
+    guard();
+    return callback(...args);
+  }) as T;
   const owner = remoteOwners.get(callback);
   if (owner) remoteOwners.set(wrapped, owner);
   return wrapped;
@@ -44,7 +49,8 @@ function mapGraph(value: unknown, replace: (value: unknown) => unknown, copy = t
       const result = copy ? new Map() : input;
       seen.set(input, result);
       for (const [key, entry] of input) {
-        const nextKey = visit(key, depth + 1), next = visit(entry, depth + 1);
+        const nextKey = visit(key, depth + 1),
+          next = visit(entry, depth + 1);
         if (copy) result.set(nextKey, next);
       }
       return result;
@@ -52,7 +58,10 @@ function mapGraph(value: unknown, replace: (value: unknown) => unknown, copy = t
     if (input instanceof Set) {
       const result = copy ? new Set() : input;
       seen.set(input, result);
-      for (const entry of input) { const next = visit(entry, depth + 1); if (copy) result.add(next); }
+      for (const entry of input) {
+        const next = visit(entry, depth + 1);
+        if (copy) result.add(next);
+      }
       return result;
     }
     const prototype = Object.getPrototypeOf(input);
@@ -61,7 +70,8 @@ function mapGraph(value: unknown, replace: (value: unknown) => unknown, copy = t
       seen.set(input, result);
       for (const [key, entry] of Object.entries(input)) {
         const next = visit(entry, depth + 1);
-        if (copy) Object.defineProperty(result, key, { value: next, enumerable: true, writable: true, configurable: true });
+        if (copy)
+          Object.defineProperty(result, key, { value: next, enumerable: true, writable: true, configurable: true });
       }
       return result;
     }
@@ -77,11 +87,13 @@ export class PluginCallbackRegistry {
   private nextHandle = 1;
   private readonly handlers = new Map<string, Callback>();
 
-  get size(): number { return this.handlers.size; }
+  get size(): number {
+    return this.handlers.size;
+  }
 
   encode(data: unknown): PluginCallbackWire {
     const staged = new Map<Callback, { ref: object; handle: string }>();
-    const encoded = mapGraph(data, value => {
+    const encoded = mapGraph(data, (value) => {
       if (typeof value !== "function") return value;
       const fn = value as Callback;
       let entry = staged.get(fn);
@@ -100,9 +112,10 @@ export class PluginCallbackRegistry {
 
   send(data: unknown, send: (wire: PluginCallbackWire) => void): void {
     const wire = this.encode(data);
-    try { send(wire); }
-    catch (error) {
-      this.release(wire.callbacks.map(entry => entry.handle));
+    try {
+      send(wire);
+    } catch (error) {
+      this.release(wire.callbacks.map((entry) => entry.handle));
       throw error;
     }
   }
@@ -117,7 +130,9 @@ export class PluginCallbackRegistry {
     for (const handle of handles) this.handlers.delete(handle);
   }
 
-  clear(): void { this.handlers.clear(); }
+  clear(): void {
+    this.handlers.clear();
+  }
 }
 
 export function decodePluginCallbacks(
@@ -126,18 +141,32 @@ export function decodePluginCallbacks(
   release?: (handles: string[]) => void,
   owner?: AbortSignal,
 ): unknown {
-  if (!wire || typeof wire !== "object" || !Object.hasOwn(wire, "data")
-    || !Array.isArray(wire.callbacks) || wire.callbacks.length > MAX_CALLBACKS) throw invalid();
+  if (
+    !wire ||
+    typeof wire !== "object" ||
+    !Object.hasOwn(wire, "data") ||
+    !Array.isArray(wire.callbacks) ||
+    wire.callbacks.length > MAX_CALLBACKS
+  )
+    throw invalid();
   const references = new Map<object, Callback>();
   const used = new Set<object>();
   for (const entry of wire.callbacks) {
-    if (!entry || !entry.ref || typeof entry.ref !== "object" || references.has(entry.ref)
-      || typeof entry.handle !== "string" || !/^h[1-9][0-9]{0,15}$/.test(entry.handle)) throw invalid();
+    if (
+      !entry ||
+      !entry.ref ||
+      typeof entry.ref !== "object" ||
+      references.has(entry.ref) ||
+      typeof entry.handle !== "string" ||
+      !/^h[1-9][0-9]{0,15}$/.test(entry.handle)
+    )
+      throw invalid();
     let released = false;
     let owners = 0;
-    const callback: Callback = (...args) => released
-      ? Promise.reject(new AppError("plugin/unavailable", "Plugin callback has been released"))
-      : invoke(entry.handle, args);
+    const callback: Callback = (...args) =>
+      released
+        ? Promise.reject(new AppError("plugin/unavailable", "Plugin callback has been released"))
+        : invoke(entry.handle, args);
     const discard = () => {
       if (released || owners) return;
       released = true;
@@ -149,61 +178,93 @@ export function decodePluginCallbacks(
         if (released) throw new AppError("plugin/unavailable", "Plugin callback has been released");
         owners++;
         let held = true;
-        return () => { if (held) { held = false; owners--; discard(); } };
+        return () => {
+          if (held) {
+            held = false;
+            owners--;
+            discard();
+          }
+        };
       });
     }
     references.set(entry.ref, callback);
   }
-  const data = mapGraph(wire.data, value => {
+  const data = mapGraph(wire.data, (value) => {
     const callback = references.get(value as object);
     if (!callback) return value;
     used.add(value as object);
     return callback;
   });
   if (used.size !== references.size) throw invalid();
-  if (owner) mapGraph(data, value => {
-    if (value !== null && (typeof value === "object" || typeof value === "function")) remoteOwners.set(value, owner);
-    return typeof value === "function" ? null : value;
-  }, false);
+  if (owner)
+    mapGraph(
+      data,
+      (value) => {
+        if (value !== null && (typeof value === "object" || typeof value === "function"))
+          remoteOwners.set(value, owner);
+        return typeof value === "function" ? null : value;
+      },
+      false,
+    );
   return data;
 }
 
 /** The Worker owns declarations even when a view contains no callbacks. */
 export function observePluginCallbackOwners(value: unknown, onRetired: () => void): () => void {
   const owners = new Set<AbortSignal>();
-  mapGraph(value, entry => {
-    if (entry !== null && (typeof entry === "object" || typeof entry === "function")) {
-      const owner = remoteOwners.get(entry);
-      if (owner) owners.add(owner);
-    }
-    return typeof entry === "function" ? null : entry;
-  }, false);
-  if ([...owners].some(owner => owner.aborted)) throw new AppError("plugin/unavailable", "Plugin view owner has stopped");
+  mapGraph(
+    value,
+    (entry) => {
+      if (entry !== null && (typeof entry === "object" || typeof entry === "function")) {
+        const owner = remoteOwners.get(entry);
+        if (owner) owners.add(owner);
+      }
+      return typeof entry === "function" ? null : entry;
+    },
+    false,
+  );
+  if ([...owners].some((owner) => owner.aborted))
+    throw new AppError("plugin/unavailable", "Plugin view owner has stopped");
   // Overlapping view leases may share the same onRetired callback. EventTarget
   // deduplicates listeners, so each lease needs its own registration identity.
   const retire = () => onRetired();
   for (const owner of owners) owner.addEventListener("abort", retire, { once: true });
-  return () => { for (const owner of owners) owner.removeEventListener("abort", retire); };
+  return () => {
+    for (const owner of owners) owner.removeEventListener("abort", retire);
+  };
 }
 
 /** Discard an unconsumed result; live view leases keep shared callbacks alive. */
 export function releasePluginCallbacks(value: unknown, transferred?: unknown): void {
   const keep = new Set<unknown>();
-  if (transferred !== undefined) mapGraph(transferred, entry => {
-    if (typeof entry !== "function") return entry;
-    keep.add(entry);
-    return null;
-  }, false);
+  if (transferred !== undefined)
+    mapGraph(
+      transferred,
+      (entry) => {
+        if (typeof entry !== "function") return entry;
+        keep.add(entry);
+        return null;
+      },
+      false,
+    );
   const releases = new Set<() => void>();
-  mapGraph(value, entry => {
-    if (typeof entry !== "function") return entry;
-    const release = remoteReleases.get(entry as Callback);
-    if (release && !keep.has(entry)) releases.add(release);
-    return null;
-  }, false);
+  mapGraph(
+    value,
+    (entry) => {
+      if (typeof entry !== "function") return entry;
+      const release = remoteReleases.get(entry as Callback);
+      if (release && !keep.has(entry)) releases.add(release);
+      return null;
+    },
+    false,
+  );
   const errors: unknown[] = [];
   for (const release of releases) {
-    try { release(); } catch (error) { errors.push(error); }
+    try {
+      release();
+    } catch (error) {
+      errors.push(error);
+    }
   }
   if (errors.length) throw new AggregateError(errors, "Plugin callbacks failed to release");
 }
@@ -211,21 +272,33 @@ export function releasePluginCallbacks(value: unknown, transferred?: unknown): v
 /** Own exactly the callbacks in this graph, including aliases, until disposal. */
 export function retainPluginCallbacks(value: unknown): () => void {
   const retains = new Set<() => () => void>();
-  mapGraph(value, entry => {
-    if (typeof entry !== "function") return entry;
-    const retain = remoteRetains.get(entry as Callback);
-    if (retain) retains.add(retain);
-    return null;
-  }, false);
+  mapGraph(
+    value,
+    (entry) => {
+      if (typeof entry !== "function") return entry;
+      const retain = remoteRetains.get(entry as Callback);
+      if (retain) retains.add(retain);
+      return null;
+    },
+    false,
+  );
   const releases: (() => void)[] = [];
   const dispose = () => {
     const errors: unknown[] = [];
     for (const release of releases.splice(0)) {
-      try { release(); } catch (error) { errors.push(error); }
+      try {
+        release();
+      } catch (error) {
+        errors.push(error);
+      }
     }
     if (errors.length) throw new AggregateError(errors, "Plugin callback leases failed to release");
   };
-  try { for (const retain of retains) releases.push(retain()); }
-  catch (error) { dispose(); throw error; }
+  try {
+    for (const retain of retains) releases.push(retain());
+  } catch (error) {
+    dispose();
+    throw error;
+  }
   return dispose;
 }

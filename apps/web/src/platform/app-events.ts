@@ -59,10 +59,7 @@ export type AppEventName = keyof AppEventMap;
 
 const listeners = new Map<AppEventName, Set<(payload: never) => void>>();
 
-export function onAppEvent<K extends AppEventName>(
-  event: K,
-  handler: (payload: AppEventMap[K]) => void,
-): () => void {
+export function onAppEvent<K extends AppEventName>(event: K, handler: (payload: AppEventMap[K]) => void): () => void {
   let set = listeners.get(event);
   if (!set) {
     set = new Set();

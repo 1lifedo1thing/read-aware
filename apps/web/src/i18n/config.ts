@@ -6,16 +6,7 @@
  */
 
 /** BCP-47 tags for every locale ReadAware ships. `en` is the source/fallback. */
-export const LOCALES = [
-  "en",
-  "zh-Hans",
-  "zh-Hant",
-  "ja",
-  "fr",
-  "de",
-  "ru",
-  "es",
-] as const;
+export const LOCALES = ["en", "zh-Hans", "zh-Hant", "ja", "fr", "de", "ru", "es"] as const;
 
 export type AppLocale = (typeof LOCALES)[number];
 
@@ -71,19 +62,12 @@ export function resolveLocale(input?: string | null): AppLocale | undefined {
   if (exact) return exact;
 
   if (tag.startsWith("zh")) {
-    if (
-      tag.includes("hant") ||
-      tag.includes("tw") ||
-      tag.includes("hk") ||
-      tag.includes("mo")
-    ) {
+    if (tag.includes("hant") || tag.includes("tw") || tag.includes("hk") || tag.includes("mo")) {
       return "zh-Hant";
     }
     return "zh-Hans";
   }
 
   const base = tag.split("-")[0];
-  return LOCALES.find(
-    (locale) => !locale.startsWith("zh") && locale.toLowerCase().split("-")[0] === base,
-  );
+  return LOCALES.find((locale) => !locale.startsWith("zh") && locale.toLowerCase().split("-")[0] === base);
 }

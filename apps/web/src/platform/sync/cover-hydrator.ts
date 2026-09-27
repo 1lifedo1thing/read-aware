@@ -26,7 +26,10 @@ import { createLogger } from "../logger";
  * never imports the scheduler that drives it. Structural: only the outcome
  * tags the pass reacts to are named here.
  */
-export type BlobFetcher = (key: string, origin?: DomainActor) => Promise<
+export type BlobFetcher = (
+  key: string,
+  origin?: DomainActor,
+) => Promise<
   | { outcome: "fetched" }
   | { outcome: "unavailable" }
   | { outcome: "missing" }
@@ -47,8 +50,8 @@ let running = false;
 let generation = 0;
 let lastOrigin: DomainActor | undefined;
 let queued: { fetchBlob: BlobFetcher; origin: DomainActor } | undefined;
-const join = (first: DomainActor, second: DomainActor): DomainActor => actorFromEvent(
-  mergeEventCauses([stampEventCause({}, first), stampEventCause({}, second)], {}));
+const join = (first: DomainActor, second: DomainActor): DomainActor =>
+  actorFromEvent(mergeEventCauses([stampEventCause({}, first), stampEventCause({}, second)], {}));
 let retryTimer: number | null = null;
 
 function scheduleRetry(at: number): void {
@@ -78,8 +81,10 @@ export async function hydrateMissingCovers(
   options: { reset?: boolean; origin?: DomainActor } = {},
 ): Promise<number> {
   if (!isTauri()) return 0;
-  const origin = causalActor(options.origin ?? "system"), epoch = generation;
-  lastFetcher = fetchBlob; lastOrigin = origin;
+  const origin = causalActor(options.origin ?? "system"),
+    epoch = generation;
+  lastFetcher = fetchBlob;
+  lastOrigin = origin;
   if (options.reset) misses.clear();
   if (running) {
     queued = { fetchBlob, origin: queued ? join(queued.origin, origin) : origin };
@@ -127,14 +132,17 @@ export async function hydrateMissingCovers(
     return fetched;
   } finally {
     running = false;
-    const next = queued; queued = undefined;
+    const next = queued;
+    queued = undefined;
     if (next) void hydrateMissingCovers(next.fetchBlob, { origin: next.origin });
   }
 }
 
 /** Drop pending retries (scheduler shutdown / account change). */
 export function stopCoverHydration(): void {
-  generation++; queued = undefined; lastOrigin = undefined;
+  generation++;
+  queued = undefined;
+  lastOrigin = undefined;
   if (retryTimer !== null) window.clearTimeout(retryTimer);
   retryTimer = null;
   misses.clear();

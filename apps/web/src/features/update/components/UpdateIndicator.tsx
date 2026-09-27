@@ -9,14 +9,8 @@ export function UpdateIndicator() {
 
   const installFailed = state.phase === "error" && state.errorStage === "install";
   const installReady =
-    state.phase === "available" ||
-    state.phase === "permission-required" ||
-    state.phase === "installer-open";
-  const visible =
-    installReady ||
-    state.phase === "downloading" ||
-    state.phase === "installing" ||
-    installFailed;
+    state.phase === "available" || state.phase === "permission-required" || state.phase === "installer-open";
+  const visible = installReady || state.phase === "downloading" || state.phase === "installing" || installFailed;
 
   if (!visible) return null;
 
@@ -32,9 +26,7 @@ export function UpdateIndicator() {
           : t("update.available");
 
   const tooltip =
-    installReady && state.availableVersion
-      ? t("update.availableVersion", { version: state.availableVersion })
-      : label;
+    installReady && state.availableVersion ? t("update.availableVersion", { version: state.availableVersion }) : label;
 
   const busy = state.phase === "downloading" || state.phase === "installing";
   const handleClick = () => {

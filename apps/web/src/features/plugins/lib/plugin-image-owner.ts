@@ -12,44 +12,70 @@ export class PluginImageOwner {
   private entries = new Map<string, Entry>();
   private bytes = 0;
   private disposed = false;
-  constructor(private load: (id: string, signal: AbortSignal) => Promise<Blob>, private urls: UrlPort = URL) {}
+  constructor(
+    private load: (id: string, signal: AbortSignal) => Promise<Blob>,
+    private urls: UrlPort = URL,
+  ) {}
 
   acquire(id: string, signal: AbortSignal): Promise<Lease> {
     if (this.disposed) return Promise.reject(unavailable());
     if (signal.aborted) return Promise.reject(signal.reason);
     let entry = this.entries.get(id);
     if (!entry) {
-      if (this.entries.size >= 16) return Promise.reject(new AppError("ui/unavailable", "Too many displayed image resources"));
+      if (this.entries.size >= 16)
+        return Promise.reject(new AppError("ui/unavailable", "Too many displayed image resources"));
       const next: Entry = { id, refs: 0, abort: new AbortController(), ready: Promise.resolve(""), bytes: 0 };
       next.ready = Promise.resolve().then(async () => {
         next.abort.signal.throwIfAborted();
         const blob = await this.load(id, next.abort.signal);
         next.abort.signal.throwIfAborted();
-        if (blob.type !== "image/png" || !blob.size || blob.size > 20 * 1024 * 1024) throw new AppError("ui/invalid-target", "Invalid image preview");
-        if (this.bytes + blob.size > 64 * 1024 * 1024) throw new AppError("ui/unavailable", "Displayed image payload limit exceeded");
+        if (blob.type !== "image/png" || !blob.size || blob.size > 20 * 1024 * 1024)
+          throw new AppError("ui/invalid-target", "Invalid image preview");
+        if (this.bytes + blob.size > 64 * 1024 * 1024)
+          throw new AppError("ui/unavailable", "Displayed image payload limit exceeded");
         const url = this.urls.createObjectURL(blob);
-        next.url = url; next.bytes = blob.size; this.bytes += blob.size;
+        next.url = url;
+        next.bytes = blob.size;
+        this.bytes += blob.size;
         return url;
       });
-      entry = next; this.entries.set(id, next);
+      entry = next;
+      this.entries.set(id, next);
     }
-    const current = entry; current.refs++;
+    const current = entry;
+    current.refs++;
     return new Promise((resolve, reject) => {
       let released = false;
       const release = () => {
         if (released) return;
-        released = true; signal.removeEventListener("abort", abort);
+        released = true;
+        signal.removeEventListener("abort", abort);
         current.abort.signal.removeEventListener("abort", retired);
         if (--current.refs === 0) this.remove(current);
       };
-      const abort = () => { release(); reject(signal.reason); };
-      const retired = () => { release(); reject(current.abort.signal.reason); };
+      const abort = () => {
+        release();
+        reject(signal.reason);
+      };
+      const retired = () => {
+        release();
+        reject(current.abort.signal.reason);
+      };
       signal.addEventListener("abort", abort, { once: true });
       current.abort.signal.addEventListener("abort", retired, { once: true });
-      current.ready.then(url => {
-        if (!released && !this.disposed) resolve({ url, release });
-        else { release(); reject(unavailable()); }
-      }, error => { release(); reject(error); });
+      current.ready.then(
+        (url) => {
+          if (!released && !this.disposed) resolve({ url, release });
+          else {
+            release();
+            reject(unavailable());
+          }
+        },
+        (error) => {
+          release();
+          reject(error);
+        },
+      );
     });
   }
   dispose = () => {
@@ -60,8 +86,10 @@ export class PluginImageOwner {
     if (this.entries.get(entry.id) === entry) this.entries.delete(entry.id);
     entry.abort.abort(unavailable());
     if (entry.url) {
-      this.urls.revokeObjectURL(entry.url); entry.url = undefined;
-      this.bytes -= entry.bytes; entry.bytes = 0;
+      this.urls.revokeObjectURL(entry.url);
+      entry.url = undefined;
+      this.bytes -= entry.bytes;
+      entry.bytes = 0;
     }
   }
 }
@@ -69,11 +97,19 @@ export class PluginImageOwner {
 const owners = new WeakMap<AbortSignal, PluginImageOwner>();
 const bindings = new WeakMap<object, PluginImageOwner>();
 
-export function registerPluginImageOwner(signal: AbortSignal, load: (id: string, signal: AbortSignal) => Promise<Blob>, urls?: UrlPort): () => void {
+export function registerPluginImageOwner(
+  signal: AbortSignal,
+  load: (id: string, signal: AbortSignal) => Promise<Blob>,
+  urls?: UrlPort,
+): () => void {
   if (signal.aborted || owners.has(signal)) throw unavailable();
   const owner = new PluginImageOwner(load, urls);
   owners.set(signal, owner);
-  const dispose = () => { signal.removeEventListener("abort", dispose); owners.delete(signal); owner.dispose(); };
+  const dispose = () => {
+    signal.removeEventListener("abort", dispose);
+    owners.delete(signal);
+    owner.dispose();
+  };
   signal.addEventListener("abort", dispose, { once: true });
   return dispose;
 }

@@ -281,9 +281,7 @@ var plugin = {
     ctx.contributions.voiceProviders.register({
       id: "voices",
       label: "TTS",
-      listVoices: async () => [
-        { id: "default", label: await voiceLabel(ctx, network, readSettings(ctx)) }
-      ],
+      listVoices: async () => [{ id: "default", label: await voiceLabel(ctx, network, readSettings(ctx)) }],
       synthesize: async ({ text: text2 }) => {
         const settings = readSettings(ctx);
         const apiKey = await ctx.services.secrets.get(secretName(settings.vendor));

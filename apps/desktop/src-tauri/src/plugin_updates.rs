@@ -146,9 +146,7 @@ pub(crate) fn rollback_at(
     let journal = storage::read_plugin_update(conn, update_id)?
         .ok_or_else(|| file_error("plugin recovery record is missing"))?;
     if journal.phase != "prepared" {
-        return Err(file_error(
-            "accepted plugin update cannot be rolled back",
-        ));
+        return Err(file_error("accepted plugin update cannot be rolled back"));
     }
     restore_files(root, &journal)?;
     storage::rollback_plugin_update(conn, update_id)?;
@@ -167,9 +165,7 @@ pub(crate) fn finish_at(
         return Ok(());
     };
     if journal.phase != "accepted" {
-        return Err(file_error(
-            "unaccepted plugin update cannot be finalized",
-        ));
+        return Err(file_error("unaccepted plugin update cannot be finalized"));
     }
     cleanup_files(root, &journal)?;
     storage::finish_plugin_update(conn, update_id)

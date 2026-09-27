@@ -1,6 +1,12 @@
 import { AppError, ERR_AI_NETWORK, ERR_AI_PROVIDER, ERR_AI_RATE_LIMITED } from "@read-aware/core";
 import type { AgentFetch } from "./transport";
-import { parseCatalogCache, parseCatalogModels, parseOllamaCatalog, type CatalogCache, type CatalogModel } from "./catalog-data";
+import {
+  parseCatalogCache,
+  parseCatalogModels,
+  parseOllamaCatalog,
+  type CatalogCache,
+  type CatalogModel,
+} from "./catalog-data";
 import type { KnownProviderId } from "./provider-definitions";
 
 export const MODEL_CATALOG_TTL_MS = 4 * 60 * 60 * 1_000;
@@ -46,7 +52,9 @@ export class ModelCatalogStore {
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return () => {
+      this.listeners.delete(listener);
+    };
   };
 
   getSnapshot = (provider: KnownProviderId): CatalogState => {
@@ -81,9 +89,15 @@ export class ModelCatalogStore {
     if (pending) return pending;
     const state = this.getSnapshot(provider);
     const age = this.now() - (state.checkedAt ?? 0);
-    if (!force && ((state.checkedAt !== undefined && age >= 0 && age < MODEL_CATALOG_TTL_MS) ||
-      this.now() < (this.retryAt.get(provider) ?? 0))) return Promise.resolve();
-    const work = this.fetchCatalog(provider).finally(() => { this.pending.delete(provider); });
+    if (
+      !force &&
+      ((state.checkedAt !== undefined && age >= 0 && age < MODEL_CATALOG_TTL_MS) ||
+        this.now() < (this.retryAt.get(provider) ?? 0))
+    )
+      return Promise.resolve();
+    const work = this.fetchCatalog(provider).finally(() => {
+      this.pending.delete(provider);
+    });
     this.pending.set(provider, work);
     return work;
   };
@@ -95,29 +109,36 @@ export class ModelCatalogStore {
     const timeout = setTimeout(() => controller.abort(), this.deps.timeoutMs ?? 12_000);
     try {
       const cached = this.cache.get(provider);
-      const url = provider === "ollama-cloud"
-        ? "https://ollama.com/v1/models"
-        : `https://pi.dev/api/models/providers/${encodeURIComponent(provider)}`;
+      const url =
+        provider === "ollama-cloud"
+          ? "https://ollama.com/v1/models"
+          : `https://pi.dev/api/models/providers/${encodeURIComponent(provider)}`;
       // Public metadata only: API keys and reading data never go to the catalog host.
-      const { response, body } = await abortable((async () => {
-        const response = await this.deps.fetch(url, {
-          headers: { Accept: "application/json", ...(cached?.etag ? { "If-None-Match": cached.etag } : {}) },
-          signal: controller.signal,
-        });
-        const body: unknown = response.ok ? await response.json() : undefined;
-        return { response, body };
-      })(), controller.signal);
+      const { response, body } = await abortable(
+        (async () => {
+          const response = await this.deps.fetch(url, {
+            headers: { Accept: "application/json", ...(cached?.etag ? { "If-None-Match": cached.etag } : {}) },
+            signal: controller.signal,
+          });
+          const body: unknown = response.ok ? await response.json() : undefined;
+          return { response, body };
+        })(),
+        controller.signal,
+      );
       clearTimeout(timeout);
       let next: CatalogCache;
       if (response.status === 304 && cached) {
         next = { ...cached, checkedAt: this.now() };
       } else {
-        if (!response.ok) throw new AppError(
-          response.status === 429 ? ERR_AI_RATE_LIMITED : ERR_AI_PROVIDER,
-          `Model catalog HTTP ${response.status}: ${provider}`, { retryable: true },
-        );
+        if (!response.ok)
+          throw new AppError(
+            response.status === 429 ? ERR_AI_RATE_LIMITED : ERR_AI_PROVIDER,
+            `Model catalog HTTP ${response.status}: ${provider}`,
+            { retryable: true },
+          );
         const models = provider === "ollama-cloud" ? parseOllamaCatalog(body) : parseCatalogModels(provider, body);
-        if (models.length === 0) throw new AppError(ERR_AI_PROVIDER, `Empty model catalog: ${provider}`, { retryable: true });
+        if (models.length === 0)
+          throw new AppError(ERR_AI_PROVIDER, `Empty model catalog: ${provider}`, { retryable: true });
         const ids = new Set(models.map((model) => model.id));
         const selected = new Set(this.deps.selected(provider));
         const retained = this.getModels(provider).filter((model) => selected.has(model.id) && !ids.has(model.id));
@@ -130,7 +151,10 @@ export class ModelCatalogStore {
       this.retryAt.delete(provider);
       this.publish(provider, { models: next.models, refreshing: false, checkedAt: next.checkedAt });
     } catch (cause) {
-      const error = cause instanceof AppError ? cause : new AppError(ERR_AI_NETWORK, `Model catalog refresh failed: ${provider}`, { cause, retryable: true });
+      const error =
+        cause instanceof AppError
+          ? cause
+          : new AppError(ERR_AI_NETWORK, `Model catalog refresh failed: ${provider}`, { cause, retryable: true });
       this.deps.log.warn(`Keeping previous model catalog: ${provider}`, cause);
       this.retryAt.set(provider, this.now() + MODEL_CATALOG_RETRY_MS);
       this.publish(provider, { ...previous, refreshing: false, error });

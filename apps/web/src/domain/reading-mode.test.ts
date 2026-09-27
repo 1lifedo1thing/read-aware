@@ -10,7 +10,8 @@ test("mode configuration and stepping keep their causal actor; a late receipt ca
   try {
     const configured = runtime.configureMode({ active: true }, undefined, undefined, actor);
     expect(eventCause(runtime.snapshot())).toBe(actorCause(actor));
-    ready(); await configured;
+    ready();
+    await configured;
     expect(eventCause(runtime.snapshot())).toBe(actorCause(actor));
     controller.bindStepper(async (_direction, _signal, origin) => {
       expect(origin).toBe(actor);
@@ -22,22 +23,35 @@ test("mode configuration and stepping keep their causal actor; a late receipt ca
     await runtime.stepMode("next", undefined, undefined, actor);
     expect(eventCause(runtime.snapshot())).toBe(actorCause(actor));
     controller.choose(false);
-    controller.feedback(controller.generation(), "test:mode", "sentence", { status: "inactive", cfiRange: null, progress: null });
+    controller.feedback(controller.generation(), "test:mode", "sentence", {
+      status: "inactive",
+      cfiRange: null,
+      progress: null,
+    });
     let takeover = true;
     const stop = controller.observe(() => {
       if (!takeover || controller.snapshot().status !== "ready") return;
       takeover = false;
       controller.choose(false);
-      controller.feedback(controller.generation(), "test:mode", "sentence", { status: "inactive", cfiRange: null, progress: null });
+      controller.feedback(controller.generation(), "test:mode", "sentence", {
+        status: "inactive",
+        cfiRange: null,
+        progress: null,
+      });
     });
     try {
       const pending = runtime.configureMode({ active: true }, undefined, undefined, actor);
-      ready(); await pending;
+      ready();
+      await pending;
       expect(runtime.snapshot().mode.status).toBe("inactive");
       expect(actorOrigin(runtime.snapshot().change!.origin)).toBe("user");
       expect(eventCause(runtime.snapshot())?.root).not.toBe(actorCause(actor)?.root);
-    } finally { stop(); }
-  } finally { runtime.closed(); }
+    } finally {
+      stop();
+    }
+  } finally {
+    runtime.closed();
+  }
 });
 
 function fixture() {
@@ -46,29 +60,49 @@ function fixture() {
   const location = { bookId: "book", contentVersion: "v1", cfi: "first" };
   const detach = runtime.attach(id, { navigate: async () => location, step: async () => location }, location);
   const controller = new ReadingModeController();
-  controller.bindPositionWaiter(async position => {
-    const feedback = { status: "ready" as const, progress: { ordinal: 0, total: 1 }, cfiRange: position.location.cfi, position };
+  controller.bindPositionWaiter(async (position) => {
+    const feedback = {
+      status: "ready" as const,
+      progress: { ordinal: 0, total: 1 },
+      cfiRange: position.location.cfi,
+      position,
+    };
     controller.feedback(controller.generation(), position.modeKey, position.unitId, feedback);
     return feedback;
   });
-  controller.environment({ key: "test:mode", label: "Test mode", defaultUnitId: "sentence", units: [{ id: "sentence", label: "Sentence" }] }, true);
+  controller.environment(
+    { key: "test:mode", label: "Test mode", defaultUnitId: "sentence", units: [{ id: "sentence", label: "Sentence" }] },
+    true,
+  );
   const unbind = runtime.bindMode(id, controller);
-  const ready = () => controller.feedback(controller.requested().revision, "test:mode", "sentence", {
-    status: "ready", progress: { ordinal: 1, total: 2 }, cfiRange: "first",
-  });
+  const ready = () =>
+    controller.feedback(controller.requested().revision, "test:mode", "sentence", {
+      status: "ready",
+      progress: { ordinal: 1, total: 2 },
+      cfiRange: "first",
+    });
   return { runtime, id, controller, unbind, detach, ready };
 }
 
 test("unit steps wait for committed consumers, return boundaries and never add jump history", async () => {
   const { runtime, id, controller, ready } = fixture();
-  const configured = runtime.configureMode({ active: true }); ready(); await configured;
+  const configured = runtime.configureMode({ active: true });
+  ready();
+  await configured;
   const feedback = { status: "ready" as const, progress: { ordinal: 2, total: 3 }, cfiRange: "next" };
   let direction: number | undefined;
-  controller.bindStepper(async value => { direction = value; return { outcome: "moved", feedback }; });
+  controller.bindStepper(async (value) => {
+    direction = value;
+    return { outcome: "moved", feedback };
+  });
   let done = false;
-  const work = runtime.stepMode("next", undefined, { sessionId: id, bookId: "book" }).then(result => { done = true; return result; });
-  await new Promise(resolve => setTimeout(resolve, 0));
-  expect(direction).toBe(1); expect(done).toBe(false);
+  const work = runtime.stepMode("next", undefined, { sessionId: id, bookId: "book" }).then((result) => {
+    done = true;
+    return result;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(direction).toBe(1);
+  expect(done).toBe(false);
   controller.feedback(controller.generation(), "test:mode", "sentence", feedback);
   expect(await work).toMatchObject({ status: "completed", outcome: "moved", mode: { cfiRange: "next" } });
   expect(runtime.snapshot().history.canGoBack).toBe(false);
@@ -80,69 +114,112 @@ test("unit steps wait for committed consumers, return boundaries and never add j
 });
 
 test("unit movement waits for durable position, reports failure and can recover without reconfiguring", async () => {
-  const { runtime, controller, ready } = fixture(); controller.requireDurability();
-  const configured = runtime.configureMode({ active: true }); ready(); await configured;
-  const position = { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "next" } };
+  const { runtime, controller, ready } = fixture();
+  controller.requireDurability();
+  const configured = runtime.configureMode({ active: true });
+  ready();
+  await configured;
+  const position = {
+    modeKey: "test:mode",
+    unitId: "sentence",
+    location: { bookId: "book", contentVersion: "v1", cfi: "next" },
+  };
   const feedback = { status: "ready" as const, progress: { ordinal: 2, total: 3 }, cfiRange: "next", position };
   let save!: () => void, fail!: (error: unknown) => void;
   controller.bindStepper(async () => {
-    controller.persistPosition(controller.generation(), "test:mode", "sentence",
-      () => new Promise<void>((resolve, reject) => { save = resolve; fail = reject; }), position);
+    controller.persistPosition(
+      controller.generation(),
+      "test:mode",
+      "sentence",
+      () =>
+        new Promise<void>((resolve, reject) => {
+          save = resolve;
+          fail = reject;
+        }),
+      position,
+    );
     controller.feedback(controller.generation(), "test:mode", "sentence", feedback);
     return { outcome: "moved", feedback };
   });
   let done = false;
-  const work = runtime.stepMode("next").then(result => { done = true; return result; }, error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
-  expect(runtime.snapshot().mode.cfiRange).toBe("next"); expect(done).toBe(false);
+  const work = runtime.stepMode("next").then(
+    (result) => {
+      done = true;
+      return result;
+    },
+    (error) => error,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(runtime.snapshot().mode.cfiRange).toBe("next");
+  expect(done).toBe(false);
   fail(new AppError("db/locked", "position failed"));
   expect(await work).toMatchObject({ code: "db/locked" });
   expect(runtime.snapshot().history.canGoBack).toBe(false);
   const recovery = runtime.stepMode("next");
-  await new Promise(resolve => setTimeout(resolve, 0)); save();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  save();
   expect(await recovery).toMatchObject({ outcome: "moved", mode: { cfiRange: "next" } });
   runtime.closed();
 });
 
 test("return history waits for persistence and explicit return retries an already failed position", async () => {
-  const { runtime, id, controller } = fixture(); controller.requireDurability();
-  const position = { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "resting" } };
+  const { runtime, id, controller } = fixture();
+  controller.requireDurability();
+  const position = {
+    modeKey: "test:mode",
+    unitId: "sentence",
+    location: { bookId: "book", contentVersion: "v1", cfi: "resting" },
+  };
   const feedback = { status: "ready" as const, cfiRange: "resting", progress: { ordinal: 0, total: 1 }, position };
   const configured = runtime.configureMode({ active: true });
   controller.persistPosition(controller.generation(), "test:mode", "sentence", async () => {}, position);
-  controller.feedback(controller.generation(), "test:mode", "sentence", feedback); await configured;
+  controller.feedback(controller.generation(), "test:mode", "sentence", feedback);
+  await configured;
   const away = { ...position.location, cfi: "away" };
   runtime.attach(id, { navigate: async () => position.location, step: async () => away }, away);
   let fail!: (error: unknown) => void, commit!: () => void;
   let calls = 0;
-  const persist = () => new Promise<void>((resolve, reject) => { calls++; commit = resolve; fail = reject; });
+  const persist = () =>
+    new Promise<void>((resolve, reject) => {
+      calls++;
+      commit = resolve;
+      fail = reject;
+    });
   controller.persistPosition(controller.generation(), "test:mode", "sentence", persist, position);
-  const returning = runtime.returnToMode().catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const returning = runtime.returnToMode().catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(runtime.snapshot().history.canGoBack).toBe(false);
   fail(new AppError("db/locked", "return failed"));
   expect(await returning).toMatchObject({ code: "db/locked" });
   expect(runtime.snapshot().history.canGoBack).toBe(false);
   const recovery = runtime.returnToMode();
-  await new Promise(resolve => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(calls).toBe(2);
-  commit(); await recovery;
+  commit();
+  await recovery;
   expect(runtime.snapshot().history.canGoBack).toBe(true);
   runtime.closed();
 });
 
 test("new navigation releases a position-save waiter even if the old database write never settles", async () => {
-  const { runtime, controller, ready } = fixture(); controller.requireDurability();
-  const configured = runtime.configureMode({ active: true }); ready(); await configured;
-  const position = { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "next" } };
+  const { runtime, controller, ready } = fixture();
+  controller.requireDurability();
+  const configured = runtime.configureMode({ active: true });
+  ready();
+  await configured;
+  const position = {
+    modeKey: "test:mode",
+    unitId: "sentence",
+    location: { bookId: "book", contentVersion: "v1", cfi: "next" },
+  };
   const feedback = { status: "ready" as const, progress: { ordinal: 1, total: 2 }, cfiRange: "next", position };
   controller.bindStepper(async () => {
     controller.persistPosition(controller.generation(), "test:mode", "sentence", () => new Promise(() => {}), position);
     controller.feedback(controller.generation(), "test:mode", "sentence", feedback);
     return { outcome: "moved", feedback };
   });
-  const stepping = runtime.stepMode("next").catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const stepping = runtime.stepMode("next").catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   const navigation = runtime.navigate({ fraction: 0.8 });
   expect(await stepping).toMatchObject({ code: "reader/superseded" });
   expect((await navigation).status).toBe("completed");
@@ -151,42 +228,70 @@ test("new navigation releases a position-save waiter even if the old database wr
 
 test("new navigation cancels unit traversal and waits for its renderer work to release", async () => {
   const { runtime, controller, ready } = fixture();
-  const configured = runtime.configureMode({ active: true }); ready(); await configured;
+  const configured = runtime.configureMode({ active: true });
+  ready();
+  await configured;
   let cancelled = false;
   let finish!: () => void;
   controller.bindStepper(async (_direction, signal) => {
-    await new Promise<void>(resolve => { finish = resolve; signal.addEventListener("abort", () => { cancelled = true; }, { once: true }); });
+    await new Promise<void>((resolve) => {
+      finish = resolve;
+      signal.addEventListener(
+        "abort",
+        () => {
+          cancelled = true;
+        },
+        { once: true },
+      );
+    });
     if (signal.aborted) throw signal.reason;
     throw new Error("Unexpected uncancelled step");
   });
-  const step = runtime.stepMode("next").catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const step = runtime.stepMode("next").catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   let moved = false;
-  const newer = runtime.navigate({ fraction: 0.8 }).then(() => { moved = true; });
+  const newer = runtime.navigate({ fraction: 0.8 }).then(() => {
+    moved = true;
+  });
   expect(await step).toMatchObject({ code: "reader/superseded" });
-  expect(cancelled).toBe(true); expect(moved).toBe(false);
-  finish(); await newer;
+  expect(cancelled).toBe(true);
+  expect(moved).toBe(false);
+  finish();
+  await newer;
   expect(moved).toBe(true);
   runtime.closed();
 });
 
 test("mode changes, detachment, failure and invalid scope never yield unit success", async () => {
   const { runtime, controller, ready, unbind } = fixture();
-  const configured = runtime.configureMode({ active: true }); ready(); await configured;
-  const abort = new AbortController(); abort.abort(new Error("cancelled"));
+  const configured = runtime.configureMode({ active: true });
+  ready();
+  await configured;
+  const abort = new AbortController();
+  abort.abort(new Error("cancelled"));
   await expect(runtime.stepMode("next", abort.signal)).rejects.toThrow("cancelled");
-  await expect(runtime.stepMode("next", undefined, { bookId: "other" })).rejects.toMatchObject({ code: "reader/superseded" });
+  await expect(runtime.stepMode("next", undefined, { bookId: "other" })).rejects.toMatchObject({
+    code: "reader/superseded",
+  });
   await expect(runtime.stepMode("wrong" as "next")).rejects.toMatchObject({ code: "reader/invalid-target" });
-  controller.bindStepper(async () => { throw new AppError("reader/segmentation-failed", "failure"); });
+  controller.bindStepper(async () => {
+    throw new AppError("reader/segmentation-failed", "failure");
+  });
   await expect(runtime.stepMode("next")).rejects.toMatchObject({ code: "reader/segmentation-failed" });
-  controller.bindStepper((_direction, signal) => new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true })));
-  const changing = runtime.stepMode("next").catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  controller.bindStepper(
+    (_direction, signal) =>
+      new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true })),
+  );
+  const changing = runtime.stepMode("next").catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   controller.choose(false);
   expect(await changing).toMatchObject({ code: "reader/superseded" });
-  const active = runtime.configureMode({ active: true }); ready(); await active;
-  const detached = runtime.stepMode("next").catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0)); unbind();
+  const active = runtime.configureMode({ active: true });
+  ready();
+  await active;
+  const detached = runtime.stepMode("next").catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  unbind();
   expect(await detached).toMatchObject({ code: "reader/superseded" });
   runtime.closed();
 });
@@ -194,7 +299,9 @@ test("mode changes, detachment, failure and invalid scope never yield unit succe
 test("shared mode snapshot observes real preparation/completion and is isolated from consumer mutation", async () => {
   const { runtime, id, ready } = fixture();
   const revisions: number[] = [];
-  const off = runtime.observe(state => { revisions.push(state.revision); });
+  const off = runtime.observe((state) => {
+    revisions.push(state.revision);
+  });
   const work = runtime.configureMode({ active: true }, undefined, { sessionId: id, bookId: "book" });
   expect(runtime.snapshot().mode.status).toBe("preparing");
   ready();
@@ -203,12 +310,13 @@ test("shared mode snapshot observes real preparation/completion and is isolated 
   receipt.mode.units[0]!.label = "mutated";
   expect(runtime.snapshot().mode.units[0]!.label).toBe("Sentence");
   expect(new Set(revisions).size).toBe(revisions.length);
-  off(); runtime.closed();
+  off();
+  runtime.closed();
 });
 
 test("close rejects an unfinished mode change and obsolete feedback cannot mutate a replacement session", async () => {
   const { runtime, id, controller, unbind, ready } = fixture();
-  const work = runtime.configureMode({ active: true }).catch(error => error);
+  const work = runtime.configureMode({ active: true }).catch((error) => error);
   runtime.closed();
   expect(await work).toMatchObject({ code: "reader/superseded" });
   ready();
@@ -218,9 +326,15 @@ test("close rejects an unfinished mode change and obsolete feedback cannot mutat
   runtime.attach(other, { navigate: async () => location, step: async () => location }, location);
   runtime.bindMode(other, controller);
   unbind();
-  await expect(runtime.configureMode({ active: false }, undefined, { sessionId: id })).rejects.toMatchObject({ code: "reader/superseded" });
+  await expect(runtime.configureMode({ active: false }, undefined, { sessionId: id })).rejects.toMatchObject({
+    code: "reader/superseded",
+  });
   const stopped = runtime.configureMode({ active: false }, undefined, { sessionId: other });
-  controller.feedback(controller.requested().revision, "test:mode", "sentence", { status: "inactive", progress: null, cfiRange: null });
+  controller.feedback(controller.requested().revision, "test:mode", "sentence", {
+    status: "inactive",
+    progress: null,
+    cfiRange: null,
+  });
   expect((await stopped).mode.status).toBe("inactive");
   runtime.closed();
 });
@@ -228,8 +342,11 @@ test("close rejects an unfinished mode change and obsolete feedback cannot mutat
 test("invalid guards, cancelled calls and a detached engine do not change mode preferences", async () => {
   const { runtime, controller, detach } = fixture();
   const before = controller.requested();
-  await expect(runtime.configureMode({ active: true }, undefined, { bookId: "other" })).rejects.toMatchObject({ code: "reader/superseded" });
-  const abort = new AbortController(); abort.abort(new Error("cancelled"));
+  await expect(runtime.configureMode({ active: true }, undefined, { bookId: "other" })).rejects.toMatchObject({
+    code: "reader/superseded",
+  });
+  const abort = new AbortController();
+  abort.abort(new Error("cancelled"));
   await expect(runtime.configureMode({ active: true }, abort.signal)).rejects.toThrow("cancelled");
   detach();
   await expect(runtime.configureMode({ active: true })).rejects.toMatchObject({ code: "reader/unavailable" });
@@ -240,32 +357,70 @@ test("invalid guards, cancelled calls and a detached engine do not change mode p
 test("return waits for both renderer and asynchronous unit restoration before committing history", async () => {
   const { runtime, id, controller } = fixture();
   const active = runtime.configureMode({ active: true });
-  controller.feedback(controller.requested().revision, "test:mode", "sentence", { status: "ready", progress: null, cfiRange: null,
-    position: { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "resting" } } });
+  controller.feedback(controller.requested().revision, "test:mode", "sentence", {
+    status: "ready",
+    progress: null,
+    cfiRange: null,
+    position: {
+      modeKey: "test:mode",
+      unitId: "sentence",
+      location: { bookId: "book", contentVersion: "v1", cfi: "resting" },
+    },
+  });
   await active;
-  let target: unknown; let finish!: () => void;
+  let target: unknown;
+  let finish!: () => void;
   const location = { bookId: "book", contentVersion: "v1", cfi: "away" };
-  runtime.attach(id, { navigate: async next => { target = next; await new Promise<void>(resolve => { finish = resolve; }); return { ...location, cfi: "resting" }; }, step: async () => location }, location);
+  runtime.attach(
+    id,
+    {
+      navigate: async (next) => {
+        target = next;
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return { ...location, cfi: "resting" };
+      },
+      step: async () => location,
+    },
+    location,
+  );
   let done = false;
   let restore!: () => void;
-  controller.bindPositionWaiter(async position => {
-    await new Promise<void>(resolve => { restore = resolve; });
+  controller.bindPositionWaiter(async (position) => {
+    await new Promise<void>((resolve) => {
+      restore = resolve;
+    });
     return { status: "ready", progress: { ordinal: 0, total: 1 }, cfiRange: "resting", position };
   });
-  const work = runtime.returnToMode(undefined, { sessionId: id }).then(result => { done = true; return result; });
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const work = runtime.returnToMode(undefined, { sessionId: id }).then((result) => {
+    done = true;
+    return result;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(done).toBe(false);
   expect(target).toEqual({ bookId: "book", contentVersion: "v1", cfi: "resting" });
-  finish(); await new Promise(resolve => setTimeout(resolve, 0));
+  finish();
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(done).toBe(false);
   expect(runtime.snapshot().history.canGoBack).toBe(false);
-  restore(); await new Promise(resolve => setTimeout(resolve, 0));
+  restore();
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(done).toBe(false);
-  controller.feedback(controller.generation(), "test:mode", "sentence", { status: "ready", cfiRange: "resting", progress: { ordinal: 0, total: 1 },
-    position: { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "resting" } } });
+  controller.feedback(controller.generation(), "test:mode", "sentence", {
+    status: "ready",
+    cfiRange: "resting",
+    progress: { ordinal: 0, total: 1 },
+    position: {
+      modeKey: "test:mode",
+      unitId: "sentence",
+      location: { bookId: "book", contentVersion: "v1", cfi: "resting" },
+    },
+  });
   expect((await work).location.cfi).toBe("resting");
   expect(runtime.snapshot().mode.cfiRange).toBe("resting");
-  const abort = new AbortController(); abort.abort(new Error("cancelled"));
+  const abort = new AbortController();
+  abort.abort(new Error("cancelled"));
   await expect(runtime.returnToMode(abort.signal)).rejects.toThrow("cancelled");
   runtime.closed();
   await expect(runtime.returnToMode()).rejects.toMatchObject({ code: "reader/unavailable" });
@@ -274,15 +429,33 @@ test("return waits for both renderer and asynchronous unit restoration before co
 test("a newer navigation cancels a return still waiting on segmentation", async () => {
   const { runtime, controller } = fixture();
   const active = runtime.configureMode({ active: true });
-  controller.feedback(controller.requested().revision, "test:mode", "sentence", { status: "ready", progress: null, cfiRange: null,
-    position: { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "resting" } } });
+  controller.feedback(controller.requested().revision, "test:mode", "sentence", {
+    status: "ready",
+    progress: null,
+    cfiRange: null,
+    position: {
+      modeKey: "test:mode",
+      unitId: "sentence",
+      location: { bookId: "book", contentVersion: "v1", cfi: "resting" },
+    },
+  });
   await active;
   let cancelled = false;
-  controller.bindPositionWaiter((_position, signal) => new Promise((_resolve, reject) => {
-    signal.addEventListener("abort", () => { cancelled = true; reject(signal.reason); }, { once: true });
-  }));
-  const returning = runtime.returnToMode().catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  controller.bindPositionWaiter(
+    (_position, signal) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            cancelled = true;
+            reject(signal.reason);
+          },
+          { once: true },
+        );
+      }),
+  );
+  const returning = runtime.returnToMode().catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   await runtime.navigate({ fraction: 0.8 });
   expect(await returning).toMatchObject({ code: "reader/superseded" });
   expect(cancelled).toBe(true);
@@ -292,11 +465,23 @@ test("a newer navigation cancels a return still waiting on segmentation", async 
 test("return refuses a stale content version or mode identity without moving the renderer", async () => {
   const { runtime, controller } = fixture();
   const active = runtime.configureMode({ active: true });
-  const position = { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "old", cfi: "resting" } };
-  const feedback = () => controller.feedback(controller.requested().revision, "test:mode", "sentence", { status: "ready", progress: null, cfiRange: null, position });
-  feedback(); await active;
+  const position = {
+    modeKey: "test:mode",
+    unitId: "sentence",
+    location: { bookId: "book", contentVersion: "old", cfi: "resting" },
+  };
+  const feedback = () =>
+    controller.feedback(controller.requested().revision, "test:mode", "sentence", {
+      status: "ready",
+      progress: null,
+      cfiRange: null,
+      position,
+    });
+  feedback();
+  await active;
   await expect(runtime.returnToMode()).rejects.toMatchObject({ code: "reader/stale-location" });
-  position.modeKey = "other:mode"; feedback();
+  position.modeKey = "other:mode";
+  feedback();
   await expect(runtime.returnToMode()).rejects.toMatchObject({ code: "reader/unavailable" });
   expect(runtime.snapshot().location?.cfi).toBe("first");
   runtime.closed();
@@ -305,17 +490,38 @@ test("return refuses a stale content version or mode identity without moving the
 test("changing mode cancels an in-flight return before it can commit navigation history", async () => {
   const { runtime, id, controller } = fixture();
   const active = runtime.configureMode({ active: true });
-  controller.feedback(controller.requested().revision, "test:mode", "sentence", { status: "ready", progress: null, cfiRange: null,
-    position: { modeKey: "test:mode", unitId: "sentence", location: { bookId: "book", contentVersion: "v1", cfi: "resting" } } });
+  controller.feedback(controller.requested().revision, "test:mode", "sentence", {
+    status: "ready",
+    progress: null,
+    cfiRange: null,
+    position: {
+      modeKey: "test:mode",
+      unitId: "sentence",
+      location: { bookId: "book", contentVersion: "v1", cfi: "resting" },
+    },
+  });
   await active;
   const location = { bookId: "book", contentVersion: "v1", cfi: "away" };
   let finish!: () => void;
-  runtime.attach(id, { navigate: async () => { await new Promise<void>(resolve => { finish = resolve; }); return { ...location, cfi: "resting" }; }, step: async () => location }, location);
-  const work = runtime.returnToMode().catch(error => error);
-  await new Promise(resolve => setTimeout(resolve, 0));
+  runtime.attach(
+    id,
+    {
+      navigate: async () => {
+        await new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return { ...location, cfi: "resting" };
+      },
+      step: async () => location,
+    },
+    location,
+  );
+  const work = runtime.returnToMode().catch((error) => error);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   controller.choose(false);
   expect(await work).toMatchObject({ code: "reader/superseded" });
-  finish(); await new Promise(resolve => setTimeout(resolve, 0));
+  finish();
+  await new Promise((resolve) => setTimeout(resolve, 0));
   expect(runtime.snapshot().location?.cfi).toBe("away");
   expect(runtime.snapshot().history.canGoBack).toBe(false);
   runtime.closed();

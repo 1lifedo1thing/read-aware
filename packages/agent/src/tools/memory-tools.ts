@@ -5,7 +5,13 @@
  */
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { AppError, normalizeMemoryPageQuery, normalizeUserProfileQuery, type UserProfileQuery, type MemoryPageQuery } from "@read-aware/core";
+import {
+  AppError,
+  normalizeMemoryPageQuery,
+  normalizeUserProfileQuery,
+  type UserProfileQuery,
+  type MemoryPageQuery,
+} from "@read-aware/core";
 import { buildProfileWriteTool } from "./user-profile-write-tool";
 import type { MemoryKind, MemoryScope, RuntimeDeps } from "../ports";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
@@ -23,39 +29,70 @@ export function visibleScopes(scope: ThreadScope): MemoryScope[] {
 
 export function buildMemoryTools(scope: ThreadScope, deps: RuntimeDeps): AgentTool[] {
   const profile: AgentTool = {
-    name: "get_user_profile", label: "Read user profile",
-    description: "Read the existing event-backed user profile summary used by the assistant, as bounded plain text. This does not expose other structured profile fields, infer fields, start onboarding, write memory or read transcripts. Both thread scopes see the same user profile. Missing is exists=false; empty stored text is exists=true. Follow nextOffset with the returned expectedRevision to avoid mixing revisions; on conflict restart at offset 0. Offsets/lengths count UTF-16 units, not bytes.",
-    parameters: Type.Object({ offset: Type.Optional(Type.Integer({ minimum: 0 })), limit: Type.Optional(Type.Integer({ minimum: 2, maximum: 16000 })),
-      expectedRevision: Type.Optional(Type.String({ pattern: "^profile2:[a-f0-9]{64}$" })) }, { additionalProperties: false }),
-    execute: async (_id, params, signal) => textResult(await deps.profile.readProfile(normalizeUserProfileQuery(params as UserProfileQuery), signal)),
+    name: "get_user_profile",
+    label: "Read user profile",
+    description:
+      "Read the existing event-backed user profile summary used by the assistant, as bounded plain text. This does not expose other structured profile fields, infer fields, start onboarding, write memory or read transcripts. Both thread scopes see the same user profile. Missing is exists=false; empty stored text is exists=true. Follow nextOffset with the returned expectedRevision to avoid mixing revisions; on conflict restart at offset 0. Offsets/lengths count UTF-16 units, not bytes.",
+    parameters: Type.Object(
+      {
+        offset: Type.Optional(Type.Integer({ minimum: 0 })),
+        limit: Type.Optional(Type.Integer({ minimum: 2, maximum: 16000 })),
+        expectedRevision: Type.Optional(Type.String({ pattern: "^profile2:[a-f0-9]{64}$" })),
+      },
+      { additionalProperties: false },
+    ),
+    execute: async (_id, params, signal) =>
+      textResult(await deps.profile.readProfile(normalizeUserProfileQuery(params as UserProfileQuery), signal)),
   };
   const searchMemory: AgentTool = {
     name: "search_memory",
     label: "Search memory",
     description:
       "Search long-term memory about this reader (preferences, insights, book takeaways). Omit query to list the strongest memories. In a global thread, memories about a specific book require bookId; an unfiltered global search does not include every book. If a keyword search misses, keep that bookId and omit query before claiming no book memories exist: wording or language may differ. Returns items, total, revision and nextOffset; follow nextOffset with the same filters and expectedRevision to read beyond the first page. If results changed, restart at offset 0 without expectedRevision. The page revision is not a token for editing memory. A book thread cannot query another book via bookId.",
-    parameters: Type.Object({
-      query: Type.Optional(Type.String({ description: "Text filter; omit to list top memories" })),
-      bookId: Type.Optional(
-        Type.String({ description: "Include this book along with personal and cross-book memories (global thread only)" }),
-      ),
-      limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
-      offset: Type.Optional(Type.Integer({ minimum: 0 })),
-      expectedRevision: Type.Optional(Type.String({ pattern: "^mpg[12]:[a-f0-9]{64}$" })),
-    }, { additionalProperties: false }),
+    parameters: Type.Object(
+      {
+        query: Type.Optional(Type.String({ description: "Text filter; omit to list top memories" })),
+        bookId: Type.Optional(
+          Type.String({
+            description: "Include this book along with personal and cross-book memories (global thread only)",
+          }),
+        ),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+        offset: Type.Optional(Type.Integer({ minimum: 0 })),
+        expectedRevision: Type.Optional(Type.String({ pattern: "^mpg[12]:[a-f0-9]{64}$" })),
+      },
+      { additionalProperties: false },
+    ),
     execute: async (_id, params) => {
-      if (!params || typeof params !== "object" || Array.isArray(params)
-        || Object.keys(params).some(key => !["query", "bookId", "limit", "offset", "expectedRevision"].includes(key))) {
+      if (
+        !params ||
+        typeof params !== "object" ||
+        Array.isArray(params) ||
+        Object.keys(params).some((key) => !["query", "bookId", "limit", "offset", "expectedRevision"].includes(key))
+      ) {
         throw new AppError("memory/invalid-query", "Invalid memory search parameters");
       }
       const { bookId, ...page } = params as Omit<MemoryPageQuery, "scopes"> & { bookId?: string };
-      if (bookId !== undefined && (typeof bookId !== "string" || !bookId.trim() || bookId.length > 256
-        || scope.kind === "book" && bookId !== scope.bookId)) throw new AppError("memory/invalid-query", "Invalid memory book scope");
+      if (
+        bookId !== undefined &&
+        (typeof bookId !== "string" ||
+          !bookId.trim() ||
+          bookId.length > 256 ||
+          (scope.kind === "book" && bookId !== scope.bookId))
+      )
+        throw new AppError("memory/invalid-query", "Invalid memory book scope");
       const scopes: MemoryScope[] =
         bookId && scope.kind === "global" ? [`book:${bookId}`, "user", "global"] : visibleScopes(scope);
       const result = await deps.memory.pageMemories(normalizeMemoryPageQuery({ ...page, scopes }));
-      return textResult({ ...result, searchedScopes: scopes,
-        ...(scope.kind === "global" && !bookId ? { scopeNotice: "Book-specific memories were not searched. Pass bookId to search a particular book before drawing conclusions about its saved memories." } : {}),
+      return textResult({
+        ...result,
+        searchedScopes: scopes,
+        ...(scope.kind === "global" && !bookId
+          ? {
+              scopeNotice:
+                "Book-specific memories were not searched. Pass bookId to search a particular book before drawing conclusions about its saved memories.",
+            }
+          : {}),
       });
     },
   };
@@ -64,24 +101,23 @@ export function buildMemoryTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
     name: "remember",
     label: "Remember",
     description:
-      "Explicitly save one durable memory about the reader or this reading. Use sparingly — only for things clearly worth keeping (a stated preference, a reading goal, a hard-won insight). NOT for \"记笔记\"/\"note this down\" requests: a note the reader asked for must go through create_annotation so it shows up in their notes list — memory is invisible to the reader.",
+      'Explicitly save one durable memory about the reader or this reading. Use sparingly — only for things clearly worth keeping (a stated preference, a reading goal, a hard-won insight). NOT for "记笔记"/"note this down" requests: a note the reader asked for must go through create_annotation so it shows up in their notes list — memory is invisible to the reader.',
     parameters: Type.Object({
       content: Type.String({ description: "One self-contained sentence, in the reader's language" }),
       scope: Type.Union([Type.Literal("user"), Type.Literal("book"), Type.Literal("global")], {
         description: "user = about the reader; book = about the current book; global = cross-book",
       }),
       kind: Type.Union(
-        [
-          Type.Literal("fact"),
-          Type.Literal("preference"),
-          Type.Literal("insight"),
-          Type.Literal("summary"),
-        ],
+        [Type.Literal("fact"), Type.Literal("preference"), Type.Literal("insight"), Type.Literal("summary")],
         { description: "Memory kind" },
       ),
     }),
     execute: async (_id, params) => {
-      const { content, scope: rawScope, kind } = params as {
+      const {
+        content,
+        scope: rawScope,
+        kind,
+      } = params as {
         content: string;
         scope: "user" | "book" | "global";
         kind: MemoryKind;
@@ -96,16 +132,27 @@ export function buildMemoryTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
       } else {
         memoryScope = rawScope;
       }
-      const saved = await runMemoryBuild(deps, operation => operation.commit(deps.memory.saveMemory)({
-        scope: memoryScope,
-        kind,
-        content,
-        origin: "agent",
-        sourceThreadKey: threadScopeKey(scope),
-      }));
+      const saved = await runMemoryBuild(deps, (operation) =>
+        operation.commit(deps.memory.saveMemory)({
+          scope: memoryScope,
+          kind,
+          content,
+          origin: "agent",
+          sourceThreadKey: threadScopeKey(scope),
+        }),
+      );
       return textResult(saved);
     },
   };
 
-  return [searchMemory, remember, profile, buildProfileInspectionTool(deps), buildProfileWriteTool(scope, deps), buildMemoryManagementTool(scope, deps), ...buildEntityTools(scope, deps), buildBookClassificationTool(scope, deps)];
+  return [
+    searchMemory,
+    remember,
+    profile,
+    buildProfileInspectionTool(deps),
+    buildProfileWriteTool(scope, deps),
+    buildMemoryManagementTool(scope, deps),
+    ...buildEntityTools(scope, deps),
+    buildBookClassificationTool(scope, deps),
+  ];
 }

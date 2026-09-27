@@ -73,16 +73,10 @@ export type EvalCapabilityTag = (typeof EVAL_CAPABILITY_TAGS)[number];
 export type EvalModifierTag = (typeof EVAL_MODIFIER_TAGS)[number];
 
 /** 封闭集（能力 ∪ 形态）；书身份轴单独校验。 */
-export const EVAL_CLOSED_TAGS: readonly string[] = [
-  ...EVAL_CAPABILITY_TAGS,
-  ...EVAL_MODIFIER_TAGS,
-];
+export const EVAL_CLOSED_TAGS: readonly string[] = [...EVAL_CAPABILITY_TAGS, ...EVAL_MODIFIER_TAGS];
 
 /** 校验一组标签：封闭词 + （可选提供的）合法书 slug 集。返回违例描述。 */
-export function invalidTags(
-  tags: readonly string[],
-  extraAllowed: readonly string[] = [],
-): string[] {
+export function invalidTags(tags: readonly string[], extraAllowed: readonly string[] = []): string[] {
   const closed = new Set([...EVAL_CLOSED_TAGS, ...extraAllowed]);
   const seen = new Set<string>();
   const violations: string[] = [];

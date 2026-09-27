@@ -6,88 +6,188 @@ import { setPluginToastHandler } from "./plugin-toast";
 import { decodePluginCallbacks, PluginCallbackRegistry, releasePluginCallbacks } from "../runtime/plugin-callback-wire";
 import { ownPluginViewClose } from "./plugin-view-close";
 import { normalizePluginView } from "./plugin-view";
-const flush = async () => { for (let i = 0; i < 16; i++) await Promise.resolve(); };
+const flush = async () => {
+  for (let i = 0; i < 16; i++) await Promise.resolve();
+};
 
 function fixture() {
   const registry = new PluginCallbackRegistry();
   const owner = new AbortController();
   const notices: string[] = [];
   let failures = 0;
-  const session = new PluginViewSession({ toast: text => notices.push(typeof text === "string" ? text : JSON.stringify(text)), failure: () => { failures++; } });
-  const wire = <T,>(value: T): T => decodePluginCallbacks(structuredClone(registry.encode(value)),
-    async (handle, args) => wire(await registry.invoke(handle, args)), handles => registry.release(handles), owner.signal) as T;
-  const view = (title: string): PluginDetailView => wire({ kind: "detail", title, content: [], actions: [{ id: "run", label: "Run", run: () => ({ toast: title }) }] });
+  const session = new PluginViewSession({
+    toast: (text) => notices.push(typeof text === "string" ? text : JSON.stringify(text)),
+    failure: () => {
+      failures++;
+    },
+  });
+  const wire = <T>(value: T): T =>
+    decodePluginCallbacks(
+      structuredClone(registry.encode(value)),
+      async (handle, args) => wire(await registry.invoke(handle, args)),
+      (handles) => registry.release(handles),
+      owner.signal,
+    ) as T;
+  const view = (title: string): PluginDetailView =>
+    wire({ kind: "detail", title, content: [], actions: [{ id: "run", label: "Run", run: () => ({ toast: title }) }] });
   return { registry, owner, session, view, wire, notices, failures: () => failures };
 }
 
 test("serialized close-all dismisses only the owning presentation across nested dialogs", async () => {
-  const f = fixture(), other = fixture(); let closed = 0, ordinary = 0;
-  f.session.configure({ close: () => { closed++; } });
-  f.session.setRoot(f.view("root")); other.session.setRoot(other.view("other plugin"));
+  const f = fixture(),
+    other = fixture();
+  let closed = 0,
+    ordinary = 0;
+  f.session.configure({
+    close: () => {
+      closed++;
+    },
+  });
+  f.session.setRoot(f.view("root"));
+  other.session.setRoot(other.view("other plugin"));
   await f.session.run(() => ({ view: f.view("child") }), { presentation: "dialog" });
   const child = f.session.getSnapshot().dialog!.session;
-  child.configure({ close: () => { ordinary++; f.session.closeDialog(); } });
-  await child.run(() => ({ view: f.wire({ kind: "detail", content: [], actions: [
-    { id: "return", label: "Return", run: () => ({ close: "all" as const }) },
-  ] }) }), { presentation: "dialog" });
+  child.configure({
+    close: () => {
+      ordinary++;
+      f.session.closeDialog();
+    },
+  });
+  await child.run(
+    () => ({
+      view: f.wire({
+        kind: "detail",
+        content: [],
+        actions: [{ id: "return", label: "Return", run: () => ({ close: "all" as const }) }],
+      }),
+    }),
+    { presentation: "dialog" },
+  );
   const grandchild = child.getSnapshot().dialog!.session;
   const view = grandchild.getSnapshot().stack[0] as PluginDetailView;
   await grandchild.runFrom(grandchild.getSnapshot().renderKey, view.actions![0].run);
-  expect(closed).toBe(1); expect(ordinary).toBe(0);
+  expect(closed).toBe(1);
+  expect(ordinary).toBe(0);
   expect(f.session.getSnapshot().stack).toEqual([]);
   expect(f.session.getSnapshot().dialog).toBeNull();
-  expect(child.getSnapshot().stack).toEqual([]); expect(grandchild.getSnapshot().stack).toEqual([]);
+  expect(child.getSnapshot().stack).toEqual([]);
+  expect(grandchild.getSnapshot().stack).toEqual([]);
   expect(f.registry.size).toBe(0);
   expect(other.session.getSnapshot().stack[0].title).toBe("other plugin");
   other.session.dispose();
 });
 
 test("ordinary close remains local and a retired child's late close-all cannot dismiss its replacement", async () => {
-  const f = fixture(); let closed = 0;
-  f.session.configure({ close: () => { closed++; } });
+  const f = fixture();
+  let closed = 0;
+  f.session.configure({
+    close: () => {
+      closed++;
+    },
+  });
   f.session.setRoot(f.view("root"));
   await f.session.run(() => ({ view: f.view("child") }), { presentation: "dialog" });
   const child = f.session.getSnapshot().dialog!.session;
   child.configure({ close: () => f.session.closeDialog() });
   await child.run(() => ({ close: true }));
   expect(f.session.getSnapshot().stack[0].title).toBe("root");
-  expect(f.session.getSnapshot().dialog).toBeNull(); expect(closed).toBe(0);
+  expect(f.session.getSnapshot().dialog).toBeNull();
+  expect(closed).toBe(0);
   await f.session.run(() => ({ view: f.view("slow child") }), { presentation: "dialog" });
   const slow = f.session.getSnapshot().dialog!.session;
   let finish!: (value: PluginViewResult) => void;
-  const pending = slow.run(() => new Promise(resolve => { finish = resolve; }));
+  const pending = slow.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
   await f.session.run(() => ({ view: f.view("replacement") }), { presentation: "dialog" });
-  finish({ close: "all" }); await pending;
-  expect(closed).toBe(0); expect(f.session.getSnapshot().dialog!.session.getSnapshot().stack[0].title).toBe("replacement");
+  finish({ close: "all" });
+  await pending;
+  expect(closed).toBe(0);
+  expect(f.session.getSnapshot().dialog!.session.getSnapshot().stack[0].title).toBe("replacement");
   f.session.closeDialog();
-  await f.session.run(() => ({ close: "invalid" } as unknown as PluginViewResult));
-  expect(f.session.getSnapshot().stack[0].title).toBe("root"); expect(closed).toBe(0);
-  f.session.dispose(); expect(f.registry.size).toBe(0);
+  await f.session.run(() => ({ close: "invalid" }) as unknown as PluginViewResult);
+  expect(f.session.getSnapshot().stack[0].title).toBe("root");
+  expect(closed).toBe(0);
+  f.session.dispose();
+  expect(f.registry.size).toBe(0);
 });
 
 test("serialized progress cancellation runs alongside a busy action and retires with the view", async () => {
-  const f = fixture(); let finish!: (value: PluginViewResult) => void, cancellations = 0;
-  f.session.setRoot(f.wire({ kind: "blocks", blocks: [{ kind: "progress", value: null,
-    cancel: { id: "work", label: "Cancel", run: () => { cancellations++; finish({ toast: "stale work result" }); return { toast: "Cancellation requested" }; } } }] }));
-  const snapshot = f.session.getSnapshot(), current = snapshot.stack[0];
+  const f = fixture();
+  let finish!: (value: PluginViewResult) => void,
+    cancellations = 0;
+  f.session.setRoot(
+    f.wire({
+      kind: "blocks",
+      blocks: [
+        {
+          kind: "progress",
+          value: null,
+          cancel: {
+            id: "work",
+            label: "Cancel",
+            run: () => {
+              cancellations++;
+              finish({ toast: "stale work result" });
+              return { toast: "Cancellation requested" };
+            },
+          },
+        },
+      ],
+    }),
+  );
+  const snapshot = f.session.getSnapshot(),
+    current = snapshot.stack[0];
   if (current.kind !== "blocks" || current.blocks[0].kind !== "progress") throw new Error("Expected progress");
   const cancel = current.blocks[0].cancel!.run;
-  const work = f.session.runFrom(snapshot.renderKey, () => new Promise(resolve => { finish = resolve; }));
+  const work = f.session.runFrom(
+    snapshot.renderKey,
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
   expect(f.session.getSnapshot().busy).toBe(true);
   await f.session.runFrom(snapshot.renderKey, cancel, { background: true });
   await work;
-  expect(cancellations).toBe(1); expect(f.notices).toEqual(["Cancellation requested"]);
-  f.session.dispose(); expect(f.registry.size).toBe(0);
+  expect(cancellations).toBe(1);
+  expect(f.notices).toEqual(["Cancellation requested"]);
+  f.session.dispose();
+  expect(f.registry.size).toBe(0);
   await expect(Promise.resolve().then(cancel)).rejects.toThrow();
 });
 
 test("tree descendant callbacks survive wire normalization and retire with their frame", async () => {
   const f = fixture();
-  f.session.setRoot(f.wire({ kind: "tree", title: "Contents", nodes: [
-    { id: "part", title: "Part one", children: [{ id: "chapter", title: "Chapter one", onSelect: () => ({
-      view: { kind: "detail", title: "Chapter", content: [], actions: [{ id: "read", label: "Read", run: () => ({ toast: "Read" }) }] },
-    }) }] },
-  ] }));
+  f.session.setRoot(
+    f.wire({
+      kind: "tree",
+      title: "Contents",
+      nodes: [
+        {
+          id: "part",
+          title: "Part one",
+          children: [
+            {
+              id: "chapter",
+              title: "Chapter one",
+              onSelect: () => ({
+                view: {
+                  kind: "detail",
+                  title: "Chapter",
+                  content: [],
+                  actions: [{ id: "read", label: "Read", run: () => ({ toast: "Read" }) }],
+                },
+              }),
+            },
+          ],
+        },
+      ],
+    }),
+  );
   const current = f.session.getSnapshot().stack[0];
   if (current.kind !== "tree") throw new Error("Expected tree");
   const select = current.nodes[0].children![0].onSelect!;
@@ -95,16 +195,20 @@ test("tree descendant callbacks survive wire normalization and retire with their
   await f.session.runFrom(f.session.getSnapshot().renderKey, select);
   expect(f.session.getSnapshot().stack).toHaveLength(2);
   expect(f.session.getSnapshot().stack[1].title).toBe("Chapter");
-  f.session.dispose(); expect(f.registry.size).toBe(0);
+  f.session.dispose();
+  expect(f.registry.size).toBe(0);
   await expect(Promise.resolve().then(select)).rejects.toThrow();
 });
 
 test("table data controls replace pages without growing history and retire old callbacks", async () => {
   const f = fixture();
-  const view = (page: number): PluginView => ({ kind: "table",
-    columns: [{ id: "name", label: "Name", sortable: true }], rows: [],
+  const view = (page: number): PluginView => ({
+    kind: "table",
+    columns: [{ id: "name", label: "Name", sortable: true }],
+    rows: [],
     pagination: { page, onNext: () => ({ view: view(page + 1) }) },
-    sort: { onChange: () => ({ view: view(1) }) } });
+    sort: { onChange: () => ({ view: view(1) }) },
+  });
   f.session.setRoot(f.wire(view(1)));
   for (let page = 1; page <= 4; page++) {
     const current = f.session.getSnapshot().stack[0];
@@ -116,78 +220,167 @@ test("table data controls replace pages without growing history and retire old c
   }
   const current = f.session.getSnapshot().stack[0];
   if (current.kind !== "table") throw new Error("Expected table");
-  await f.session.run(() => current.sort!.onChange({ column: "name", direction: "ascending" }), { navigation: "replace" });
+  await f.session.run(() => current.sort!.onChange({ column: "name", direction: "ascending" }), {
+    navigation: "replace",
+  });
   expect((f.session.getSnapshot().stack[0] as typeof current).pagination?.page).toBe(1);
   // A plugin may deliberately navigate elsewhere rather than replacing data.
   await f.session.run(() => ({ view: f.view("Detail"), navigation: "push" }), { navigation: "replace" });
   expect(f.session.getSnapshot().stack).toHaveLength(2);
-  f.session.dispose(); expect(f.registry.size).toBe(0);
+  f.session.dispose();
+  expect(f.registry.size).toBe(0);
 });
 
 test("data-control failure retains the current page; a late page after close is discarded", async () => {
   const f = fixture();
   f.session.setRoot(f.wire({ kind: "list", items: [], pagination: { page: 2, onPrevious: () => null } }));
   const key = f.session.getSnapshot().renderKey;
-  await f.session.run(() => { throw new AppError("db/locked", "private"); }, { navigation: "replace" });
-  expect(f.failures()).toBe(1); expect(f.session.getSnapshot().renderKey).toBe(key);
+  await f.session.run(
+    () => {
+      throw new AppError("db/locked", "private");
+    },
+    { navigation: "replace" },
+  );
+  expect(f.failures()).toBe(1);
+  expect(f.session.getSnapshot().renderKey).toBe(key);
   expect(f.registry.size).toBe(1);
   let finish!: (value: PluginViewResult) => void;
-  const pending = f.session.run(() => new Promise(resolve => { finish = resolve; }), { navigation: "replace" });
+  const pending = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    { navigation: "replace" },
+  );
   f.session.close();
-  finish({ view: f.view("Late page") }); await pending;
-  expect(f.registry.size).toBe(0); expect(f.session.getSnapshot().stack).toEqual([]);
+  finish({ view: f.view("Late page") });
+  await pending;
+  expect(f.registry.size).toBe(0);
+  expect(f.session.getSnapshot().stack).toEqual([]);
 });
 
 test("accepted frames report their removal once, not when covered by push or a dialog", async () => {
-  const f = fixture(), closed: string[] = [];
-  const view = (title: string): PluginView => f.wire({ kind: "markdown", markdown: title,
-    onClose: ({ reason }) => { closed.push(`${title}:${reason}`); } });
+  const f = fixture(),
+    closed: string[] = [];
+  const view = (title: string): PluginView =>
+    f.wire({
+      kind: "markdown",
+      markdown: title,
+      onClose: ({ reason }) => {
+        closed.push(`${title}:${reason}`);
+      },
+    });
   f.session.setRoot(view("root"));
-  await f.session.run(() => ({ view: view("child") })); await flush(); expect(closed).toEqual([]);
-  f.session.back(); await flush(); expect(closed).toEqual(["child:back"]);
+  await f.session.run(() => ({ view: view("child") }));
+  await flush();
+  expect(closed).toEqual([]);
+  f.session.back();
+  await flush();
+  expect(closed).toEqual(["child:back"]);
   await f.session.run(() => ({ view: view("replace"), navigation: "replace" }));
   await f.session.run(() => ({ view: view("pushed") }));
   await f.session.run(() => ({ view: view("reset"), navigation: "reset" }));
-  await f.session.run(() => ({ view: view("dialog") }), { presentation: "dialog" }); await flush();
+  await f.session.run(() => ({ view: view("dialog") }), { presentation: "dialog" });
+  await flush();
   expect(closed).toEqual(["child:back", "root:replaced", "replace:reset", "pushed:reset"]);
-  f.session.closeDialog(); await flush(); expect(closed.at(-1)).toBe("dialog:closed");
-  f.session.close(); f.session.close(); await flush();
-  expect(closed.at(-1)).toBe("reset:closed"); expect(closed).toHaveLength(6); expect(f.registry.size).toBe(0);
+  f.session.closeDialog();
+  await flush();
+  expect(closed.at(-1)).toBe("dialog:closed");
+  f.session.close();
+  f.session.close();
+  await flush();
+  expect(closed.at(-1)).toBe("reset:closed");
+  expect(closed).toHaveLength(6);
+  expect(f.registry.size).toBe(0);
 });
 
 test("StrictMode replay does not close frames; root refresh and real unmount have distinct reasons", async () => {
-  const f = fixture(), closed: string[] = [];
-  const view = (): PluginView => f.wire({ kind: "markdown", markdown: "root", onClose: ({ reason }) => { closed.push(reason); } });
-  const root = view(); f.session.setRoot(root);
-  const epoch = f.session.suspend(); f.session.resume(); f.session.setRoot(root); f.session.disposeIfSuspended(epoch);
-  await flush(); expect(closed).toEqual([]);
-  f.session.setRoot(view()); await flush(); expect(closed).toEqual(["refreshed"]);
-  f.session.disposeIfSuspended(f.session.suspend()); await flush(); expect(closed).toEqual(["refreshed", "unmounted"]);
+  const f = fixture(),
+    closed: string[] = [];
+  const view = (): PluginView =>
+    f.wire({
+      kind: "markdown",
+      markdown: "root",
+      onClose: ({ reason }) => {
+        closed.push(reason);
+      },
+    });
+  const root = view();
+  f.session.setRoot(root);
+  const epoch = f.session.suspend();
+  f.session.resume();
+  f.session.setRoot(root);
+  f.session.disposeIfSuspended(epoch);
+  await flush();
+  expect(closed).toEqual([]);
+  f.session.setRoot(view());
+  await flush();
+  expect(closed).toEqual(["refreshed"]);
+  f.session.disposeIfSuspended(f.session.suspend());
+  await flush();
+  expect(closed).toEqual(["refreshed", "unmounted"]);
   expect(f.registry.size).toBe(0);
 });
 
 test("discarded or retired views are not notified and invalid close declarations fail validation", async () => {
-  const f = fixture(); let closed = 0;
-  const view = (): PluginView => f.wire({ kind: "markdown", markdown: "view", onClose: () => { closed++; } });
+  const f = fixture();
+  let closed = 0;
+  const view = (): PluginView =>
+    f.wire({
+      kind: "markdown",
+      markdown: "view",
+      onClose: () => {
+        closed++;
+      },
+    });
   f.session.setRoot(view());
-  await f.session.run(() => ({ view: view(), navigation: "invalid" } as unknown as PluginViewResult));
+  await f.session.run(() => ({ view: view(), navigation: "invalid" }) as unknown as PluginViewResult);
   let finish!: (result: PluginViewResult) => void;
-  const pending = f.session.run(() => new Promise(resolve => { finish = resolve; }));
-  f.owner.abort(); finish({ view: view() }); await pending; await flush();
-  expect(closed).toBe(0); expect(f.registry.size).toBe(0);
-  for (const onClose of [null, false, "callback", {}]) expect(() => normalizePluginView({ kind: "markdown", markdown: "x", onClose })).toThrow();
+  const pending = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  f.owner.abort();
+  finish({ view: view() });
+  await pending;
+  await flush();
+  expect(closed).toBe(0);
+  expect(f.registry.size).toBe(0);
+  for (const onClose of [null, false, "callback", {}])
+    expect(() => normalizePluginView({ kind: "markdown", markdown: "x", onClose })).toThrow();
 });
 
 test("close notification does not delay removal and retains only its callback until settlement", async () => {
-  const f = fixture(); let finish!: () => void, calls = 0;
-  const view = f.wire<PluginView>({ kind: "markdown", markdown: "view", onClose: () => { calls++; return new Promise(resolve => { finish = resolve; }); } });
-  f.session.setRoot(view); f.session.close();
-  expect(f.session.getSnapshot().stack).toEqual([]); await flush();
-  expect(calls).toBe(1); expect(f.registry.size).toBe(1);
-  finish(); await flush(); expect(f.registry.size).toBe(0);
+  const f = fixture();
+  let finish!: () => void,
+    calls = 0;
+  const view = f.wire<PluginView>({
+    kind: "markdown",
+    markdown: "view",
+    onClose: () => {
+      calls++;
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    },
+  });
+  f.session.setRoot(view);
+  f.session.close();
+  expect(f.session.getSnapshot().stack).toEqual([]);
+  await flush();
+  expect(calls).toBe(1);
+  expect(f.registry.size).toBe(1);
+  finish();
+  await flush();
+  expect(f.registry.size).toBe(0);
   const callback = f.wire(() => new Promise<void>(() => {}));
-  const owned = ownPluginViewClose(callback, 5); owned.notify("closed"); owned.dispose();
-  await new Promise(resolve => setTimeout(resolve, 15)); expect(f.registry.size).toBe(0);
+  const owned = ownPluginViewClose(callback, 5);
+  owned.notify("closed");
+  owned.dispose();
+  await new Promise((resolve) => setTimeout(resolve, 15));
+  expect(f.registry.size).toBe(0);
 });
 
 test("action failures preserve the form and forward stable error codes without raw details", async () => {
@@ -195,19 +388,25 @@ test("action failures preserve the form and forward stable error codes without r
   const session = new PluginViewSession();
   session.setRoot({ kind: "detail", title: "Shortcut", content: [] });
   const before = session.getSnapshot().renderKey;
-  setPluginToastHandler(payload => payloads.push(payload));
+  setPluginToastHandler((payload) => payloads.push(payload));
   try {
-    await session.run(async () => { throw new AppError("settings/shortcut-conflict", "private payload"); });
+    await session.run(async () => {
+      throw new AppError("settings/shortcut-conflict", "private payload");
+    });
     expect(session.getSnapshot().renderKey).toBe(before);
     expect(session.getSnapshot().stack).toHaveLength(1);
     expect(session.getSnapshot().busy).toBe(false);
     expect(payloads).toEqual([{ kind: "failure", pluginName: undefined, code: "settings/shortcut-conflict" }]);
-  } finally { session.dispose(); setPluginToastHandler(null); }
+  } finally {
+    session.dispose();
+    setPluginToastHandler(null);
+  }
 });
 
 test("push/back/replace/reset release exactly removed view callbacks", async () => {
   const f = fixture();
-  const root = f.view("Root"), child = f.view("Child");
+  const root = f.view("Root"),
+    child = f.view("Child");
   f.session.setRoot(root);
   await f.session.run(async () => ({ view: child }));
   expect(f.registry.size).toBe(2);
@@ -219,8 +418,9 @@ test("push/back/replace/reset release exactly removed view callbacks", async () 
   expect(f.registry.size).toBe(2);
   await f.session.run(async () => ({ view: f.view("Reset"), navigation: "reset" }));
   expect(f.registry.size).toBe(1);
-  expect(f.session.getSnapshot().stack.map(view => view.title)).toEqual(["Reset"]);
-  f.session.dispose(); f.session.dispose();
+  expect(f.session.getSnapshot().stack.map((view) => view.title)).toEqual(["Reset"]);
+  f.session.dispose();
+  f.session.dispose();
   expect(f.registry.size).toBe(0);
 });
 
@@ -239,13 +439,23 @@ test("shared callback aliases survive until the last view owner releases them", 
 
 test("normalization and invalid declarations release unused callback fields", async () => {
   const f = fixture();
-  const raw = f.wire({ kind: "detail", content: [], extra: () => 1, actions: [{ id: "run", label: "Run", run: () => null }] });
+  const raw = f.wire({
+    kind: "detail",
+    content: [],
+    extra: () => 1,
+    actions: [{ id: "run", label: "Run", run: () => null }],
+  });
   f.session.setRoot(raw as PluginDetailView);
   expect(f.registry.size).toBe(1);
-  await f.session.run(async () => f.wire({ view: { kind: "unknown", run: () => null }, extra: () => null }) as unknown as PluginViewResult);
+  await f.session.run(
+    async () =>
+      f.wire({ view: { kind: "unknown", run: () => null }, extra: () => null }) as unknown as PluginViewResult,
+  );
   expect(f.registry.size).toBe(1);
   expect(f.failures()).toBe(1);
-  await f.session.run(async () => ({ view: f.view("Invalid mode"), navigation: "invalid" } as unknown as PluginViewResult));
+  await f.session.run(
+    async () => ({ view: f.view("Invalid mode"), navigation: "invalid" }) as unknown as PluginViewResult,
+  );
   expect(f.registry.size).toBe(1);
   f.session.setRoot(f.wire({ kind: "unknown", run: () => null }) as unknown as PluginDetailView);
   expect(f.session.getSnapshot().error).toBe(true);
@@ -256,9 +466,19 @@ test("late action results after close cannot navigate, toast or retain callbacks
   const f = fixture();
   f.session.setRoot(f.view("Root"));
   let finish!: (value: PluginViewResult) => void;
-  const pending = f.session.run(() => new Promise(resolve => { finish = resolve; }));
+  const pending = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
   f.session.close();
-  finish(f.wire({ view: { kind: "detail", content: [], actions: [{ id: "run", label: "Run", run: () => null }] }, toast: "too late" }));
+  finish(
+    f.wire({
+      view: { kind: "detail", content: [], actions: [{ id: "run", label: "Run", run: () => null }] },
+      toast: "too late",
+    }),
+  );
   expect(await pending).toBeNull();
   expect(f.registry.size).toBe(0);
   expect(f.notices).toEqual([]);
@@ -269,8 +489,18 @@ test("new actions supersede old results without an old finally clearing the new 
   const f = fixture();
   f.session.setRoot(f.view("Root"));
   let first!: (value: PluginViewResult) => void, second!: (value: PluginViewResult) => void;
-  const a = f.session.run(() => new Promise(resolve => { first = resolve; }));
-  const b = f.session.run(() => new Promise(resolve => { second = resolve; }));
+  const a = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        first = resolve;
+      }),
+  );
+  const b = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        second = resolve;
+      }),
+  );
   first({ view: f.view("Old"), toast: "stale" });
   expect(await a).toBeNull();
   expect(f.session.getSnapshot().busy).toBe(true);
@@ -291,12 +521,23 @@ test("closed/replaced nested dialogs own their callbacks and reject late modal r
   const modal = f.session.getSnapshot().dialog!.session;
   expect(f.registry.size).toBe(2);
   let finish!: (value: PluginViewResult) => void;
-  const pending = modal.run(() => new Promise(resolve => { finish = resolve; }));
+  const pending = modal.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
   f.session.closeDialog();
   finish({ view: f.view("Late modal") });
   expect(await pending).toBeNull();
   expect(f.registry.size).toBe(1);
-  const parentPending = f.session.run(() => new Promise(resolve => { finish = resolve; }), { presentation: "dialog" });
+  const parentPending = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    { presentation: "dialog" },
+  );
   f.session.closeDialog();
   finish({ view: f.view("Late open") });
   expect(await parentPending).toBeNull();
@@ -310,7 +551,8 @@ test("StrictMode suspension invalidates pending work without destroying callback
   const root = f.view("Root");
   f.session.setRoot(root);
   const epoch = f.session.suspend();
-  f.session.resume(); f.session.setRoot(root);
+  f.session.resume();
+  f.session.setRoot(root);
   f.session.disposeIfSuspended(epoch);
   expect(f.registry.size).toBe(1);
   f.session.disposeIfSuspended(f.session.suspend());
@@ -332,7 +574,11 @@ test("Worker retirement closes owned views, including declarations with no callb
   for (const callbacks of [true, false]) {
     const f = fixture();
     let closed = 0;
-    f.session.configure({ close: () => { closed++; } });
+    f.session.configure({
+      close: () => {
+        closed++;
+      },
+    });
     f.session.setRoot(callbacks ? f.view("Root") : f.wire({ kind: "markdown", markdown: "No callbacks" }));
     f.owner.abort();
     expect(f.session.getSnapshot().stack).toEqual([]);
@@ -348,7 +594,12 @@ test("explicit same-depth navigation changes render identity while data refreshe
   f.session.setRoot(f.view("Fresh root data"));
   expect(f.session.getSnapshot().renderKey).toBe(rootKey);
   let finish!: (value: PluginViewResult) => void;
-  const pending = f.session.run(() => new Promise(resolve => { finish = resolve; }));
+  const pending = f.session.run(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
   expect(f.session.getSnapshot().renderKey).toBe(rootKey);
   finish({ fieldErrors: { body: "Conflict" } });
   await pending;
@@ -372,22 +623,35 @@ test("a list search answer swaps the frame in place, drops stale or malformed an
   const f = fixture();
   const answers = new Map<string, () => void>();
   // Answers cross the wire once, through the invoked onQuery; only the root is wired here.
-  const rows = (query: string): PluginListView => ({ kind: "list", items: [{ id: query || "toc", title: query || "Contents", onSelect: () => ({ toast: query }) }],
-    search: { onQuery: (next: string) => new Promise(resolve => { answers.set(next, () => resolve({ view: rows(next) })); }) } });
+  const rows = (query: string): PluginListView => ({
+    kind: "list",
+    items: [{ id: query || "toc", title: query || "Contents", onSelect: () => ({ toast: query }) }],
+    search: {
+      onQuery: (next: string) =>
+        new Promise((resolve) => {
+          answers.set(next, () => resolve({ view: rows(next) }));
+        }),
+    },
+  });
   f.session.setRoot(f.wire(rows("")));
   const key = f.session.getSnapshot().renderKey;
   const first = f.session.getSnapshot().stack[0] as PluginListView;
   const query = (text: string) => f.session.refine(key, text, () => first.search!.onQuery(text));
-  const a = query("a"), ab = query("ab");
+  const a = query("a"),
+    ab = query("ab");
   await flush();
   expect(f.session.getSnapshot().searchQuery).toBe("ab");
-  answers.get("ab")!(); await ab; await flush();
+  answers.get("ab")!();
+  await ab;
+  await flush();
   const second = f.session.getSnapshot().stack[0] as PluginListView;
   expect(second.items[0].id).toBe("ab");
   expect(f.session.getSnapshot()).toMatchObject({ renderKey: key, busy: false, searchQuery: "ab" });
   expect(f.session.getSnapshot().stack).toHaveLength(1);
   // The earlier answer arrives late: the frame keeps the newer rows.
-  answers.get("a")!(); await a; await flush();
+  answers.get("a")!();
+  await a;
+  await flush();
   expect((f.session.getSnapshot().stack[0] as PluginListView).items[0].id).toBe("ab");
   // The replaced rows' callbacks retire once React has painted the new ones.
   f.session.acknowledgeRender(f.session.getSnapshot().stack[0]);
@@ -395,7 +659,11 @@ test("a list search answer swaps the frame in place, drops stale or malformed an
   await f.session.runFrom(key, () => second.items[0].onSelect!());
   expect(f.notices).toEqual(["ab"]);
   // A query is a read: answers that navigate, close or carry live content are refused without touching the frame.
-  for (const answer of [{ view: rows("x"), close: true }, { close: true }, { view: { ...rows("y"), live: { subscribe: () => ({ dispose() {} }) } } }]) {
+  for (const answer of [
+    { view: rows("x"), close: true },
+    { close: true },
+    { view: { ...rows("y"), live: { subscribe: () => ({ dispose() {} }) } } },
+  ]) {
     await f.session.refine(key, "bad", async () => answer as PluginViewResult);
   }
   expect(f.failures()).toBe(3);

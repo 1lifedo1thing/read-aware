@@ -16,8 +16,7 @@ export const Default: Story = {
   args: {
     open: true,
     title: "Remove from shelf",
-    children:
-      "This will remove the item from your shelf. You can always add it back later.",
+    children: "This will remove the item from your shelf. You can always add it back later.",
     onClose: () => {},
   },
 };

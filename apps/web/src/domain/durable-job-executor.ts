@@ -18,17 +18,22 @@ export function createDurableJobExecutor(options: {
   const books = durableBookSteps(options.actor, options.acquireBook);
   return {
     source: () => saveActorSource(options.actor),
-    withSource: source => {
+    withSource: (source) => {
       if (!source) return createDurableJobExecutor(options); // Legacy jobs were activation-root-only.
       const actor = restoreActorSource(actorOrigin(options.actor), source);
       return createDurableJobExecutor({ ...options, actor, transactions: options.transactions.withActor(actor) });
     },
     authorize: options.authorize,
     report: options.report,
-    prepare: (step, id, signal) => step.kind === "transaction" ? transactions.prepare(step, id, signal) : books.prepare(step),
-    execute: (step, attempt, signal, checkpoint) => step.kind === "transaction"
-      ? transactions.execute(step, attempt, signal) : books.execute(step, attempt, signal, checkpoint),
-    reconcile: (step, attempt, signal, explicitResume) => step.kind === "transaction"
-      ? transactions.reconcile(step, attempt, signal) : books.reconcile(step, attempt, signal, explicitResume),
+    prepare: (step, id, signal) =>
+      step.kind === "transaction" ? transactions.prepare(step, id, signal) : books.prepare(step),
+    execute: (step, attempt, signal, checkpoint) =>
+      step.kind === "transaction"
+        ? transactions.execute(step, attempt, signal)
+        : books.execute(step, attempt, signal, checkpoint),
+    reconcile: (step, attempt, signal, explicitResume) =>
+      step.kind === "transaction"
+        ? transactions.reconcile(step, attempt, signal)
+        : books.reconcile(step, attempt, signal, explicitResume),
   };
 }

@@ -17,7 +17,9 @@ describe("reader font weights", () => {
     for (const font of CURATED_FONTS) {
       const family: ReaderFontFamily = `curated:${font.id}`;
       const faces = curatedFacesFor(font.id);
-      const normalWeights = [...new Set(faces.filter((face) => face.style === "normal").map((face) => face.weight))].sort((a, b) => a - b);
+      const normalWeights = [
+        ...new Set(faces.filter((face) => face.style === "normal").map((face) => face.weight)),
+      ].sort((a, b) => a - b);
       expect(normalWeights).toEqual([...font.weights]);
       const presets = readerFontWeightPresets(family);
       expect(presets.map<number>((preset) => READER_FONT_WEIGHTS[preset])).toEqual([...font.weights]);
@@ -27,7 +29,9 @@ describe("reader font weights", () => {
         expect(requested.every((weight) => normalWeights.includes(weight))).toBe(true);
         // Latin families also supply real italics at every selectable weight.
         if (font.kind !== "cjk") {
-          expect(faces.some((face) => face.weight === READER_FONT_WEIGHTS[preset] && face.style === "italic")).toBe(true);
+          expect(faces.some((face) => face.weight === READER_FONT_WEIGHTS[preset] && face.style === "italic")).toBe(
+            true,
+          );
         }
       }
     }

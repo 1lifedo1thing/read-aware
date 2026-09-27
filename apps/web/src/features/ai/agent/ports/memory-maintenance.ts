@@ -13,7 +13,11 @@ export async function snapshotMemories(query?: import("@read-aware/core").Memory
   assertAllowed();
   return invoke("memories_snapshot", { query });
 }
-async function commitMaintenance(conditions: { memoryId: string; revision: string }[], drafts: DomainEventDraft[], signal?: AbortSignal) {
+async function commitMaintenance(
+  conditions: { memoryId: string; revision: string }[],
+  drafts: DomainEventDraft[],
+  signal?: AbortSignal,
+) {
   assertAllowed(signal);
   if (!drafts.length) return [];
   return runDomainWrite(async () => {
@@ -28,11 +32,27 @@ export async function applyMemoryChanges(changes: MemoryChange[], snapshots: Mem
   assertAllowed(signal);
   const plan = planMemoryMaintenance(changes, snapshots);
   if (!plan.events.length) return structuredClone(snapshots);
-  return commitMaintenance(plan.conditions, plan.events.map(event => ({ ...event, origin: "agent" })), signal);
+  return commitMaintenance(
+    plan.conditions,
+    plan.events.map((event) => ({ ...event, origin: "agent" })),
+    signal,
+  );
 }
 export async function reinforceMemory(snapshot: MemorySnapshot, signal?: AbortSignal) {
   const { memory, revision } = structuredClone(snapshot);
-  await commitMaintenance([{ memoryId: memory.id, revision }], [{ type: "memory.revised", origin: "agent", payload: {
-    memoryId: memory.id, importance: Math.min(1, memory.importance + 0.15), evidenceCount: memory.evidenceCount + 1,
-  } }], signal);
+  await commitMaintenance(
+    [{ memoryId: memory.id, revision }],
+    [
+      {
+        type: "memory.revised",
+        origin: "agent",
+        payload: {
+          memoryId: memory.id,
+          importance: Math.min(1, memory.importance + 0.15),
+          evidenceCount: memory.evidenceCount + 1,
+        },
+      },
+    ],
+    signal,
+  );
 }

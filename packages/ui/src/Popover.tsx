@@ -1,4 +1,14 @@
-import { useRef, useEffect, useId, useCallback, useLayoutEffect, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import {
+  useRef,
+  useEffect,
+  useId,
+  useCallback,
+  useLayoutEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useLocalAtom } from "./lib/useLocalAtom";
 import { cn } from "./lib/cn";
 import { useHorizontalViewportCollision } from "./lib/useHorizontalViewportCollision";
@@ -129,7 +139,11 @@ export function Popover({
       {open && (
         <div
           ref={floatingRef}
-          style={spaceAbove === null ? positionStyle : { ...positionStyle, "--ra-popover-space": `${spaceAbove}px` } as CSSProperties}
+          style={
+            spaceAbove === null
+              ? positionStyle
+              : ({ ...positionStyle, "--ra-popover-space": `${spaceAbove}px` } as CSSProperties)
+          }
           className={cn(
             "absolute z-50 w-max max-w-[calc(100vw-1rem)]",
             side === "top" ? "bottom-full mb-2" : "mt-2",
@@ -145,8 +159,16 @@ export function Popover({
                 ? "ra-motion-overlay-pop-up max-h-[var(--ra-popover-space,calc(100dvh-3.5rem))]"
                 : "ra-motion-overlay-pop max-h-[calc(100dvh-3.5rem)]",
               side === "top"
-                ? align === "left" ? "origin-bottom-left" : align === "right" ? "origin-bottom-right" : "origin-bottom"
-                : align === "left" ? "origin-top-left" : align === "right" ? "origin-top-right" : "origin-top",
+                ? align === "left"
+                  ? "origin-bottom-left"
+                  : align === "right"
+                    ? "origin-bottom-right"
+                    : "origin-bottom"
+                : align === "left"
+                  ? "origin-top-left"
+                  : align === "right"
+                    ? "origin-top-right"
+                    : "origin-top",
               panelClassName,
             )}
           >

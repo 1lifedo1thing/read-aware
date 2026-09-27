@@ -13,28 +13,40 @@ export function useAIConnectionTest(config: AIConfig, canTest: boolean, beforeTe
   const { t } = useTranslation("settings");
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const active = useRef(false), epoch = useRef(0), mounted = useRef(false);
-  const latest = useRef({ config, canTest, beforeTest }); latest.current = { config, canTest, beforeTest };
-  const resetTest = () => { epoch.current++; setTestResult(null); };
+  const active = useRef(false),
+    epoch = useRef(0),
+    mounted = useRef(false);
+  const latest = useRef({ config, canTest, beforeTest });
+  latest.current = { config, canTest, beforeTest };
+  const resetTest = () => {
+    epoch.current++;
+    setTestResult(null);
+  };
   useLayoutEffect(() => {
     mounted.current = true;
     const off = hostConnectionTestFlows.bind({
-      open: request => {
+      open: (request) => {
         if (active.current) throw new AppError("ui/unavailable", "Connection test is already running");
         hostMaintenance.revealControl("ai-connection", actorFromEvent(request));
       },
       close: () => {}, // No extra dialog or automatic action to dismiss.
     });
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- epoch is a generation counter, not a node: cleanup bumps the live value
-    return () => { mounted.current = false; epoch.current++; off(); };
+    return () => {
+      mounted.current = false;
+      // oxlint-disable-next-line react-hooks/exhaustive-deps -- epoch is a generation counter, not a node: cleanup bumps the live value
+      epoch.current++;
+      off();
+    };
   }, []);
 
   const handleTest = async () => {
     if (active.current || !latest.current.canTest) return;
-    active.current = true; setIsTesting(true); setTestResult(null);
+    active.current = true;
+    setIsTesting(true);
+    setTestResult(null);
     const generation = epoch.current;
     try {
-      const response = await hostConnectionTestFlows.run("test", async signal => {
+      const response = await hostConnectionTestFlows.run("test", async (signal) => {
         signal?.throwIfAborted();
         const accepted = structuredClone(latest.current.config);
         latest.current.beforeTest();
@@ -43,13 +55,19 @@ export function useAIConnectionTest(config: AIConfig, canTest: boolean, beforeTe
         if (epoch.current !== generation) throw new AppError("ui/superseded", "Test configuration changed");
         return result;
       });
-      if (mounted.current && epoch.current === generation) setTestResult(response
-        ? { success: true, message: t("aiConfig.testSuccessMessage", { response }) }
-        : { success: false, message: t("aiConfig.testEmptyMessage") });
+      if (mounted.current && epoch.current === generation)
+        setTestResult(
+          response
+            ? { success: true, message: t("aiConfig.testSuccessMessage", { response }) }
+            : { success: false, message: t("aiConfig.testEmptyMessage") },
+        );
     } catch (error) {
       log.error("AI connection test failed", error);
-      if (mounted.current && epoch.current === generation) setTestResult({ success: false,
-        message: describeError(error, { fallback: t("aiConfig.testUnknownError") }).body });
+      if (mounted.current && epoch.current === generation)
+        setTestResult({
+          success: false,
+          message: describeError(error, { fallback: t("aiConfig.testUnknownError") }).body,
+        });
     } finally {
       active.current = false;
       if (mounted.current) setIsTesting(false);

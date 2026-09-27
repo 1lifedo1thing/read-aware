@@ -80,9 +80,7 @@ export function CollectionHeader({ collection, count, onRename, onDelete }: Coll
         <PluginContextMenu input={{ surface: "collection", collection }} />
       </div>
 
-      <Body className="mt-1 text-sm tabular-nums text-fg-muted">
-        {t("books", { count })}
-      </Body>
+      <Body className="mt-1 text-sm tabular-nums text-fg-muted">{t("books", { count })}</Body>
 
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} title={t("collection.deleteTitle")}>
         <div className="space-y-4">

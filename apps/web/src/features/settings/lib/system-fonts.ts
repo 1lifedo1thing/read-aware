@@ -5,11 +5,17 @@ import { AppError } from "@read-aware/core";
 export function createSystemFontLoader(load: () => Promise<string[]>): () => Promise<string[]> {
   let cache: Promise<string[]> | null = null;
   return () => {
-    cache ??= Promise.resolve().then(load).then(dedupeSorted).catch(error => {
-      cache = null;
-      throw new AppError("settings/font-enumeration-failed", "Could not enumerate installed font families", { cause: error, retryable: true });
-    });
-    return cache.then(families => [...families]);
+    cache ??= Promise.resolve()
+      .then(load)
+      .then(dedupeSorted)
+      .catch((error) => {
+        cache = null;
+        throw new AppError("settings/font-enumeration-failed", "Could not enumerate installed font families", {
+          cause: error,
+          retryable: true,
+        });
+      });
+    return cache.then((families) => [...families]);
   };
 }
 
@@ -25,7 +31,9 @@ export function createSystemFontLoader(load: () => Promise<string[]>): () => Pro
  * Successful results are cached for the session. Restart after installing or
  * removing system fonts; a failed enumeration is retryable rather than cached.
  */
-export const listSystemFonts = createSystemFontLoader(async () => isTauri() ? invoke<string[]>("list_system_fonts") : []);
+export const listSystemFonts = createSystemFontLoader(async () =>
+  isTauri() ? invoke<string[]>("list_system_fonts") : [],
+);
 
 /** Drop hidden/blank families, fold case-insensitive duplicates, sort by name. */
 function dedupeSorted(families: string[]): string[] {

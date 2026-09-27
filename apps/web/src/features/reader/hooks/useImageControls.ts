@@ -9,9 +9,14 @@ import { createLogger } from "../../../platform/logger";
 
 const log = createLogger("reader-image-layout");
 
-export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
-  session: { bookId: string; sessionId: string } | undefined, onClose: (origin?: DomainActor) => void,
-  service: ReaderImageService = readerImage, viewerId?: string, lifetime?: ImageViewLifetime) {
+export function useImageControls(
+  zoom: ReturnType<typeof useZoomPan>,
+  session: { bookId: string; sessionId: string } | undefined,
+  onClose: (origin?: DomainActor) => void,
+  service: ReaderImageService = readerImage,
+  viewerId?: string,
+  lifetime?: ImageViewLifetime,
+) {
   const id = useRef(crypto.randomUUID());
   const owned = useRef<ImageViewLifetime>({ opening: zoom.origin });
   const source = lifetime ?? owned.current;
@@ -20,23 +25,33 @@ export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
   const [token, setToken] = useState(0);
   const binding = useRef<ReturnType<ReaderImageService["bind"]> | null>(null);
   // The binding follows the session's identity, not a new object for the same session.
-  const bookId = session?.bookId, sessionId = session?.sessionId;
+  const bookId = session?.bookId,
+    sessionId = session?.sessionId;
   useLayoutEffect(() => {
     if (bookId === undefined || sessionId === undefined) return;
     let bound: ReturnType<ReaderImageService["bind"]>;
-    try { bound = service.bind({ bookId, sessionId, id: viewerId ?? id.current }, {
-      close: origin => { source.closedBy ??= origin; current.current.onClose(origin); },
-      apply: (request, nextToken, origin) => {
-        const view = current.current.zoom;
-        if (request.action === "zoom-in") view.zoomIn(origin);
-        else if (request.action === "zoom-out") view.zoomOut(origin);
-        else if (request.action === "rotate") view.rotateRight(origin);
-        else if (request.action === "reset") view.reset(origin);
-        else if (request.action === "pan") view.pan(request.dx, request.dy, origin);
-        setToken(nextToken);
-      },
-    }, current.current.zoom.snapshot(), source.opening); }
-    catch (error) {
+    try {
+      bound = service.bind(
+        { bookId, sessionId, id: viewerId ?? id.current },
+        {
+          close: (origin) => {
+            source.closedBy ??= origin;
+            current.current.onClose(origin);
+          },
+          apply: (request, nextToken, origin) => {
+            const view = current.current.zoom;
+            if (request.action === "zoom-in") view.zoomIn(origin);
+            else if (request.action === "zoom-out") view.zoomOut(origin);
+            else if (request.action === "rotate") view.rotateRight(origin);
+            else if (request.action === "reset") view.reset(origin);
+            else if (request.action === "pan") view.pan(request.dx, request.dy, origin);
+            setToken(nextToken);
+          },
+        },
+        current.current.zoom.snapshot(),
+        source.opening,
+      );
+    } catch (error) {
       if (errorCode(error) !== "reader/superseded") throw error;
       current.current.onClose();
       return;
@@ -45,29 +60,51 @@ export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
     const stage = current.current.zoom.stageRef.current;
     let sample = stage ? sampleResize(stage) : undefined;
     let generation = 0;
-    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
-      if (!stage || !sample || binding.current !== bound) return;
-      const next = sampleResize(stage), before = sample;
-      if (sameResizeSample(before, next)) return;
-      sample = next;
-      const request = ++generation, view = current.current.zoom;
-      const intent = view.intentRevision.current;
-      void resizeSource(before, next, undefined).catch(error => {
-        // Geometry remains observable when the OS state query fails. This is
-        // an uncorrelated layout change, not a claimed native-command effect.
-        log.warn("Image layout source unavailable", error);
-        return causalActor("system");
-      }).then(origin => {
-        if (generation !== request || source.closedBy || view.intentRevision.current !== intent || binding.current !== bound || current.current.zoom.snapshot !== view.snapshot
-          || current.current.zoom.origin !== view.origin || !sameResizeSample(next, sampleResize(stage))) return;
-        bound.publish(view.snapshot(), 0, origin);
-      });
-    });
+    const resize =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (!stage || !sample || binding.current !== bound) return;
+            const next = sampleResize(stage),
+              before = sample;
+            if (sameResizeSample(before, next)) return;
+            sample = next;
+            const request = ++generation,
+              view = current.current.zoom;
+            const intent = view.intentRevision.current;
+            void resizeSource(before, next, undefined)
+              .catch((error) => {
+                // Geometry remains observable when the OS state query fails. This is
+                // an uncorrelated layout change, not a claimed native-command effect.
+                log.warn("Image layout source unavailable", error);
+                return causalActor("system");
+              })
+              .then((origin) => {
+                if (
+                  generation !== request ||
+                  source.closedBy ||
+                  view.intentRevision.current !== intent ||
+                  binding.current !== bound ||
+                  current.current.zoom.snapshot !== view.snapshot ||
+                  current.current.zoom.origin !== view.origin ||
+                  !sameResizeSample(next, sampleResize(stage))
+                )
+                  return;
+                bound.publish(view.snapshot(), 0, origin);
+              });
+          });
     if (stage) resize?.observe(stage);
-    return () => { generation++; resize?.disconnect(); bound.dispose(source.closedBy ?? source.opening); if (binding.current === bound) binding.current = null; };
+    return () => {
+      generation++;
+      resize?.disconnect();
+      bound.dispose(source.closedBy ?? source.opening);
+      if (binding.current === bound) binding.current = null;
+    };
   }, [service, bookId, sessionId, viewerId, source]);
   // Parent renders do not make a new zoom intent. A geometry-only change is
   // published by its resize sample, not under the previous pan/zoom's source.
   const { snapshot: zoomSnapshot, origin: zoomOrigin } = zoom;
-  useLayoutEffect(() => { binding.current?.publish(zoomSnapshot(), token, zoomOrigin); }, [zoomSnapshot, token, zoomOrigin]);
+  useLayoutEffect(() => {
+    binding.current?.publish(zoomSnapshot(), token, zoomOrigin);
+  }, [zoomSnapshot, token, zoomOrigin]);
 }

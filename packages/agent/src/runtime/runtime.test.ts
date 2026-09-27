@@ -18,23 +18,49 @@ function makeRuntime(fixture = createInMemoryDeps(), now?: () => number) {
     now,
     // Unit tests never reach a provider: a model call fails at once instead of depending on
     // whether this machine can reach api.openai.com (without it the call hangs to the timeout).
-    fetch: async () => { throw new Error("Provider network is unavailable in unit tests"); },
+    fetch: async () => {
+      throw new Error("Provider network is unavailable in unit tests");
+    },
   });
   return { runtime, stores, memoryLists: () => memoryLists };
 }
 
 describe("AgentRuntime maintenance", () => {
   test("public graph execution uses the host-bound text port under the existing cancellation policy", async () => {
-    const fixture = createInMemoryDeps({ books: [{ id: "b", title: "Book", narrativity: "narrative", status: "finished" }] });
-    let defaultReads = 0, boundReads = 0;
-    fixture.deps.bookText.getToc = async () => { defaultReads++; return []; };
+    const fixture = createInMemoryDeps({
+      books: [{ id: "b", title: "Book", narrativity: "narrative", status: "finished" }],
+    });
+    let defaultReads = 0,
+      boundReads = 0;
+    fixture.deps.bookText.getToc = async () => {
+      defaultReads++;
+      return [];
+    };
     const { runtime } = makeRuntime(fixture);
-    const input = { bookId: "b", rebuild: false, maxChapters: 1, signal: new AbortController().signal,
-      resolveBoundary: async () => 1, onStarted() {}, onPlan() {}, onChapterAttempted() {}, onChapterCommitted() {}, onReport() {},
-      bookText: { ...fixture.deps.bookText, getToc: async () => { boundReads++; return []; } } };
+    const input = {
+      bookId: "b",
+      rebuild: false,
+      maxChapters: 1,
+      signal: new AbortController().signal,
+      resolveBoundary: async () => 1,
+      onStarted() {},
+      onPlan() {},
+      onChapterAttempted() {},
+      onChapterCommitted() {},
+      onReport() {},
+      bookText: {
+        ...fixture.deps.bookText,
+        getToc: async () => {
+          boundReads++;
+          return [];
+        },
+      },
+    };
     expect(await runtime.runBookGraphTask(input)).toMatchObject({ status: "unavailable", reason: "no-toc" });
-    expect(boundReads).toBeGreaterThan(0); expect(defaultReads).toBe(0);
-    const before = boundReads; await expect(runtime.runBookGraphTask({ ...input, signal: AbortSignal.abort() })).rejects.toThrow();
+    expect(boundReads).toBeGreaterThan(0);
+    expect(defaultReads).toBe(0);
+    const before = boundReads;
+    await expect(runtime.runBookGraphTask({ ...input, signal: AbortSignal.abort() })).rejects.toThrow();
     expect(boundReads).toBe(before);
   });
   test("idle consolidation runs once while memory stays unchanged", async () => {
@@ -53,21 +79,47 @@ describe("AgentRuntime maintenance", () => {
     const { runtime } = makeRuntime(fixture);
     await runtime.consolidateIfNeeded();
     expect(await runtime.consolidateIfNeeded()).toBeNull();
-    const saved = await fixture.deps.memory.saveMemory({ scope: "user", kind: "fact", content: "External", origin: "plugin", sourceThreadKey: "global" });
+    const saved = await fixture.deps.memory.saveMemory({
+      scope: "user",
+      kind: "fact",
+      content: "External",
+      origin: "plugin",
+      sourceThreadKey: "global",
+    });
     expect(await runtime.consolidateIfNeeded()).not.toBeNull();
     let snapshot = (await fixture.deps.memoryManagement.inspect(saved.id))!;
-    await fixture.deps.memoryManagement.mutate({ op: "correct", memoryId: saved.id, expectedRevision: snapshot.revision, content: "User correction" });
+    await fixture.deps.memoryManagement.mutate({
+      op: "correct",
+      memoryId: saved.id,
+      expectedRevision: snapshot.revision,
+      content: "User correction",
+    });
     expect(await runtime.consolidateIfNeeded()).not.toBeNull();
     snapshot = (await fixture.deps.memoryManagement.inspect(saved.id))!;
-    await fixture.deps.memoryManagement.mutate({ op: "forget", memoryId: saved.id, expectedRevision: snapshot.revision });
+    await fixture.deps.memoryManagement.mutate({
+      op: "forget",
+      memoryId: saved.id,
+      expectedRevision: snapshot.revision,
+    });
     expect(await runtime.consolidateIfNeeded()).not.toBeNull();
     expect(await runtime.consolidateIfNeeded()).toBeNull();
   });
 
   test("time-only decay becomes due at thirty days and its own receipt settles it", async () => {
-    const day = 86_400_000, start = Date.now();
+    const day = 86_400_000,
+      start = Date.now();
     let now = start;
-    const fixture = createInMemoryDeps({ memories: [seedMemory({ id: "m", scope: "user", content: "Aging", importance: 0.6, updatedAt: new Date(start - 29 * day).toISOString() })] });
+    const fixture = createInMemoryDeps({
+      memories: [
+        seedMemory({
+          id: "m",
+          scope: "user",
+          content: "Aging",
+          importance: 0.6,
+          updatedAt: new Date(start - 29 * day).toISOString(),
+        }),
+      ],
+    });
     const { runtime } = makeRuntime(fixture, () => now);
     await runtime.consolidateIfNeeded();
     now = start + day - 1;
@@ -79,11 +131,20 @@ describe("AgentRuntime maintenance", () => {
   });
 
   test("a write after the maintenance commit receipt is not marked as already processed", async () => {
-    const fixture = createInMemoryDeps({ memories: [seedMemory({ id: "m", scope: "user", content: "Old", importance: 0.6, updatedAt: "2020-01-01T00:00:00.000Z" })] });
+    const fixture = createInMemoryDeps({
+      memories: [
+        seedMemory({ id: "m", scope: "user", content: "Old", importance: 0.6, updatedAt: "2020-01-01T00:00:00.000Z" }),
+      ],
+    });
     const original = fixture.deps.memory.applyMemoryChanges;
     fixture.deps.memory.applyMemoryChanges = async (...args) => {
       const receipt = await original(...args);
-      await fixture.deps.memoryManagement.mutate({ op: "correct", memoryId: "m", expectedRevision: receipt[0]!.revision, content: "Late user edit" });
+      await fixture.deps.memoryManagement.mutate({
+        op: "correct",
+        memoryId: "m",
+        expectedRevision: receipt[0]!.revision,
+        content: "Late user edit",
+      });
       return receipt;
     };
     const { runtime } = makeRuntime(fixture);
@@ -111,14 +172,27 @@ describe("AgentRuntime maintenance", () => {
   });
 
   test("host-origin discard awaits its causal insight writer instead of using the default Agent writer", async () => {
-    const fixture = createInMemoryDeps(), { runtime } = makeRuntime(fixture);
-    fixture.deps.conversations.clearInsights = async () => { throw Error("wrong actor writer"); };
-    const gate = Promise.withResolvers<void>(), writes: string[] = [];
+    const fixture = createInMemoryDeps(),
+      { runtime } = makeRuntime(fixture);
+    fixture.deps.conversations.clearInsights = async () => {
+      throw Error("wrong actor writer");
+    };
+    const gate = Promise.withResolvers<void>(),
+      writes: string[] = [];
     let settled = false;
-    const pending = runtime.discardThread({ kind: "book", bookId: "book-1" as Id }, async key => {
-      writes.push(key); await gate.promise;
-    }).then(() => { settled = true; });
-    await Promise.resolve(); expect(writes).toEqual(["book:book-1"]); expect(settled).toBe(false);
-    gate.resolve(); await pending; expect(settled).toBe(true);
+    const pending = runtime
+      .discardThread({ kind: "book", bookId: "book-1" as Id }, async (key) => {
+        writes.push(key);
+        await gate.promise;
+      })
+      .then(() => {
+        settled = true;
+      });
+    await Promise.resolve();
+    expect(writes).toEqual(["book:book-1"]);
+    expect(settled).toBe(false);
+    gate.resolve();
+    await pending;
+    expect(settled).toBe(true);
   });
 });

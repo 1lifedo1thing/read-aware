@@ -12,9 +12,7 @@ describe("parseFileName", () => {
   test("drops site tags, tracker domains, and dupe counters", () => {
     expect(parseFileName("Atomic Habits (z-lib.org) (2).pdf").title).toBe("Atomic Habits");
     expect(parseFileName("[www.jiumodiary.com]深度学习入门.pdf").title).toBe("深度学习入门");
-    expect(parseFileName("OceanofPDF.com_The_Pragmatic_Programmer.pdf").title).toBe(
-      "The Pragmatic Programmer",
-    );
+    expect(parseFileName("OceanofPDF.com_The_Pragmatic_Programmer.pdf").title).toBe("The Pragmatic Programmer");
   });
 
   test("drops bracketed years and trailing versions, keeps title years", () => {
@@ -26,15 +24,11 @@ describe("parseFileName", () => {
   });
 
   test("keeps meaningful bracketed notes", () => {
-    expect(parseFileName("Pride and Prejudice (Illustrated).epub").title).toBe(
-      "Pride And Prejudice (Illustrated)",
-    );
+    expect(parseFileName("Pride and Prejudice (Illustrated).epub").title).toBe("Pride And Prejudice (Illustrated)");
   });
 
   test("treats dots as separators only in space-less names", () => {
-    expect(parseFileName("Deep.Learning.with.Python.pdf").title).toBe(
-      "Deep Learning With Python",
-    );
+    expect(parseFileName("Deep.Learning.with.Python.pdf").title).toBe("Deep Learning With Python");
     expect(parseFileName("Dr. Strange Tales.pdf").title).toBe("Dr. Strange Tales");
   });
 

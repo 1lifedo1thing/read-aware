@@ -14,18 +14,27 @@ export function useSystemFonts() {
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
-  const retry = useCallback(() => setAttempt(value => value + 1), []);
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
-    listSystemFonts().then((list) => {
-      if (active) { setFonts(list); setLoading(false); }
-    }, error => {
-      log.warn("System font enumeration failed", error);
-      if (active) { setError(error); setLoading(false); }
-    });
+    listSystemFonts().then(
+      (list) => {
+        if (active) {
+          setFonts(list);
+          setLoading(false);
+        }
+      },
+      (error) => {
+        log.warn("System font enumeration failed", error);
+        if (active) {
+          setError(error);
+          setLoading(false);
+        }
+      },
+    );
     return () => {
       active = false;
     };

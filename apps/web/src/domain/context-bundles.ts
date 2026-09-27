@@ -1,29 +1,55 @@
 import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
-import { AppError, conversationContextBundle, normalizeConversationTarget, normalizeReadingIntentScope, profileContextBundle, readingIntentContextBundle,
-  type ContextBundle, type ConversationTarget, type ProfileContextSnapshot, type ReadingIntentScope } from "@read-aware/core";
+import {
+  AppError,
+  conversationContextBundle,
+  normalizeConversationTarget,
+  normalizeReadingIntentScope,
+  profileContextBundle,
+  readingIntentContextBundle,
+  type ContextBundle,
+  type ConversationTarget,
+  type ProfileContextSnapshot,
+  type ReadingIntentScope,
+} from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 import { createLogger } from "../platform/logger";
 import { initializeUserProfile } from "./user-profile";
-import { loadConversationInsightsSnapshot, prepareConversationInsightsSnapshot } from "../features/ai/lib/conversation-insights-store";
+import {
+  loadConversationInsightsSnapshot,
+  prepareConversationInsightsSnapshot,
+} from "../features/ai/lib/conversation-insights-store";
 import { readingIntentSources } from "../features/plugins/runtime/plugin-reading-intents";
 import { bookContextSources } from "./book-context-sources";
 
 type Receipt = { version: string; changed: boolean; persistence: "event-log" };
-type Host = { invoke: typeof invoke; mint: typeof mintEventRows; broadcast: typeof broadcastDomainEventDrafts;
+type Host = {
+  invoke: typeof invoke;
+  mint: typeof mintEventRows;
+  broadcast: typeof broadcastDomainEventDrafts;
   insights: { prepare: typeof prepareConversationInsightsSnapshot; read: typeof loadConversationInsightsSnapshot };
   intents: typeof readingIntentSources;
   books: typeof bookContextSources;
-  initialize(): Promise<void>; warn(message: string): void };
+  initialize(): Promise<void>;
+  warn(message: string): void;
+};
 
 /** Internal producer. Actor authorization and file export are separate consumers. */
 export function createContextBundleService(host: Host) {
-  const capture = async (origin: DomainActor, assemble: () => Promise<ContextBundle>, signal?: AbortSignal, prepare?: () => Promise<void>) => {
+  const capture = async (
+    origin: DomainActor,
+    assemble: () => Promise<ContextBundle>,
+    signal?: AbortSignal,
+    prepare?: () => Promise<void>,
+  ) => {
     signal?.throwIfAborted();
     await host.initialize();
     signal?.throwIfAborted();
-    if (prepare) { await prepare(); signal?.throwIfAborted(); }
+    if (prepare) {
+      await prepare();
+      signal?.throwIfAborted();
+    }
     const expectedReadRevision = await host.invoke<string>("context_bundle_source_revision");
     signal?.throwIfAborted();
     const bundle = await assemble();
@@ -34,7 +60,12 @@ export function createContextBundleService(host: Host) {
       signal?.throwIfAborted();
       const receipt = await host.invoke<Receipt>("context_bundle_publish", { event, expectedReadRevision });
       // Native dispatch owns the real result, including cancellation after dispatch.
-      if (!receipt || receipt.version !== bundle.version || typeof receipt.changed !== "boolean" || receipt.persistence !== "event-log") {
+      if (
+        !receipt ||
+        receipt.version !== bundle.version ||
+        typeof receipt.changed !== "boolean" ||
+        receipt.persistence !== "event-log"
+      ) {
         throw new AppError("db/error", "Invalid context publication receipt");
       }
       if (receipt.changed) host.broadcast([draft]);
@@ -44,36 +75,65 @@ export function createContextBundleService(host: Host) {
   return {
     async captureBook(bookId: string, origin: DomainActor, signal?: AbortSignal) {
       const sources = host.books.open(bookId, signal);
-      try { return await capture(origin, sources.read, sources.signal); }
-      finally { sources.dispose(); }
+      try {
+        return await capture(origin, sources.read, sources.signal);
+      } finally {
+        sources.dispose();
+      }
     },
     async captureIntent(input: ReadingIntentScope, origin: DomainActor, signal?: AbortSignal) {
-      const scope = normalizeReadingIntentScope(input), sources = host.intents.open(scope, signal);
-      try { return await capture(origin, async () => readingIntentContextBundle(scope, await sources.read()), sources.signal, sources.prepare); }
-      finally { sources.dispose(); }
+      const scope = normalizeReadingIntentScope(input),
+        sources = host.intents.open(scope, signal);
+      try {
+        return await capture(
+          origin,
+          async () => readingIntentContextBundle(scope, await sources.read()),
+          sources.signal,
+          sources.prepare,
+        );
+      } finally {
+        sources.dispose();
+      }
     },
-    async captureProfile(origin: DomainActor, signal?: AbortSignal): Promise<{ bundle: ContextBundle; receipt: Receipt }> {
-      return capture(origin, async () => {
-        const snapshot = await host.invoke<ProfileContextSnapshot>("profile_context");
-        signal?.throwIfAborted();
-        const { bundle, derivedStatus } = await profileContextBundle(snapshot);
-        if (derivedStatus === "invalid") host.warn("Invalid consolidated profile omitted from context bundle");
-        return bundle;
-      }, signal);
+    async captureProfile(
+      origin: DomainActor,
+      signal?: AbortSignal,
+    ): Promise<{ bundle: ContextBundle; receipt: Receipt }> {
+      return capture(
+        origin,
+        async () => {
+          const snapshot = await host.invoke<ProfileContextSnapshot>("profile_context");
+          signal?.throwIfAborted();
+          const { bundle, derivedStatus } = await profileContextBundle(snapshot);
+          if (derivedStatus === "invalid") host.warn("Invalid consolidated profile omitted from context bundle");
+          return bundle;
+        },
+        signal,
+      );
     },
     async captureConversation(input: ConversationTarget, origin: DomainActor, signal?: AbortSignal) {
       const target = normalizeConversationTarget(input);
-      return capture(origin, async () => {
-        const snapshot = await host.insights.read(target);
-        signal?.throwIfAborted();
-        return conversationContextBundle(snapshot, target);
-      }, signal, host.insights.prepare);
+      return capture(
+        origin,
+        async () => {
+          const snapshot = await host.insights.read(target);
+          signal?.throwIfAborted();
+          return conversationContextBundle(snapshot, target);
+        },
+        signal,
+        host.insights.prepare,
+      );
     },
   };
 }
 
-export const contextBundles = createContextBundleService({ invoke, mint: mintEventRows, broadcast: broadcastDomainEventDrafts,
+export const contextBundles = createContextBundleService({
+  invoke,
+  mint: mintEventRows,
+  broadcast: broadcastDomainEventDrafts,
   insights: { prepare: prepareConversationInsightsSnapshot, read: loadConversationInsightsSnapshot },
   intents: readingIntentSources,
   books: bookContextSources,
-  initialize: initializeUserProfile, warn: message => createLogger("context-bundle").warn(message) });
+  initialize: initializeUserProfile,
+  warn: (message) => createLogger("context-bundle").warn(message),
+});

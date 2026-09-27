@@ -13,21 +13,21 @@ describe("sync connection operation gate", () => {
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const states: boolean[] = [], causes: unknown[] = [], origin = causalActor("user");
-    const unsubscribe = subscribeSyncConnectionBusy(source => {
+    const states: boolean[] = [],
+      causes: unknown[] = [],
+      origin = causalActor("user");
+    const unsubscribe = subscribeSyncConnectionBusy((source) => {
       causes.push(eventCause(source));
       states.push(getSyncConnectionBusy());
     });
 
-    const first = runSyncConnectionOperation(async source => {
+    const first = runSyncConnectionOperation(async (source) => {
       expect(source).toBe(origin);
       await held;
       return "first";
     }, origin);
     expect(getSyncConnectionBusy()).toBe(true);
-    await expect(runSyncConnectionOperation(async () => "second")).rejects.toThrow(
-      SyncConnectionBusyError,
-    );
+    await expect(runSyncConnectionOperation(async () => "second")).rejects.toThrow(SyncConnectionBusyError);
 
     release();
     expect(await first).toBe("first");

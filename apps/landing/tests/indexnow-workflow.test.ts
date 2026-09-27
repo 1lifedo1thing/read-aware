@@ -4,9 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { INDEXNOW_KEY } from "../scripts/search-manifest.ts";
 
-const manifest = await Bun.file(
-  new URL("../dist/search-manifest.json", import.meta.url),
-).json();
+const manifest = await Bun.file(new URL("../dist/search-manifest.json", import.meta.url)).json();
 
 test.each([200, 202, 422])(
   "deployment submission handles HTTP %s without confusing receipt with indexing",
@@ -15,10 +13,7 @@ test.each([200, 202, 422])(
     try {
       const before = join(dir, "before.json"),
         ack = join(dir, "ack.json");
-      await writeFile(
-        before,
-        JSON.stringify({ deployed: null, acknowledged: null }),
-      );
+      await writeFile(before, JSON.stringify({ deployed: null, acknowledged: null }));
       const script = `
       const manifest = ${JSON.stringify(manifest)};
       globalThis.fetch = async (url, options) => {
@@ -43,9 +38,7 @@ test.each([200, 202, 422])(
       const exit = await child.exited;
       if (status === 422) {
         expect(exit).not.toBe(0);
-        expect(stderr).toContain(
-          "deployment succeeded but notification failed",
-        );
+        expect(stderr).toContain("deployment succeeded but notification failed");
         expect(await Bun.file(ack).exists()).toBe(false);
       } else {
         expect(exit, stderr).toBe(0);

@@ -5,7 +5,14 @@ import { noopRunner } from "./plugin.fixtures";
 
 /** One field of every kind the contract allows. */
 const everyFieldKind: PluginFormField[] = [
-  { kind: "text", id: "endpoint", label: "Endpoint", value: "https://api.example.com", inputMode: "url", helperText: "Where the plugin sends its requests." },
+  {
+    kind: "text",
+    id: "endpoint",
+    label: "Endpoint",
+    value: "https://api.example.com",
+    inputMode: "url",
+    helperText: "Where the plugin sends its requests.",
+  },
   { kind: "textarea", id: "prompt", label: "Prompt template", value: "Explain {{word}} in one sentence.", rows: 3 },
   { kind: "number", id: "limit", label: "Entries per page", value: 25, min: 5, max: 100, step: 5 },
   {
@@ -29,7 +36,13 @@ const everyFieldKind: PluginFormField[] = [
       { value: "comfortable", label: "Comfortable", icon: "cards" },
     ],
   },
-  { kind: "toggle", id: "autoSave", label: "Save words automatically", description: "Adds every lookup to the notebook.", value: true },
+  {
+    kind: "toggle",
+    id: "autoSave",
+    label: "Save words automatically",
+    description: "Adds every lookup to the notebook.",
+    value: true,
+  },
   { kind: "checkbox", id: "notify", label: "Notify on new entries", value: false },
   { kind: "secret", id: "api_key", label: "API key", helperText: "Stored encrypted; never shown again once saved." },
 ];
@@ -137,7 +150,13 @@ export const PasswordField: Story = {
     view: {
       kind: "form",
       fields: [
-        { kind: "text", id: "token", label: "Access token", inputMode: "password", helperText: "Prefer a secret field for real credentials." },
+        {
+          kind: "text",
+          id: "token",
+          label: "Access token",
+          inputMode: "password",
+          helperText: "Prefer a secret field for real credentials.",
+        },
       ],
       onSubmit: () => undefined,
     },

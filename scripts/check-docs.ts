@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 
 function documents(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
     return entry.isDirectory() ? documents(path) : /\.(md|html)$/.test(path) ? [path] : [];
   });
@@ -18,12 +18,16 @@ function documentAnchors(path: string): Set<string> {
   const cached = anchors.get(path);
   if (cached) return cached;
   const text = withoutExamples(readFileSync(path, "utf8"));
-  const ids = new Set([...text.matchAll(/\b(?:id|name)=["']([^"']+)["']/g)].map(m => m[1]));
+  const ids = new Set([...text.matchAll(/\b(?:id|name)=["']([^"']+)["']/g)].map((m) => m[1]));
   if (extname(path) === ".md") {
     const counts = new Map<string, number>();
     for (const match of text.matchAll(/^#{1,6}\s+(.+?)\s*#*$/gm)) {
-      const slug = match[1].replace(/<[^>]*>/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-        .toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "").replace(/ /g, "-");
+      const slug = match[1]
+        .replace(/<[^>]*>/g, "")
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+        .toLowerCase()
+        .replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "")
+        .replace(/ /g, "-");
       const count = counts.get(slug) ?? 0;
       ids.add(slug + (count ? `-${count}` : ""));
       counts.set(slug, count + 1);
@@ -39,8 +43,8 @@ let checked = 0;
 for (const file of files) {
   const text = withoutExamples(readFileSync(file, "utf8"));
   const urls = [
-    ...[...text.matchAll(/\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g)].map(m => m[1]),
-    ...[...text.matchAll(/\b(?:href|src)=["']([^"']+)["']/g)].map(m => m[1]),
+    ...[...text.matchAll(/\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g)].map((m) => m[1]),
+    ...[...text.matchAll(/\b(?:href|src)=["']([^"']+)["']/g)].map((m) => m[1]),
   ];
   for (const raw of new Set(urls)) {
     if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(raw)) continue;
@@ -51,8 +55,12 @@ for (const file of files) {
     checked++;
     if (!existsSync(path)) {
       errors.push(`${file}: missing file ${raw}`);
-    } else if (fragment && /\.(md|html)$/.test(path) && statSync(path).isFile()
-      && !documentAnchors(path).has(decodeURIComponent(fragment))) {
+    } else if (
+      fragment &&
+      /\.(md|html)$/.test(path) &&
+      statSync(path).isFile() &&
+      !documentAnchors(path).has(decodeURIComponent(fragment))
+    ) {
       errors.push(`${file}: missing anchor ${raw}`);
     }
   }

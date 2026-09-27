@@ -1,4 +1,4 @@
-import type { FoliateBook } from './foliate-engine';
+import type { FoliateBook } from "./foliate-engine";
 
 type Lifetime = { references: number; closed: boolean };
 const lifetimes = new WeakMap<FoliateBook, Lifetime>();
@@ -10,7 +10,7 @@ export function retainBook(book: FoliateBook): () => Promise<void> {
     lifetime = { references: 0, closed: false };
     lifetimes.set(book, lifetime);
   }
-  if (lifetime.closed) throw new Error('Cannot retain a closed book');
+  if (lifetime.closed) throw new Error("Cannot retain a closed book");
   lifetime.references++;
   let released = false;
   return async () => {

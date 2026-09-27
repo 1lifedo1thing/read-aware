@@ -21,7 +21,11 @@ const sampleItems = [
 
 export const Default: Story = {
   args: {
-    trigger: <Button variant="outline" size="sm">Actions</Button>,
+    trigger: (
+      <Button variant="outline" size="sm">
+        Actions
+      </Button>
+    ),
     items: sampleItems,
   },
 };
@@ -33,7 +37,11 @@ export const RightAligned: Story = {
     </div>
   ),
   args: {
-    trigger: <Button variant="outline" size="sm">Actions</Button>,
+    trigger: (
+      <Button variant="outline" size="sm">
+        Actions
+      </Button>
+    ),
     items: sampleItems,
     align: "right",
   },

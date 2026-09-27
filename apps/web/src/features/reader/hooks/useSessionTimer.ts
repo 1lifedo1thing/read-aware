@@ -10,17 +10,14 @@ function pad(value: number): string {
 /** Session-only active reading time. Pauses retain the total; mode re-entry resets it.
  * The reader forwards iframe activity through activityRef, just as it does for
  * reading statistics, because those events never reach the outer window. */
-export function useSessionTimer(
-  enabled: boolean,
-  activityRef?: RefObject<(() => void) | null>,
-) {
+export function useSessionTimer(enabled: boolean, activityRef?: RefObject<(() => void) | null>) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [now, setNow] = useState(() => new Date());
   const [showClock, setShowClock] = useState(false);
   const refreshRef = useRef<(() => void) | null>(null);
   const toggleClock = useCallback(() => {
     refreshRef.current?.();
-    setShowClock(value => !value);
+    setShowClock((value) => !value);
   }, []);
 
   useEffect(() => {
@@ -83,8 +80,6 @@ export function useSessionTimer(
   const hours = Math.floor(elapsedSeconds / 3600);
   const minutes = Math.floor((elapsedSeconds % 3600) / 60);
   const seconds = elapsedSeconds % 60;
-  const elapsed = hours > 0
-    ? `${hours}:${pad(minutes)}:${pad(seconds)}`
-    : `${minutes}:${pad(seconds)}`;
+  const elapsed = hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${minutes}:${pad(seconds)}`;
   return { elapsed: enabled ? elapsed : null, now, showClock, toggleClock };
 }

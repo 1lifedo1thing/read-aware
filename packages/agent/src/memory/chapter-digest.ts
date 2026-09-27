@@ -17,12 +17,7 @@
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { AppError, CHAPTER_DIGEST_VERSION } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
-import type {
-  ChapterDigest,
-  DigestCharacter,
-  DigestFlavor,
-  DigestRelation,
-} from "../ports";
+import type { ChapterDigest, DigestCharacter, DigestFlavor, DigestRelation } from "../ports";
 
 /** v3 invalidates digests attached to the former spine-based chapter coordinates. */
 export const DIGEST_VERSION = CHAPTER_DIGEST_VERSION;
@@ -38,8 +33,7 @@ function buildNarrativeDigestPrompt(known: DigestCharacter[]): string {
   const knownBlock = known.length
     ? `Characters already known from earlier chapters (merge into these — reuse the EXACT same "name" when the same person appears again, adding any new alias):\n${known
         .map(
-          (character) =>
-            `- ${character.name}${character.aliases?.length ? ` (${character.aliases.join(", ")})` : ""}`,
+          (character) => `- ${character.name}${character.aliases?.length ? ` (${character.aliases.join(", ")})` : ""}`,
         )
         .join("\n")}`
     : "Characters already known from earlier chapters: (none yet)";
@@ -66,10 +60,7 @@ Output STRICT JSON only, no prose, no code fences:
 function buildExpositoryDigestPrompt(known: DigestCharacter[]): string {
   const knownBlock = known.length
     ? `Concepts already known from earlier chapters (merge into these — reuse the EXACT same "name" when the same concept reappears, adding any new alias or synonym):\n${known
-        .map(
-          (concept) =>
-            `- ${concept.name}${concept.aliases?.length ? ` (${concept.aliases.join(", ")})` : ""}`,
-        )
+        .map((concept) => `- ${concept.name}${concept.aliases?.length ? ` (${concept.aliases.join(", ")})` : ""}`)
         .join("\n")}`
     : "Concepts already known from earlier chapters: (none yet)";
   return `You maintain a reading companion's per-book memory. Digest ONE chapter of a NON-FICTION book (technical, argumentative, instructional, or reference) from its verbatim text.
@@ -175,12 +166,11 @@ export interface ExtractChapterDigestInput {
 }
 
 /** Empty text has no digest; provider/parse failures reject for the runner to report. */
-export async function extractChapterDigest(
-  input: ExtractChapterDigestInput,
-): Promise<ChapterDigest | undefined> {
+export async function extractChapterDigest(input: ExtractChapterDigestInput): Promise<ChapterDigest | undefined> {
   const flavor: DigestFlavor = input.flavor ?? "narrative";
   input.signal?.throwIfAborted();
-  if (input.chapterText.length > 2 * 1024 * 1024 || input.knownCharacters.length > 2000) throw new AppError("memory/input-budget-exceeded", "Digest input exceeds its budget");
+  if (input.chapterText.length > 2 * 1024 * 1024 || input.knownCharacters.length > 2000)
+    throw new AppError("memory/input-budget-exceeded", "Digest input exceeds its budget");
   const known = input.knownCharacters;
   let knownChars = 0;
   for (const item of known) {
@@ -188,32 +178,43 @@ export async function extractChapterDigest(
     for (const alias of item.aliases ?? []) knownChars += alias.length;
     if (knownChars > 24000) throw new AppError("memory/input-budget-exceeded", "Digest registry exceeds its budget");
   }
-  if ((input.chapterTitle?.length ?? 0) > 2048) throw new AppError("memory/input-budget-exceeded", "Digest title exceeds its budget");
+  if ((input.chapterTitle?.length ?? 0) > 2048)
+    throw new AppError("memory/input-budget-exceeded", "Digest title exceeds its budget");
   const text = input.chapterText.trim();
   if (!text) return undefined;
-  const message = await input.complete(input.model, {
-    systemPrompt:
-      flavor === "expository"
-        ? buildExpositoryDigestPrompt(input.knownCharacters)
-        : buildNarrativeDigestPrompt(input.knownCharacters),
-    messages: [
-      {
-        role: "user",
-        content: `Internal chapterIndex (not a printed chapter number): ${input.chapterIndex}${
-          input.chapterTitle ? `\nOriginal chapter title: "${input.chapterTitle}"` : ""
-        }:\n\n${text.slice(0, CHAPTER_TEXT_BUDGET)}`,
-        timestamp: Date.now(),
-      },
-    ],
-  }, { signal: input.signal, maxTokens: Math.min(4096, input.model.maxTokens || 4096) });
+  const message = await input.complete(
+    input.model,
+    {
+      systemPrompt:
+        flavor === "expository"
+          ? buildExpositoryDigestPrompt(input.knownCharacters)
+          : buildNarrativeDigestPrompt(input.knownCharacters),
+      messages: [
+        {
+          role: "user",
+          content: `Internal chapterIndex (not a printed chapter number): ${input.chapterIndex}${
+            input.chapterTitle ? `\nOriginal chapter title: "${input.chapterTitle}"` : ""
+          }:\n\n${text.slice(0, CHAPTER_TEXT_BUDGET)}`,
+          timestamp: Date.now(),
+        },
+      ],
+    },
+    { signal: input.signal, maxTokens: Math.min(4096, input.model.maxTokens || 4096) },
+  );
   input.signal?.throwIfAborted();
   if (message.stopReason !== "stop") throw new AppError("ai/provider", "Chapter digest inference did not complete");
   let outputChars = 0;
-  for (const block of message.content) if (block.type === "text") { outputChars += block.text.length; if (outputChars > 32000) throw new AppError("memory/output-budget-exceeded", "Digest output exceeds its budget"); }
+  for (const block of message.content)
+    if (block.type === "text") {
+      outputChars += block.text.length;
+      if (outputChars > 32000) throw new AppError("memory/output-budget-exceeded", "Digest output exceeds its budget");
+    }
   const parsed = parseJson(extractText(message));
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new AppError("ai/provider", "Invalid chapter digest response");
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    throw new AppError("ai/provider", "Invalid chapter digest response");
   const { summary, characters, concepts, relations } = parsed as Record<string, unknown>;
-  if (typeof summary !== "string" || !summary.trim()) throw new AppError("ai/provider", "Missing chapter digest summary");
+  if (typeof summary !== "string" || !summary.trim())
+    throw new AppError("ai/provider", "Missing chapter digest summary");
   // expository 提示词按语义要 "concepts" 键；存储形状统一在 characters。
   // 模型偶尔仍答 "characters"（或反之）——两个键都认，语义键优先。
   const entities = flavor === "expository" ? (concepts ?? characters) : (characters ?? concepts);
@@ -316,8 +317,7 @@ export function resolveEntityNames(digests: ChapterDigest[]): Map<string, string
   }
   const conflicts = (a: string, b: string) => {
     // 并查集合并前检查：两簇的任意成员在同章并列过 → 不是同一人。
-    const membersOf = (root: string) =>
-      [...parent.keys()].filter((name) => find(name) === root);
+    const membersOf = (root: string) => [...parent.keys()].filter((name) => find(name) === root);
     const left = membersOf(find(a));
     const right = membersOf(find(b));
     return left.some((x) => right.some((y) => distinctPairs.has(`${x} ${y}`)));
@@ -360,10 +360,7 @@ export function resolveEntityNames(digests: ChapterDigest[]): Map<string, string
   const resolution = new Map<string, string>();
   for (const members of clusters.values()) {
     const canonical = [...members].sort(
-      (a, b) =>
-        (mentions.get(b) ?? 0) - (mentions.get(a) ?? 0) ||
-        b.length - a.length ||
-        a.localeCompare(b),
+      (a, b) => (mentions.get(b) ?? 0) - (mentions.get(a) ?? 0) || b.length - a.length || a.localeCompare(b),
     )[0]!;
     for (const member of members) resolution.set(member, canonical);
   }
@@ -378,19 +375,13 @@ export function mergeCharacterRegistry(digests: ChapterDigest[]): DigestCharacte
   for (const digest of [...digests].sort((a, b) => a.chapterIndex - b.chapterIndex)) {
     for (const character of digest.characters) {
       const key = canonical(character.name);
-      const incomingAliases = [character.name, ...(character.aliases ?? [])].filter(
-        (alias) => alias !== key,
-      );
+      const incomingAliases = [character.name, ...(character.aliases ?? [])].filter((alias) => alias !== key);
       const existing = byName.get(key);
       const aliases = new Set([...(existing?.aliases ?? []), ...incomingAliases]);
       byName.set(key, {
         name: key,
         ...(aliases.size ? { aliases: [...aliases] } : {}),
-        ...(character.note
-          ? { note: character.note }
-          : existing?.note
-            ? { note: existing.note }
-            : {}),
+        ...(character.note ? { note: character.note } : existing?.note ? { note: existing.note } : {}),
       });
     }
   }

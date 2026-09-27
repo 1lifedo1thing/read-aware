@@ -21,9 +21,7 @@ export function readBookDragPayload(dataTransfer: DataTransfer | null): string[]
   if (!raw) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((id): id is string => typeof id === "string")
-      : [];
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
   } catch {
     // The payload can only come from this app's own dragstart; a malformed
     // one means the drag carries nothing actionable.

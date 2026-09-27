@@ -14,14 +14,10 @@ export function contributionText(value: PluginText): string {
 export function resolvePluginText(value: PluginLocalizedText, locale?: string | null): string {
   if (!locale || !value.translations) return value.default;
   const requested = locale.toLowerCase();
-  const exact = Object.entries(value.translations).find(
-    ([candidate]) => candidate.toLowerCase() === requested,
-  );
+  const exact = Object.entries(value.translations).find(([candidate]) => candidate.toLowerCase() === requested);
   if (exact) return exact[1];
 
   const base = requested.split("-")[0];
-  const baseMatch = Object.entries(value.translations).find(
-    ([candidate]) => candidate.toLowerCase() === base,
-  );
+  const baseMatch = Object.entries(value.translations).find(([candidate]) => candidate.toLowerCase() === base);
   return baseMatch?.[1] ?? value.default;
 }

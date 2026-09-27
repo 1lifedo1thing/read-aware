@@ -14,12 +14,7 @@ function ControlledSelect() {
   const [value, setValue] = useLocalAtom("title");
   return (
     <div className="flex flex-col gap-4">
-      <Select
-        label="Sort by"
-        options={sampleOptions}
-        value={value}
-        onChange={setValue}
-      />
+      <Select label="Sort by" options={sampleOptions} value={value} onChange={setValue} />
       <p className="text-sm text-fg-muted">Selected: {value}</p>
     </div>
   );

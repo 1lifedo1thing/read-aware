@@ -3,16 +3,7 @@
  * plugin, the target-language type lives here too: a concrete app locale, or
  * "auto" to follow `ctx.locale`.
  */
-export type TargetLanguage =
-  | "auto"
-  | "en"
-  | "zh-Hans"
-  | "zh-Hant"
-  | "ja"
-  | "fr"
-  | "de"
-  | "ru"
-  | "es";
+export type TargetLanguage = "auto" | "en" | "zh-Hans" | "zh-Hant" | "ja" | "fr" | "de" | "ru" | "es";
 
 export const LANGUAGE_OPTIONS = [
   { value: "auto", label: "Match app language" },

@@ -51,9 +51,7 @@ describe("narrative output guard", () => {
   test("holds an unsafe stream and rewrites it, so the host can only record the safe answer", async () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
-    faux.setResponses([
-      fauxAssistantMessage("我不剧透，但原文是“不要回答”，之后还有面壁计划。"),
-    ]);
+    faux.setResponses([fauxAssistantMessage("我不剧透，但原文是“不要回答”，之后还有面壁计划。")]);
     const { deps, stores } = narrativeDeps();
     let repairContext: Context | undefined;
     const thread = new AgentThread({
@@ -78,7 +76,10 @@ describe("narrative output guard", () => {
         },
       }),
     );
-    const shown = chunks.filter((chunk) => chunk.type === "text").map((chunk) => chunk.text).join("");
+    const shown = chunks
+      .filter((chunk) => chunk.type === "text")
+      .map((chunk) => chunk.text)
+      .join("");
 
     expect(shown).toBe("你目前只读到红岸基地；我先只解释眼前这段。 ");
     expect(shown).not.toContain("不要回答");
@@ -95,7 +96,11 @@ describe("narrative output guard", () => {
     const { deps, stores } = narrativeDeps();
     const turns = Array.from({ length: 7 }, (_, index) => [
       { role: "user" as const, content: `旧问题 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:00Z` },
-      { role: "assistant" as const, content: `旧回答 ${index} 围绕红岸基地`, createdAt: `2026-06-0${index + 1}T00:00:05Z` },
+      {
+        role: "assistant" as const,
+        content: `旧回答 ${index} 围绕红岸基地`,
+        createdAt: `2026-06-0${index + 1}T00:00:05Z`,
+      },
     ]).flat();
     turns[turns.length - 1] = {
       role: "assistant",
@@ -137,10 +142,12 @@ describe("narrative output guard", () => {
       streamFn: streamSimple,
     });
 
-    await collect(thread.sendTurn({
-      text: "回顾眼前内容。",
-      readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
-    }));
+    await collect(
+      thread.sendTurn({
+        text: "回顾眼前内容。",
+        readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
+      }),
+    );
 
     const payload = JSON.parse(messageText(repairContext?.messages[0]));
     expect(payload.recentTurns).toHaveLength(12);
@@ -163,10 +170,13 @@ describe("narrative output guard", () => {
       },
     ]);
     const { deps, stores } = narrativeDeps();
-    stores.turns.set(`book:${BOOK_ID}`, Array.from({ length: 7 }, (_, index) => [
-      { role: "user" as const, content: `旧问题 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:00Z` },
-      { role: "assistant" as const, content: `旧回答 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:05Z` },
-    ]).flat());
+    stores.turns.set(
+      `book:${BOOK_ID}`,
+      Array.from({ length: 7 }, (_, index) => [
+        { role: "user" as const, content: `旧问题 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:00Z` },
+        { role: "assistant" as const, content: `旧回答 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:05Z` },
+      ]).flat(),
+    );
     const thread = new AgentThread({
       scope: { kind: "book", bookId: BOOK_ID },
       deps,
@@ -191,10 +201,9 @@ describe("narrative output guard", () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
     faux.setResponses([
-      fauxAssistantMessage(
-        [fauxToolCall("read_chapter", { chapterIndex: 1, confirmSpoiler: true })],
-        { stopReason: "toolUse" },
-      ),
+      fauxAssistantMessage([fauxToolCall("read_chapter", { chapterIndex: 1, confirmSpoiler: true })], {
+        stopReason: "toolUse",
+      }),
       fauxAssistantMessage("后面会出现面壁计划。"),
     ]);
     const { deps } = narrativeDeps();
@@ -218,7 +227,10 @@ describe("narrative output guard", () => {
         readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
       }),
     );
-    const shown = chunks.filter((chunk) => chunk.type === "text").map((chunk) => chunk.text).join("");
+    const shown = chunks
+      .filter((chunk) => chunk.type === "text")
+      .map((chunk) => chunk.text)
+      .join("");
 
     expect(shown).toBe("后面会出现面壁计划。");
     expect(repairs).toBe(0);
@@ -228,10 +240,9 @@ describe("narrative output guard", () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
     faux.setResponses([
-      fauxAssistantMessage(
-        [fauxToolCall("read_chapter", { chapterIndex: 1, confirmSpoiler: true })],
-        { stopReason: "toolUse" },
-      ),
+      fauxAssistantMessage([fauxToolCall("read_chapter", { chapterIndex: 1, confirmSpoiler: true })], {
+        stopReason: "toolUse",
+      }),
       fauxAssistantMessage("后面会出现面壁计划。"),
     ]);
     const { deps, stores } = narrativeDeps();
@@ -251,7 +262,10 @@ describe("narrative output guard", () => {
         readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
       }),
     );
-    const shown = chunks.filter((chunk) => chunk.type === "text").map((chunk) => chunk.text).join("");
+    const shown = chunks
+      .filter((chunk) => chunk.type === "text")
+      .map((chunk) => chunk.text)
+      .join("");
 
     expect(shown).toContain("明确说明可以剧透");
     expect(shown).not.toContain("面壁计划");
@@ -263,9 +277,7 @@ describe("narrative output guard", () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
     faux.setResponses([
-      fauxAssistantMessage(
-        "读到这里，能够确定的只有红岸基地这一条线。\n\n至于后面的“不要回答”和面壁计划，我先不说。",
-      ),
+      fauxAssistantMessage("读到这里，能够确定的只有红岸基地这一条线。\n\n至于后面的“不要回答”和面壁计划，我先不说。"),
     ]);
     const { deps } = narrativeDeps();
     let repairs = 0;
@@ -288,7 +300,10 @@ describe("narrative output guard", () => {
         readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
       }),
     );
-    const shown = chunks.filter((chunk) => chunk.type === "text").map((chunk) => chunk.text).join("");
+    const shown = chunks
+      .filter((chunk) => chunk.type === "text")
+      .map((chunk) => chunk.text)
+      .join("");
 
     expect(shown).toBe("读到这里，能够确定的只有红岸基地这一条线。");
     expect(repairs).toBe(1);
@@ -297,24 +312,36 @@ describe("narrative output guard", () => {
   test("does not publish a hollow section after removing its unsafe body", async () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
-    faux.setResponses([fauxAssistantMessage(
-      "眼前的地点是红岸基地，这也是当前阅读位置已经明确交代的内容。\n\n## 主要线索\n\n后来原文写道“不要回答”。\n\n## 当前地点\n\n红岸基地。",
-    )]);
+    faux.setResponses([
+      fauxAssistantMessage(
+        "眼前的地点是红岸基地，这也是当前阅读位置已经明确交代的内容。\n\n## 主要线索\n\n后来原文写道“不要回答”。\n\n## 当前地点\n\n红岸基地。",
+      ),
+    ]);
     const { deps, stores } = narrativeDeps();
     let repairs = 0;
     const replacement = "当前明确的线索只有红岸基地；已提供的内容尚不足以列出更多线索。";
     const thread = new AgentThread({
-      scope: { kind: "book", bookId: BOOK_ID }, deps,
-      resolveModel: () => model, getApiKey: () => "test-key",
+      scope: { kind: "book", bookId: BOOK_ID },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
       completeFn: async () => fauxAssistantMessage('{"new":[],"reinforced":[]}'),
-      repairCompleteFn: async () => { repairs++; return fauxAssistantMessage(replacement); },
+      repairCompleteFn: async () => {
+        repairs++;
+        return fauxAssistantMessage(replacement);
+      },
       streamFn: streamSimple,
     });
-    const chunks = await collect(hostTurn(stores.turns, thread, {
-      text: "梳理已读到的主要线索。",
-      readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
-    }));
-    const shown = chunks.filter(chunk => chunk.type === "text").map(chunk => chunk.text).join("");
+    const chunks = await collect(
+      hostTurn(stores.turns, thread, {
+        text: "梳理已读到的主要线索。",
+        readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
+      }),
+    );
+    const shown = chunks
+      .filter((chunk) => chunk.type === "text")
+      .map((chunk) => chunk.text)
+      .join("");
     expect(repairs).toBe(1);
     expect(shown).toBe(replacement);
     const persisted = stores.turns.get(`book:${BOOK_ID}`) ?? [];

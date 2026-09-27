@@ -39,7 +39,10 @@ function safeSegment(value: string): string {
 }
 
 function timestampSegment(date: Date): string {
-  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return date
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
 }
 
 function runGit(cwd: string, args: string[]): string | undefined {
@@ -85,9 +88,7 @@ async function filesUnder(path: string): Promise<string[]> {
 }
 
 async function hashPaths(repoRoot: string, paths: string[]): Promise<string> {
-  const files = (
-    await Promise.all(paths.map((path) => filesUnder(resolve(repoRoot, path))))
-  ).flat().sort();
+  const files = (await Promise.all(paths.map((path) => filesUnder(resolve(repoRoot, path))))).flat().sort();
   const parts: Array<string | Uint8Array> = [];
   for (const file of files) {
     parts.push(relative(repoRoot, file), await readFile(file));
@@ -95,10 +96,7 @@ async function hashPaths(repoRoot: string, paths: string[]): Promise<string> {
   return sha256(parts);
 }
 
-export async function collectEvalProvenance(
-  cwd: string,
-  plan: EvalRunPlan,
-): Promise<EvalArtifactProvenance> {
+export async function collectEvalProvenance(cwd: string, plan: EvalRunPlan): Promise<EvalArtifactProvenance> {
   const repoRoot = runGit(cwd, ["rev-parse", "--show-toplevel"]) ?? cwd;
   const [promptHash, evaluatorHash, runtimeSafetyHash, fixtureHash] = await Promise.all([
     hashPaths(repoRoot, [
@@ -208,16 +206,14 @@ export class EvalArtifactStore {
 
   async writeRun(record: EvalRunRecord): Promise<void> {
     const sanitized = this.sanitize(record);
-    const directory = join(
-      this.directory,
-      "runs",
-      safeSegment(record.variantId),
-      safeSegment(record.scenarioId),
-    );
+    const directory = join(this.directory, "runs", safeSegment(record.variantId), safeSegment(record.scenarioId));
     await mkdir(directory, { recursive: true });
     await Promise.all([
       atomicWrite(join(directory, `${record.repetition}.json`), pretty(sanitized)),
-      atomicWrite(join(directory, `${record.repetition}.review.json`), pretty(this.sanitize(buildReviewPacket(record)))),
+      atomicWrite(
+        join(directory, `${record.repetition}.review.json`),
+        pretty(this.sanitize(buildReviewPacket(record))),
+      ),
       appendFile(join(this.directory, "runs.jsonl"), `${JSON.stringify(sanitized)}\n`, "utf8"),
     ]);
   }

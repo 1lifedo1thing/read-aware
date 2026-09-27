@@ -125,7 +125,12 @@ export function searchChapters(chapters: ChapterLike[], queries: string[], limit
 }
 
 /** Same matching and ranking as the synchronous API, with cooperative cancellation. */
-export async function searchChaptersAsync(chapters: ChapterLike[], queries: string[], limit = 16, signal?: AbortSignal): Promise<ChapterHit[]> {
+export async function searchChaptersAsync(
+  chapters: ChapterLike[],
+  queries: string[],
+  limit = 16,
+  signal?: AbortSignal,
+): Promise<ChapterHit[]> {
   signal?.throwIfAborted();
   let deadline = performance.now() + 8;
   const steps = searchChapterSteps(chapters, queries, limit);
@@ -133,7 +138,7 @@ export async function searchChaptersAsync(chapters: ChapterLike[], queries: stri
   while (!step.done) {
     signal?.throwIfAborted();
     if (performance.now() >= deadline) {
-      await new Promise<void>(resolve => setTimeout(resolve, 0));
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
       signal?.throwIfAborted();
       deadline = performance.now() + 8;
     }

@@ -21,20 +21,35 @@ export type ReadingInsights = {
   /** Host only stores the all-time hour histogram; never pretend it is period-scoped. */
   allTimeHourlyMs: number[];
   achievements: {
-    totalMs: number; currentStreak: number; longestStreak: number;
-    bestDayMs: number; bestDayKey: string | null; daysRead: number; booksRead: number;
-    mostReadBookId: string | null; mostReadBookMs: number; nextMilestoneMs: number | null;
+    totalMs: number;
+    currentStreak: number;
+    longestStreak: number;
+    bestDayMs: number;
+    bestDayKey: string | null;
+    daysRead: number;
+    booksRead: number;
+    mostReadBookId: string | null;
+    mostReadBookMs: number;
+    nextMilestoneMs: number | null;
   };
 };
 
-export function normalizeReadingInsightsQuery(query: ReadingInsightsQuery = {}): ReadingInsightsQuery & { period: ReadingPeriod } {
-  if (!query || typeof query !== "object" || Array.isArray(query)) throw new AppError("reading/invalid-time-query", "Invalid insights query");
+export function normalizeReadingInsightsQuery(
+  query: ReadingInsightsQuery = {},
+): ReadingInsightsQuery & { period: ReadingPeriod } {
+  if (!query || typeof query !== "object" || Array.isArray(query))
+    throw new AppError("reading/invalid-time-query", "Invalid insights query");
   const scope = normalizeReadingTimeQuery({ bookId: query.bookId, localDay: query.asOfDay });
   const period = query.period ?? "week";
-  if (!["week", "month", "year", "all"].includes(period)
-    || (query.asOfDay !== undefined && Number(query.asOfDay.slice(0, 4)) < 100)) {
+  if (
+    !["week", "month", "year", "all"].includes(period) ||
+    (query.asOfDay !== undefined && Number(query.asOfDay.slice(0, 4)) < 100)
+  ) {
     throw new AppError("reading/invalid-time-query", "Invalid insights period or reference day");
   }
-  return { ...(scope.bookId !== undefined ? { bookId: scope.bookId } : {}), period,
-    ...(query.asOfDay !== undefined ? { asOfDay: query.asOfDay } : {}) };
+  return {
+    ...(scope.bookId !== undefined ? { bookId: scope.bookId } : {}),
+    period,
+    ...(query.asOfDay !== undefined ? { asOfDay: query.asOfDay } : {}),
+  };
 }

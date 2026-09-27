@@ -11,12 +11,27 @@
 
 import { AppError, type ReaderPanelsView } from "@read-aware/core";
 import { afterLocalKVWrites, localKV, onLocalKVChange } from "../../../platform/local-store";
-import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  actorFromEvent,
+  causalActor,
+  mergeEventCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 
 /** Join only inputs that changed this committed view. Old untouched state must
  * not turn a later independent user action into a continuation of an old loop. */
-export function readerPanelRenderActor(previous: ReaderPanelsView | null, next: ReaderPanelsView,
-  sources: { layout: DomainActor; sizes: DomainActor; transient: DomainActor; controls: DomainActor; environment: DomainActor }): DomainActor {
+export function readerPanelRenderActor(
+  previous: ReaderPanelsView | null,
+  next: ReaderPanelsView,
+  sources: {
+    layout: DomainActor;
+    sizes: DomainActor;
+    transient: DomainActor;
+    controls: DomainActor;
+    environment: DomainActor;
+  },
+): DomainActor {
   const inputs: DomainActor[] = [];
   const controlsChanged = !previous || previous.controlsVisible !== next.controlsVisible;
   if (controlsChanged) inputs.push(sources.controls);
@@ -24,11 +39,20 @@ export function readerPanelRenderActor(previous: ReaderPanelsView | null, next: 
   if (!previous || JSON.stringify(previous.sizes) !== JSON.stringify(next.sizes)) inputs.push(sources.sizes);
   // Docked TOC/chat come from the persisted layout store; every other open
   // change (popovers, and TOC/chat sheets in exclusive layout) is transient.
-  const changedPanels = (["toc", "chat", "annotations", "appearance"] as const).filter(panel => !previous || previous.panels[panel].open !== next.panels[panel].open);
-  const persisted = (panel: (typeof changedPanels)[number]) => (panel === "toc" || panel === "chat") && next.layout === "docked";
+  const changedPanels = (["toc", "chat", "annotations", "appearance"] as const).filter(
+    (panel) => !previous || previous.panels[panel].open !== next.panels[panel].open,
+  );
+  const persisted = (panel: (typeof changedPanels)[number]) =>
+    (panel === "toc" || panel === "chat") && next.layout === "docked";
   if (!previous || changedPanels.some(persisted)) inputs.push(sources.layout);
-  if (previous && (!controlsChanged || next.controlsVisible) && changedPanels.some(panel => !persisted(panel))) inputs.push(sources.transient);
-  return actorFromEvent(mergeEventCauses(inputs.map(origin => stampEventCause({}, origin)), {}));
+  if (previous && (!controlsChanged || next.controlsVisible) && changedPanels.some((panel) => !persisted(panel)))
+    inputs.push(sources.transient);
+  return actorFromEvent(
+    mergeEventCauses(
+      inputs.map((origin) => stampEventCause({}, origin)),
+      {},
+    ),
+  );
 }
 
 const STORAGE_KEY = "read-aware-reader-panels";
@@ -75,9 +99,13 @@ export const readerPanelLayoutStore = {
     if (!renderState || raw !== renderState.raw) renderState = { raw, origin: causalActor("system") };
     return renderState;
   },
-  subscribe: (listener: () => void): (() => void) => onLocalKVChange((key, raw, origin) => {
-    if (key === STORAGE_KEY) { renderState = { raw, origin }; listener(); }
-  }),
+  subscribe: (listener: () => void): (() => void) =>
+    onLocalKVChange((key, raw, origin) => {
+      if (key === STORAGE_KEY) {
+        renderState = { raw, origin };
+        listener();
+      }
+    }),
 };
 
 export function getReaderPanelLayout(bookId: string, raw = readerPanelLayoutStore.getSnapshot()): ReaderPanelLayout {
@@ -96,7 +124,8 @@ export function updateReaderPanelLayout(
   origin = causalActor(origin);
   const work = afterLocalKVWrites(() => {
     signal?.throwIfAborted();
-    if (typeof bookId !== "string" || !bookId) throw new AppError("reader/invalid-target", "Panel layout requires a book");
+    if (typeof bookId !== "string" || !bookId)
+      throw new AppError("reader/invalid-target", "Panel layout requires a book");
     const raw = readerPanelLayoutStore.getSnapshot();
     const previous = getReaderPanelLayout(bookId, raw);
     const next = update({ ...previous });
@@ -116,9 +145,16 @@ export function updateReaderPanelLayout(
     const abort = () => reject(signal.reason);
     signal.addEventListener("abort", abort, { once: true });
     if (signal.aborted) abort();
-    void work.then(value => {
-      signal.removeEventListener("abort", abort);
-      if (signal.aborted) reject(signal.reason); else resolve(value);
-    }, error => { signal.removeEventListener("abort", abort); reject(error); });
+    void work.then(
+      (value) => {
+        signal.removeEventListener("abort", abort);
+        if (signal.aborted) reject(signal.reason);
+        else resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", abort);
+        reject(error);
+      },
+    );
   });
 }

@@ -8,10 +8,13 @@ import { hostWindow } from "../../../services/window";
 const log = createLogger("window");
 export function useWindowActions() {
   const { toast } = useToast();
-  return useCallback((request: HostWindowRequest) => {
-    void hostWindow.control(request, undefined, "user").catch(error => {
-      log.warn("Window action failed", error);
-      toast({ variant: "destructive", description: describeError(error).body });
-    });
-  }, [toast]);
+  return useCallback(
+    (request: HostWindowRequest) => {
+      void hostWindow.control(request, undefined, "user").catch((error) => {
+        log.warn("Window action failed", error);
+        toast({ variant: "destructive", description: describeError(error).body });
+      });
+    },
+    [toast],
+  );
 }

@@ -21,18 +21,14 @@ export function resolvePluginCapabilities(manifest: PluginManifest): PluginCapab
   }
 
   const contributions: PluginCapabilityView["contributions"] = {};
-  for (const id of Object.keys(CONTRIBUTION_CATALOG) as Array<
-    keyof typeof CONTRIBUTION_CATALOG
-  >) {
+  for (const id of Object.keys(CONTRIBUTION_CATALOG) as Array<keyof typeof CONTRIBUTION_CATALOG>) {
     if (canUseContribution(id, permissions)) {
       contributions[id] = CONTRIBUTION_CATALOG[id].version;
     }
   }
 
   const services: PluginCapabilityView["services"] = {};
-  for (const id of Object.keys(HOST_SERVICE_CATALOG) as Array<
-    keyof typeof HOST_SERVICE_CATALOG
-  >) {
+  for (const id of Object.keys(HOST_SERVICE_CATALOG) as Array<keyof typeof HOST_SERVICE_CATALOG>) {
     if (canUseHostService(id, permissions)) {
       services[id] = HOST_SERVICE_CATALOG[id].version;
     }
@@ -45,9 +41,7 @@ export function resolvePluginCapabilities(manifest: PluginManifest): PluginCapab
     schemas: {
       views: DECLARATIVE_SCHEMA_CATALOG.views.version,
       settings: DECLARATIVE_SCHEMA_CATALOG.settings.version,
-      ...(permissions.has("ui:themes")
-        ? { themes: DECLARATIVE_SCHEMA_CATALOG.themes.version }
-        : {}),
+      ...(permissions.has("ui:themes") ? { themes: DECLARATIVE_SCHEMA_CATALOG.themes.version } : {}),
     },
   };
 }
@@ -60,14 +54,10 @@ export function assertPluginCapabilityRequirements(manifest: PluginManifest): vo
     for (const [id, range] of Object.entries(requirements)) {
       const version = versions[id];
       if (!version) {
-        throw new Error(
-          `requires unavailable capability ${family}.${id} ${String(range)} (check permissions)`,
-        );
+        throw new Error(`requires unavailable capability ${family}.${id} ${String(range)} (check permissions)`);
       }
       if (!satisfies(version, String(range), { includePrerelease: true })) {
-        throw new Error(
-          `requires ${family}.${id} ${String(range)}, but the host provides ${version}`,
-        );
+        throw new Error(`requires ${family}.${id} ${String(range)}, but the host provides ${version}`);
       }
     }
   }

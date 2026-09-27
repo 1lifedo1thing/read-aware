@@ -46,9 +46,7 @@ export const UnderAFigure: Story = {
   render: (args) => (
     <div className="min-w-0">
       <span className="block text-xs text-fg-subtle">Total time</span>
-      <div className="mt-1 font-serif text-[28px] leading-none tabular-nums text-fg">
-        12h 40m
-      </div>
+      <div className="mt-1 font-serif text-[28px] leading-none tabular-nums text-fg">12h 40m</div>
       <DeltaBadge {...args} className="mt-1.5" />
     </div>
   ),

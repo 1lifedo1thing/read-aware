@@ -13,23 +13,38 @@ export type CuratedFont = {
 /** Lightweight catalog; the large generated face table stays in curated-fonts.ts. */
 export const CURATED_FONTS: CuratedFont[] = [
   {
-    id: "inter", label: "Inter", family: "Inter", kind: "sans",
+    id: "inter",
+    label: "Inter",
+    family: "Inter",
+    kind: "sans",
     weights: [300, 400, 500, 600, 700, 800, 900],
   },
   {
-    id: "atkinson", label: "Atkinson Hyperlegible", family: "Atkinson Hyperlegible", kind: "sans",
+    id: "atkinson",
+    label: "Atkinson Hyperlegible",
+    family: "Atkinson Hyperlegible",
+    kind: "sans",
     weights: [400, 700],
   },
   {
-    id: "literata", label: "Literata", family: "Literata", kind: "serif",
+    id: "literata",
+    label: "Literata",
+    family: "Literata",
+    kind: "serif",
     weights: [300, 400, 500, 600, 700, 800, 900],
   },
   {
-    id: "lora", label: "Lora", family: "Lora", kind: "serif",
+    id: "lora",
+    label: "Lora",
+    family: "Lora",
+    kind: "serif",
     weights: [400, 500, 600, 700],
   },
   {
-    id: "lxgw", label: "霞鹜文楷 LXGW WenKai", family: "LXGW WenKai", kind: "cjk",
+    id: "lxgw",
+    label: "霞鹜文楷 LXGW WenKai",
+    family: "LXGW WenKai",
+    kind: "cjk",
     weights: [300, 400, 700],
   },
 ];

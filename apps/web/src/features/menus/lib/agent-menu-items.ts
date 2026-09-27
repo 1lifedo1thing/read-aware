@@ -33,10 +33,7 @@ export type MenuPluginState = {
   textUnitReaderMode: RegisteredReaderMode | null;
 };
 
-function pluginItemsForSurface(
-  surface: MenuSurface,
-  plugins: MenuPluginState,
-): MenuSurfaceItem[] {
+function pluginItemsForSurface(surface: MenuSurface, plugins: MenuPluginState): MenuSurfaceItem[] {
   const actions =
     surface === "selection"
       ? plugins.selectionActions
@@ -78,14 +75,9 @@ const CORE_ITEM_LABELS: Record<string, string> = {
 };
 
 /** All arrangeable items for one surface, core first, in default order. */
-export function knownSurfaceItems(
-  surface: MenuSurface,
-  plugins: MenuPluginState,
-): MenuSurfaceItem[] {
+export function knownSurfaceItems(surface: MenuSurface, plugins: MenuPluginState): MenuSurfaceItem[] {
   const core = CORE_MENU_ITEMS[surface]
-    .filter(
-      (meta) => meta.id !== "core:navigator" || plugins.textUnitReaderMode,
-    )
+    .filter((meta) => meta.id !== "core:navigator" || plugins.textUnitReaderMode)
     .map((meta) => ({
       id: meta.id,
       label: CORE_ITEM_LABELS[meta.labelKey] ?? meta.labelKey,
@@ -109,7 +101,5 @@ export function resolvedSurfaceLayout(
             .map((action) => pluginMenuId(action.key))
         : [],
   });
-  return surface === "primaryNav"
-    ? { ...layout, visible: clampPrimaryNavVisible(layout.visible) }
-    : layout;
+  return surface === "primaryNav" ? { ...layout, visible: clampPrimaryNavVisible(layout.visible) } : layout;
 }

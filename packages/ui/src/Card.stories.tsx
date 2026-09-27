@@ -19,17 +19,12 @@ export const Outlined: Story = {
     children: (
       <>
         <Card.Header>
-          <p className="font-sans text-[13px] font-medium text-fg-muted">
-            Chapter 1
-          </p>
-          <h3 className="mt-1 text-lg font-semibold tracking-tight text-fg">
-            The White Album
-          </h3>
+          <p className="font-sans text-[13px] font-medium text-fg-muted">Chapter 1</p>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight text-fg">The White Album</h3>
         </Card.Header>
         <Card.Body>
-          We tell ourselves stories in order to live. The princess is caged in
-          the consulate. The man with the candy will lead the children into the
-          sea.
+          We tell ourselves stories in order to live. The princess is caged in the consulate. The man with the candy
+          will lead the children into the sea.
         </Card.Body>
       </>
     ),
@@ -42,9 +37,7 @@ export const Filled: Story = {
     children: (
       <>
         <Card.Header>
-          <h3 className="text-lg font-semibold tracking-tight text-fg">
-            Reading progress
-          </h3>
+          <h3 className="text-lg font-semibold tracking-tight text-fg">Reading progress</h3>
         </Card.Header>
         <Card.Body>
           <p>3 of 12 chapters completed.</p>
@@ -59,14 +52,9 @@ export const WithFooter: Story = {
     children: (
       <>
         <Card.Header>
-          <h3 className="text-lg font-semibold tracking-tight text-fg">
-            Remove from shelf?
-          </h3>
+          <h3 className="text-lg font-semibold tracking-tight text-fg">Remove from shelf?</h3>
         </Card.Header>
-        <Card.Body>
-          This will remove the item from your shelf. You can always add it back
-          later.
-        </Card.Body>
+        <Card.Body>This will remove the item from your shelf. You can always add it back later.</Card.Body>
         <Card.Footer>
           <Button variant="ghost" size="sm">
             Cancel
@@ -98,13 +86,9 @@ export const AsArticle: Story = {
     children: (
       <>
         <Card.Header>
-          <h3 className="text-lg font-semibold tracking-tight text-fg">
-            Semantic HTML
-          </h3>
+          <h3 className="text-lg font-semibold tracking-tight text-fg">Semantic HTML</h3>
         </Card.Header>
-        <Card.Body>
-          This card renders as an article element.
-        </Card.Body>
+        <Card.Body>This card renders as an article element.</Card.Body>
       </>
     ),
   },

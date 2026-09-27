@@ -26,20 +26,14 @@ export function extractJsonObject(raw: string): string {
  * 这覆盖了"让模型回填一个结构"的全部真实需求；没实现的关键字被静默
  * 忽略，宁可放过也不误杀。
  */
-export function schemaViolations(
-  value: unknown,
-  schema: Record<string, unknown>,
-  path = "$",
-): string[] {
+export function schemaViolations(value: unknown, schema: Record<string, unknown>, path = "$"): string[] {
   const problems: string[] = [];
-  const kindOf = (v: unknown): string =>
-    v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+  const kindOf = (v: unknown): string => (v === null ? "null" : Array.isArray(v) ? "array" : typeof v);
 
   const type = schema.type;
   if (typeof type === "string") {
     const actual = kindOf(value);
-    const ok =
-      type === "integer" ? actual === "number" && Number.isInteger(value) : actual === type;
+    const ok = type === "integer" ? actual === "number" && Number.isInteger(value) : actual === type;
     if (!ok) {
       problems.push(`${path}: expected ${type}, got ${actual}`);
       return problems;
@@ -70,9 +64,7 @@ export function schemaViolations(
 
   if (Array.isArray(value) && schema.items && typeof schema.items === "object") {
     value.forEach((entry, index) => {
-      problems.push(
-        ...schemaViolations(entry, schema.items as Record<string, unknown>, `${path}[${index}]`),
-      );
+      problems.push(...schemaViolations(entry, schema.items as Record<string, unknown>, `${path}[${index}]`));
     });
   }
 

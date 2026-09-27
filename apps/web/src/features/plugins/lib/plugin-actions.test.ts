@@ -2,8 +2,12 @@ import { describe, expect, test } from "bun:test";
 import type { PluginAction } from "./plugin-types";
 import { splitToolbarActions } from "./plugin-actions";
 
-const action = (id: string, extra: Partial<PluginAction> = {}): PluginAction =>
-  ({ id, label: id, run: () => undefined, ...extra });
+const action = (id: string, extra: Partial<PluginAction> = {}): PluginAction => ({
+  id,
+  label: id,
+  run: () => undefined,
+  ...extra,
+});
 
 const ids = (actions: PluginAction[]) => actions.map((item) => item.id);
 
@@ -32,15 +36,14 @@ describe("splitToolbarActions", () => {
   });
 
   test("a solid action counts as primary unless the plugin says otherwise", () => {
-    const split = splitToolbarActions([
-      action("a"), action("b"), action("c"),
-      action("apply", { variant: "solid" }),
-    ]);
+    const split = splitToolbarActions([action("a"), action("b"), action("c"), action("apply", { variant: "solid" })]);
     expect(ids(split.inline)).toEqual(["a", "apply"]);
     expect(ids(split.overflow)).toEqual(["b", "c"]);
 
     const demoted = splitToolbarActions([
-      action("a"), action("b"), action("c"),
+      action("a"),
+      action("b"),
+      action("c"),
       action("apply", { variant: "solid", priority: "secondary" }),
     ]);
     expect(ids(demoted.inline)).toEqual(["a", "b"]);

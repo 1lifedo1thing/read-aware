@@ -9,11 +9,7 @@ const config: StorybookConfig = {
     "../src/**/*.mdx",
     "../src/**/*.stories.@(ts|tsx)",
   ],
-  addons: [
-    "@storybook/addon-a11y",
-    "@storybook/addon-docs",
-    "@storybook/addon-onboarding",
-  ],
+  addons: ["@storybook/addon-a11y", "@storybook/addon-docs", "@storybook/addon-onboarding"],
   framework: "@storybook/react-vite",
   viteFinal: async (config) => {
     const { default: tailwindcss } = await import("@tailwindcss/vite");

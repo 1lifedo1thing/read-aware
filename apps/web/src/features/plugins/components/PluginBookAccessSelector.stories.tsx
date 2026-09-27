@@ -36,11 +36,5 @@ export const SpecificBook: Story = {
 };
 
 export const NoBooks: Story = {
-  render: () => (
-    <PluginBookAccessSelector
-      value={{ mode: "all" }}
-      books={[]}
-      onChange={() => undefined}
-    />
-  ),
+  render: () => <PluginBookAccessSelector value={{ mode: "all" }} books={[]} onChange={() => undefined} />,
 };

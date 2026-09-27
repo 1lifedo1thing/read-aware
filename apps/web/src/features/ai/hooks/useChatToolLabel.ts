@@ -72,9 +72,7 @@ export function useChatToolLabel(name?: string) {
   const known = name as keyof typeof TOOL_LABEL_KEYS;
   return (
     (pluginTool &&
-      (pluginTool.label
-        ? contributionText(pluginTool.label)
-        : `${pluginTool.pluginName} · ${pluginTool.name}`)) ||
+      (pluginTool.label ? contributionText(pluginTool.label) : `${pluginTool.pluginName} · ${pluginTool.name}`)) ||
     (TOOL_LABEL_KEYS[known] ? t(TOOL_LABEL_KEYS[known]) : t("chat.tools.fallback"))
   );
 }

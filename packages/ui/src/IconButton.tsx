@@ -23,7 +23,10 @@ const toneClasses = {
  * IconButton's styling, for components that render their own button (a
  * Popover trigger) but must match the icon buttons beside them.
  */
-export function iconButtonClassName({ size = "md", tone = "default" }: {
+export function iconButtonClassName({
+  size = "md",
+  tone = "default",
+}: {
   size?: keyof typeof sizeClasses;
   tone?: keyof typeof toneClasses;
 } = {}): string {
@@ -41,29 +44,19 @@ type IconButtonProps = {
   tone?: keyof typeof toneClasses;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">;
 
-export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  function IconButton(
-    {
-      icon,
-      label,
-      size = "md",
-      tone = "default",
-      className,
-      type = "button",
-      ...props
-    },
-    ref,
-  ) {
-    return (
-      <button
-        ref={ref}
-        type={type}
-        aria-label={label}
-        className={cn(iconButtonClassName({ size, tone }), className)}
-        {...props}
-      >
-        {icon}
-      </button>
-    );
-  },
-);
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
+  { icon, label, size = "md", tone = "default", className, type = "button", ...props },
+  ref,
+) {
+  return (
+    <button
+      ref={ref}
+      type={type}
+      aria-label={label}
+      className={cn(iconButtonClassName({ size, tone }), className)}
+      {...props}
+    >
+      {icon}
+    </button>
+  );
+});

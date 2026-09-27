@@ -17,7 +17,7 @@ describe("capability ownership audit", () => {
   });
   test("rejects missing behavior coverage", () => {
     const copy = structuredClone(units);
-    for (const u of copy) u.refs = u.refs.filter(id => id !== "LIB01");
+    for (const u of copy) u.refs = u.refs.filter((id) => id !== "LIB01");
     expect(() => validateModel(copy)).toThrow("Unmodeled row LIB01");
   });
   test("rejects unknown evidence", () => {

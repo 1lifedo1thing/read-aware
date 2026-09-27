@@ -72,7 +72,8 @@ function atomLink(value: unknown): string {
   const preferred =
     links.find(
       (link) =>
-        link && typeof link === "object" &&
+        link &&
+        typeof link === "object" &&
         ((link as Record<string, unknown>)["@_rel"] === "alternate" ||
           (link as Record<string, unknown>)["@_rel"] === undefined),
     ) ?? links[0];
@@ -123,16 +124,10 @@ function feedShape(doc: Record<string, unknown>): FeedShape | null {
 function articleLimit(ctx: RssPluginContext): number {
   const settings = ctx.services.storage.get<Record<string, unknown>>("settings");
   const value = settings?.articleLimit;
-  return typeof value === "number" && value >= 5 && value <= 100
-    ? Math.floor(value)
-    : MAX_ARTICLES;
+  return typeof value === "number" && value >= 5 && value <= 100 ? Math.floor(value) : MAX_ARTICLES;
 }
 
-export async function parseFeed(
-  xmlText: string,
-  feedUrl: string,
-  limit = MAX_ARTICLES,
-): Promise<FeedResult> {
+export async function parseFeed(xmlText: string, feedUrl: string, limit = MAX_ARTICLES): Promise<FeedResult> {
   if (new TextEncoder().encode(xmlText).byteLength > 4 * 1024 * 1024) {
     throw Object.assign(new Error("Feed XML exceeds 4 MiB"), { code: "plugin/payload-too-large" });
   }
@@ -161,23 +156,21 @@ export async function parseFeed(
     const body =
       (shape.kind === "atom"
         ? firstText(item, "content", "summary")
-        : firstText(item, "content:encoded", "description")) ||
-      "<p>(no content in feed)</p>";
-    const rawLink =
-      shape.kind === "atom" ? atomLink(item.link) : firstText(item, "link");
+        : firstText(item, "content:encoded", "description")) || "<p>(no content in feed)</p>";
+    const rawLink = shape.kind === "atom" ? atomLink(item.link) : firstText(item, "link");
     const link = resolveArticleLink(rawLink, feedUrl);
     const publishedAt =
-      (shape.kind === "atom"
-        ? firstText(item, "published", "updated")
-        : firstText(item, "pubDate", "dc:date")) || undefined;
+      (shape.kind === "atom" ? firstText(item, "published", "updated") : firstText(item, "pubDate", "dc:date")) ||
+      undefined;
     const publishedDate = publishedAt ? new Date(publishedAt) : null;
     const publishedAtIso =
-      publishedDate && !Number.isNaN(publishedDate.getTime())
-        ? publishedDate.toISOString()
-        : undefined;
+      publishedDate && !Number.isNaN(publishedDate.getTime()) ? publishedDate.toISOString() : undefined;
     const declaredId = shape.kind === "atom" ? firstText(item, "id") : firstText(item, "guid", "@_rdf:about");
-    const identity = declaredId ? ["id", declaredId] : link ? ["link", link]
-      : ["content", textOf(item.title), publishedAt ?? "", body];
+    const identity = declaredId
+      ? ["id", declaredId]
+      : link
+        ? ["link", link]
+        : ["content", textOf(item.title), publishedAt ?? "", body];
     const id = `article-${await digest(JSON.stringify([feedUrl, ...identity]))}`;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -201,12 +194,21 @@ export async function fetchFeed(ctx: RssPluginContext, url: string): Promise<Fee
   const response = await ctx.services.network.fetch(url, { signal: AbortSignal.timeout(15_000) }, { retry: "safe" });
   if (!response.ok) {
     const status = response.status;
-    const code = status === 401 || status === 403 ? "plugin/http-auth"
-      : status === 404 || status === 410 ? "plugin/http-not-found"
-      : status === 429 ? "plugin/http-rate-limited"
-      : status >= 500 ? "plugin/http-server" : "plugin/http-rejected";
-    try { await response.body?.cancel(); }
-    catch (error) { console.warn("RSS rejected response cleanup failed", error); }
+    const code =
+      status === 401 || status === 403
+        ? "plugin/http-auth"
+        : status === 404 || status === 410
+          ? "plugin/http-not-found"
+          : status === 429
+            ? "plugin/http-rate-limited"
+            : status >= 500
+              ? "plugin/http-server"
+              : "plugin/http-rejected";
+    try {
+      await response.body?.cancel();
+    } catch (error) {
+      console.warn("RSS rejected response cleanup failed", error);
+    }
     throw Object.assign(new Error(`Feed returned ${status}`), { code, retryable: status === 429 || status >= 500 });
   }
   return parseFeed(await response.text(), url, articleLimit(ctx));

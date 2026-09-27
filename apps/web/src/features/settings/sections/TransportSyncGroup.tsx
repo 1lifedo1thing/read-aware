@@ -25,8 +25,8 @@ export function TransportSyncGroup({ pluginId }: { pluginId: string }) {
   const setSectionRequest = useSetAtom(settingsSectionRequestAtom);
   const transports = sync.transports.filter((transport) => transport.pluginId === pluginId);
   const flows = useTransportSyncFlows(sync, transports);
-  const connectedHere = sync.connectedTransport !== null
-    && transports.some((transport) => transport.ref === sync.connectedTransport!.ref);
+  const connectedHere =
+    sync.connectedTransport !== null && transports.some((transport) => transport.ref === sync.connectedTransport!.ref);
   const backlog = useSyncBacklog(connectedHere);
   const bookBacklog = useSyncBookBacklog(connectedHere);
   const movingBookTitle = useBlobBookTitle(

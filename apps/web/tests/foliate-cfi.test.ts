@@ -37,7 +37,10 @@ describe("CFI paths and ranges", () => {
   test("range endpoints are not shifted by an extra prefix", () => {
     const range = "epubcfi(/6/2!/4/2,/1:0,/1:5)";
     expect(CFI.parse(range)).toEqual({
-      parent: [[{ index: 6 }, { index: 2 }], [{ index: 4 }, { index: 2 }]],
+      parent: [
+        [{ index: 6 }, { index: 2 }],
+        [{ index: 4 }, { index: 2 }],
+      ],
       start: [[{ index: 1, offset: 0 }]],
       end: [[{ index: 1, offset: 5 }]],
     });
@@ -60,10 +63,9 @@ describe("CFI paths and ranges", () => {
   });
 
   test("preserves text, temporal, spatial and side assertions", () => {
-    expect(CFI.parse("/4/1:3[before,after;s=b]~2.5@10:20")).toEqual([[
-      { index: 4 },
-      { index: 1, offset: 3, text: ["before", "after"], side: "b", temporal: 2.5, spatial: [10, 20] },
-    ]]);
+    expect(CFI.parse("/4/1:3[before,after;s=b]~2.5@10:20")).toEqual([
+      [{ index: 4 }, { index: 1, offset: 3, text: ["before", "after"], side: "b", temporal: 2.5, spatial: [10, 20] }],
+    ]);
   });
 
   test("keeps synthetic spine indices stable", () => {
@@ -76,9 +78,13 @@ describe("CFI paths and ranges", () => {
 
   test("preserves Calibre positions and highlights", () => {
     expect(CFI.fromCalibrePos("/2/4/2/1:5")).toBe("epubcfi(/6/2!/2/1:5)");
-    expect(CFI.fromCalibreHighlight({
-      spine_index: 2, start_cfi: "/2/4/2/1:6", end_cfi: "/2/4/2/1:11",
-    })).toBe("epubcfi(/6/6!/4/2,/1:6,/1:11)");
+    expect(
+      CFI.fromCalibreHighlight({
+        spine_index: 2,
+        start_cfi: "/2/4/2/1:6",
+        end_cfi: "/2/4/2/1:11",
+      }),
+    ).toBe("epubcfi(/6/6!/4/2,/1:6,/1:11)");
   });
 
   test("rejects incomplete ranges", () => {
@@ -89,7 +95,9 @@ describe("CFI paths and ranges", () => {
 
 describe("CFI DOM round trips", () => {
   test("element child offsets retain full selections and image-only ranges", () => {
-    const doc = xhtml('<p id="text">Hello <em>EPUB</em> world.</p><p id="images"><img src="first"/><img src="second"/></p>');
+    const doc = xhtml(
+      '<p id="text">Hello <em>EPUB</em> world.</p><p id="images"><img src="first"/><img src="second"/></p>',
+    );
     for (const element of [doc.querySelector("em")!, doc.querySelector("#text")!]) {
       const range = doc.createRange();
       range.selectNodeContents(element);
@@ -105,9 +113,9 @@ describe("CFI DOM round trips", () => {
   });
 
   test("virtual elements and empty text chunks resolve within their parent", () => {
-    const doc = xhtml('<p>Hello</p><p><em>A</em><strong>B</strong></p>');
-    expect(CFI.toRange(doc, CFI.parse('/4/2,/0,/2')).toString()).toBe("Hello");
-    const empty = CFI.toRange(doc, CFI.parse('/4/4/3:0'));
+    const doc = xhtml("<p>Hello</p><p><em>A</em><strong>B</strong></p>");
+    expect(CFI.toRange(doc, CFI.parse("/4/2,/0,/2")).toString()).toBe("Hello");
+    const empty = CFI.toRange(doc, CFI.parse("/4/4/3:0"));
     expect(empty.startContainer).toBe(doc.querySelectorAll("p")[1]);
     expect(empty.startOffset).toBe(1);
   });
@@ -126,35 +134,36 @@ describe("CFI DOM round trips", () => {
   // The upstream MIT-licensed regression cases cover CFI's logical text chunks
   // and FILTER_SKIP semantics, including foliate-js issue #100.
   // https://github.com/johnfactotum/foliate-js/blob/78914aef4466eb960965702401634c2cb348e9b1/tests/epubcfi-tests.js
-  test.each([
-    "<p>xxx<em>yyy</em>0123456789</p>",
-    "<p>xxx<em>yyy</em><!--one-->01234<!--two-->567&#56;&#57;</p>",
-  ])("text chunks survive comments: %s", (body) => {
-    const doc = xhtml(body);
-    for (let index = 0; index < 10; index++) {
-      const range = CFI.toRange(doc, CFI.parse(`/4/2,/3:${index},/3:${index + 1}`));
-      expect(range.toString()).toBe(String(index));
-      expect(CFI.toRange(doc, CFI.parse(CFI.fromRange(range))).toString()).toBe(String(index));
-    }
-  });
+  test.each(["<p>xxx<em>yyy</em>0123456789</p>", "<p>xxx<em>yyy</em><!--one-->01234<!--two-->567&#56;&#57;</p>"])(
+    "text chunks survive comments: %s",
+    (body) => {
+      const doc = xhtml(body);
+      for (let index = 0; index < 10; index++) {
+        const range = CFI.toRange(doc, CFI.parse(`/4/2,/3:${index},/3:${index + 1}`));
+        expect(range.toString()).toBe(String(index));
+        expect(CFI.toRange(doc, CFI.parse(CFI.fromRange(range))).toString()).toBe(String(index));
+      }
+    },
+  );
 
   // jsdom does not implement CDATA Range offsets. That case is exercised by
   // tests/runtime/foliate-regressions.ts in the actual Tauri webview, not patched here.
 
   test("skips wrappers while retaining offsets across their text nodes", () => {
     const doc = xhtml('<p id="sample"><span class="skip">H</span>e<span class="skip">ll</span>o, World</p>');
-    const filter: CFI.CFIFilter = (node) => node.nodeType === 1
-      && node instanceof dom.window.Element && node.classList.contains("skip")
-      ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT;
+    const filter: CFI.CFIFilter = (node) =>
+      node.nodeType === 1 && node instanceof dom.window.Element && node.classList.contains("skip")
+        ? NodeFilter.FILTER_SKIP
+        : NodeFilter.FILTER_ACCEPT;
     const range = CFI.toRange(doc, CFI.parse("/4/2[sample],/1:3,/1:8"), filter);
     expect(range.toString()).toBe("lo, W");
     expect(CFI.fromRange(range, filter)).toBe("epubcfi(/4/2[sample],/1:3,/1:8)");
   });
 
   test("rejects injected elements without changing original text coordinates", () => {
-    const doc = xhtml('<aside>Ignored</aside><p>0123456789</p>');
-    const filter: CFI.CFIFilter = (node) => node.nodeName === "aside"
-      ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+    const doc = xhtml("<aside>Ignored</aside><p>0123456789</p>");
+    const filter: CFI.CFIFilter = (node) =>
+      node.nodeName === "aside" ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
     expect(CFI.toRange(doc, CFI.parse("/4/2,/1:2,/1:5"), filter).toString()).toBe("234");
   });
 

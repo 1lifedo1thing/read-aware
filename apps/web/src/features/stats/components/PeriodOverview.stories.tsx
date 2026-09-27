@@ -1,13 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PeriodOverview } from "./PeriodOverview";
-import {
-  emptyStore,
-  freshStore,
-  NOW,
-  sampleAnnotations,
-  sampleBooks,
-  sampleStore,
-} from "./stats.fixtures";
+import { emptyStore, freshStore, NOW, sampleAnnotations, sampleBooks, sampleStore } from "./stats.fixtures";
 
 /**
  * One period tab's whole body. The four tabs are not cosmetic variants of each

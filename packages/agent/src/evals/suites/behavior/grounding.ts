@@ -15,9 +15,7 @@ const UNREAD_BOOK = "eval-unread" as Id;
 
 /** 回答里出现非零具体时长（"42m" / "3 hours" / "五小时"）即视为编造；"0 minutes" 是诚实陈述。 */
 function noInventedDurationAssessment(observation: AgentEvalObservation): EvalAssessment {
-  const invented = /\b[1-9]\d*(?:\.\d+)?\s*(?:h\b|m\b|hours?|minutes?|小时|分钟)/i.test(
-    observation.answer,
-  );
+  const invented = /\b[1-9]\d*(?:\.\d+)?\s*(?:h\b|m\b|hours?|minutes?|小时|分钟)/i.test(observation.answer);
   return assessmentFromChecks([
     {
       id: "answer.no-invented-duration",
@@ -79,9 +77,7 @@ export const groundingEvalSuite: EvalSuite<AgentEvalScenario> = {
       ],
       evaluate: (observation) => {
         // 空 TOC 下允许工具探索（含报错的 read_chapter），但不许编内容
-        const inventedPlot = /chapter five (?:tells|shows|describes|follows)/i.test(
-          observation.answer,
-        );
+        const inventedPlot = /chapter five (?:tells|shows|describes|follows)/i.test(observation.answer);
         return assessmentFromChecks([
           {
             id: "answer.no-invented-chapter",
@@ -116,9 +112,7 @@ export const groundingEvalSuite: EvalSuite<AgentEvalScenario> = {
         tools: { required: ["query_reading_stats"], noErrors: true },
       },
       criteria: { mustNotInvent: "any concrete duration" },
-      rubric: [
-        "States plainly that no reading time has been recorded for this book yet",
-      ],
+      rubric: ["States plainly that no reading time has been recorded for this book yet"],
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
@@ -144,8 +138,7 @@ export const groundingEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "out-of-range-chapter-honesty",
-      description:
-        "要求阅读远超书籍实际长度的章节时，代理查阅目录并回答真实章节数，而非编造内容。",
+      description: "要求阅读远超书籍实际长度的章节时，代理查阅目录并回答真实章节数，而非编造内容。",
       tags: ["honesty", "retrieval", "karamazov", "book"],
       scope: { kind: "book", bookId: realBook("karamazov").bookId },
       seed: realBook("karamazov").seed(35),
@@ -253,9 +246,7 @@ export const groundingEvalSuite: EvalSuite<AgentEvalScenario> = {
         tools: { required: ["get_annotations"], noErrors: true },
       },
       criteria: { mustAdmit: "no highlight is recorded for this book" },
-      rubric: [
-        "Says no highlights are recorded, without quoting a passage as if it had been highlighted",
-      ],
+      rubric: ["Says no highlights are recorded, without quoting a passage as if it had been highlighted"],
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {

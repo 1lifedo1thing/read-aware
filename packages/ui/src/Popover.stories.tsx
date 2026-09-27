@@ -12,7 +12,11 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    trigger: <Button variant="outline" size="sm">Info</Button>,
+    trigger: (
+      <Button variant="outline" size="sm">
+        Info
+      </Button>
+    ),
     children: (
       <div className="text-sm text-fg-muted">
         <p className="mb-1 font-medium text-fg">Reading stats</p>
@@ -29,7 +33,11 @@ export const RightAligned: Story = {
     </div>
   ),
   args: {
-    trigger: <Button variant="outline" size="sm">Details</Button>,
+    trigger: (
+      <Button variant="outline" size="sm">
+        Details
+      </Button>
+    ),
     children: <p className="text-sm text-fg-muted">Additional context goes here.</p>,
     align: "right",
   },
@@ -42,7 +50,11 @@ export const CenterAligned: Story = {
     </div>
   ),
   args: {
-    trigger: <Button variant="ghost" size="sm">Help</Button>,
+    trigger: (
+      <Button variant="ghost" size="sm">
+        Help
+      </Button>
+    ),
     children: <p className="text-sm text-fg-muted">Click any item to view its details.</p>,
     align: "center",
   },
@@ -56,7 +68,11 @@ export const OpensUpward: Story = {
     </div>
   ),
   args: {
-    trigger: <Button variant="outline" size="sm">Appearance</Button>,
+    trigger: (
+      <Button variant="outline" size="sm">
+        Appearance
+      </Button>
+    ),
     children: <p className="text-sm text-fg-muted">The panel opens above its trigger.</p>,
     side: "top",
   },

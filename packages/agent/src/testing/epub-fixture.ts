@@ -79,8 +79,7 @@ function resolveHref(baseDir: string, href: string): string {
 
 export function loadEpubFixture(path: string): EpubFixture {
   const files = unzipSync(readFileSync(path));
-  const read = (name: string): string | undefined =>
-    files[name] ? strFromU8(files[name]) : undefined;
+  const read = (name: string): string | undefined => (files[name] ? strFromU8(files[name]) : undefined);
 
   const container = read("META-INF/container.xml");
   const opfPath = container && /full-path="([^"]+)"/.exec(container)?.[1];
@@ -89,9 +88,7 @@ export function loadEpubFixture(path: string): EpubFixture {
   if (!opf) throw new Error(`OPF missing in zip: ${opfPath}`);
   const opfDir = opfPath.includes("/") ? opfPath.slice(0, opfPath.lastIndexOf("/") + 1) : "";
 
-  const title = decodeEntities(
-    /<dc:title[^>]*>([\s\S]*?)<\/dc:title>/.exec(opf)?.[1] ?? "Untitled",
-  ).trim();
+  const title = decodeEntities(/<dc:title[^>]*>([\s\S]*?)<\/dc:title>/.exec(opf)?.[1] ?? "Untitled").trim();
   const author = /<dc:creator[^>]*>([\s\S]*?)<\/dc:creator>/.exec(opf)?.[1]?.trim();
 
   // manifest: id → { href, type }
@@ -130,9 +127,7 @@ export function loadEpubFixture(path: string): EpubFixture {
     // 标题回退链：NCX 条目 → 非空 <title> → 正文首个 h1–h6（mobiunpack 类
     // 转制书 NCX 只有卷级条目、<title> 全空，章题都在 h2 里）。
     const chapterTitle =
-      titleByPath.get(zipPath) ||
-      /<title>([\s\S]*?)<\/title>/.exec(html)?.[1]?.trim() ||
-      firstHeadingText(html);
+      titleByPath.get(zipPath) || /<title>([\s\S]*?)<\/title>/.exec(html)?.[1]?.trim() || firstHeadingText(html);
     chapters.push({ title: chapterTitle || undefined, text });
   }
 

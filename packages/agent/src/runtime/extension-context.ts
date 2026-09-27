@@ -1,8 +1,4 @@
-import type {
-  AgentExtensionContextBlock,
-  ExternalMemoryCandidate,
-  MemoryRecord,
-} from "../ports";
+import type { AgentExtensionContextBlock, ExternalMemoryCandidate, MemoryRecord } from "../ports";
 import type { ThreadScope } from "../thread-scope";
 
 const MAX_CONTEXT_BLOCKS = 6;
@@ -42,9 +38,7 @@ export function normalizeExternalMemoryCandidates(input: {
   onReject?: (candidate: ExternalMemoryCandidate, reason: "invalid" | "scope" | "duplicate" | "limit") => void;
 }): ExternalMemoryCandidate[] {
   const allowedScopes = new Set(
-    input.scope.kind === "book"
-      ? ["user", `book:${input.scope.bookId}`]
-      : ["user", "global"],
+    input.scope.kind === "book" ? ["user", `book:${input.scope.bookId}`] : ["user", "global"],
   );
   const kinds = new Set(["fact", "preference", "insight", "summary"]);
   const seen = new Set(input.existing.map((memory) => memory.content.trim().toLocaleLowerCase()));
@@ -52,10 +46,16 @@ export function normalizeExternalMemoryCandidates(input: {
   for (const [index, candidate] of input.candidates.entries()) {
     const content = cleanText(candidate.content, MAX_MEMORY_CONTENT);
     const fingerprint = content.toLocaleLowerCase();
-    const reason = index >= MAX_MEMORY_CANDIDATES ? "limit"
-      : !content || !kinds.has(candidate.kind) ? "invalid"
-      : !allowedScopes.has(candidate.scope) ? "scope"
-      : seen.has(fingerprint) ? "duplicate" : null;
+    const reason =
+      index >= MAX_MEMORY_CANDIDATES
+        ? "limit"
+        : !content || !kinds.has(candidate.kind)
+          ? "invalid"
+          : !allowedScopes.has(candidate.scope)
+            ? "scope"
+            : seen.has(fingerprint)
+              ? "duplicate"
+              : null;
     if (reason) {
       input.onReject?.(candidate, reason);
       continue;

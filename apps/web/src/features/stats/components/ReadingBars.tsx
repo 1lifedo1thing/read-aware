@@ -32,12 +32,7 @@ export function ReadingBars({ bars, height = 160, className }: ReadingBarsProps)
   return (
     <div className={className} style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={CHART_MARGIN}
-          barCategoryGap={dense ? "12%" : "22%"}
-          onClick={onChartClick}
-        >
+        <BarChart data={data} margin={CHART_MARGIN} barCategoryGap={dense ? "12%" : "22%"} onClick={onChartClick}>
           <XAxis
             dataKey="key"
             tickFormatter={(k: string) => labelByKey.get(k) ?? ""}

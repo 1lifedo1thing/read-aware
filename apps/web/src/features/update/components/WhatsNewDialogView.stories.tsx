@@ -7,8 +7,7 @@ const entry: WhatsNewEntry = {
   codename: "Cambria",
   date: "2026-09-20",
   text: {
-    summary:
-      "A more capable reading companion, reliable offline progress, and more ways to make ReadAware your own.",
+    summary: "A more capable reading companion, reliable offline progress, and more ways to make ReadAware your own.",
     groups: [
       {
         kind: "new",
@@ -26,14 +25,20 @@ const entry: WhatsNewEntry = {
       {
         kind: "improved",
         items: [
-          { title: "Backup and restore", body: "Review the contents of an encrypted backup and choose what to restore." },
+          {
+            title: "Backup and restore",
+            body: "Review the contents of an encrypted backup and choose what to restore.",
+          },
           { body: "Find the project and its community directly in About." },
         ],
       },
       {
         kind: "fixed",
         items: [
-          { title: "Offline reading progress", body: "Reconnecting a device keeps the furthest reading position across devices." },
+          {
+            title: "Offline reading progress",
+            body: "Reconnecting a device keeps the furthest reading position across devices.",
+          },
         ],
       },
     ],

@@ -18,10 +18,12 @@ export class SyncWorkGate {
     signal?.throwIfAborted();
     if (this.reservation) throw new AppError("backup/busy", "Sync work is already reserved for backup");
     let release!: () => void;
-    this.reservation = new Promise<void>(resolve => { release = resolve; });
+    this.reservation = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const owned = new Set<Promise<unknown>>();
     let accepting = true;
-    const runOwned: Run = work => {
+    const runOwned: Run = (work) => {
       if (!accepting) return Promise.reject(new AppError("backup/busy", "Backup sync scope has ended"));
       return this.track(owned, work);
     };
@@ -43,7 +45,9 @@ export class SyncWorkGate {
   private track<T>(pending: Set<Promise<unknown>>, operation: () => Promise<T>): Promise<T> {
     const work = Promise.resolve().then(operation);
     pending.add(work);
-    const done = () => { pending.delete(work); };
+    const done = () => {
+      pending.delete(work);
+    };
     work.then(done, done);
     return work;
   }

@@ -20,11 +20,7 @@ export function FontField({ className, ...options }: FontFieldProps) {
     <div className={cn("relative", className)}>
       <label className="absolute right-0 top-0 z-[1] inline-flex cursor-pointer items-center gap-2">
         <span className="font-sans text-[13px] text-fg-muted">{t("font.custom")}</span>
-        <Toggle
-          aria-label={t("font.customAria")}
-          checked={custom}
-          onChange={setCustom}
-        />
+        <Toggle aria-label={t("font.customAria")} checked={custom} onChange={setCustom} />
       </label>
       <Select
         label={t("font.label")}
@@ -46,7 +42,11 @@ export function FontChoiceStatus({ fonts }: { fonts: ReturnType<typeof useFontCh
     <>
       {custom && systemLoading && <Spinner size="sm" className="mt-1.5" />}
       {custom && systemFailure && (
-        <InlineError compact onRetry={systemFailure.retryable ? retrySystemFonts : undefined} retryLabel={t("font.retry")}>
+        <InlineError
+          compact
+          onRetry={systemFailure.retryable ? retrySystemFonts : undefined}
+          retryLabel={t("font.retry")}
+        >
           {systemFailure.body}
         </InlineError>
       )}
@@ -55,9 +55,7 @@ export function FontChoiceStatus({ fonts }: { fonts: ReturnType<typeof useFontCh
       {fontFace.status === "loading" && (
         <div className="mt-1.5 flex items-center gap-2 text-fg-muted">
           <Spinner size="sm" className="h-3 w-3" />
-          <Caption>
-            {t("font.downloading", { percent: Math.round(fontFace.progress * 100) })}
-          </Caption>
+          <Caption>{t("font.downloading", { percent: Math.round(fontFace.progress * 100) })}</Caption>
         </div>
       )}
       {fontFace.status === "error" && (

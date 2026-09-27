@@ -259,7 +259,12 @@ fn backup_file_plan_cleans_cancelled_stages_and_interrupts_target_streaming() {
     });
     assert_eq!(result.unwrap_err().code, "backup/cancelled");
     assert!(!private.exists());
-    assert_eq!(crate::storage::backup_staging::fixture_entries(stage.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(stage.path())
+            .unwrap()
+            .count(),
+        0
+    );
     assert!(target.is_autocommit());
     let mut chunks = 0;
     let mut progress = |event| {
@@ -302,6 +307,11 @@ fn backup_file_plan_rejects_symlinks_and_cross_side_case_aliases() {
         assert!(plan
             .plan_fixture_files(&mut target, root.path(), || Ok(()))
             .is_err());
-        assert_eq!(crate::storage::backup_staging::fixture_entries(stage.path()).unwrap().count(), 0);
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(stage.path())
+                .unwrap()
+                .count(),
+            0
+        );
     }
 }

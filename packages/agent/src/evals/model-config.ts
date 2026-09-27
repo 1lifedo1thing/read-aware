@@ -3,11 +3,7 @@ import type { LlmAccount } from "../models/accounts";
 import { accountCredential, accountProviderId, createModelResolver } from "../models/accounts";
 import { createCompleteFn } from "../models/complete";
 import { isCustomOpenAIApi } from "../models/custom-openai";
-import {
-  KNOWN_PROVIDERS,
-  type KnownProviderId,
-  type ProviderRegistry,
-} from "../models/registry";
+import { KNOWN_PROVIDERS, type KnownProviderId, type ProviderRegistry } from "../models/registry";
 import { PiCliCredentialStore } from "./pi-cli-credentials";
 import { buildBuiltinProviderRegistry } from "./builtin-registry";
 
@@ -77,7 +73,9 @@ const OPENROUTER_EVAL_ROUTING = {
 } as const;
 
 /** 给 eval 解析出的模型注入路由偏好（仅 openrouter；其余原样返回）。 */
-export function applyEvalRouting<T extends { provider: string; id?: string; maxTokens?: number; compat?: object }>(model: T): T {
+export function applyEvalRouting<T extends { provider: string; id?: string; maxTokens?: number; compat?: object }>(
+  model: T,
+): T {
   if (model.provider !== "openrouter") return model;
   return {
     ...model,
@@ -87,7 +85,8 @@ export function applyEvalRouting<T extends { provider: string; id?: string; maxT
     // fixed eval snapshot within Baidu's documented completion capacity.
     // Verified 2026-09-13: /api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints
     ...(model.id === "deepseek/deepseek-v4-flash-0731"
-      ? { maxTokens: Math.min(model.maxTokens ?? 131_072, 131_072) } : {}),
+      ? { maxTokens: Math.min(model.maxTokens ?? 131_072, 131_072) }
+      : {}),
     compat: { ...model.compat, openRouterRouting: OPENROUTER_EVAL_ROUTING },
   };
 }
@@ -151,19 +150,12 @@ export interface ResolvedJudgeCompletion {
 }
 
 /** judge 用的单次非流式补全：与 eval 变体同一套 provider 解析。 */
-export function resolveJudgeCompletion(
-  providerInput: string,
-  requestedModel?: string,
-): ResolvedJudgeCompletion {
+export function resolveJudgeCompletion(providerInput: string, requestedModel?: string): ResolvedJudgeCompletion {
   const registry = evalProviderRegistry();
   const resolved = resolveEvalModel(registry, providerInput, requestedModel);
   const completeFn = createCompleteFn(registry, resolved.account, "off");
   const model = applyEvalRouting(
-    createModelResolver(
-      resolved.account,
-      { smart: resolved.modelId, fast: resolved.modelId },
-      registry,
-    )("smart"),
+    createModelResolver(resolved.account, { smart: resolved.modelId, fast: resolved.modelId }, registry)("smart"),
   );
   return {
     complete: async (prompt, options) => {
@@ -174,9 +166,7 @@ export function resolveJudgeCompletion(
         },
         { signal: options?.signal },
       );
-      return message.content
-        .flatMap((part) => (part.type === "text" ? [part.text] : []))
-        .join("");
+      return message.content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("");
     },
     secret: accountCredential(resolved.account),
     metadata: { provider: accountProviderId(resolved.account), model: resolved.modelId },

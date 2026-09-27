@@ -72,7 +72,11 @@ const runtime = createAgentRuntime({
 
 async function run(scope: ThreadScope, text: string): Promise<void> {
   console.log(`\n◆ [${threadScopeKey(scope)}] user: ${text}`);
-  for await (const chunk of hostTurn(stores.turns, { key: threadScopeKey(scope), sendTurn: input => runtime.sendTurn(scope, input) }, { text })) {
+  for await (const chunk of hostTurn(
+    stores.turns,
+    { key: threadScopeKey(scope), sendTurn: (input) => runtime.sendTurn(scope, input) },
+    { text },
+  )) {
     if (chunk.type === "text") process.stdout.write(chunk.text);
     else if (chunk.type === "tool-step" && chunk.phase === "start") {
       console.log(`  ⚙ ${chunk.tool} …`);
@@ -96,5 +100,7 @@ console.log(`=== ask-notes (${stores.asks.length}):`);
 for (const ask of stores.asks) console.log(`  · [${ask.anchor ?? "no-anchor"}] ${ask.question}`);
 console.log(`=== extracted memories (${stores.memories.length}):`);
 for (const memory of stores.memories) {
-  console.log(`  · [${memory.scope}] [${memory.kind}] ${memory.content} (importance ${memory.importance}, evidence ${memory.evidenceCount})`);
+  console.log(
+    `  · [${memory.scope}] [${memory.kind}] ${memory.content} (importance ${memory.importance}, evidence ${memory.evidenceCount})`,
+  );
 }

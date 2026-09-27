@@ -14,30 +14,72 @@ const plugin: PluginModule = {
     registerBookmarkTools(ctx);
     const unavailable = { revision: 0, visible: true, enabled: false };
     const always = { revision: 0, visible: true, enabled: true };
-    const header = ctx.contributions.headerActions.register({ id: "jumper", title: "Jumper", icon: "magnifying-glass", state: unavailable,
-      surface: "reader", presentation: "popup", view: () => jumperView(ctx) });
-    const open = ctx.contributions.commands.register({ id: "open", title: "Jumper", icon: "magnifying-glass", state: unavailable,
-      keywords: "jump chapter page text search navigation", run: async () => ({ view: await jumperView(ctx) }) });
-    ctx.contributions.commands.register({ id: "bookmarks", title: `Jumper: ${bookmarkCopy(ctx.locale).title}`, icon: "book-bookmark",
-      state: always, keywords: "bookmark saved location passage",
-      run: async () => ({ view: await bookmarksView(ctx) }) });
-    ctx.contributions.headerActions.register({ id: "bookmarks", title: bookmarkCopy(ctx.locale).title, icon: "book-bookmark", state: always,
-      surface: "reader", presentation: "popup", view: input => bookmarksView(ctx, input.book?.id) });
-    const history = (["back", "forward"] as const).map(direction => ({ direction,
-      registration: ctx.contributions.commands.register({ id: direction, title: `Jumper: ${tr(ctx.locale, direction)}`, state: unavailable,
+    const header = ctx.contributions.headerActions.register({
+      id: "jumper",
+      title: "Jumper",
+      icon: "magnifying-glass",
+      state: unavailable,
+      surface: "reader",
+      presentation: "popup",
+      view: () => jumperView(ctx),
+    });
+    const open = ctx.contributions.commands.register({
+      id: "open",
+      title: "Jumper",
+      icon: "magnifying-glass",
+      state: unavailable,
+      keywords: "jump chapter page text search navigation",
+      run: async () => ({ view: await jumperView(ctx) }),
+    });
+    ctx.contributions.commands.register({
+      id: "bookmarks",
+      title: `Jumper: ${bookmarkCopy(ctx.locale).title}`,
+      icon: "book-bookmark",
+      state: always,
+      keywords: "bookmark saved location passage",
+      run: async () => ({ view: await bookmarksView(ctx) }),
+    });
+    ctx.contributions.headerActions.register({
+      id: "bookmarks",
+      title: bookmarkCopy(ctx.locale).title,
+      icon: "book-bookmark",
+      state: always,
+      surface: "reader",
+      presentation: "popup",
+      view: (input) => bookmarksView(ctx, input.book?.id),
+    });
+    const history = (["back", "forward"] as const).map((direction) => ({
+      direction,
+      registration: ctx.contributions.commands.register({
+        id: direction,
+        title: `Jumper: ${tr(ctx.locale, direction)}`,
+        state: unavailable,
         icon: direction === "back" ? "arrow-left" : "arrow-right",
         defaultShortcut: { key: direction === "back" ? "ArrowLeft" : "ArrowRight", alt: true },
         run: async () => {
           const session = await ctx.domains.reading.queries.session();
           await ctx.domains.reading.commands[direction]({ sessionId: session.sessionId ?? undefined });
-        } }),
+        },
+      }),
     }));
-    ctx.domains.reading.events.observeSession(async (session, delivery) => {
-      if (delivery?.reaction?.status === "cycle") return;
-      const state = { revision: session.revision + 1, visible: true, enabled: session.status === "ready" };
-      await Promise.all([ctx.withEvent(delivery, header).updateState(state), ctx.withEvent(delivery, open).updateState(state), ...history.map(({ direction, registration }) =>
-        ctx.withEvent(delivery, registration).updateState({ ...state, enabled: state.enabled && (direction === "back" ? session.history.canGoBack : session.history.canGoForward) }))]);
-    }, { ruleId: "reader-action-state" });
+    ctx.domains.reading.events.observeSession(
+      async (session, delivery) => {
+        if (delivery?.reaction?.status === "cycle") return;
+        const state = { revision: session.revision + 1, visible: true, enabled: session.status === "ready" };
+        await Promise.all([
+          ctx.withEvent(delivery, header).updateState(state),
+          ctx.withEvent(delivery, open).updateState(state),
+          ...history.map(({ direction, registration }) =>
+            ctx.withEvent(delivery, registration).updateState({
+              ...state,
+              enabled:
+                state.enabled && (direction === "back" ? session.history.canGoBack : session.history.canGoForward),
+            }),
+          ),
+        ]);
+      },
+      { ruleId: "reader-action-state" },
+    );
   },
 };
 export default plugin;

@@ -20,15 +20,10 @@ export function PluginDialogHost() {
   const { t } = useTranslation(["plugins", "common"]);
   const setSettingsOpen = useSetAtom(settingsOpenAtom);
   const setSettingsSection = useSetAtom(settingsSectionRequestAtom);
-  const close = () => setRequest(current => current?.requestId === request?.requestId ? null : current);
+  const close = () => setRequest((current) => (current?.requestId === request?.requestId ? null : current));
   const described = request?.failure ? describeErrorCode(request.failure.code) : null;
   return (
-    <Dialog
-      open={request !== null}
-      onClose={close}
-      title={request?.pluginName ?? ""}
-      className="w-full max-w-md"
-    >
+    <Dialog open={request !== null} onClose={close} title={request?.pluginName ?? ""} className="w-full max-w-md">
       {request?.failure ? (
         <InlineError
           onRetry={request.failure.retry}

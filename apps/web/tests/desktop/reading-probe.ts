@@ -5,13 +5,19 @@ export default {
   activate(ctx) {
     const reading = ctx.domains.reading!;
     const seen: number[] = [];
-    reading.events.observeSession(snapshot => { seen.push(snapshot.revision); });
+    reading.events.observeSession((snapshot) => {
+      seen.push(snapshot.revision);
+    });
     ctx.contributions.commands.register({
-      id: "reading", title: "Reading wire probe",
+      id: "reading",
+      title: "Reading wire probe",
       run: async () => {
         if (ctx.manifest.description === "read-only") {
           if (reading.commands) throw new Error("Read-only plugin received reading write commands");
-          await ctx.services.storage.set("result", { commandsAvailable: false, snapshot: await reading.queries.session() });
+          await ctx.services.storage.set("result", {
+            commandsAvailable: false,
+            snapshot: await reading.queries.session(),
+          });
           return { toast: "Read-only reading probe completed" };
         }
         const commands = reading.commands!;
@@ -28,8 +34,10 @@ export default {
           ["stale", () => commands.goTo({ bookId, cfi: receipts[0]!.location.cfi, contentVersion: "old" })],
           ["invalid", () => commands.goTo({ bookId, fraction: 2 })],
         ] as const) {
-          try { await operation(); throw new Error(`${key} unexpectedly succeeded`); }
-          catch (error) {
+          try {
+            await operation();
+            throw new Error(`${key} unexpectedly succeeded`);
+          } catch (error) {
             if (!error || typeof error !== "object" || !("code" in error)) throw error;
             trace[key] = error.code;
           }

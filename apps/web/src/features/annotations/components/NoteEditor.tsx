@@ -45,7 +45,7 @@ export function NoteEditor({
       <div
         className={cn(
           "flex w-full max-w-lg flex-col border border-border bg-[var(--ra-main-surface-color)]",
-          "shadow-[0_12px_32px_rgba(28,25,23,0.15)]"
+          "shadow-[0_12px_32px_rgba(28,25,23,0.15)]",
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -62,9 +62,7 @@ export function NoteEditor({
 
         <div className="px-5 py-4">
           <div className="mb-4 rounded-md border border-border bg-fill p-3">
-            <Body className="ra-content-type text-fg-muted line-clamp-3">
-              &ldquo;{selectedText}&rdquo;
-            </Body>
+            <Body className="ra-content-type text-fg-muted line-clamp-3">&ldquo;{selectedText}&rdquo;</Body>
           </div>
 
           <TextArea

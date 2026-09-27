@@ -38,12 +38,7 @@ const DIGESTS: ChapterDigest[] = [
   },
 ];
 
-function tools(options?: {
-  fenceAt?: number;
-  finished?: boolean;
-  global?: boolean;
-  permissionGranted?: boolean;
-}) {
+function tools(options?: { fenceAt?: number; finished?: boolean; global?: boolean; permissionGranted?: boolean }) {
   const { deps } = createInMemoryDeps({
     books: [
       {
@@ -71,7 +66,10 @@ function parse(result: { content: Array<{ type: string; text?: string }> }): Rec
 
 describe("query_book_graph", () => {
   test("answer evidence keeps returned aliases without admitting future digests", async () => {
-    const { deps } = createInMemoryDeps({ books: [{ id: BOOK, title: "Novel", status: "reading", narrativity: "narrative" }], chapterDigests: { [BOOK]: DIGESTS } });
+    const { deps } = createInMemoryDeps({
+      books: [{ id: BOOK, title: "Novel", status: "reading", narrativity: "narrative" }],
+      chapterDigests: { [BOOK]: DIGESTS },
+    });
     const state = createAgentTurnState();
     state.bookMemoryBoundary = { kind: "before", chapterIndex: 1 };
     const [tool] = buildGraphTools({ kind: "book", bookId: BOOK }, deps, state);
@@ -82,7 +80,10 @@ describe("query_book_graph", () => {
     expect(JSON.stringify(evidence.profiles)).not.toContain("厨子");
   });
   test("unclassified books are fenced and a former all-visible snapshot cannot bypass reclassification", async () => {
-    const { deps } = createInMemoryDeps({ books: [{ id: BOOK, title: "Unknown", status: "reading" }], chapterDigests: { [BOOK]: DIGESTS } });
+    const { deps } = createInMemoryDeps({
+      books: [{ id: BOOK, title: "Unknown", status: "reading" }],
+      chapterDigests: { [BOOK]: DIGESTS },
+    });
     const state = createAgentTurnState();
     const [tool] = buildGraphTools({ kind: "book", bookId: BOOK }, deps, state);
     expect(parse(await tool!.execute("unknown", {})).graph).toBe("unavailable");
@@ -93,9 +94,14 @@ describe("query_book_graph", () => {
     expect(parse(await tool!.execute("reclassified", {})).graph).toBe("unavailable");
   });
   test("metadata lookup failures do not bypass a narrative fence", async () => {
-    const { deps } = createInMemoryDeps({ books: [{ id: BOOK, title: "Graph", narrativity: "narrative" }], chapterDigests: { [BOOK]: DIGESTS } });
+    const { deps } = createInMemoryDeps({
+      books: [{ id: BOOK, title: "Graph", narrativity: "narrative" }],
+      chapterDigests: { [BOOK]: DIGESTS },
+    });
     const failure = new Error("metadata unavailable");
-    deps.library.getBook = async () => { throw failure; };
+    deps.library.getBook = async () => {
+      throw failure;
+    };
     const [tool] = buildGraphTools({ kind: "book", bookId: BOOK }, deps);
     await expect(tool!.execute("query", {})).rejects.toBe(failure);
   });
@@ -135,13 +141,9 @@ describe("query_book_graph", () => {
 
   test("confirmSpoiler lifts the clamp; string 'false' does not", async () => {
     const { query_book_graph } = tools({ fenceAt: 1, permissionGranted: true });
-    const granted = parse(
-      await query_book_graph!.execute("q5", { confirmSpoiler: true }),
-    );
+    const granted = parse(await query_book_graph!.execute("q5", { confirmSpoiler: true }));
     expect(granted.chaptersDigested).toBe(3);
-    const denied = parse(
-      await query_book_graph!.execute("q6", { confirmSpoiler: "false" }),
-    );
+    const denied = parse(await query_book_graph!.execute("q6", { confirmSpoiler: "false" }));
     expect(denied.chaptersDigested).toBe(1);
   });
 

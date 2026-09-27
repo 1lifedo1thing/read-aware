@@ -72,9 +72,7 @@ export const LongTitles: Story = {
 /** Many threads scroll inside the panel's height cap. */
 export const ManyThreads: Story = {
   args: {
-    threads: Array.from({ length: 25 }, (_, i) =>
-      thread(`t${i}`, `Conversation number ${i + 1}`, i),
-    ),
+    threads: Array.from({ length: 25 }, (_, i) => thread(`t${i}`, `Conversation number ${i + 1}`, i)),
     activeThreadId: "t0",
   },
 };

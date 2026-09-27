@@ -26,7 +26,16 @@ import type {
 } from "./settings";
 import type { ThreadScope } from "./thread-scope";
 import type { ChapterDigest, MemoryRecord, MemoryScope, MemoryKind, MemoryQuery } from "@read-aware/core";
-export type { DigestFlavor, DigestCharacter, DigestRelation, ChapterDigest, MemoryRecord, MemoryScope, MemoryKind, MemoryStatus } from "@read-aware/core";
+export type {
+  DigestFlavor,
+  DigestCharacter,
+  DigestRelation,
+  ChapterDigest,
+  MemoryRecord,
+  MemoryScope,
+  MemoryKind,
+  MemoryStatus,
+} from "@read-aware/core";
 
 // 标注读模型：直接用 @read-aware/core 的 canonical 判别联合（read-models.ts）
 // —— 与插件面、产品面同一套形状，漂移在类型层就报错。
@@ -66,7 +75,8 @@ export interface TurnAttachment {
 }
 
 /** References only: pixel payloads never enter persisted turns or sync events. */
-export type TurnImage = { kind: "local"; cacheKey: string; name: string }
+export type TurnImage =
+  | { kind: "local"; cacheKey: string; name: string }
   | { kind: "web"; url: string; thumbnailUrl?: string; name: string };
 
 export interface TurnRecord {
@@ -84,89 +94,115 @@ export interface TurnRecord {
 }
 
 export interface LibraryPort {
-  listDuplicates(query?: import("@read-aware/core").DuplicateBookQuery, signal?: AbortSignal): Promise<import("@read-aware/core").DuplicateBookPage>;
+  listDuplicates(
+    query?: import("@read-aware/core").DuplicateBookQuery,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").DuplicateBookPage>;
   previewMerge(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookMergePreview | null>;
-  mergeDuplicates(input: import("@read-aware/core").BookMergeRequest, signal?: AbortSignal): Promise<import("@read-aware/core").BookMergeReceipt>;
+  mergeDuplicates(
+    input: import("@read-aware/core").BookMergeRequest,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookMergeReceipt>;
   resolveBookId(bookId: string, signal?: AbortSignal): Promise<string | null>;
   getEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentSnapshot>;
   getContentState(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookContentState>;
   retryEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
-  startImportResource(threadKey: string, id: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
-  getImportTask(threadKey: string, taskId: string, waitMs?: number, signal?: AbortSignal): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+  startImportResource(
+    threadKey: string,
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+  getImportTask(
+    threadKey: string,
+    taskId: string,
+    waitMs?: number,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
   listImportTasks(threadKey: string): Promise<import("@read-aware/core").BookImportTaskSnapshot[]>;
   cancelImportTask(threadKey: string, taskId: string): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
   listBookFormats(): Promise<import("@read-aware/core").BookFormatCapability[]>;
-  inspectResource(threadKey: string, id: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookInspection>;
+  inspectResource(
+    threadKey: string,
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookInspection>;
   listBooks(): Promise<BookOverview[]>;
-  listBookRemovalCleanup(query?: import("@read-aware/core").BookRemovalCleanupQuery): Promise<import("@read-aware/core").BookRemovalCleanupPage>;
+  listBookRemovalCleanup(
+    query?: import("@read-aware/core").BookRemovalCleanupQuery,
+  ): Promise<import("@read-aware/core").BookRemovalCleanupPage>;
   getBook(bookId: Id): Promise<BookOverview | undefined>;
   listCollections(): Promise<CollectionSummary[]>;
   booksInCollection(collectionId: string): Promise<Id[]>;
   getBookStats(bookId: Id): Promise<BookStats | undefined>;
-  getReadingTime(query?: import("@read-aware/core").ReadingTimeQuery): Promise<import("@read-aware/core").ReadingTimeSnapshot>;
-  getReadingInsights(query?: import("@read-aware/core").ReadingInsightsQuery): Promise<import("@read-aware/core").ReadingInsights>;
+  getReadingTime(
+    query?: import("@read-aware/core").ReadingTimeQuery,
+  ): Promise<import("@read-aware/core").ReadingTimeSnapshot>;
+  getReadingInsights(
+    query?: import("@read-aware/core").ReadingInsightsQuery,
+  ): Promise<import("@read-aware/core").ReadingInsights>;
   listBookStats(): Promise<BookStats[]>;
   getStatsOverview(): Promise<StatsOverview>;
-  editBookMetadata(
-    bookId: Id,
-    patch: { title?: string; author?: string },
-  ): Promise<void>;
+  editBookMetadata(bookId: Id, patch: { title?: string; author?: string }): Promise<void>;
   setBookStarred(bookId: Id, starred: boolean): Promise<void>;
   setBookFinished(bookId: Id, finished: boolean): Promise<void>;
   /**
    * Atomically fill only an unclassified book; return the actual persisted
    * flavor when another caller won. Internal pipeline, not a user edit tool.
    */
-  classifyBookIfUnclassified(bookId: Id, narrativity: "narrative" | "expository", signal?: AbortSignal, spoilerSensitive?: boolean): Promise<"narrative" | "expository">;
+  classifyBookIfUnclassified(
+    bookId: Id,
+    narrativity: "narrative" | "expository",
+    signal?: AbortSignal,
+    spoilerSensitive?: boolean,
+  ): Promise<"narrative" | "expository">;
   removeBook(bookId: Id): Promise<void>;
   removeBooks(bookIds: Id[]): Promise<import("@read-aware/core").BookRemovalReceipt>;
   retryBookRemovalCleanup(bookIds: Id[]): Promise<import("@read-aware/core").BookFileReleaseReceipt>;
   createCollection(name: string): Promise<CollectionSummary>;
   renameCollection(collectionId: string, name: string): Promise<void>;
   removeCollection(collectionId: string): Promise<void>;
-  assignBooksToCollection(
-    bookIds: Id[],
-    collectionId: string | null,
-  ): Promise<void>;
+  assignBooksToCollection(bookIds: Id[], collectionId: string | null): Promise<void>;
 }
 
 export interface AnnotationsPort {
   inspectAnnotation(annotationId: Id): Promise<import("@read-aware/core").AnnotationSnapshot | null>;
-  applyChanges(changes: import("@read-aware/core").AnnotationMutation[], signal?: AbortSignal): Promise<import("@read-aware/core").AnnotationCommitResult>;
-  pageAnnotations(input?: import("@read-aware/core").AnnotationPageQuery): Promise<import("@read-aware/core").AnnotationPage>;
+  applyChanges(
+    changes: import("@read-aware/core").AnnotationMutation[],
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").AnnotationCommitResult>;
+  pageAnnotations(
+    input?: import("@read-aware/core").AnnotationPageQuery,
+  ): Promise<import("@read-aware/core").AnnotationPage>;
   getAnnotation(annotationId: Id): Promise<AnnotationItem | null>;
-  listAnnotations(filter?: {
-    bookId?: Id;
-    query?: string;
-    kind?: AnnotationKind;
-  }): Promise<AnnotationItem[]>;
-  createHighlight(input: {
-    bookId: Id;
-    range?: import("@read-aware/core").BookTextRange;
-    text: string;
-    anchor?: string;
-    chapter?: string;
-    color?: HighlightColor;
-    style?: HighlightStyle;
-  }, signal?: AbortSignal): Promise<HighlightItem>;
-  createNote(input: {
-    bookId: Id;
-    range?: import("@read-aware/core").BookTextRange;
-    body: string;
-    quotedText?: string;
-    anchor?: string;
-    chapter?: string;
-  }, signal?: AbortSignal): Promise<NoteItem>;
+  listAnnotations(filter?: { bookId?: Id; query?: string; kind?: AnnotationKind }): Promise<AnnotationItem[]>;
+  createHighlight(
+    input: {
+      bookId: Id;
+      range?: import("@read-aware/core").BookTextRange;
+      text: string;
+      anchor?: string;
+      chapter?: string;
+      color?: HighlightColor;
+      style?: HighlightStyle;
+    },
+    signal?: AbortSignal,
+  ): Promise<HighlightItem>;
+  createNote(
+    input: {
+      bookId: Id;
+      range?: import("@read-aware/core").BookTextRange;
+      body: string;
+      quotedText?: string;
+      anchor?: string;
+      chapter?: string;
+    },
+    signal?: AbortSignal,
+  ): Promise<NoteItem>;
   /**
    * 记录一条 ask-note（doc §7：书线程每个提问留痕；§10 第 5 步，轮末同步落）。
    * 产品实现走共享领域层的 agent-only 动词 createAsk（origin "agent"）。
    */
-  recordAsk(input: {
-    bookId: Id;
-    question: string;
-    anchor?: string;
-    chapter?: string;
-  }): Promise<void>;
+  recordAsk(input: { bookId: Id; question: string; anchor?: string; chapter?: string }): Promise<void>;
 }
 
 /** Ambient capability metadata only; no text, locations or provider labels. */
@@ -186,34 +222,115 @@ export interface ReaderPort {
   /** Synchronous host snapshot used for discovery and immediately before tool
    * dispatch. Omitted by non-product adapters: readiness remains unknown. */
   toolContext?(): ReaderToolContext;
-  focus(target: import("@read-aware/core").ReaderFocusTarget, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderFocusReceipt>;
-  openImage(input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number }, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderImageOpenReceipt>;
+  focus(
+    target: import("@read-aware/core").ReaderFocusTarget,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReaderFocusReceipt>;
+  openImage(
+    input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReaderImageOpenReceipt>;
   getImage(): Promise<import("@read-aware/core").ReaderImageSnapshot | null>;
-  controlImage(request: import("@read-aware/core").ReaderImageRequest, signal?: AbortSignal): Promise<import("@read-aware/core").ReaderImageReceipt>;
-  previewReference(ownerKey: string, input: import("@read-aware/core").BookReferenceQuery & { throughChapterIndex?: number }, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderReferencePreviewReceipt>;
-  closeReferencePreview(ownerKey: string, id: string, signal?: AbortSignal): Promise<import("@read-aware/core").ReaderReferenceCloseReceipt>;
-  selectRange(range: import("@read-aware/core").BookTextRange, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
+  controlImage(
+    request: import("@read-aware/core").ReaderImageRequest,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").ReaderImageReceipt>;
+  previewReference(
+    ownerKey: string,
+    input: import("@read-aware/core").BookReferenceQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReaderReferencePreviewReceipt>;
+  closeReferencePreview(
+    ownerKey: string,
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").ReaderReferenceCloseReceipt>;
+  selectRange(
+    range: import("@read-aware/core").BookTextRange,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
   listEmphasis(): Promise<import("@read-aware/core").ReadingEmphasisSnapshot[]>;
-  putEmphasis(input: import("@read-aware/core").ReadingEmphasisWrite, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingEmphasisReceipt>;
-  removeEmphasis(input: import("@read-aware/core").ReadingEmphasisRef, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingEmphasisRemoval>;
-  clearSelection(expectedId: string, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
+  putEmphasis(
+    input: import("@read-aware/core").ReadingEmphasisWrite,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingEmphasisReceipt>;
+  removeEmphasis(
+    input: import("@read-aware/core").ReadingEmphasisRef,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingEmphasisRemoval>;
+  clearSelection(
+    expectedId: string,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingSelectionReceipt>;
   getPanels(): Promise<import("@read-aware/core").ReaderPanelsSnapshot | null>;
-  setPanel(panel: import("@read-aware/core").ReaderPanel, open: boolean, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderPanelReceipt>;
-  setPanelWidth(panel: import("@read-aware/core").ResizableReaderPanel, width: number, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderPanelReceipt>;
-  setControls(visible: boolean, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingControlsReceipt>;
-  configureMode(input: import("@read-aware/core").ReadingModeConfiguration, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingModeReceipt>;
-  returnToMode(signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-  stepMode(direction: "next" | "previous", signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingModeStepReceipt>;
-  controlPlayback(action: "start" | "stop", signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingPlaybackReceipt>;
+  setPanel(
+    panel: import("@read-aware/core").ReaderPanel,
+    open: boolean,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReaderPanelReceipt>;
+  setPanelWidth(
+    panel: import("@read-aware/core").ResizableReaderPanel,
+    width: number,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReaderPanelReceipt>;
+  setControls(
+    visible: boolean,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingControlsReceipt>;
+  configureMode(
+    input: import("@read-aware/core").ReadingModeConfiguration,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingModeReceipt>;
+  returnToMode(
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+  stepMode(
+    direction: "next" | "previous",
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingModeStepReceipt>;
+  controlPlayback(
+    action: "start" | "stop",
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingPlaybackReceipt>;
   getSession(): Promise<import("@read-aware/core").ReadingSessionSnapshot>;
   /** Resolves only after the desktop renderer reports its actual location. */
   openBook(bookId: Id, signal?: AbortSignal): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
   /** Opens the target book when needed, then navigates to the supplied locator. */
-  goTo(target: import("@read-aware/core").ReadingTarget, signal?: AbortSignal): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-  back(signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-  forward(signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-  step(direction: import("@read-aware/core").ReadingStep, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-  reload(signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+  goTo(
+    target: import("@read-aware/core").ReadingTarget,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+  back(
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+  forward(
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+  step(
+    direction: import("@read-aware/core").ReadingStep,
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
+  reload(
+    signal?: AbortSignal,
+    guard?: import("@read-aware/core").ReadingSessionGuard,
+  ): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
   close(signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<void>;
 }
 
@@ -225,7 +342,26 @@ export interface UserInteractionOption {
 }
 
 export type UserPermissionAction =
-  "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "atomic-transaction" | "manage-job" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
+  | "delete-book"
+  | "delete-books"
+  | "delete-collection"
+  | "delete-annotation"
+  | "manage-memory"
+  | "classify-book"
+  | "generate-book-graph"
+  | "clear-conversation"
+  | "sync-now"
+  | "manage-schedule"
+  | "access-book-file"
+  | "import-resource"
+  | "merge-books"
+  | "plugin-tool"
+  | "atomic-transaction"
+  | "manage-job"
+  | "download-resource"
+  | "complete-onboarding"
+  | "update-profile"
+  | "manage-entity";
 
 type UserInteractionBase = {
   /** Globally unique for the lifetime of the tool call. */
@@ -269,10 +405,7 @@ export interface UserInteractionAnswer {
  * through pi's normal tool-update events so persistence stays in the chat seam.
  */
 export interface UserInteractionPort {
-  request(
-    request: UserInteractionRequest,
-    signal?: AbortSignal,
-  ): Promise<UserInteractionAnswer>;
+  request(request: UserInteractionRequest, signal?: AbortSignal): Promise<UserInteractionAnswer>;
 }
 
 export interface NewMemoryInput {
@@ -308,7 +441,11 @@ export interface MemoryPort {
   /** 提炼命中已有记忆 → 证据 +1（doc §4：反复出现才强化） */
   reinforceMemory(snapshot: import("@read-aware/core").MemorySnapshot, signal?: AbortSignal): Promise<void>;
   /** Returns the surviving read set at the commit boundary, never a later reread. */
-  applyMemoryChanges(changes: MemoryChange[], snapshots: import("@read-aware/core").MemorySnapshot[], signal?: AbortSignal): Promise<import("@read-aware/core").MemorySnapshot[]>;
+  applyMemoryChanges(
+    changes: MemoryChange[],
+    snapshots: import("@read-aware/core").MemorySnapshot[],
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").MemorySnapshot[]>;
 }
 
 /**
@@ -351,11 +488,23 @@ export interface ConversationPort {
 /** Event-backed profile summary; not a versioned context bundle. Absence is undefined. */
 export interface ProfilePort {
   getProfileContext(): Promise<import("@read-aware/core").ProfileContext>;
-  inspectProfileContext(query?: import("@read-aware/core").ProfileInspectionQuery, signal?: AbortSignal): Promise<import("@read-aware/core").ProfileInspectionPage>;
-  updateProfile(input: import("@read-aware/core").UserProfileChange, signal?: AbortSignal): Promise<import("@read-aware/core").UserProfileReceipt>;
-  completeOnboarding(input: import("@read-aware/core").OnboardingChange, signal?: AbortSignal): Promise<import("@read-aware/core").OnboardingReceipt>;
+  inspectProfileContext(
+    query?: import("@read-aware/core").ProfileInspectionQuery,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").ProfileInspectionPage>;
+  updateProfile(
+    input: import("@read-aware/core").UserProfileChange,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").UserProfileReceipt>;
+  completeOnboarding(
+    input: import("@read-aware/core").OnboardingChange,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").OnboardingReceipt>;
   getProfileSummary(): Promise<string | undefined>;
-  readProfile(query?: import("@read-aware/core").UserProfileQuery, signal?: AbortSignal): Promise<import("@read-aware/core").UserProfilePage>;
+  readProfile(
+    query?: import("@read-aware/core").UserProfileQuery,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").UserProfilePage>;
   /** Internal onboarding write to the curated event-backed summary. */
   putProfileSummary(summary: string): Promise<void>;
 }
@@ -377,32 +526,78 @@ export type BookTextHit = import("@read-aware/core").BookTextHit;
  */
 export interface BookTextPort {
   preparation?: {
-    start(bookId: Id, options?: import("@read-aware/core").BookTextPrepareOptions): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
-    history(bookId: Id, query?: import("@read-aware/core").BookTextTaskHistoryQuery): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
+    start(
+      bookId: Id,
+      options?: import("@read-aware/core").BookTextPrepareOptions,
+    ): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+    history(
+      bookId: Id,
+      query?: import("@read-aware/core").BookTextTaskHistoryQuery,
+    ): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
     get(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     list(bookId: Id): Promise<import("@read-aware/core").BookTextTaskSnapshot[]>;
-    setPriority(bookId: Id, taskId: string, priority: import("@read-aware/core").BookTextPriority): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+    setPriority(
+      bookId: Id,
+      taskId: string,
+      priority: import("@read-aware/core").BookTextPriority,
+    ): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     pause(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     resume(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     cancel(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
   };
   getTextState?(bookId: Id): Promise<import("@read-aware/core").BookTextSnapshot>;
   getNavigationToc(bookId: Id, signal?: AbortSignal): Promise<import("@read-aware/core").BookNavigationToc>;
-  listNavigationTargets(input: import("@read-aware/core").BookNavigationTargetsQuery, signal?: AbortSignal): Promise<import("@read-aware/core").BookNavigationTargetsPage>;
-  readRange(input: import("@read-aware/core").BookRangeQuery & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookRangePage>;
-  listReferences(input: import("@read-aware/core").BookReferencesQuery & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookReferencesPage>;
-  listImages(input: import("@read-aware/core").BookImagesQuery & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookImagesPage>;
-  openImageResource(ownerKey: string, input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookImageResource>;
-  readImageInput?(ownerKey: string, input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<
-    { status: "ready"; image: import("@read-aware/core").BookImage; input: import("@read-aware/core").ModelImageInput }
-    | { status: "missing" | "external" | "unsupported"; image: import("@read-aware/core").BookImage }>;
-  readReference(input: import("@read-aware/core").BookReferenceQuery & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookReferencePreview>;
-  searchLocations(input: Omit<import("@read-aware/core").BookLocationSearch, "hrefs"> & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookLocationSearchPage>;
+  listNavigationTargets(
+    input: import("@read-aware/core").BookNavigationTargetsQuery,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookNavigationTargetsPage>;
+  readRange(
+    input: import("@read-aware/core").BookRangeQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookRangePage>;
+  listReferences(
+    input: import("@read-aware/core").BookReferencesQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookReferencesPage>;
+  listImages(
+    input: import("@read-aware/core").BookImagesQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookImagesPage>;
+  openImageResource(
+    ownerKey: string,
+    input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookImageResource>;
+  readImageInput?(
+    ownerKey: string,
+    input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<
+    | {
+        status: "ready";
+        image: import("@read-aware/core").BookImage;
+        input: import("@read-aware/core").ModelImageInput;
+      }
+    | { status: "missing" | "external" | "unsupported"; image: import("@read-aware/core").BookImage }
+  >;
+  readReference(
+    input: import("@read-aware/core").BookReferenceQuery & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookReferencePreview>;
+  searchLocations(
+    input: Omit<import("@read-aware/core").BookLocationSearch, "hrefs"> & { throughChapterIndex?: number },
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookLocationSearchPage>;
   getToc(bookId: Id): Promise<ChapterRef[]>;
   getChapterText(bookId: Id, chapterIndex: number): Promise<string | undefined>;
   /** Host digest reads carry the prepared record identity, so an ABA source swap cannot relabel text. */
   getSourceVersion?(bookId: Id, signal?: AbortSignal): Promise<string>;
-  getDigestChapter?(bookId: Id, chapterIndex: number, contentVersion: string, signal?: AbortSignal): Promise<{ text: string; title?: string; hrefs?: string[] } | undefined>;
+  getDigestChapter?(
+    bookId: Id,
+    chapterIndex: number,
+    contentVersion: string,
+    signal?: AbortSignal,
+  ): Promise<{ text: string; title?: string; hrefs?: string[] } | undefined>;
   /** 一次接收多个查询变体，合并去重后的命中（减少模型的换词重试往返）。 */
   searchText(filter: import("@read-aware/core").BookTextSearch, signal?: AbortSignal): Promise<BookTextHit[]>;
   /**
@@ -421,14 +616,20 @@ export interface BookTextPort {
  * enter the catalog.
  */
 export interface SettingsPort {
-  getModelCatalog(query: import("@read-aware/core").ModelCatalogQuery): Promise<import("@read-aware/core").ModelCatalogPage>;
+  getModelCatalog(
+    query: import("@read-aware/core").ModelCatalogQuery,
+  ): Promise<import("@read-aware/core").ModelCatalogPage>;
   refreshModelCatalog(provider: string, signal?: AbortSignal): Promise<import("@read-aware/core").ModelCatalogPage>;
-  resetReading(request: import("@read-aware/core").ReadingSettingsReset, signal?: AbortSignal): Promise<AgentSettingsUpdateResult>;
-  getSettings(query?: AgentSettingsQuery): Promise<AgentSettingsSnapshot>;
-  getSettingOptions(query: import("@read-aware/core").SettingsOptionsQuery, signal?: AbortSignal): Promise<import("@read-aware/core").SettingsOptionsPage>;
-  updateSettings(
-    changes: AgentSettingChange[],
+  resetReading(
+    request: import("@read-aware/core").ReadingSettingsReset,
+    signal?: AbortSignal,
   ): Promise<AgentSettingsUpdateResult>;
+  getSettings(query?: AgentSettingsQuery): Promise<AgentSettingsSnapshot>;
+  getSettingOptions(
+    query: import("@read-aware/core").SettingsOptionsQuery,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").SettingsOptionsPage>;
+  updateSettings(changes: AgentSettingChange[]): Promise<AgentSettingsUpdateResult>;
 }
 
 /**
@@ -439,7 +640,11 @@ export interface SettingsPort {
 export interface BookMemoryPort {
   runExclusive<T>(bookId: Id, work: () => Promise<T>, signal?: AbortSignal): Promise<T>;
   listDigests(bookId: Id): Promise<ChapterDigest[]>;
-  inspectDigest(bookId: Id, chapterIndex: number, signal?: AbortSignal): Promise<import("@read-aware/core").BookDigestSnapshot | null>;
+  inspectDigest(
+    bookId: Id,
+    chapterIndex: number,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").BookDigestSnapshot | null>;
   saveDigest(bookId: Id, digest: ChapterDigest, expectedRevision: string, signal?: AbortSignal): Promise<void>;
 }
 
@@ -485,8 +690,13 @@ export interface RuntimeDeps {
   images?: { read(image: TurnImage, signal?: AbortSignal): Promise<import("@read-aware/core").ModelImageInput> };
   readingAiActions: import("@read-aware/core").ReadingAiPort;
   schedules: {
-    list(query?: import("@read-aware/core").PluginScheduleQuery): Promise<import("@read-aware/core").PluginSchedulePage>;
-    control(input: import("@read-aware/core").PluginScheduleControl, signal?: AbortSignal): Promise<import("@read-aware/core").PluginScheduleReceipt>;
+    list(
+      query?: import("@read-aware/core").PluginScheduleQuery,
+    ): Promise<import("@read-aware/core").PluginSchedulePage>;
+    control(
+      input: import("@read-aware/core").PluginScheduleControl,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").PluginScheduleReceipt>;
   };
   sync: import("@read-aware/core").HostSyncPort;
   maintenance: import("@read-aware/core").HostMaintenancePort;
@@ -494,59 +704,117 @@ export interface RuntimeDeps {
   resources(threadKey: string, bookId?: string): import("@read-aware/core").ResourcePort;
   /** Versioned context bundles (MEM13). Scope and spoiler authority are host-resolved per call. */
   contextBundles: import("@read-aware/core").ContextBundlePort;
-  downloadResource(threadKey: string, input: import("@read-aware/core").ResourceDownloadInput, signal?: AbortSignal): Promise<import("@read-aware/core").ResourceDownloadReceipt>;
+  downloadResource(
+    threadKey: string,
+    input: import("@read-aware/core").ResourceDownloadInput,
+    signal?: AbortSignal,
+  ): Promise<import("@read-aware/core").ResourceDownloadReceipt>;
   bookGraphTasks: import("@read-aware/core").BookGraphTaskPort;
   bookClassification: {
-    inspect(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookClassificationSnapshot | null>;
-    change(input: import("@read-aware/core").BookClassificationChange, signal?: AbortSignal): Promise<import("@read-aware/core").BookClassificationReceipt>;
+    inspect(
+      bookId: string,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").BookClassificationSnapshot | null>;
+    change(
+      input: import("@read-aware/core").BookClassificationChange,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").BookClassificationReceipt>;
   };
   memoryManagement: {
     inspect(id: string, signal?: AbortSignal): Promise<import("@read-aware/core").MemorySnapshot | null>;
-    mutate(input: import("@read-aware/core").MemoryMutation, signal?: AbortSignal): Promise<import("@read-aware/core").MemoryMutationReceipt>;
+    mutate(
+      input: import("@read-aware/core").MemoryMutation,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").MemoryMutationReceipt>;
   };
   entityRegistry: {
-    query(input?: import("@read-aware/core").EntityQuery, signal?: AbortSignal): Promise<import("@read-aware/core").EntityPage>;
-    decide(input: import("@read-aware/core").EntityDecision, signal?: AbortSignal): Promise<import("@read-aware/core").EntityDecisionReceipt>;
+    query(
+      input?: import("@read-aware/core").EntityQuery,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").EntityPage>;
+    decide(
+      input: import("@read-aware/core").EntityDecision,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").EntityDecisionReceipt>;
   };
   identityConsolidation: import("@read-aware/core").IdentityConsolidationPort;
   hostCommands: {
     list(signal?: AbortSignal): Promise<import("@read-aware/core").HostCommandSnapshot>;
-    execute(request: import("@read-aware/core").HostCommandRequest, signal?: AbortSignal): Promise<import("@read-aware/core").HostCommandReceipt>;
+    execute(
+      request: import("@read-aware/core").HostCommandRequest,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").HostCommandReceipt>;
   };
   readingContextPolicy?: import("./runtime/reading-context-policy").ReadingContextPolicy;
   environment: { snapshot(): Promise<import("@read-aware/core").HostEnvironmentSnapshot> };
   operationAvailability?: import("@read-aware/core").OperationAvailabilityPort;
   changes?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").ChangesPort;
-  jobs?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").DurableJobsPort & { inspectPlan(id: string): Promise<import("@read-aware/core").DurableJobPlan> };
-  transactions?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").TransactionsPort & { inspectPreview(id: string): Promise<import("@read-aware/core").AtomicPreview | null> };
+  jobs?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").DurableJobsPort & {
+    inspectPlan(id: string): Promise<import("@read-aware/core").DurableJobPlan>;
+  };
+  transactions?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").TransactionsPort & {
+    inspectPreview(id: string): Promise<import("@read-aware/core").AtomicPreview | null>;
+  };
   pluginServices?: {
-    list(scope: import("./thread-scope").ThreadScope, query?: import("@read-aware/core").PluginServiceQuery, signal?: AbortSignal): Promise<import("@read-aware/core").PluginServicePage>;
-    call(scope: import("./thread-scope").ThreadScope, request: import("@read-aware/core").PluginServiceCall,
-      authorize: (subject: string, signal: AbortSignal) => Promise<boolean>, signal?: AbortSignal): Promise<
-        { executed: false; reason: "declined" } | { executed: true; receipt: import("@read-aware/core").PluginServiceReceipt }>;
+    list(
+      scope: import("./thread-scope").ThreadScope,
+      query?: import("@read-aware/core").PluginServiceQuery,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").PluginServicePage>;
+    call(
+      scope: import("./thread-scope").ThreadScope,
+      request: import("@read-aware/core").PluginServiceCall,
+      authorize: (subject: string, signal: AbortSignal) => Promise<boolean>,
+      signal?: AbortSignal,
+    ): Promise<
+      | { executed: false; reason: "declined" }
+      | { executed: true; receipt: import("@read-aware/core").PluginServiceReceipt }
+    >;
   };
   window: import("@read-aware/core").HostWindowPort;
   conversationControl: {
     turnRequests(): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot[]>;
-    requestTurn(request: import("@read-aware/core").ConversationTurnRequest, signal?: AbortSignal): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
-    cancelTurnRequest(id: string, signal?: AbortSignal): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
+    requestTurn(
+      request: import("@read-aware/core").ConversationTurnRequest,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
+    cancelTurnRequest(
+      id: string,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot>;
     snapshot(): Promise<import("@read-aware/core").ConversationRuntimeSnapshot>;
     listThreads(): Promise<import("@read-aware/core").ThreadSummary[]>;
-    createThread(signal?: AbortSignal): Promise<import("@read-aware/core").ConversationControlReceipt & { draft: true }>;
+    createThread(
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").ConversationControlReceipt & { draft: true }>;
     selectThread(id: string, signal?: AbortSignal): Promise<import("@read-aware/core").ConversationControlReceipt>;
-    stop(target: import("@read-aware/core").ConversationTarget, signal?: AbortSignal): Promise<import("@read-aware/core").ConversationControlReceipt>;
-    clear(target: import("@read-aware/core").ConversationTarget, signal?: AbortSignal): Promise<import("@read-aware/core").ConversationControlReceipt>;
+    stop(
+      target: import("@read-aware/core").ConversationTarget,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").ConversationControlReceipt>;
+    clear(
+      target: import("@read-aware/core").ConversationTarget,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").ConversationControlReceipt>;
   };
   hostIO: {
-    listPluginContributions(query?: import("@read-aware/core").PluginContributionQuery): Promise<import("@read-aware/core").PluginContributionPage>;
-    listPlugins(query?: import("@read-aware/core").PluginDirectoryQuery): Promise<import("@read-aware/core").PluginDirectoryPage>;
+    listPluginContributions(
+      query?: import("@read-aware/core").PluginContributionQuery,
+    ): Promise<import("@read-aware/core").PluginContributionPage>;
+    listPlugins(
+      query?: import("@read-aware/core").PluginDirectoryQuery,
+    ): Promise<import("@read-aware/core").PluginDirectoryPage>;
     writeClipboard(text: string, signal?: AbortSignal): Promise<void>;
     exportFile(file: import("@read-aware/core").HostExportFile, signal?: AbortSignal): Promise<boolean>;
     openExternal(url: string, signal?: AbortSignal): Promise<void>;
   };
   workspace: {
     snapshot(query?: import("@read-aware/core").WorkspaceQuery): Promise<import("@read-aware/core").WorkspaceSnapshot>;
-    navigate(target: import("@read-aware/core").WorkspaceTarget, expectedRevision?: number, signal?: AbortSignal): Promise<import("@read-aware/core").WorkspaceReceipt>;
+    navigate(
+      target: import("@read-aware/core").WorkspaceTarget,
+      expectedRevision?: number,
+      signal?: AbortSignal,
+    ): Promise<import("@read-aware/core").WorkspaceReceipt>;
   };
   /** Live host preference; disabled blocks derived-memory work, not stored-data reads. */
   memoryPolicy?: import("./memory/build-policy").MemoryBuildPolicy;
@@ -568,11 +836,7 @@ export interface RuntimeDeps {
    */
   extraTools?: (scope: ThreadScope) => AgentTool[];
   /** Bounded, provenance-stamped data blocks appended to the current user turn. */
-  extraContext?: (
-    request: AgentExtensionContextRequest,
-  ) => Promise<AgentExtensionContextBlock[]>;
+  extraContext?: (request: AgentExtensionContextRequest) => Promise<AgentExtensionContextBlock[]>;
   /** Candidates only: AgentThread validates and writes them through MemoryPort. */
-  extraMemoryCandidates?: (
-    request: ExternalMemoryCandidateRequest,
-  ) => Promise<ExternalMemoryCandidate[]>;
+  extraMemoryCandidates?: (request: ExternalMemoryCandidateRequest) => Promise<ExternalMemoryCandidate[]>;
 }

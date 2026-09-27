@@ -5,9 +5,7 @@ import { Body, EmptyState, Heading, Tabs, InlineError } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { readingStatsAtom } from "../../../state/ui";
 import type { LibraryBook } from "../../library/lib/library-types";
-import {
-  formatReadingDuration,
-} from "../../reader/lib/reading-stats";
+import { formatReadingDuration } from "../../reader/lib/reading-stats";
 import { computeGlobalInsights, periodTabLabel, STATS_PERIODS } from "../lib/reading-insights";
 import { useAnnotationCounts } from "../hooks/useAnnotationCounts";
 import { PeriodOverview } from "./PeriodOverview";
@@ -67,18 +65,13 @@ export function StatsWorkspace({ books, onOpenBook }: StatsWorkspaceProps) {
             duration: formatReadingDuration(insights.totalMs),
             count: insights.booksWithReading,
           })}
-          {insights.currentStreak > 0
-            ? ` · ${t("summary.streak", { count: insights.currentStreak })}`
-            : ""}
+          {insights.currentStreak > 0 ? ` · ${t("summary.streak", { count: insights.currentStreak })}` : ""}
         </Body>
       </div>
 
       {annotations.loadFailed && (
         <div className="mb-4">
-          <InlineError
-            onRetry={() => void annotations.refresh()}
-            retryLabel={t("common:errorBoundary.retry")}
-          >
+          <InlineError onRetry={() => void annotations.refresh()} retryLabel={t("common:errorBoundary.retry")}>
             {t("common:errors.generic")}
           </InlineError>
         </div>

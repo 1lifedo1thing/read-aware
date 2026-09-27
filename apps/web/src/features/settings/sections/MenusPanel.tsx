@@ -10,13 +10,7 @@ import type { MenuSurface } from "../../menus/state/menu-config";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
 
-const SURFACES: MenuSurface[] = [
-  "primaryNav",
-  "shelfHeader",
-  "readerHeader",
-  "readerToolbar",
-  "selection",
-];
+const SURFACES: MenuSurface[] = ["primaryNav", "shelfHeader", "readerHeader", "readerToolbar", "selection"];
 
 export function MenusPanel() {
   const { t } = useTranslation("settings");

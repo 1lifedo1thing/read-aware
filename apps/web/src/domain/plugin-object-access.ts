@@ -78,14 +78,19 @@ export function createPluginBookAccessPolicy(
     throw pluginObjectAccessDenied(operation, bookId);
   };
 
-  const fenced = (before: CurrentBookSnapshot, operation: string, currentTarget = false,
-    options?: PluginBookAccessFenceOptions): PluginBookAccessFence => {
+  const fenced = (
+    before: CurrentBookSnapshot,
+    operation: string,
+    currentTarget = false,
+    options?: PluginBookAccessFenceOptions,
+  ): PluginBookAccessFence => {
     if (grant.mode !== "current" && !currentTarget) return { assertUnchanged: async () => {}, dispose: () => {} };
     const controller = new AbortController();
     let dispose: (() => void) | undefined;
     let disposed = false;
     const allowedBookId = options?.allowClose ? null : options?.allowSessionChange ? before.bookId : undefined;
-    const allowsExpectedTransition = (after: CurrentBookSnapshot) => allowedBookId !== undefined && after.bookId === allowedBookId;
+    const allowsExpectedTransition = (after: CurrentBookSnapshot) =>
+      allowedBookId !== undefined && after.bookId === allowedBookId;
     const changed = (after: CurrentBookSnapshot) => {
       currentSnapshot = after;
       if (!sameCurrent(before, after) && !allowsExpectedTransition(after) && !controller.signal.aborted) {
@@ -112,31 +117,51 @@ export function createPluginBookAccessPolicy(
             throw pluginObjectAccessDenied(`${operation} (current reader changed)`, after.bookId ?? undefined);
           }
           controller.signal.throwIfAborted();
-        } finally { if (!checkOptions?.retain) release(); }
+        } finally {
+          if (!checkOptions?.retain) release();
+        }
       },
       dispose: release,
     };
   };
 
-  const beginCurrent = async (operation: string, options?: PluginBookAccessFenceOptions): Promise<PluginBookAccessFence> => {
+  const beginCurrent = async (
+    operation: string,
+    options?: PluginBookAccessFenceOptions,
+  ): Promise<PluginBookAccessFence> => {
     if (grant.mode === "all") return { assertUnchanged: async () => {}, dispose: () => {} };
     const before = await readCurrent();
     currentSnapshot = before;
     if (!before.bookId) throw pluginObjectAccessDenied(operation);
-    if (grant.mode === "book" && grant.bookId !== before.bookId) throw pluginObjectAccessDenied(operation, before.bookId);
+    if (grant.mode === "book" && grant.bookId !== before.bookId)
+      throw pluginObjectAccessDenied(operation, before.bookId);
     const fence = fenced(before, operation, true, options);
-    try { fence.signal?.throwIfAborted(); } catch (error) { fence.dispose(); throw error; }
+    try {
+      fence.signal?.throwIfAborted();
+    } catch (error) {
+      fence.dispose();
+      throw error;
+    }
     return fence;
   };
 
-  const beginBook = async (bookId: string, operation: string, options?: PluginBookAccessFenceOptions): Promise<PluginBookAccessFence> => {
+  const beginBook = async (
+    bookId: string,
+    operation: string,
+    options?: PluginBookAccessFenceOptions,
+  ): Promise<PluginBookAccessFence> => {
     assertBook(bookId, operation);
     if (grant.mode !== "current") return { assertUnchanged: async () => {}, dispose: () => {} };
     const before = await readCurrent();
     currentSnapshot = before;
     if (before.bookId !== bookId) throw pluginObjectAccessDenied(operation, bookId);
     const fence = fenced(before, operation, false, options);
-    try { fence.signal?.throwIfAborted(); } catch (error) { fence.dispose(); throw error; }
+    try {
+      fence.signal?.throwIfAborted();
+    } catch (error) {
+      fence.dispose();
+      throw error;
+    }
     return fence;
   };
 
@@ -151,7 +176,7 @@ export function createPluginBookAccessPolicy(
   const filterBooks = <T extends { id: string }>(books: readonly T[], current?: CurrentBookSnapshot): T[] => {
     if (grant.mode === "all") return [...books];
     const id = grant.mode === "book" ? grant.bookId : (currentForCheck() ?? current)?.bookId;
-    return id ? books.filter(book => book.id === id) : [];
+    return id ? books.filter((book) => book.id === id) : [];
   };
 
   return { grant, restricted, assertBook, beginBook, beginCurrent, assertReturnedBook, filterBooks };

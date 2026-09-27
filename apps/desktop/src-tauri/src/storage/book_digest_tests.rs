@@ -187,19 +187,45 @@ fn digest_source_replacement_rejects_old_inference_and_retains_provenance_on_rep
     let saved = event("source-a", 2, 0);
     book_digest_commit_inner(&mut conn, &saved, &before).unwrap();
     let before = revision(&mut conn, 0);
-    conn.execute("UPDATE blob_objects SET sha256='new' WHERE key='bookfile:b'", []).unwrap();
+    conn.execute(
+        "UPDATE blob_objects SET sha256='new' WHERE key='bookfile:b'",
+        [],
+    )
+    .unwrap();
     let counts_before = counts(&conn);
     assert_ne!(revision(&mut conn, 0), before);
-    assert_eq!(book_digest_commit_inner(&mut conn, &event("late-source", 3, 0), &before).unwrap_err().code, "memory/conflict");
+    assert_eq!(
+        book_digest_commit_inner(&mut conn, &event("late-source", 3, 0), &before)
+            .unwrap_err()
+            .code,
+        "memory/conflict"
+    );
     let current = revision(&mut conn, 0);
-    assert_eq!(book_digest_commit_inner(&mut conn, &event("forged-current", 3, 0), &current).unwrap_err().code, "memory/conflict");
+    assert_eq!(
+        book_digest_commit_inner(&mut conn, &event("forged-current", 3, 0), &current)
+            .unwrap_err()
+            .code,
+        "memory/conflict"
+    );
     assert_eq!(counts(&conn), counts_before);
-    let version: String = conn.query_row("SELECT content_version FROM chapter_digests WHERE book_id='b'", [], |r| r.get(0)).unwrap();
+    let version: String = conn
+        .query_row(
+            "SELECT content_version FROM chapter_digests WHERE book_id='b'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
     assert_eq!(version, "sha256:old");
     conn.execute("DELETE FROM chapter_digests", []).unwrap();
     let tx = conn.transaction().unwrap();
     super::super::apply::apply_event(&tx, &saved).unwrap();
     tx.commit().unwrap();
-    let version: String = conn.query_row("SELECT content_version FROM chapter_digests WHERE book_id='b'", [], |r| r.get(0)).unwrap();
+    let version: String = conn
+        .query_row(
+            "SELECT content_version FROM chapter_digests WHERE book_id='b'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
     assert_eq!(version, "sha256:old");
 }

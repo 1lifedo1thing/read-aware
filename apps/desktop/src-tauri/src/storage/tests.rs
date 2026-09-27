@@ -1,37 +1,48 @@
 //! storage 的单元测试（`mod tests` 的独立文件形态 —— 仍是单元测试作用域，
 //! 可访问父模块私有项；集成测试才放 crate 根的 tests/ 目录）。
 use super::*;
+#[path = "book_context_tests.rs"]
+mod book_context_tests;
+#[path = "chat_tests.rs"]
+mod chat_tests;
+#[path = "context_bundle_history_tests.rs"]
+mod context_bundle_history_tests;
+#[path = "context_bundle_publication_tests.rs"]
+mod context_bundle_publication_tests;
+#[path = "context_bundle_tests.rs"]
+mod context_bundle_tests;
+#[path = "conversation_insights_tests.rs"]
+mod conversation_insights_tests;
+#[path = "profile_entities_tests.rs"]
+mod profile_entities_tests;
 #[path = "reading_progress_tests.rs"]
 mod reading_progress_tests;
 #[path = "reading_snapshot_tests.rs"]
 mod reading_snapshot_tests;
-#[path = "profile_entities_tests.rs"]
-mod profile_entities_tests;
-#[path = "context_bundle_tests.rs"]
-mod context_bundle_tests;
-#[path = "context_bundle_publication_tests.rs"]
-mod context_bundle_publication_tests;
-#[path = "conversation_insights_tests.rs"]
-mod conversation_insights_tests;
-#[path = "chat_tests.rs"]
-mod chat_tests;
-#[path = "book_context_tests.rs"]
-mod book_context_tests;
-#[path = "context_bundle_history_tests.rs"]
-mod context_bundle_history_tests;
 
 #[test]
 fn durable_kv_single_key_reads_exact_committed_bytes_and_propagates_read_failure() {
     let mut conn = migrated_conn();
     conn.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES('owner:key','\"own\"','now'),('other:key','\"private\"','now')", []).unwrap();
-    assert_eq!(get_kv_inner(&conn, "owner:key").unwrap().as_deref(), Some("\"own\""));
+    assert_eq!(
+        get_kv_inner(&conn, "owner:key").unwrap().as_deref(),
+        Some("\"own\"")
+    );
     assert_eq!(get_kv_inner(&conn, "owner:../other:key").unwrap(), None);
     {
         let tx = conn.transaction().unwrap();
-        tx.execute("UPDATE app_kv SET value_json='\"rolled-back\"' WHERE key='owner:key'", []).unwrap();
+        tx.execute(
+            "UPDATE app_kv SET value_json='\"rolled-back\"' WHERE key='owner:key'",
+            [],
+        )
+        .unwrap();
     }
-    assert_eq!(get_kv_inner(&conn, "owner:key").unwrap().as_deref(), Some("\"own\""));
-    conn.execute_batch("ALTER TABLE app_kv RENAME TO unavailable_kv").unwrap();
+    assert_eq!(
+        get_kv_inner(&conn, "owner:key").unwrap().as_deref(),
+        Some("\"own\"")
+    );
+    conn.execute_batch("ALTER TABLE app_kv RENAME TO unavailable_kv")
+        .unwrap();
     assert!(get_kv_inner(&conn, "owner:key").is_err());
 }
 
@@ -60,13 +71,21 @@ fn scratch() -> PathBuf {
 // relay seqs. The pre-existing suite exercises the log/projection semantics
 // alone, so these shadows keep it readable; checkpoint tests call the real
 // signatures.
-fn apply_remote_events_inner(conn: &mut Connection, events: &[EventRow]) -> Result<MergeReport, CommandError> {
+fn apply_remote_events_inner(
+    conn: &mut Connection,
+    events: &[EventRow],
+) -> Result<MergeReport, CommandError> {
     super::events::apply_remote_events_inner(conn, &scratch(), events, None)
 }
-fn stage_remote_events_inner(conn: &mut Connection, events: &[EventRow]) -> Result<usize, CommandError> {
+fn stage_remote_events_inner(
+    conn: &mut Connection,
+    events: &[EventRow],
+) -> Result<usize, CommandError> {
     super::events::stage_remote_events_inner(conn, &scratch(), events, None)
 }
-fn finalize_staged_events_inner(conn: &mut Connection) -> Result<Option<RebuildReport>, CommandError> {
+fn finalize_staged_events_inner(
+    conn: &mut Connection,
+) -> Result<Option<RebuildReport>, CommandError> {
     super::events::finalize_staged_events_inner(conn, &scratch())
 }
 
@@ -255,11 +274,9 @@ fn ai_message_error_column_roundtrips() {
     )
     .unwrap();
     let error: Option<String> = conn
-        .query_row(
-            "SELECT error FROM ai_messages WHERE id = 'm1'",
-            [],
-            |row| row.get(0),
-        )
+        .query_row("SELECT error FROM ai_messages WHERE id = 'm1'", [], |row| {
+            row.get(0)
+        })
         .unwrap();
     assert_eq!(error.as_deref(), Some("network reset"));
     // 旧行（无 error）读出 NULL
@@ -271,11 +288,9 @@ fn ai_message_error_column_roundtrips() {
     )
     .unwrap();
     let none: Option<String> = conn
-        .query_row(
-            "SELECT error FROM ai_messages WHERE id = 'm2'",
-            [],
-            |row| row.get(0),
-        )
+        .query_row("SELECT error FROM ai_messages WHERE id = 'm2'", [], |row| {
+            row.get(0)
+        })
         .unwrap();
     assert!(none.is_none());
 }
@@ -467,15 +482,15 @@ fn blob_file_import_uses_native_copy_and_registers_hash() {
 
     assert_eq!(hashed_size, payload.len() as i64);
     assert_eq!(result.byte_size, payload.len() as i64);
-    assert_eq!(
-        result.sha256,
-        format!("{:x}", Sha256::digest(&payload))
-    );
+    assert_eq!(result.sha256, format!("{:x}", Sha256::digest(&payload)));
     assert_eq!(
         get_blob_inner(&conn, data_dir.path(), "bookfile:streamed").unwrap(),
         payload
     );
-    assert!(!data_dir.path().join("blobs/bookfile%3Astreamed.tmp").exists());
+    assert!(!data_dir
+        .path()
+        .join("blobs/bookfile%3Astreamed.tmp")
+        .exists());
 }
 
 #[test]
@@ -484,10 +499,25 @@ fn blob_info_establishes_missing_legacy_content_revision() {
     let conn = migrated_conn();
     let payload = b"0123456789abcdef";
     put_blob_inner(&conn, dir.path(), "bookfile:legacy-revision", None, payload).unwrap();
-    conn.execute("UPDATE blob_objects SET sha256 = NULL WHERE key = ?1", ["bookfile:legacy-revision"]).unwrap();
-    let (_, info) = get_blob_record_inner(&conn, dir.path(), "bookfile:legacy-revision").unwrap().unwrap();
-    assert_eq!(info.sha256.as_deref(), Some("9f9f5111f7b27a781f1f1ddde5ebc2dd2b796bfc7365c9c28b548e564176929f"));
-    let persisted: String = conn.query_row("SELECT sha256 FROM blob_objects WHERE key = ?1", ["bookfile:legacy-revision"], |row| row.get(0)).unwrap();
+    conn.execute(
+        "UPDATE blob_objects SET sha256 = NULL WHERE key = ?1",
+        ["bookfile:legacy-revision"],
+    )
+    .unwrap();
+    let (_, info) = get_blob_record_inner(&conn, dir.path(), "bookfile:legacy-revision")
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        info.sha256.as_deref(),
+        Some("9f9f5111f7b27a781f1f1ddde5ebc2dd2b796bfc7365c9c28b548e564176929f")
+    );
+    let persisted: String = conn
+        .query_row(
+            "SELECT sha256 FROM blob_objects WHERE key = ?1",
+            ["bookfile:legacy-revision"],
+            |row| row.get(0),
+        )
+        .unwrap();
     assert_eq!(Some(persisted), info.sha256);
 }
 
@@ -697,8 +727,7 @@ fn narrativity_classification_and_digest_flavor_project_and_replay() {
         ],
     )
     .unwrap();
-    let narrativity: String =
-        scalar(&conn, "SELECT narrativity FROM books WHERE id = 'b1'");
+    let narrativity: String = scalar(&conn, "SELECT narrativity FROM books WHERE id = 'b1'");
     assert_eq!(narrativity, "expository");
     let flavor: String = scalar(
         &conn,
@@ -732,7 +761,13 @@ fn rust_and_sqlite_agree_on_event_timestamps() {
     // A mismatch would make replayed rows differ from live ones by timestamp
     // alone, which would look like drift forever.
     let conn = migrated_conn();
-    for wall in [0_i64, 1, 1_700_000_000_123, 999_999_999_999, 1_500_000_000_000] {
+    for wall in [
+        0_i64,
+        1,
+        1_700_000_000_123,
+        999_999_999_999,
+        1_500_000_000_000,
+    ] {
         let sql: String = conn
             .query_row(
                 "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', ?1 / 1000.0, 'unixepoch')",
@@ -789,7 +824,10 @@ fn commit_derives_projections_from_events_alone() {
     assert_eq!(report.applied, 5);
 
     // No frontend write touched these tables — every row came from the log.
-    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "沙丘");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"),
+        "沙丘"
+    );
     assert_eq!(
         scalar::<String>(&conn, "SELECT collection_id FROM books WHERE id='b1'"),
         "c1"
@@ -810,7 +848,10 @@ fn commit_derives_projections_from_events_alone() {
     // encodes numbers the way the frontend's JSON.stringify does.
     let progress: String = scalar(&conn, "SELECT progress_json FROM books WHERE id='b1'");
     assert!(progress.contains("epubcfi(/6/8)"), "progress={progress}");
-    assert!(progress.contains("\"progressPercent\":37.5"), "progress={progress}");
+    assert!(
+        progress.contains("\"progressPercent\":37.5"),
+        "progress={progress}"
+    );
 }
 
 #[test]
@@ -832,14 +873,23 @@ fn redelivered_events_do_not_double_apply() {
     let second = commit_events_inner(&mut conn, &batch).unwrap();
 
     assert_eq!(first.appended, 2);
-    assert_eq!(second.appended, 0, "duplicate ids must be rejected by the log");
+    assert_eq!(
+        second.appended, 0,
+        "duplicate ids must be rejected by the log"
+    );
     // reading_time accumulates, so a second apply would silently double it.
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
         60_000
     );
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT ms FROM reading_time_daily WHERE book_id='b1'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT ms FROM reading_time_daily WHERE book_id='b1'"
+        ),
         60_000
     );
 }
@@ -863,7 +913,10 @@ fn a_failed_event_rolls_back_the_whole_commit() {
     assert!(result.is_err(), "malformed payload must fail the commit");
     // Atomicity: the good event in the same batch left no trace either.
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 0);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        0
+    );
 }
 
 #[test]
@@ -902,9 +955,15 @@ fn rebuild_reproduces_projections_including_cover_verdicts() {
     };
 
     assert_eq!(report.events_replayed, 5);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), before_books);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"),
+        before_books
+    );
     // book.removed replayed: b2 stays gone, and so do its annotations.
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books WHERE id='b2'"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM books WHERE id='b2'"),
+        0
+    );
     assert_eq!(
         scalar::<String>(&conn, "SELECT content FROM annotations WHERE id='n1'"),
         "笔记正文"
@@ -990,7 +1049,9 @@ fn cover_verdicts_project_and_a_merge_adopts_them() {
         scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b1'"),
         "none"
     );
-    assert!(scalar::<Option<String>>(&conn, "SELECT cover_blob_key FROM books WHERE id='b1'").is_none());
+    assert!(
+        scalar::<Option<String>>(&conn, "SELECT cover_blob_key FROM books WHERE id='b1'").is_none()
+    );
 }
 
 #[test]
@@ -1022,21 +1083,38 @@ fn legacy_inline_covers_are_lifted_into_the_blob_store() {
     run_migrations(&mut conn).expect("finish migrations");
 
     // b1: artwork lifted, verdict ready, blob registered and queued for push.
-    assert_eq!(scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b1'"), "ready");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b1'"),
+        "ready"
+    );
     assert_eq!(
         scalar::<String>(&conn, "SELECT cover_blob_key FROM books WHERE id='b1'"),
         "cover:b1"
     );
-    assert!(get_blob_record_inner(&conn, data_dir.path(), "cover:b1").unwrap().is_some());
+    assert!(get_blob_record_inner(&conn, data_dir.path(), "cover:b1")
+        .unwrap()
+        .is_some());
     assert_eq!(
-        scalar::<String>(&conn, "SELECT push_state FROM blob_sync_state WHERE blob_key='cover:b1'"),
+        scalar::<String>(
+            &conn,
+            "SELECT push_state FROM blob_sync_state WHERE blob_key='cover:b1'"
+        ),
         "pending"
     );
     // b2: checked, no cover → none. b3: never checked → unchecked.
-    assert_eq!(scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b2'"), "none");
-    assert_eq!(scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b3'"), "unchecked");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b2'"),
+        "none"
+    );
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b3'"),
+        "unchecked"
+    );
     // b4: an undecodable data URL is not a cover — back to unchecked, not junk.
-    assert_eq!(scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b4'"), "unchecked");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT cover_status FROM books WHERE id='b4'"),
+        "unchecked"
+    );
     // The inline columns are gone.
     let has_cover_url: bool = conn
         .query_row(
@@ -1129,8 +1207,18 @@ fn unknown_and_unprojected_events_are_accepted_but_change_nothing() {
         &mut conn,
         &[
             // A type only a newer build knows about.
-            ev("e1", 1_000, "book.teleported", serde_json::json!({ "bookId": "b9" })),
-            ev("e2", 1_001, "profile.futureFieldUpdated", serde_json::json!({ "displayName": "破晓" })),
+            ev(
+                "e1",
+                1_000,
+                "book.teleported",
+                serde_json::json!({ "bookId": "b9" }),
+            ),
+            ev(
+                "e2",
+                1_001,
+                "profile.futureFieldUpdated",
+                serde_json::json!({ "displayName": "破晓" }),
+            ),
             ev(
                 "e3",
                 1_002,
@@ -1167,7 +1255,10 @@ fn whole_percentages_serialize_without_a_fractional_part() {
     let progress: String = scalar(&conn, "SELECT progress_json FROM books WHERE id='b1'");
     // JS writes `63`; Rust must not write `63.0` for the same value, or every
     // historical row would read as drift purely over formatting.
-    assert!(progress.contains("\"progressPercent\":63"), "progress={progress}");
+    assert!(
+        progress.contains("\"progressPercent\":63"),
+        "progress={progress}"
+    );
     assert!(!progress.contains("63.0"), "progress={progress}");
 }
 
@@ -1246,7 +1337,11 @@ fn reading_time_genesis_reproduces_the_aggregates_exactly() {
     let tx = conn.transaction().unwrap();
     replay_into(&tx).unwrap();
     tx.commit().unwrap();
-    assert_eq!(aggregates(&conn), original, "a full replay must reproduce them");
+    assert_eq!(
+        aggregates(&conn),
+        original,
+        "a full replay must reproduce them"
+    );
 }
 
 #[test]
@@ -1296,11 +1391,17 @@ fn reading_time_genesis_tops_up_around_events_already_in_the_log() {
     replay_into(&tx).unwrap();
     tx.commit().unwrap();
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT ms FROM reading_time_daily WHERE book_id='b1'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT ms FROM reading_time_daily WHERE book_id='b1'"
+        ),
         3_600_000
     );
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
         3_600_000
     );
 }
@@ -1418,7 +1519,8 @@ fn projection_snapshots(
 #[test]
 fn merged_remote_events_apply_but_never_enter_the_outbox() {
     let mut conn = migrated_conn();
-    let report = apply_remote_events_inner(&mut conn,
+    let report = apply_remote_events_inner(
+        &mut conn,
         &[
             imported("r1", 1_000, "b1", "沙丘"),
             ev_on(
@@ -1434,12 +1536,19 @@ fn merged_remote_events_apply_but_never_enter_the_outbox() {
     assert_eq!(report.appended, 2);
     assert_eq!(report.applied, 2);
     assert!(!report.replayed);
-    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "沙丘");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"),
+        "沙丘"
+    );
     // The whole point of the Remote source: a pull must not echo back as a push.
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM event_sync_state"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM event_sync_state"),
+        0
+    );
 
     // Redelivery of an already-merged batch is a complete no-op.
-    let again = apply_remote_events_inner(&mut conn, &[imported("r1", 1_000, "b1", "沙丘")]).unwrap();
+    let again =
+        apply_remote_events_inner(&mut conn, &[imported("r1", 1_000, "b1", "沙丘")]).unwrap();
     assert_eq!(again.appended, 0);
     assert!(!again.replayed);
 }
@@ -1457,7 +1566,10 @@ fn v22_downgrades_the_conversation_seq_index_on_an_existing_db() {
         )
     };
     insert(&conn, "m1").unwrap();
-    assert!(insert(&conn, "m2").is_err(), "v21 still enforces unique (conversation, seq)");
+    assert!(
+        insert(&conn, "m2").is_err(),
+        "v21 still enforces unique (conversation, seq)"
+    );
     run_migrations(&mut conn).expect("migrate to latest");
     insert(&conn, "m2").expect("v22 tolerates colliding seq");
 }
@@ -1496,7 +1608,8 @@ fn same_book_thread_from_two_devices_merges_despite_colliding_seq() {
     .unwrap();
 
     // 对端的 seq 0/1 撞本机的 seq 0/1;其戳位于本机 frontier 之后 → 增量路径。
-    let incremental = apply_remote_events_inner(&mut conn,
+    let incremental = apply_remote_events_inner(
+        &mut conn,
         &[
             appended("device-b", "r1", 1_004, "m-b1", 0, "对端第一条"),
             appended("device-b", "r2", 1_005, "m-b2", 1, "对端第二条"),
@@ -1507,7 +1620,8 @@ fn same_book_thread_from_two_devices_merges_despite_colliding_seq() {
     assert!(!incremental.replayed);
 
     // 再来一条落在 frontier 之前的 → 重放兜底,同样要能吞下 seq 冲突。
-    let replayed = apply_remote_events_inner(&mut conn,
+    let replayed = apply_remote_events_inner(
+        &mut conn,
         &[appended("device-b", "r3", 1_002, "m-b0", 0, "对端更早一条")],
     )
     .unwrap();
@@ -1527,7 +1641,13 @@ fn same_book_thread_from_two_devices_merges_despite_colliding_seq() {
     // seq 组内按 created_at(= HLC wall)交错,全部五条都在。
     assert_eq!(
         contents,
-        vec!["本机第一条", "对端更早一条", "对端第一条", "本机第二条", "对端第二条"]
+        vec![
+            "本机第一条",
+            "对端更早一条",
+            "对端第一条",
+            "本机第二条",
+            "对端第二条"
+        ]
     );
 }
 
@@ -1540,14 +1660,25 @@ fn staged_events_reach_projections_only_at_finalize() {
     let n = stage_remote_events_inner(&mut conn, &[imported("r1", 1_000, "b1", "沙丘")]).unwrap();
     assert_eq!(n, 1);
     // 在日志里、不在投影里、不进推送 outbox(来自中继,回推会成环)。
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        1
+    );
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 0);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM event_sync_state"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM event_sync_state"),
+        0
+    );
 
     // finalize 即崩溃恢复路径本身:重放落地、标记清零、再调是 no-op。
-    let report = finalize_staged_events_inner(&mut conn).unwrap().expect("marker was set");
+    let report = finalize_staged_events_inner(&mut conn)
+        .unwrap()
+        .expect("marker was set");
     assert_eq!(report.events_replayed, 1);
-    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "沙丘");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"),
+        "沙丘"
+    );
     assert!(finalize_staged_events_inner(&mut conn).unwrap().is_none());
 }
 
@@ -1570,7 +1701,8 @@ fn an_event_behind_the_frontier_replays_instead_of_clobbering() {
 
     // A peer edited the same book while apart — its stamp sorts BEFORE ours.
     // Applying it incrementally would overwrite the newer title with the older.
-    let report = apply_remote_events_inner(&mut conn,
+    let report = apply_remote_events_inner(
+        &mut conn,
         &[ev_on(
             "device-b",
             "r1",
@@ -1581,14 +1713,20 @@ fn an_event_behind_the_frontier_replays_instead_of_clobbering() {
     )
     .unwrap();
     assert_eq!(report.appended, 1);
-    assert!(report.replayed, "an out-of-order merge must rebuild, not apply on top");
+    assert!(
+        report.replayed,
+        "an out-of-order merge must rebuild, not apply on top"
+    );
     assert_eq!(
         scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"),
         "新标题",
         "HLC order decides, not arrival order"
     );
     // Local writes committed before the merge still owe the relay their push.
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM event_sync_state"), 2);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM event_sync_state"),
+        2
+    );
 }
 
 #[test]
@@ -1732,16 +1870,25 @@ fn replaying_an_import_materializes_the_blob_manifest() {
         )
         .unwrap();
     assert_eq!(kind, "book_source");
-    assert!(uri.is_none(), "NULL storage_uri = known remotely, not fetched");
+    assert!(
+        uri.is_none(),
+        "NULL storage_uri = known remotely, not fetched"
+    );
     assert_eq!(sync_required, 1);
     assert_eq!(size, 42);
     assert_eq!(sha, "abc123");
     assert_eq!(
-        scalar::<String>(&conn, "SELECT kind FROM blob_objects WHERE key = 'cover:b1'"),
+        scalar::<String>(
+            &conn,
+            "SELECT kind FROM blob_objects WHERE key = 'cover:b1'"
+        ),
         "cover_image"
     );
     // A manifest row is not a local upload: the blob outbox stays empty.
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM blob_sync_state"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM blob_sync_state"),
+        0
+    );
 }
 
 #[test]
@@ -1778,7 +1925,10 @@ fn the_event_outbox_drains_through_push_acknowledgement() {
     let mut conn = migrated_conn();
     commit_events_inner(
         &mut conn,
-        &[imported("e1", 1_000, "b1", "沙丘"), imported("e2", 1_001, "b2", "基地")],
+        &[
+            imported("e1", 1_000, "b1", "沙丘"),
+            imported("e2", 1_001, "b2", "基地"),
+        ],
     )
     .unwrap();
 
@@ -1794,7 +1944,11 @@ fn the_event_outbox_drains_through_push_acknowledgement() {
     sync_mark_events_failed_inner(&mut conn, &["e2".to_string()], "relay 503").unwrap();
 
     let remaining = sync_outbox_events_inner(&conn, 100).unwrap();
-    assert_eq!(remaining.len(), 1, "failed rows stay in the outbox for retry");
+    assert_eq!(
+        remaining.len(),
+        1,
+        "failed rows stay in the outbox for retry"
+    );
     assert_eq!(remaining[0].id, "e2");
     let (state, remote_id): (String, Option<String>) = conn
         .query_row(
@@ -1911,19 +2065,29 @@ fn merging_books_folds_history_and_reroutes_late_events() {
     )
     .unwrap();
 
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 1, "one record survives");
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"),
+        1,
+        "one record survives"
+    );
     assert_eq!(
         scalar::<String>(&conn, "SELECT book_id FROM annotations WHERE id = 'h1'"),
         "keep",
         "annotations follow the keeper"
     );
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id = 'keep'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id = 'keep'"
+        ),
         90_000,
         "reading time sums across the pair"
     );
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT ms FROM reading_time_daily WHERE book_id='keep' AND local_day='2026-08-16'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT ms FROM reading_time_daily WHERE book_id='keep' AND local_day='2026-08-16'"
+        ),
         90_000
     );
     assert_eq!(
@@ -1933,7 +2097,8 @@ fn merging_books_folds_history_and_reroutes_late_events() {
     );
 
     // A late event still addressed to the dead id reroutes to the keeper.
-    apply_remote_events_inner(&mut conn,
+    apply_remote_events_inner(
+        &mut conn,
         &[ev(
             "late",
             3_000,
@@ -1944,17 +2109,24 @@ fn merging_books_folds_history_and_reroutes_late_events() {
     )
     .unwrap();
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id = 'keep'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id = 'keep'"
+        ),
         95_000,
         "post-merge events addressed to the merged id land on the keeper"
     );
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT COUNT(*) FROM reading_time_totals WHERE book_id = 'dup'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT COUNT(*) FROM reading_time_totals WHERE book_id = 'dup'"
+        ),
         0
     );
 
     // Redelivered merge (the other device detected the same pair): a no-op.
-    apply_remote_events_inner(&mut conn,
+    apply_remote_events_inner(
+        &mut conn,
         &[ev(
             "m2",
             3_500,
@@ -1965,7 +2137,10 @@ fn merging_books_folds_history_and_reroutes_late_events() {
     .unwrap();
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 1);
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id = 'keep'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id = 'keep'"
+        ),
         95_000,
         "an idempotent redelivery must not double-count anything"
     );
@@ -1995,7 +2170,11 @@ fn wipe_all_data_leaves_a_fresh_usable_store() {
     put_blob_inner(&conn, dir.path(), "bookfile:b1", None, b"bytes").unwrap();
     sync_cursor_set_inner(
         &conn,
-        &SyncCursor { feed_name: "events".into(), remote_cursor: Some("7".into()), hlc: None },
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("7".into()),
+            hlc: None,
+        },
     )
     .unwrap();
     conn.execute(
@@ -2008,16 +2187,26 @@ fn wipe_all_data_leaves_a_fresh_usable_store() {
 
     wipe_all_data_inner(&mut conn, dir.path()).unwrap();
 
-    for table in ["domain_events", "books", "annotations", "annotations_fts",
-                  "event_sync_state", "blob_objects", "blob_sync_state",
-                  "sync_cursors"] {
+    for table in [
+        "domain_events",
+        "books",
+        "annotations",
+        "annotations_fts",
+        "event_sync_state",
+        "blob_objects",
+        "blob_sync_state",
+        "sync_cursors",
+    ] {
         assert_eq!(
             scalar::<i64>(&conn, &format!("SELECT COUNT(*) FROM {table}")),
             0,
             "{table} must be empty after the wipe"
         );
     }
-    assert!(!dir.path().join("blobs").exists(), "blob files must be gone");
+    assert!(
+        !dir.path().join("blobs").exists(),
+        "blob files must be gone"
+    );
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv"), 3);
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key IN ('read-aware-migrated-v1','read-aware-migrated-memories-v1') AND value_json='1'"), 2);
     // The schema itself survives — this is a wipe, not an uninstall.
@@ -2027,14 +2216,21 @@ fn wipe_all_data_leaves_a_fresh_usable_store() {
     let new_device = ensure_local_device(&conn).unwrap();
     assert_ne!(new_device, old_device, "the wiped install is a NEW device");
     commit_events_inner(&mut conn, &[imported("e2", 2_000, "b2", "基地")]).unwrap();
-    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b2'"), "基地");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT title FROM books WHERE id='b2'"),
+        "基地"
+    );
 }
 
 #[test]
 fn wipe_all_data_file_failure_keeps_durable_recovery_and_anti_import_flags() {
     let dir = tempfile::tempdir().unwrap();
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("wipe-file", 1_000, "wipe-book", "Synthetic")]).unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[imported("wipe-file", 1_000, "wipe-book", "Synthetic")],
+    )
+    .unwrap();
     put_blob_inner(&conn, dir.path(), "bookfile:wipe-book", None, b"original").unwrap();
     // A directory at the key-file path deterministically prevents remove_file,
     // including when the test runner has permission to bypass chmod restrictions.
@@ -2042,19 +2238,32 @@ fn wipe_all_data_file_failure_keeps_durable_recovery_and_anti_import_flags() {
     let error = wipe_all_data_inner(&mut conn, dir.path()).unwrap_err();
     assert_eq!(error.code, "data/wipe-incomplete");
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 0);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        0
+    );
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key IN ('read-aware-migrated-v1','read-aware-migrated-memories-v1','read-aware-wipe-pending','read-aware-wipe-webview-pending') AND value_json='1'"), 4);
     std::fs::remove_dir(dir.path().join("secret.key")).unwrap();
     wipe_all_data_inner(&mut conn, dir.path()).unwrap();
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv"), 3);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"), 0);
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"
+        ),
+        0
+    );
 }
 
 #[test]
 fn wipe_all_data_clock_retirement_failure_keeps_pending_marker_for_recovery() {
     let dir = tempfile::tempdir().unwrap();
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("wipe-clock", 1_000, "wipe-book", "Synthetic")]).unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[imported("wipe-clock", 1_000, "wipe-book", "Synthetic")],
+    )
+    .unwrap();
     // The first wipe transaction deletes the old clock before writing the
     // anti-import flags. The trigger therefore fires only for the final
     // post-commit retirement, after `read-aware-wipe-pending` is deleted.
@@ -2071,30 +2280,56 @@ fn wipe_all_data_clock_retirement_failure_keeps_pending_marker_for_recovery() {
     assert_eq!(error.code, "data/wipe-incomplete");
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 0);
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"),
+        scalar::<i64>(
+            &conn,
+            "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"
+        ),
         1,
         "the cleanup transaction rollback must retain restart recovery"
     );
 
-    conn.execute_batch("DROP TRIGGER reject_clock_retirement").unwrap();
+    conn.execute_batch("DROP TRIGGER reject_clock_retirement")
+        .unwrap();
     wipe_all_data_inner(&mut conn, dir.path()).unwrap();
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"), 0);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM context_bundle_source_clock"), 0);
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"
+        ),
+        0
+    );
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM context_bundle_source_clock"),
+        0
+    );
 }
 
 #[test]
 fn wipe_all_data_transaction_failure_preserves_records_files_and_identity() {
     let dir = tempfile::tempdir().unwrap();
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("wipe-rollback", 1_000, "wipe-book", "Keep")]).unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[imported("wipe-rollback", 1_000, "wipe-book", "Keep")],
+    )
+    .unwrap();
     put_blob_inner(&conn, dir.path(), "bookfile:wipe-book", None, b"keep").unwrap();
     let identity = ensure_local_device(&conn).unwrap();
     conn.execute_batch("CREATE TRIGGER reject_wipe BEFORE DELETE ON books BEGIN SELECT RAISE(ABORT,'synthetic wipe rollback'); END").unwrap();
     let error = wipe_all_data_inner(&mut conn, dir.path()).unwrap_err();
     assert_ne!(error.code, "data/wipe-incomplete");
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 1);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        1
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"
+        ),
+        0
+    );
     assert_eq!(ensure_local_device(&conn).unwrap(), identity);
     assert!(dir.path().join("blobs").exists());
 }
@@ -2117,7 +2352,8 @@ fn preference_changes_apply_last_writer_wins() {
     // An OLDER change arriving later (remote merge behind the frontier) must
     // not win: the replay re-applies in HLC order, so the upsert lands the
     // newer value last again.
-    apply_remote_events_inner(&mut conn,
+    apply_remote_events_inner(
+        &mut conn,
         &[ev(
             "p1",
             1_000,
@@ -2132,8 +2368,15 @@ fn preference_changes_apply_last_writer_wins() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].key, "read-aware-app-settings");
     let value: serde_json::Value = serde_json::from_str(&rows[0].value_json).unwrap();
-    assert_eq!(value["value"]["theme"], serde_json::Value::Null, "payload.value only");
-    assert_eq!(value["theme"], "light", "the HLC-newest write wins regardless of arrival order");
+    assert_eq!(
+        value["value"]["theme"],
+        serde_json::Value::Null,
+        "payload.value only"
+    );
+    assert_eq!(
+        value["theme"], "light",
+        "the HLC-newest write wins regardless of arrival order"
+    );
 }
 
 #[test]
@@ -2186,7 +2429,15 @@ fn adopting_a_different_account_resets_the_bookkeeping() {
     unverified.sort();
     assert_eq!(unverified, vec!["e1".to_string(), "r1".to_string()]);
     let counts = sync_outbox_counts_inner(&conn).unwrap();
-    assert_eq!((counts.events, counts.unverified_events, counts.blobs, counts.unverified_blobs), (0, 2, 0, 1));
+    assert_eq!(
+        (
+            counts.events,
+            counts.unverified_events,
+            counts.blobs,
+            counts.unverified_blobs
+        ),
+        (0, 2, 0, 1)
+    );
     let stale_seq: Option<String> = conn
         .query_row(
             "SELECT remote_id FROM event_sync_state WHERE event_id = 'e1'",
@@ -2194,7 +2445,10 @@ fn adopting_a_different_account_resets_the_bookkeeping() {
             |r| r.get(0),
         )
         .unwrap();
-    assert!(stale_seq.is_none(), "the old account's server_seq must not survive");
+    assert!(
+        stale_seq.is_none(),
+        "the old account's server_seq must not survive"
+    );
     let blobs = sync_unverified_blobs_inner(&conn, 100).unwrap();
     assert_eq!(blobs.len(), 1);
     assert_eq!(blobs[0].key, "bookfile:b1");
@@ -2205,9 +2459,15 @@ fn adopting_a_different_account_resets_the_bookkeeping() {
     sync_resolve_events_inner(&mut conn, &[("r1".to_string(), 3)], &["e1".to_string()]).unwrap();
     sync_resolve_blobs_inner(&mut conn, &[], &["bookfile:b1".to_string()]).unwrap();
     let outbox = sync_outbox_events_inner(&conn, 100).unwrap();
-    assert_eq!(outbox.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(), vec!["e1"]);
     assert_eq!(
-        scalar::<String>(&conn, "SELECT remote_id FROM event_sync_state WHERE event_id = 'r1'"),
+        outbox.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(),
+        vec!["e1"]
+    );
+    assert_eq!(
+        scalar::<String>(
+            &conn,
+            "SELECT remote_id FROM event_sync_state WHERE event_id = 'r1'"
+        ),
         "3"
     );
     assert_eq!(sync_outbox_blobs_inner(&conn, 100).unwrap().len(), 1);
@@ -2306,7 +2566,12 @@ fn a_declared_finish_survives_further_reading() {
                 serde_json::json!({ "bookId": "b1", "locator": "epubcfi(/6/2)",
                                     "progressPercent": 40, "status": "reading" }),
             ),
-            ev("e3", 1_002, "book.finished", serde_json::json!({ "bookId": "b1", "finished": true })),
+            ev(
+                "e3",
+                1_002,
+                "book.finished",
+                serde_json::json!({ "bookId": "b1", "finished": true }),
+            ),
         ],
     )
     .unwrap();
@@ -2336,7 +2601,12 @@ fn a_declared_finish_survives_further_reading() {
     // Only an explicit un-finish clears it, falling back to resumable progress.
     commit_events_inner(
         &mut conn,
-        &[ev("e5", 1_004, "book.finished", serde_json::json!({ "bookId": "b1", "finished": false }))],
+        &[ev(
+            "e5",
+            1_004,
+            "book.finished",
+            serde_json::json!({ "bookId": "b1", "finished": false }),
+        )],
     )
     .unwrap();
     assert_eq!(
@@ -2357,8 +2627,11 @@ fn plugin_document_snapshot_restores_the_pre_update_state_atomically() {
     .unwrap();
     let snapshot = plugin_docs_snapshot_inner(&conn, "sample").unwrap();
 
-    conn.execute("DELETE FROM plugin_documents WHERE plugin_id = 'sample'", [])
-        .unwrap();
+    conn.execute(
+        "DELETE FROM plugin_documents WHERE plugin_id = 'sample'",
+        [],
+    )
+    .unwrap();
     conn.execute(
         "INSERT INTO plugin_documents
             (plugin_id, collection, id, json, updated_at)
@@ -2384,20 +2657,36 @@ fn kv_batch_commits_all_records_or_rolls_back() {
         "CREATE TRIGGER fail_settings_batch BEFORE INSERT ON app_kv
          WHEN NEW.key = 'rejected'
          BEGIN SELECT RAISE(ABORT, 'forced settings failure'); END;",
-    ).unwrap();
-    assert!(set_kv_batch_inner(&mut conn, vec![
-        ("first".into(), Some("changed".into())),
-        ("second".into(), Some("new".into())),
-        ("rejected".into(), Some("fail".into())),
-    ]).is_err());
-    let rows: Vec<(String, String)> = conn.prepare("SELECT key, value_json FROM app_kv")
-        .unwrap().query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-        .unwrap().collect::<Result<_, _>>().unwrap();
+    )
+    .unwrap();
+    assert!(set_kv_batch_inner(
+        &mut conn,
+        vec![
+            ("first".into(), Some("changed".into())),
+            ("second".into(), Some("new".into())),
+            ("rejected".into(), Some("fail".into())),
+        ]
+    )
+    .is_err());
+    let rows: Vec<(String, String)> = conn
+        .prepare("SELECT key, value_json FROM app_kv")
+        .unwrap()
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
     assert_eq!(rows, vec![("first".into(), "original".into())]);
-    set_kv_batch_inner(&mut conn, vec![
-        ("first".into(), Some("committed".into())), ("second".into(), Some("new".into())),
-    ]).unwrap();
-    let count: i64 = conn.query_row("SELECT count(*) FROM app_kv", [], |row| row.get(0)).unwrap();
+    set_kv_batch_inner(
+        &mut conn,
+        vec![
+            ("first".into(), Some("committed".into())),
+            ("second".into(), Some("new".into())),
+        ],
+    )
+    .unwrap();
+    let count: i64 = conn
+        .query_row("SELECT count(*) FROM app_kv", [], |row| row.get(0))
+        .unwrap();
     assert_eq!(count, 2);
 }
 
@@ -2405,7 +2694,12 @@ fn kv_batch_commits_all_records_or_rolls_back() {
 fn roaming_kv_write_and_its_preference_event_commit_together_or_not_at_all() {
     let mut conn = migrated_conn();
     let preference = |id: &str, wall: i64, key: &str, value: serde_json::Value| {
-        let mut event = ev(id, wall, "preference.changed", serde_json::json!({ "key": key, "value": value }));
+        let mut event = ev(
+            id,
+            wall,
+            "preference.changed",
+            serde_json::json!({ "key": key, "value": value }),
+        );
         event.aggregate_type = Some("preference".into());
         event.aggregate_id = Some(key.into());
         event
@@ -2414,11 +2708,36 @@ fn roaming_kv_write_and_its_preference_event_commit_together_or_not_at_all() {
     set_kv_batch_with_preferences_inner(
         &mut conn,
         vec![(key.into(), Some(r#"{"theme":"dark"}"#.into()))],
-        &[preference("p1", 1_000, key, serde_json::json!({ "theme": "dark" }))],
-    ).unwrap();
-    let kv = |conn: &Connection| conn.query_row("SELECT value_json FROM app_kv WHERE key=?1", [key], |row| row.get::<_, String>(0)).unwrap();
-    let logged = |conn: &Connection| conn.query_row("SELECT count(*) FROM domain_events WHERE type='preference.changed'", [], |row| row.get::<_, i64>(0)).unwrap();
-    let projected = |conn: &Connection| conn.query_row("SELECT value_json FROM synced_preferences WHERE key=?1", [key], |row| row.get::<_, String>(0)).unwrap();
+        &[preference(
+            "p1",
+            1_000,
+            key,
+            serde_json::json!({ "theme": "dark" }),
+        )],
+    )
+    .unwrap();
+    let kv = |conn: &Connection| {
+        conn.query_row("SELECT value_json FROM app_kv WHERE key=?1", [key], |row| {
+            row.get::<_, String>(0)
+        })
+        .unwrap()
+    };
+    let logged = |conn: &Connection| {
+        conn.query_row(
+            "SELECT count(*) FROM domain_events WHERE type='preference.changed'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap()
+    };
+    let projected = |conn: &Connection| {
+        conn.query_row(
+            "SELECT value_json FROM synced_preferences WHERE key=?1",
+            [key],
+            |row| row.get::<_, String>(0),
+        )
+        .unwrap()
+    };
     assert_eq!(kv(&conn), r#"{"theme":"dark"}"#);
     assert_eq!(logged(&conn), 1);
     assert!(projected(&conn).contains("dark"));
@@ -2429,54 +2748,115 @@ fn roaming_kv_write_and_its_preference_event_commit_together_or_not_at_all() {
     assert!(set_kv_batch_with_preferences_inner(
         &mut conn,
         vec![(key.into(), Some(r#"{"theme":"light"}"#.into()))],
-        &[preference("p2", 2_000, key, serde_json::json!({ "theme": "light" }))],
-    ).is_err());
-    assert_eq!((kv(&conn), logged(&conn)), (r#"{"theme":"dark"}"#.into(), 1));
+        &[preference(
+            "p2",
+            2_000,
+            key,
+            serde_json::json!({ "theme": "light" })
+        )],
+    )
+    .is_err());
+    assert_eq!(
+        (kv(&conn), logged(&conn)),
+        (r#"{"theme":"dark"}"#.into(), 1)
+    );
     assert!(projected(&conn).contains("dark"));
     conn.execute_batch("DROP TRIGGER fail_kv; CREATE TRIGGER fail_event BEFORE INSERT ON domain_events BEGIN SELECT RAISE(ABORT, 'log failed'); END;").unwrap();
     assert!(set_kv_batch_with_preferences_inner(
         &mut conn,
         vec![(key.into(), Some(r#"{"theme":"light"}"#.into()))],
-        &[preference("p3", 3_000, key, serde_json::json!({ "theme": "light" }))],
-    ).is_err());
-    assert_eq!((kv(&conn), logged(&conn)), (r#"{"theme":"dark"}"#.into(), 1));
+        &[preference(
+            "p3",
+            3_000,
+            key,
+            serde_json::json!({ "theme": "light" })
+        )],
+    )
+    .is_err());
+    assert_eq!(
+        (kv(&conn), logged(&conn)),
+        (r#"{"theme":"dark"}"#.into(), 1)
+    );
     conn.execute_batch("DROP TRIGGER fail_event;").unwrap();
 
     // Only preference events for keys written in the same batch may join it.
     for event in [
         preference("p4", 4_000, "read-aware-other", serde_json::json!(true)),
-        ev("p5", 5_000, "book.starred", serde_json::json!({ "bookId": "b", "starred": true })),
+        ev(
+            "p5",
+            5_000,
+            "book.starred",
+            serde_json::json!({ "bookId": "b", "starred": true }),
+        ),
     ] {
         assert_eq!(
-            set_kv_batch_with_preferences_inner(&mut conn, vec![(key.into(), Some("{}".into()))], &[event]).unwrap_err().code,
+            set_kv_batch_with_preferences_inner(
+                &mut conn,
+                vec![(key.into(), Some("{}".into()))],
+                &[event]
+            )
+            .unwrap_err()
+            .code,
             crate::error::CODE_INTERNAL
         );
     }
-    assert_eq!((kv(&conn), logged(&conn)), (r#"{"theme":"dark"}"#.into(), 1));
+    assert_eq!(
+        (kv(&conn), logged(&conn)),
+        (r#"{"theme":"dark"}"#.into(), 1)
+    );
 }
 
 #[test]
 fn kv_batch_migration_delete_failure_preserves_source_and_destination() {
     let mut conn = migrated_conn();
-    set_kv_batch_inner(&mut conn, vec![
-        ("legacy".into(), Some("source".into())),
-        ("target".into(), Some("original".into())),
-    ]).unwrap();
-    conn.execute_batch("CREATE TRIGGER reject_legacy_delete BEFORE DELETE ON app_kv
-        WHEN OLD.key = 'legacy' BEGIN SELECT RAISE(ABORT, 'migration failed'); END;").unwrap();
-    assert!(set_kv_batch_inner(&mut conn, vec![
-        ("target".into(), Some("migrated".into())), ("legacy".into(), None),
-    ]).is_err());
-    let value = |key: &str| conn.query_row("SELECT value_json FROM app_kv WHERE key = ?1", [key], |row| row.get::<_, String>(0)).unwrap();
+    set_kv_batch_inner(
+        &mut conn,
+        vec![
+            ("legacy".into(), Some("source".into())),
+            ("target".into(), Some("original".into())),
+        ],
+    )
+    .unwrap();
+    conn.execute_batch(
+        "CREATE TRIGGER reject_legacy_delete BEFORE DELETE ON app_kv
+        WHEN OLD.key = 'legacy' BEGIN SELECT RAISE(ABORT, 'migration failed'); END;",
+    )
+    .unwrap();
+    assert!(set_kv_batch_inner(
+        &mut conn,
+        vec![
+            ("target".into(), Some("migrated".into())),
+            ("legacy".into(), None),
+        ]
+    )
+    .is_err());
+    let value = |key: &str| {
+        conn.query_row(
+            "SELECT value_json FROM app_kv WHERE key = ?1",
+            [key],
+            |row| row.get::<_, String>(0),
+        )
+        .unwrap()
+    };
     assert_eq!(value("legacy"), "source");
     assert_eq!(value("target"), "original");
-    conn.execute_batch("DROP TRIGGER reject_legacy_delete;").unwrap();
-    set_kv_batch_inner(&mut conn, vec![
-        ("target".into(), Some("migrated".into())), ("legacy".into(), None),
-    ]).unwrap();
-    let rows: Vec<(String, String)> = conn.prepare("SELECT key, value_json FROM app_kv")
-        .unwrap().query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-        .unwrap().collect::<Result<_, _>>().unwrap();
+    conn.execute_batch("DROP TRIGGER reject_legacy_delete;")
+        .unwrap();
+    set_kv_batch_inner(
+        &mut conn,
+        vec![
+            ("target".into(), Some("migrated".into())),
+            ("legacy".into(), None),
+        ],
+    )
+    .unwrap();
+    let rows: Vec<(String, String)> = conn
+        .prepare("SELECT key, value_json FROM app_kv")
+        .unwrap()
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
     assert_eq!(rows, vec![("target".into(), "migrated".into())]);
 }
 
@@ -2524,7 +2904,6 @@ fn namespaced_kv_restore_replaces_only_the_target_namespace() {
     assert_eq!(untouched, "keep");
 }
 
-
 // ─── Verification, checkpoints, backfill, pending reading time ───────────────
 
 /// The checkpoint suite needs a data dir the blob store can write to.
@@ -2533,7 +2912,9 @@ fn conn_with_dir() -> (Connection, PathBuf) {
 }
 
 fn book_titles(conn: &Connection) -> Vec<(String, String)> {
-    let mut stmt = conn.prepare("SELECT id, title FROM books ORDER BY id").unwrap();
+    let mut stmt = conn
+        .prepare("SELECT id, title FROM books ORDER BY id")
+        .unwrap();
     stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
         .unwrap()
         .map(|r| r.unwrap())
@@ -2541,7 +2922,12 @@ fn book_titles(conn: &Connection) -> Vec<(String, String)> {
 }
 
 fn edited(id: &str, wall: i64, device: &str, book: &str, title: &str) -> EventRow {
-    let mut e = ev(id, wall, "book.metadataEdited", serde_json::json!({ "bookId": book, "title": title }));
+    let mut e = ev(
+        id,
+        wall,
+        "book.metadataEdited",
+        serde_json::json!({ "bookId": book, "title": title }),
+    );
     e.hlc.device_id = device.to_string();
     e
 }
@@ -2556,15 +2942,36 @@ fn a_pull_with_seqs_settles_bookkeeping_for_known_and_new_events_alike() {
     let report = super::events::apply_remote_events_inner(
         &mut conn,
         &dir,
-        &[imported("e1", 1_000, "b1", "沙丘"), imported("r1", 1_001, "b2", "基地")],
+        &[
+            imported("e1", 1_000, "b1", "沙丘"),
+            imported("r1", 1_001, "b2", "基地"),
+        ],
         Some(&[7, 8]),
     )
     .unwrap();
     assert_eq!(report.appended, 1, "e1 was already logged; only r1 is new");
     assert!(sync_outbox_events_inner(&conn, 10).unwrap().is_empty());
-    assert_eq!(scalar::<String>(&conn, "SELECT remote_id FROM event_sync_state WHERE event_id='e1'"), "7");
-    assert_eq!(scalar::<String>(&conn, "SELECT push_state FROM event_sync_state WHERE event_id='r1'"), "synced");
-    assert_eq!(scalar::<String>(&conn, "SELECT remote_id FROM event_sync_state WHERE event_id='r1'"), "8");
+    assert_eq!(
+        scalar::<String>(
+            &conn,
+            "SELECT remote_id FROM event_sync_state WHERE event_id='e1'"
+        ),
+        "7"
+    );
+    assert_eq!(
+        scalar::<String>(
+            &conn,
+            "SELECT push_state FROM event_sync_state WHERE event_id='r1'"
+        ),
+        "synced"
+    );
+    assert_eq!(
+        scalar::<String>(
+            &conn,
+            "SELECT remote_id FROM event_sync_state WHERE event_id='r1'"
+        ),
+        "8"
+    );
 }
 
 #[test]
@@ -2589,13 +2996,19 @@ fn migration_26_backfills_bookkeeping_and_hands_marks_to_verification() {
     .unwrap();
     run_migrations(&mut conn).unwrap();
 
-    assert_eq!(scalar::<String>(&conn, "SELECT bookkeeping_account_id FROM sync_profile"), "acc-a");
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT bookkeeping_account_id FROM sync_profile"),
+        "acc-a"
+    );
     let mut unverified = sync_unverified_events_inner(&conn, 10).unwrap();
     unverified.sort();
     assert_eq!(unverified, vec!["e1".to_string(), "r1".to_string()]);
     // Same account reconnects: NO wholesale reset on top of the backfill.
     assert!(!sync_adopt_account_inner(&mut conn, "acc-a").unwrap());
-    assert_eq!(scalar::<i64>(&conn, "SELECT log_complete FROM sync_profile"), 1);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT log_complete FROM sync_profile"),
+        1
+    );
 }
 
 #[test]
@@ -2609,11 +3022,17 @@ fn migration_26_leaves_a_disconnected_profile_alone() {
     run_migrations(&mut conn).unwrap();
     assert!(sync_unverified_events_inner(&conn, 10).unwrap().is_empty());
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT COUNT(*) FROM sync_profile WHERE bookkeeping_account_id IS NOT NULL"),
+        scalar::<i64>(
+            &conn,
+            "SELECT COUNT(*) FROM sync_profile WHERE bookkeeping_account_id IS NOT NULL"
+        ),
         0
     );
     assert!(sync_adopt_account_inner(&mut conn, "acc-a").unwrap());
-    assert_eq!(sync_unverified_events_inner(&conn, 10).unwrap(), vec!["e1".to_string()]);
+    assert_eq!(
+        sync_unverified_events_inner(&conn, 10).unwrap(),
+        vec!["e1".to_string()]
+    );
 }
 
 #[test]
@@ -2627,7 +3046,12 @@ fn a_checkpoint_restores_the_tables_and_replay_only_walks_the_tail() {
     assert_eq!(info.schema_version, SCHEMA_VERSION);
     // It is a registered blob, device-local (never in the push outbox).
     assert_eq!(
-        scalar::<i64>(&conn, "SELECT sync_required FROM blob_objects WHERE key = ?1".replace("?1", &format!("'{}'", info.blob_key)).as_str()),
+        scalar::<i64>(
+            &conn,
+            "SELECT sync_required FROM blob_objects WHERE key = ?1"
+                .replace("?1", &format!("'{}'", info.blob_key))
+                .as_str()
+        ),
         0
     );
     assert!(sync_outbox_blobs_inner(&conn, 10).unwrap().is_empty());
@@ -2636,7 +3060,11 @@ fn a_checkpoint_restores_the_tables_and_replay_only_walks_the_tail() {
     // frontier of the LOG (but after the checkpoint): replay must start from
     // the checkpoint and walk only the tail.
     commit_events_inner(&mut conn, &[imported("e3", 1_010, "b3", "神经漫游者")]).unwrap();
-    commit_events_inner(&mut conn, &[edited("e4", 1_020, "device-a", "b1", "沙丘（修订）")]).unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[edited("e4", 1_020, "device-a", "b1", "沙丘（修订）")],
+    )
+    .unwrap();
     let report = super::events::apply_remote_events_inner(
         &mut conn,
         &dir,
@@ -2668,12 +3096,21 @@ fn a_checkpoint_restores_the_tables_and_replay_only_walks_the_tail() {
     )
     .unwrap();
     assert!(report.replayed);
-    assert!(list_checkpoints(&conn).unwrap().is_empty(), "invalidated: cut without r2");
     assert!(
-        !dir.join("blobs").join(blob_file_name(&info.blob_key)).exists(),
+        list_checkpoints(&conn).unwrap().is_empty(),
+        "invalidated: cut without r2"
+    );
+    assert!(
+        !dir.join("blobs")
+            .join(blob_file_name(&info.blob_key))
+            .exists(),
         "the file goes with the row"
     );
-    assert_eq!(book_titles(&conn)[1], ("b2".into(), "基地".into()), "e2 (1_001) still wins over r2 (1_000)");
+    assert_eq!(
+        book_titles(&conn)[1],
+        ("b2".into(), "基地".into()),
+        "e2 (1_001) still wins over r2 (1_000)"
+    );
 }
 
 #[test]
@@ -2681,22 +3118,42 @@ fn checkpoint_maintenance_cuts_on_cadence_and_prunes_to_the_kept_count() {
     let (mut conn, dir) = conn_with_dir();
     let batch = |from: i64, n: i64| -> Vec<EventRow> {
         (from..from + n)
-            .map(|i| ev(&format!("s{i}"), 1_000 + i, "book.starred", serde_json::json!({ "bookId": "b1", "starred": true })))
+            .map(|i| {
+                ev(
+                    &format!("s{i}"),
+                    1_000 + i,
+                    "book.starred",
+                    serde_json::json!({ "bookId": "b1", "starred": true }),
+                )
+            })
             .collect()
     };
     commit_events_inner(&mut conn, &[imported("e1", 999, "b1", "沙丘")]).unwrap();
-    assert!(maintain_checkpoints(&mut conn, &dir).unwrap().is_none(), "too little to checkpoint");
+    assert!(
+        maintain_checkpoints(&mut conn, &dir).unwrap().is_none(),
+        "too little to checkpoint"
+    );
     commit_events_inner(&mut conn, &batch(0, CHECKPOINT_EVERY_EVENTS)).unwrap();
     assert!(maintain_checkpoints(&mut conn, &dir).unwrap().is_some());
-    assert!(maintain_checkpoints(&mut conn, &dir).unwrap().is_none(), "nothing new since");
+    assert!(
+        maintain_checkpoints(&mut conn, &dir).unwrap().is_none(),
+        "nothing new since"
+    );
     for round in 1..=(CHECKPOINTS_KEPT + 1) {
-        commit_events_inner(&mut conn, &batch(round * CHECKPOINT_EVERY_EVENTS, CHECKPOINT_EVERY_EVENTS)).unwrap();
+        commit_events_inner(
+            &mut conn,
+            &batch(round * CHECKPOINT_EVERY_EVENTS, CHECKPOINT_EVERY_EVENTS),
+        )
+        .unwrap();
         assert!(maintain_checkpoints(&mut conn, &dir).unwrap().is_some());
     }
     let kept = list_checkpoints(&conn).unwrap();
     assert_eq!(kept.len() as i64, CHECKPOINTS_KEPT);
     let files = std::fs::read_dir(dir.join("blobs")).unwrap().count();
-    assert_eq!(files as i64, CHECKPOINTS_KEPT, "pruned checkpoints leave no files behind");
+    assert_eq!(
+        files as i64, CHECKPOINTS_KEPT,
+        "pruned checkpoints leave no files behind"
+    );
 }
 
 #[test]
@@ -2709,10 +3166,29 @@ fn publishing_demands_a_mailbox_exact_log() {
     assert_eq!(err.code, CODE_SYNC_CHECKPOINT_PRECONDITION);
     sync_mark_events_pushed_inner(&mut conn, &[("e1".to_string(), 9)]).unwrap();
     // Confirmed, but pushed AFTER the last pull (seq 9 > cursor 8) → refused.
-    sync_cursor_set_inner(&conn, &SyncCursor { feed_name: "events".into(), remote_cursor: Some("8".into()), hlc: None }).unwrap();
-    assert_eq!(create_publish_checkpoint(&mut conn, &dir).unwrap_err().code, CODE_SYNC_CHECKPOINT_PRECONDITION);
+    sync_cursor_set_inner(
+        &conn,
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("8".into()),
+            hlc: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        create_publish_checkpoint(&mut conn, &dir).unwrap_err().code,
+        CODE_SYNC_CHECKPOINT_PRECONDITION
+    );
     // A pull that reached seq 9 → the log equals mailbox[1..=9]; publishable.
-    sync_cursor_set_inner(&conn, &SyncCursor { feed_name: "events".into(), remote_cursor: Some("9".into()), hlc: None }).unwrap();
+    sync_cursor_set_inner(
+        &conn,
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("9".into()),
+            hlc: None,
+        },
+    )
+    .unwrap();
     let info = create_publish_checkpoint(&mut conn, &dir).unwrap();
     assert_eq!(info.remote_seq, Some(9));
     assert_eq!(info.origin, "publish");
@@ -2732,8 +3208,20 @@ fn a_bootstrap_restore_paints_the_shelf_then_the_backfill_completes_the_log() {
         &[ev("t1", 1_002, "book.timeRecorded", serde_json::json!({ "bookId": "b1", "ms": 60000, "atEpochMs": 1002, "localDay": "2026-09-07", "localHour": 10 }))],
     )
     .unwrap();
-    sync_mark_events_pushed_inner(&mut a, &[("e1".into(), 1), ("e2".into(), 2), ("t1".into(), 3)]).unwrap();
-    sync_cursor_set_inner(&a, &SyncCursor { feed_name: "events".into(), remote_cursor: Some("3".into()), hlc: None }).unwrap();
+    sync_mark_events_pushed_inner(
+        &mut a,
+        &[("e1".into(), 1), ("e2".into(), 2), ("t1".into(), 3)],
+    )
+    .unwrap();
+    sync_cursor_set_inner(
+        &a,
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("3".into()),
+            hlc: None,
+        },
+    )
+    .unwrap();
     let published = create_publish_checkpoint(&mut a, &dir_a).unwrap();
     let bytes = get_blob_inner(&a, &dir_a, &published.blob_key).unwrap();
     assert!(!bytes.is_empty());
@@ -2742,20 +3230,51 @@ fn a_bootstrap_restore_paints_the_shelf_then_the_backfill_completes_the_log() {
     // lands it through put_blob) and restores it.
     let (mut b, dir_b) = conn_with_dir();
     sync_adopt_account_inner(&mut b, "acc").unwrap();
-    put_blob_inner(&b, &dir_b, &published.blob_key, Some("application/vnd.sqlite3"), &bytes).unwrap();
+    put_blob_inner(
+        &b,
+        &dir_b,
+        &published.blob_key,
+        Some("application/vnd.sqlite3"),
+        &bytes,
+    )
+    .unwrap();
     let restored = restore_bootstrap_checkpoint(&mut b, &dir_b, &published.blob_key).unwrap();
     assert_eq!(restored.origin, "bootstrap");
     assert_eq!(restored.remote_seq, Some(3));
-    assert_eq!(book_titles(&b), vec![("b1".into(), "沙丘".into()), ("b2".into(), "基地".into())]);
-    assert_eq!(scalar::<i64>(&b, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 60_000);
+    assert_eq!(
+        book_titles(&b),
+        vec![("b1".into(), "沙丘".into()), ("b2".into(), "基地".into())]
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        60_000
+    );
     // Manifest rows: B knows the book files exist remotely, holds no bytes.
-    assert_eq!(scalar::<i64>(&b, "SELECT COUNT(*) FROM blob_objects WHERE key LIKE 'bookfile:%' AND storage_uri IS NULL"), 2);
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT COUNT(*) FROM blob_objects WHERE key LIKE 'bookfile:%' AND storage_uri IS NULL"
+        ),
+        2
+    );
     // Pull cursor sits at the frontier; the log is empty and flagged incomplete.
-    assert_eq!(sync_cursor_get_inner(&b, "events").unwrap().unwrap().remote_cursor, Some("3".into()));
+    assert_eq!(
+        sync_cursor_get_inner(&b, "events")
+            .unwrap()
+            .unwrap()
+            .remote_cursor,
+        Some("3".into())
+    );
     assert_eq!(scalar::<i64>(&b, "SELECT COUNT(*) FROM domain_events"), 0);
     assert!(!log_complete(&b).unwrap());
     let status = backfill_status(&b).unwrap().unwrap();
-    assert_eq!((status.frontier_seq, status.cursor, status.complete), (3, 0, false));
+    assert_eq!(
+        (status.frontier_seq, status.cursor, status.complete),
+        (3, 0, false)
+    );
 
     // The tail arrives (seq 4, after the frontier): incremental apply.
     let tail = super::events::apply_remote_events_inner(
@@ -2780,19 +3299,40 @@ fn a_bootstrap_restore_paints_the_shelf_then_the_backfill_completes_the_log() {
     .unwrap();
     assert!(straggler.deferred && !straggler.replayed);
     assert!(list_checkpoints(&b).unwrap().is_empty());
-    assert_eq!(book_titles(&b)[0].1, "沙丘", "stale but untouched until the log is complete");
+    assert_eq!(
+        book_titles(&b)[0].1,
+        "沙丘",
+        "stale but untouched until the log is complete"
+    );
 
     // Backfill the pre-frontier events; time counts ONCE (they are already in
     // the tables), and completion replays the deferred straggler.
     let report = backfill_remote_events(
         &mut b,
         &dir_b,
-        &[imported("e1", 1_000, "b1", "沙丘"), imported("e2", 1_001, "b2", "基地")],
+        &[
+            imported("e1", 1_000, "b1", "沙丘"),
+            imported("e2", 1_001, "b2", "基地"),
+        ],
         &[1, 2],
     )
     .unwrap();
-    assert_eq!((report.appended, report.cursor, report.complete, report.replayed), (2, 2, false, false));
-    assert_eq!(scalar::<i64>(&b, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 60_000);
+    assert_eq!(
+        (
+            report.appended,
+            report.cursor,
+            report.complete,
+            report.replayed
+        ),
+        (2, 2, false, false)
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        60_000
+    );
     let report = backfill_remote_events(
         &mut b,
         &dir_b,
@@ -2802,7 +3342,14 @@ fn a_bootstrap_restore_paints_the_shelf_then_the_backfill_completes_the_log() {
     .unwrap();
     assert!(report.complete && report.replayed);
     assert!(log_complete(&b).unwrap());
-    assert_eq!(scalar::<i64>(&b, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 60_000, "replay from empty counts the minute once");
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        60_000,
+        "replay from empty counts the minute once"
+    );
     assert_eq!(
         book_titles(&b)[0].1,
         "沙丘（早）",
@@ -2816,7 +3363,15 @@ fn hlc_seed_includes_a_restored_checkpoint_frontier() {
     sync_adopt_account_inner(&mut a, "acc").unwrap();
     commit_events_inner(&mut a, &[imported("e1", 5_000, "b1", "沙丘")]).unwrap();
     sync_mark_events_pushed_inner(&mut a, &[("e1".into(), 1)]).unwrap();
-    sync_cursor_set_inner(&a, &SyncCursor { feed_name: "events".into(), remote_cursor: Some("1".into()), hlc: None }).unwrap();
+    sync_cursor_set_inner(
+        &a,
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("1".into()),
+            hlc: None,
+        },
+    )
+    .unwrap();
     let published = create_publish_checkpoint(&mut a, &dir_a).unwrap();
     let bytes = get_blob_inner(&a, &dir_a, &published.blob_key).unwrap();
     let (mut b, dir_b) = conn_with_dir();
@@ -2833,7 +3388,11 @@ fn hlc_seed_includes_a_restored_checkpoint_frontier() {
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .unwrap();
-    assert_eq!(seed, (5_000, 0), "an empty log must not let local stamps sort before the snapshot");
+    assert_eq!(
+        seed,
+        (5_000, 0),
+        "an empty log must not let local stamps sort before the snapshot"
+    );
 }
 
 #[test]
@@ -2841,7 +3400,11 @@ fn a_checkpoint_from_another_schema_is_ignored_not_trusted() {
     let (mut conn, dir) = conn_with_dir();
     commit_events_inner(&mut conn, &[imported("e1", 1_000, "b1", "沙丘")]).unwrap();
     let info = create_checkpoint(&mut conn, &dir, "local", None).unwrap();
-    conn.execute("UPDATE projection_checkpoints SET schema_version = schema_version - 1 WHERE id = ?1", params![info.id]).unwrap();
+    conn.execute(
+        "UPDATE projection_checkpoints SET schema_version = schema_version - 1 WHERE id = ?1",
+        params![info.id],
+    )
+    .unwrap();
     assert!(newest_checkpoint(&conn).unwrap().is_none());
     // Replay still works — from the empty base.
     let report = super::events::apply_remote_events_inner(
@@ -2861,15 +3424,29 @@ fn rebuild_and_verify_refuse_an_incomplete_log() {
     sync_adopt_account_inner(&mut a, "acc").unwrap();
     commit_events_inner(&mut a, &[imported("e1", 1_000, "b1", "沙丘")]).unwrap();
     sync_mark_events_pushed_inner(&mut a, &[("e1".into(), 1)]).unwrap();
-    sync_cursor_set_inner(&a, &SyncCursor { feed_name: "events".into(), remote_cursor: Some("1".into()), hlc: None }).unwrap();
+    sync_cursor_set_inner(
+        &a,
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("1".into()),
+            hlc: None,
+        },
+    )
+    .unwrap();
     let published = create_publish_checkpoint(&mut a, &dir_a).unwrap();
     let bytes = get_blob_inner(&a, &dir_a, &published.blob_key).unwrap();
     let (mut b, dir_b) = conn_with_dir();
     put_blob_inner(&b, &dir_b, &published.blob_key, None, &bytes).unwrap();
     restore_bootstrap_checkpoint(&mut b, &dir_b, &published.blob_key).unwrap();
-    assert_eq!(events::rebuild_projections_inner(&mut b).unwrap_err().code, CODE_SYNC_LOG_INCOMPLETE);
+    assert_eq!(
+        events::rebuild_projections_inner(&mut b).unwrap_err().code,
+        CODE_SYNC_LOG_INCOMPLETE
+    );
     // A publish from B would be a lie (its log is incomplete); refused.
-    assert_eq!(create_publish_checkpoint(&mut b, &dir_b).unwrap_err().code, CODE_SYNC_CHECKPOINT_PRECONDITION);
+    assert_eq!(
+        create_publish_checkpoint(&mut b, &dir_b).unwrap_err().code,
+        CODE_SYNC_CHECKPOINT_PRECONDITION
+    );
     // Settling without backfill progress changes nothing.
     assert!(!settle_backfill(&mut b, &dir_b).unwrap().unwrap().complete);
     backfill_remote_events(&mut b, &dir_b, &[imported("e1", 1_000, "b1", "沙丘")], &[1]).unwrap();
@@ -2878,7 +3455,15 @@ fn rebuild_and_verify_refuse_an_incomplete_log() {
 }
 
 /// `span` is the session's (startedAt, endedAt).
-fn session_event(id: &str, wall: i64, book: &str, ms: i64, span: (i64, i64), hour: i64, progress: Option<serde_json::Value>) -> EventRow {
+fn session_event(
+    id: &str,
+    wall: i64,
+    book: &str,
+    ms: i64,
+    span: (i64, i64),
+    hour: i64,
+    progress: Option<serde_json::Value>,
+) -> EventRow {
     let (started, ended) = span;
     let mut payload = serde_json::json!({
         "bookId": book, "ms": ms, "startedAt": started, "endedAt": ended,
@@ -2908,51 +3493,148 @@ fn a_reading_session_accrues_time_and_position_and_flushes_exactly_once() {
     let mut conn = migrated_conn();
     commit_events_inner(&mut conn, &[imported("e1", 1_000, "b1", "沙丘")]).unwrap();
     // A page turn before the first tick opens the bucket with no time.
-    let b = reading_session_position_inner(&conn, "b1", "2026-09-07", 15, 1_000_000, &position(10, "ch1.html")).unwrap();
+    let b = reading_session_position_inner(
+        &conn,
+        "b1",
+        "2026-09-07",
+        15,
+        1_000_000,
+        &position(10, "ch1.html"),
+    )
+    .unwrap();
     assert_eq!((b.ms, b.started_at, b.last_at), (0, 1_000_000, 1_000_000));
     let b = reading_session_accrue_inner(&conn, "b1", "2026-09-07", 15, 20_000, 1_020_000).unwrap();
     assert_eq!((b.ms, b.last_at), (20_000, 1_020_000));
-    let b = reading_session_position_inner(&conn, "b1", "2026-09-07", 15, 1_030_000, &position(12, "ch1.html")).unwrap();
+    let b = reading_session_position_inner(
+        &conn,
+        "b1",
+        "2026-09-07",
+        15,
+        1_030_000,
+        &position(12, "ch1.html"),
+    )
+    .unwrap();
     assert_eq!(b.progress["progressPercent"], 12);
     // Nothing reached the projections yet: still the import's blank position.
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM reading_time_totals"), 0);
-    assert_eq!(scalar::<f64>(&conn, "SELECT progress_percent FROM books WHERE id='b1'"), 0.0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM reading_time_totals"),
+        0
+    );
+    assert_eq!(
+        scalar::<f64>(&conn, "SELECT progress_percent FROM books WHERE id='b1'"),
+        0.0
+    );
 
     // The caller closes the bucket as read (20s, position at 12%); a tick
     // and a page turn race in before the flush lands.
     reading_session_accrue_inner(&conn, "b1", "2026-09-07", 15, 20_000, 1_040_000).unwrap();
-    reading_session_position_inner(&conn, "b1", "2026-09-07", 15, 1_041_000, &position(13, "ch1.html")).unwrap();
-    let flush = session_event("s1", 2_000, "b1", 20_000, (1_000_000, 1_030_000), 15, Some(position(12, "ch1.html")));
+    reading_session_position_inner(
+        &conn,
+        "b1",
+        "2026-09-07",
+        15,
+        1_041_000,
+        &position(13, "ch1.html"),
+    )
+    .unwrap();
+    let flush = session_event(
+        "s1",
+        2_000,
+        "b1",
+        20_000,
+        (1_000_000, 1_030_000),
+        15,
+        Some(position(12, "ch1.html")),
+    );
     let report = reading_session_flush_inner(&mut conn, std::slice::from_ref(&flush)).unwrap();
     assert_eq!((report.appended, report.applied), (1, 1));
-    assert_eq!(scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 20_000);
-    assert_eq!(scalar::<i64>(&conn, "SELECT first_started_at FROM reading_time_totals WHERE book_id='b1'"), 1_000_000);
-    assert_eq!(scalar::<i64>(&conn, "SELECT last_read_at FROM reading_time_totals WHERE book_id='b1'"), 1_030_000);
-    assert_eq!(scalar::<f64>(&conn, "SELECT progress_percent FROM books WHERE id='b1'"), 12.0);
-    assert_eq!(scalar::<i64>(&conn, "SELECT progress_observed_at FROM books WHERE id='b1'"), 1_030_000);
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        20_000
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT first_started_at FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        1_000_000
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT last_read_at FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        1_030_000
+    );
+    assert_eq!(
+        scalar::<f64>(&conn, "SELECT progress_percent FROM books WHERE id='b1'"),
+        12.0
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT progress_observed_at FROM books WHERE id='b1'"
+        ),
+        1_030_000
+    );
     // The racing tick and the newer page turn survive in the bucket.
     let pending = reading_sessions_pending_inner(&conn).unwrap();
     assert_eq!(pending.len(), 1);
-    assert_eq!((pending[0].ms, pending[0].last_at, pending[0].position_at), (20_000, 1_041_000, Some(1_041_000)));
+    assert_eq!(
+        (pending[0].ms, pending[0].last_at, pending[0].position_at),
+        (20_000, 1_041_000, Some(1_041_000))
+    );
     assert_eq!(pending[0].progress["progressPercent"], 13);
     // A tick moves `last_at` but never the position's clock.
     reading_session_accrue_inner(&conn, "b1", "2026-09-07", 15, 20_000, 1_060_000).unwrap();
     let pending = reading_sessions_pending_inner(&conn).unwrap();
-    assert_eq!((pending[0].last_at, pending[0].position_at), (1_060_000, Some(1_041_000)));
+    assert_eq!(
+        (pending[0].last_at, pending[0].position_at),
+        (1_060_000, Some(1_041_000))
+    );
     // Redelivering the same flush is a no-op.
     let again = reading_session_flush_inner(&mut conn, std::slice::from_ref(&flush)).unwrap();
     assert_eq!(again.appended, 0);
     assert_eq!(reading_sessions_pending_inner(&conn).unwrap()[0].ms, 40_000);
-    assert_eq!(scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 20_000);
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        20_000
+    );
     // The event is in the outbox like any local write.
-    assert!(sync_outbox_events_inner(&conn, 10).unwrap().iter().any(|e| e.id == "s1"));
+    assert!(sync_outbox_events_inner(&conn, 10)
+        .unwrap()
+        .iter()
+        .any(|e| e.id == "s1"));
     // Closing the remainder (40s now, position observed at 1_041_000)
     // empties the bucket.
-    let rest = session_event("s2", 2_001, "b1", 40_000, (1_040_000, 1_060_000), 15, Some(observed(position(13, "ch1.html"), 1_041_000)));
+    let rest = session_event(
+        "s2",
+        2_001,
+        "b1",
+        40_000,
+        (1_040_000, 1_060_000),
+        15,
+        Some(observed(position(13, "ch1.html"), 1_041_000)),
+    );
     reading_session_flush_inner(&mut conn, &[rest]).unwrap();
     assert!(reading_sessions_pending_inner(&conn).unwrap().is_empty());
-    assert_eq!(scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 60_000);
-    assert_eq!(scalar::<f64>(&conn, "SELECT progress_percent FROM books WHERE id='b1'"), 13.0);
+    assert_eq!(
+        scalar::<i64>(
+            &conn,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        60_000
+    );
+    assert_eq!(
+        scalar::<f64>(&conn, "SELECT progress_percent FROM books WHERE id='b1'"),
+        13.0
+    );
 }
 
 #[test]
@@ -2962,40 +3644,100 @@ fn a_session_that_closes_late_never_overwrites_a_newer_position() {
     // but observed EARLIER. Whatever order the events merge in, 60% stands.
     let (mut a, dir) = conn_with_dir();
     commit_events_inner(&mut a, &[imported("e1", 1_000, "b1", "沙丘")]).unwrap();
-    let phone = session_event("phone", 5_000, "b1", 600_000, (4_000, 5_000), 10, Some(position(60, "ch3.html")));
-    let laptop = session_event("laptop", 6_000, "b1", 300_000, (2_000, 3_000), 10, Some(position(40, "ch2.html")));
+    let phone = session_event(
+        "phone",
+        5_000,
+        "b1",
+        600_000,
+        (4_000, 5_000),
+        10,
+        Some(position(60, "ch3.html")),
+    );
+    let laptop = session_event(
+        "laptop",
+        6_000,
+        "b1",
+        300_000,
+        (2_000, 3_000),
+        10,
+        Some(position(40, "ch2.html")),
+    );
     commit_events_inner(&mut a, std::slice::from_ref(&phone)).unwrap();
-    super::events::apply_remote_events_inner(&mut a, &dir, std::slice::from_ref(&laptop), None).unwrap();
-    assert_eq!(scalar::<f64>(&a, "SELECT progress_percent FROM books WHERE id='b1'"), 60.0);
-    assert_eq!(scalar::<i64>(&a, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 900_000);
+    super::events::apply_remote_events_inner(&mut a, &dir, std::slice::from_ref(&laptop), None)
+        .unwrap();
+    assert_eq!(
+        scalar::<f64>(&a, "SELECT progress_percent FROM books WHERE id='b1'"),
+        60.0
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &a,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        900_000
+    );
     // The other device merges them the other way round and agrees.
     let (mut b, dir_b) = conn_with_dir();
     commit_events_inner(&mut b, &[imported("e1", 1_000, "b1", "沙丘")]).unwrap();
     commit_events_inner(&mut b, std::slice::from_ref(&laptop)).unwrap();
-    super::events::apply_remote_events_inner(&mut b, &dir_b, std::slice::from_ref(&phone), None).unwrap();
-    assert_eq!(scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"), 60.0);
+    super::events::apply_remote_events_inner(&mut b, &dir_b, std::slice::from_ref(&phone), None)
+        .unwrap();
+    assert_eq!(
+        scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"),
+        60.0
+    );
     // And a full replay lands on the same answer.
     let tx = b.transaction().unwrap();
     replay_into(&tx).unwrap();
     tx.commit().unwrap();
-    assert_eq!(scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"), 60.0);
-    assert_eq!(scalar::<i64>(&b, "SELECT progress_observed_at FROM books WHERE id='b1'"), 5_000);
+    assert_eq!(
+        scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"),
+        60.0
+    );
+    assert_eq!(
+        scalar::<i64>(&b, "SELECT progress_observed_at FROM books WHERE id='b1'"),
+        5_000
+    );
     // Legacy `book.progressed` events take part in the same rule (observed
     // at their stamp): an older one cannot clobber the phone's position.
-    let legacy = ev("legacy", 4_500, "book.progressed", serde_json::json!({ "bookId": "b1", "locator": "cfi-50", "progressPercent": 50, "status": "reading" }));
+    let legacy = ev(
+        "legacy",
+        4_500,
+        "book.progressed",
+        serde_json::json!({ "bookId": "b1", "locator": "cfi-50", "progressPercent": 50, "status": "reading" }),
+    );
     super::events::apply_remote_events_inner(&mut b, &dir_b, &[legacy], None).unwrap();
-    assert_eq!(scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"), 60.0);
+    assert_eq!(
+        scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"),
+        60.0
+    );
 
     // The laptop stayed FOCUSED while paused: its ticks kept the session's
     // `endedAt` moving past the phone's close, but its page was observed
     // long before — `progress.observedAt` is the clock that decides.
     let ticking_laptop = session_event(
-        "laptop-ticking", 7_000, "b1", 900_000, (2_000, 9_000), 10,
+        "laptop-ticking",
+        7_000,
+        "b1",
+        900_000,
+        (2_000, 9_000),
+        10,
         Some(observed(position(45, "ch2.html"), 3_000)),
     );
     super::events::apply_remote_events_inner(&mut b, &dir_b, &[ticking_laptop], None).unwrap();
-    assert_eq!(scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"), 60.0, "a later endedAt with an older observation loses");
-    assert_eq!(scalar::<i64>(&b, "SELECT last_read_at FROM reading_time_totals WHERE book_id='b1'"), 9_000, "the time side still counts the whole session");
+    assert_eq!(
+        scalar::<f64>(&b, "SELECT progress_percent FROM books WHERE id='b1'"),
+        60.0,
+        "a later endedAt with an older observation loses"
+    );
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT last_read_at FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        9_000,
+        "the time side still counts the whole session"
+    );
 }
 
 #[test]
@@ -3007,15 +3749,33 @@ fn reading_time_genesis_runs_once_per_device_until_an_import_reopens_it() {
     assert_eq!(reading_time_genesis_inner(&mut conn).unwrap(), 1);
     // Direct table edits are no longer a supported write path; even so, the
     // stamped pass does not re-measure at every boot.
-    conn.execute("UPDATE reading_time_daily SET ms = 120000", []).unwrap();
+    conn.execute("UPDATE reading_time_daily SET ms = 120000", [])
+        .unwrap();
     assert_eq!(reading_time_genesis_inner(&mut conn).unwrap(), 0);
     // An import (the one legitimate table write) reopens it.
-    reading_time_import_inner(&mut conn, &ReadingTimeWire {
-        totals: vec![ReadingTimeTotalRow { book_id: "b1".into(), total_ms: 180_000, first_started_at: Some(1), last_read_at: Some(2) }],
-        daily: vec![ReadingTimeDailyRow { book_id: "b1".into(), local_day: "2026-07-01".into(), ms: 180_000 }],
-        hourly: vec![],
-    }).unwrap();
-    assert_eq!(reading_time_genesis_inner(&mut conn).unwrap(), 1, "the 120s deficit becomes one event");
+    reading_time_import_inner(
+        &mut conn,
+        &ReadingTimeWire {
+            totals: vec![ReadingTimeTotalRow {
+                book_id: "b1".into(),
+                total_ms: 180_000,
+                first_started_at: Some(1),
+                last_read_at: Some(2),
+            }],
+            daily: vec![ReadingTimeDailyRow {
+                book_id: "b1".into(),
+                local_day: "2026-07-01".into(),
+                ms: 180_000,
+            }],
+            hourly: vec![],
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        reading_time_genesis_inner(&mut conn).unwrap(),
+        1,
+        "the 120s deficit becomes one event"
+    );
     assert_eq!(reading_time_genesis_inner(&mut conn).unwrap(), 0);
 }
 
@@ -3029,7 +3789,6 @@ fn wipe_all_data_removes_checkpoints_with_everything_else() {
     assert!(!dir.join("blobs").exists());
 }
 
-
 #[test]
 fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     let (mut a, dir_a) = conn_with_dir();
@@ -3041,7 +3800,15 @@ fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     )
     .unwrap();
     sync_mark_events_pushed_inner(&mut a, &[("e1".into(), 1), ("t1".into(), 2)]).unwrap();
-    sync_cursor_set_inner(&a, &SyncCursor { feed_name: "events".into(), remote_cursor: Some("2".into()), hlc: None }).unwrap();
+    sync_cursor_set_inner(
+        &a,
+        &SyncCursor {
+            feed_name: "events".into(),
+            remote_cursor: Some("2".into()),
+            hlc: None,
+        },
+    )
+    .unwrap();
     let published = create_publish_checkpoint(&mut a, &dir_a).unwrap();
     let bytes = get_blob_inner(&a, &dir_a, &published.blob_key).unwrap();
 
@@ -3050,20 +3817,48 @@ fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     let (mut b, dir_b) = conn_with_dir();
     commit_events_inner(
         &mut b,
-        &[ev("p1", 5_000, "preference.changed", serde_json::json!({ "key": "theme", "value": "dark" }))],
+        &[ev(
+            "p1",
+            5_000,
+            "preference.changed",
+            serde_json::json!({ "key": "theme", "value": "dark" }),
+        )],
     )
     .unwrap();
-    let mut star = ev("s1", 5_001, "book.starred", serde_json::json!({ "bookId": "b1", "starred": true }));
+    let mut star = ev(
+        "s1",
+        5_001,
+        "book.starred",
+        serde_json::json!({ "bookId": "b1", "starred": true }),
+    );
     star.hlc.device_id = "device-b".into();
     commit_events_inner(&mut b, &[star]).unwrap();
     put_blob_inner(&b, &dir_b, &published.blob_key, None, &bytes).unwrap();
     let info = restore_bootstrap_checkpoint(&mut b, &dir_b, &published.blob_key).unwrap();
     assert_eq!(info.origin, "bootstrap");
     assert_eq!(book_titles(&b), vec![("b1".into(), "沙丘".into())]);
-    assert_eq!(scalar::<i64>(&b, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 1_000);
-    assert_eq!(scalar::<i64>(&b, "SELECT starred FROM books WHERE id='b1'"), 1, "the local star applied on top");
-    assert_eq!(scalar::<i64>(&b, "SELECT COUNT(*) FROM domain_events"), 2, "local events stay in the log");
-    assert_eq!(sync_outbox_events_inner(&b, 10).unwrap().len(), 2, "and still owe their push");
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        1_000
+    );
+    assert_eq!(
+        scalar::<i64>(&b, "SELECT starred FROM books WHERE id='b1'"),
+        1,
+        "the local star applied on top"
+    );
+    assert_eq!(
+        scalar::<i64>(&b, "SELECT COUNT(*) FROM domain_events"),
+        2,
+        "local events stay in the log"
+    );
+    assert_eq!(
+        sync_outbox_events_inner(&b, 10).unwrap().len(),
+        2,
+        "and still owe their push"
+    );
     // Backfill brings the snapshot's events; nothing double-applies.
     backfill_remote_events(
         &mut b,
@@ -3076,7 +3871,13 @@ fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     )
     .unwrap();
     assert!(log_complete(&b).unwrap());
-    assert_eq!(scalar::<i64>(&b, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 1_000);
+    assert_eq!(
+        scalar::<i64>(
+            &b,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        1_000
+    );
 
     // A device whose local history is CONFIRMED (or unverified) may overlap
     // the checkpoint: refused, it replays the mailbox.
@@ -3085,7 +3886,9 @@ fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     sync_mark_events_pushed_inner(&mut c, &[("e1".into(), 1)]).unwrap();
     put_blob_inner(&c, &dir_c, &published.blob_key, None, &bytes).unwrap();
     assert_eq!(
-        restore_bootstrap_checkpoint(&mut c, &dir_c, &published.blob_key).unwrap_err().code,
+        restore_bootstrap_checkpoint(&mut c, &dir_c, &published.blob_key)
+            .unwrap_err()
+            .code,
         CODE_SYNC_CHECKPOINT_PRECONDITION
     );
 
@@ -3094,7 +3897,12 @@ fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     let (mut d, dir_d) = conn_with_dir();
     commit_events_inner(
         &mut d,
-        &[ev("p0", 900, "preference.changed", serde_json::json!({ "key": "theme", "value": "dark" }))],
+        &[ev(
+            "p0",
+            900,
+            "preference.changed",
+            serde_json::json!({ "key": "theme", "value": "dark" }),
+        )],
     )
     .unwrap();
     put_blob_inner(&d, &dir_d, &published.blob_key, None, &bytes).unwrap();
@@ -3112,9 +3920,14 @@ fn a_bootstrap_keeps_unconfirmed_local_events_and_refuses_confirmed_history() {
     )
     .unwrap();
     assert!(report.complete && report.replayed);
-    assert_eq!(scalar::<i64>(&d, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 1_000);
+    assert_eq!(
+        scalar::<i64>(
+            &d,
+            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
+        ),
+        1_000
+    );
 }
-
 
 #[test]
 fn re_registering_identical_bytes_never_re_enqueues_an_upload() {
@@ -3122,22 +3935,40 @@ fn re_registering_identical_bytes_never_re_enqueues_an_upload() {
     // A manifest row from a peer's import (sha known, no bytes) ...
     commit_events_inner(
         &mut conn,
-        &[ev("e1", 1_000, "book.imported", serde_json::json!({
-            "bookId": "b1", "title": "沙丘", "author": "作者", "format": "epub",
-            "fileName": "b.epub", "fileSize": 5, "sourceBlobKey": "bookfile:b1",
-            "sourceSha256": format!("{:x}", Sha256::digest(b"bytes")),
-        }))],
+        &[ev(
+            "e1",
+            1_000,
+            "book.imported",
+            serde_json::json!({
+                "bookId": "b1", "title": "沙丘", "author": "作者", "format": "epub",
+                "fileName": "b.epub", "fileSize": 5, "sourceBlobKey": "bookfile:b1",
+                "sourceSha256": format!("{:x}", Sha256::digest(b"bytes")),
+            }),
+        )],
     )
     .unwrap();
-    assert!(sync_outbox_blobs_inner(&conn, 10).unwrap().is_empty(), "nothing to push without bytes");
+    assert!(
+        sync_outbox_blobs_inner(&conn, 10).unwrap().is_empty(),
+        "nothing to push without bytes"
+    );
     // ... that a local import then supplies: the relay very likely has it.
     put_blob_inner(&conn, &dir, "bookfile:b1", None, b"bytes").unwrap();
     assert!(sync_outbox_blobs_inner(&conn, 10).unwrap().is_empty());
-    assert_eq!(sync_unverified_blobs_inner(&conn, 10).unwrap().len(), 1, "HEAD decides, not a re-upload");
+    assert_eq!(
+        sync_unverified_blobs_inner(&conn, 10).unwrap().len(),
+        1,
+        "HEAD decides, not a re-upload"
+    );
     sync_resolve_blobs_inner(&mut conn, &["bookfile:b1".to_string()], &[]).unwrap();
     // A re-put of the SAME bytes on a confirmed row changes nothing.
     put_blob_inner(&conn, &dir, "bookfile:b1", None, b"bytes").unwrap();
-    assert_eq!(scalar::<String>(&conn, "SELECT push_state FROM blob_sync_state WHERE blob_key='bookfile:b1'"), "synced");
+    assert_eq!(
+        scalar::<String>(
+            &conn,
+            "SELECT push_state FROM blob_sync_state WHERE blob_key='bookfile:b1'"
+        ),
+        "synced"
+    );
     // Different bytes owe a push.
     put_blob_inner(&conn, &dir, "bookfile:b1", None, b"other").unwrap();
     assert_eq!(sync_outbox_blobs_inner(&conn, 10).unwrap().len(), 1);
@@ -3145,7 +3976,6 @@ fn re_registering_identical_bytes_never_re_enqueues_an_upload() {
     put_blob_inner(&conn, &dir, "bookfile:b2", None, b"new").unwrap();
     assert_eq!(sync_outbox_blobs_inner(&conn, 10).unwrap().len(), 2);
 }
-
 
 /// Stress: a million-event log on disk. Ignored by default — run with
 /// `RA_STRESS_EVENTS=1000000 cargo test --lib stress_ -- --ignored --nocapture`.
@@ -3155,7 +3985,10 @@ fn re_registering_identical_bytes_never_re_enqueues_an_upload() {
 #[ignore]
 fn stress_million_event_log() {
     use std::time::Instant;
-    let n: usize = std::env::var("RA_STRESS_EVENTS").ok().and_then(|v| v.parse().ok()).unwrap_or(200_000);
+    let n: usize = std::env::var("RA_STRESS_EVENTS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(200_000);
     let dir = scratch();
     let mut conn = Connection::open(dir.join("stress.db")).unwrap();
     apply_connection_pragmas(&conn).unwrap();
@@ -3165,10 +3998,18 @@ fn stress_million_event_log() {
 
     let books = 200usize;
     let mut wall = 1_000_000_000_000i64;
-    let next = |wall: &mut i64| { *wall += 1; *wall };
+    let next = |wall: &mut i64| {
+        *wall += 1;
+        *wall
+    };
     let mut batch: Vec<EventRow> = Vec::new();
     for b in 0..books {
-        batch.push(imported(&format!("imp-{b}"), next(&mut wall), &format!("b{b}"), &format!("书 {b}")));
+        batch.push(imported(
+            &format!("imp-{b}"),
+            next(&mut wall),
+            &format!("b{b}"),
+            &format!("书 {b}"),
+        ));
     }
     commit_events_inner(&mut conn, &batch).unwrap();
 
@@ -3183,11 +4024,28 @@ fn stress_million_event_log() {
             let b = i % books;
             let w = next(&mut wall);
             let ev_row = match i % 10 {
-                0..=6 => session_event(&format!("s-{i}"), w, &format!("b{b}"), 600_000, (w - 600_000, w), ((i / 7) % 24) as i64,
-                    Some(position(((i / 7) % 100) as i64, "ch.html"))),
-                7..=8 => ev(&format!("h-{i}"), w, "highlight.created", serde_json::json!({
-                    "highlightId": format!("h-{i}"), "bookId": format!("b{b}"), "text": "一句话", "cfiRange": "epubcfi(/6/2!/4/2,/1:0,/1:5)", "color": "yellow" })),
-                _ => ev(&format!("st-{i}"), w, "book.starred", serde_json::json!({ "bookId": format!("b{b}"), "starred": i.is_multiple_of(2) })),
+                0..=6 => session_event(
+                    &format!("s-{i}"),
+                    w,
+                    &format!("b{b}"),
+                    600_000,
+                    (w - 600_000, w),
+                    ((i / 7) % 24) as i64,
+                    Some(position(((i / 7) % 100) as i64, "ch.html")),
+                ),
+                7..=8 => ev(
+                    &format!("h-{i}"),
+                    w,
+                    "highlight.created",
+                    serde_json::json!({
+                    "highlightId": format!("h-{i}"), "bookId": format!("b{b}"), "text": "一句话", "cfiRange": "epubcfi(/6/2!/4/2,/1:0,/1:5)", "color": "yellow" }),
+                ),
+                _ => ev(
+                    &format!("st-{i}"),
+                    w,
+                    "book.starred",
+                    serde_json::json!({ "bookId": format!("b{b}"), "starred": i.is_multiple_of(2) }),
+                ),
             };
             batch.push(ev_row);
             i += 1;
@@ -3196,8 +4054,15 @@ fn stress_million_event_log() {
         commit_events_inner(&mut conn, &batch).unwrap();
     }
     let commit_secs = t.elapsed().as_secs_f64();
-    let db_bytes = std::fs::metadata(dir.join("stress.db")).unwrap().len() + std::fs::metadata(dir.join("stress.db-wal")).map(|m| m.len()).unwrap_or(0);
-    println!("STRESS events={n} commit={commit_secs:.1}s ({:.0}/s) db={:.0}MB", n as f64 / commit_secs, db_bytes as f64 / 1e6);
+    let db_bytes = std::fs::metadata(dir.join("stress.db")).unwrap().len()
+        + std::fs::metadata(dir.join("stress.db-wal"))
+            .map(|m| m.len())
+            .unwrap_or(0);
+    println!(
+        "STRESS events={n} commit={commit_secs:.1}s ({:.0}/s) db={:.0}MB",
+        n as f64 / commit_secs,
+        db_bytes as f64 / 1e6
+    );
 
     // Full replay from empty (verify's ground truth).
     let t = Instant::now();
@@ -3212,21 +4077,39 @@ fn stress_million_event_log() {
     // Checkpoint cut + size.
     let t = Instant::now();
     let ckpt = create_checkpoint(&mut conn, &dir, "local", None).unwrap();
-    println!("STRESS checkpoint_cut={:.2}s size={:.1}MB", t.elapsed().as_secs_f64(), ckpt.byte_size as f64 / 1e6);
+    println!(
+        "STRESS checkpoint_cut={:.2}s size={:.1}MB",
+        t.elapsed().as_secs_f64(),
+        ckpt.byte_size as f64 / 1e6
+    );
 
     // 2,000 more events, then a straggler behind the LOG frontier but after
     // the checkpoint: replay = restore + 2,000-event tail.
     batch.clear();
     for k in 0..2_000 {
         let w = next(&mut wall);
-        batch.push(ev(&format!("tail-{k}"), w, "book.starred", serde_json::json!({ "bookId": "b1", "starred": k % 2 == 0 })));
+        batch.push(ev(
+            &format!("tail-{k}"),
+            w,
+            "book.starred",
+            serde_json::json!({ "bookId": "b1", "starred": k % 2 == 0 }),
+        ));
     }
     commit_events_inner(&mut conn, &batch).unwrap();
     let straggler = edited("late", wall - 1_000, "device-z", "b2", "迟到的标题");
     let t = Instant::now();
-    let report = super::events::apply_remote_events_inner(&mut conn, &dir, &[straggler], Some(&[n as i64 + 5_000])).unwrap();
+    let report = super::events::apply_remote_events_inner(
+        &mut conn,
+        &dir,
+        &[straggler],
+        Some(&[n as i64 + 5_000]),
+    )
+    .unwrap();
     assert!(report.replayed && !report.deferred);
-    println!("STRESS straggler_replay_from_checkpoint={:.2}s (tail 2001)", t.elapsed().as_secs_f64());
+    println!(
+        "STRESS straggler_replay_from_checkpoint={:.2}s (tail 2001)",
+        t.elapsed().as_secs_f64()
+    );
 
     // An account switch: the whole log goes `unverified` (one transaction),
     // then the verify phase pages the ids out and settles them.
@@ -3237,20 +4120,44 @@ fn stress_million_event_log() {
     let mut seen = 0usize;
     loop {
         let ids = sync_unverified_events_inner(&conn, 1_000).unwrap();
-        if ids.is_empty() { break; }
+        if ids.is_empty() {
+            break;
+        }
         seen += ids.len();
-        sync_resolve_events_inner(&mut conn, &ids.iter().map(|id| (id.clone(), 1)).collect::<Vec<_>>(), &[]).unwrap();
+        sync_resolve_events_inner(
+            &mut conn,
+            &ids.iter().map(|id| (id.clone(), 1)).collect::<Vec<_>>(),
+            &[],
+        )
+        .unwrap();
     }
-    println!("STRESS verify_settle={} rows in {:.1}s", seen, t.elapsed().as_secs_f64());
+    println!(
+        "STRESS verify_settle={} rows in {:.1}s",
+        seen,
+        t.elapsed().as_secs_f64()
+    );
 
     // Incremental merge stays O(1) in the log: one event past the frontier.
     let w = next(&mut wall);
     let t = Instant::now();
-    let report = super::events::apply_remote_events_inner(&mut conn, &dir, &[ev("fresh", w, "book.starred", serde_json::json!({ "bookId": "b3", "starred": true }))], Some(&[n as i64 + 6_000])).unwrap();
+    let report = super::events::apply_remote_events_inner(
+        &mut conn,
+        &dir,
+        &[ev(
+            "fresh",
+            w,
+            "book.starred",
+            serde_json::json!({ "bookId": "b3", "starred": true }),
+        )],
+        Some(&[n as i64 + 6_000]),
+    )
+    .unwrap();
     assert!(!report.replayed);
-    println!("STRESS incremental_merge={:.1}ms", t.elapsed().as_secs_f64() * 1000.0);
+    println!(
+        "STRESS incremental_merge={:.1}ms",
+        t.elapsed().as_secs_f64() * 1000.0
+    );
 }
-
 
 #[test]
 fn annotation_fts_follows_rowids_through_replay_and_vacuum() {
@@ -3282,14 +4189,29 @@ fn annotation_fts_follows_rowids_through_replay_and_vacuum() {
     replay_into(&tx).unwrap();
     tx.commit().unwrap();
     assert_eq!(hits(&conn), 1);
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM annotations_fts"), 1);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM annotations_fts"),
+        1
+    );
     // A VACUUM followed by the rebuild keeps rowids and FTS aligned.
     conn.execute_batch("VACUUM;").unwrap();
     rebuild_annotations_fts(&conn).unwrap();
     assert_eq!(hits(&conn), 1);
     // Removal drops the FTS row by rowid.
-    commit_events_inner(&mut conn, &[ev("h1x", 1_002, "highlight.removed", serde_json::json!({ "highlightId": "h1", "bookId": "b1" }))]).unwrap();
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM annotations_fts"), 0);
+    commit_events_inner(
+        &mut conn,
+        &[ev(
+            "h1x",
+            1_002,
+            "highlight.removed",
+            serde_json::json!({ "highlightId": "h1", "bookId": "b1" }),
+        )],
+    )
+    .unwrap();
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM annotations_fts"),
+        0
+    );
 }
 
 #[test]
@@ -3309,13 +4231,24 @@ fn quota_refusals_are_listed_covers_first_and_requeue_into_the_outbox() {
     ];
     sync_mark_blobs_inner(&mut conn, &all, "rejected", Some(CODE_SYNC_QUOTA)).unwrap();
     // A size-cap refusal is about the blob, not the account: never re-queued.
-    sync_mark_blobs_inner(&mut conn, &["bookfile:b2".to_string()], "rejected", Some("sync/file-too-large"))
-        .unwrap();
-    assert!(sync_outbox_blobs_inner(&conn, 10).unwrap().is_empty(), "rejected rows leave the outbox");
+    sync_mark_blobs_inner(
+        &mut conn,
+        &["bookfile:b2".to_string()],
+        "rejected",
+        Some("sync/file-too-large"),
+    )
+    .unwrap();
+    assert!(
+        sync_outbox_blobs_inner(&conn, 10).unwrap().is_empty(),
+        "rejected rows leave the outbox"
+    );
 
     let candidates = sync_quota_rejected_blobs_inner(&conn).unwrap();
     assert_eq!(
-        candidates.iter().map(|t| t.key.as_str()).collect::<Vec<_>>(),
+        candidates
+            .iter()
+            .map(|t| t.key.as_str())
+            .collect::<Vec<_>>(),
         vec!["cover:b1", "bookfile:b1"],
         "quota refusals only, covers first"
     );
@@ -3323,34 +4256,69 @@ fn quota_refusals_are_listed_covers_first_and_requeue_into_the_outbox() {
 
     sync_mark_blobs_inner(&mut conn, &["cover:b1".to_string()], "pending", None).unwrap();
     let outbox = sync_outbox_blobs_inner(&conn, 10).unwrap();
-    assert_eq!(outbox.iter().map(|t| t.key.as_str()).collect::<Vec<_>>(), vec!["cover:b1"]);
+    assert_eq!(
+        outbox.iter().map(|t| t.key.as_str()).collect::<Vec<_>>(),
+        vec!["cover:b1"]
+    );
     assert!(
-        scalar::<Option<String>>(&conn, "SELECT last_error FROM blob_sync_state WHERE blob_key='cover:b1'").is_none(),
+        scalar::<Option<String>>(
+            &conn,
+            "SELECT last_error FROM blob_sync_state WHERE blob_key='cover:b1'"
+        )
+        .is_none(),
         "a re-queue clears the refusal"
     );
     // Still waiting for room; still listed, still out of the outbox.
     assert_eq!(sync_quota_rejected_blobs_inner(&conn).unwrap().len(), 1);
     // A manifest-only row (no local bytes) has nothing to push, whatever refused it.
-    conn.execute("UPDATE blob_objects SET storage_uri = NULL WHERE key = 'bookfile:b1'", []).unwrap();
+    conn.execute(
+        "UPDATE blob_objects SET storage_uri = NULL WHERE key = 'bookfile:b1'",
+        [],
+    )
+    .unwrap();
     assert!(sync_quota_rejected_blobs_inner(&conn).unwrap().is_empty());
 }
-
 
 #[test]
 fn projection_repair_commits_drift_correction_and_rolls_back_failed_replay() {
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("repair-e1", 1000, "b1", "source title")]).unwrap();
-    conn.execute("UPDATE books SET title='projection drift' WHERE id='b1'", []).unwrap();
+    commit_events_inner(
+        &mut conn,
+        &[imported("repair-e1", 1000, "b1", "source title")],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE books SET title='projection drift' WHERE id='b1'",
+        [],
+    )
+    .unwrap();
     let repaired = events::rebuild_projections_inner(&mut conn).unwrap();
     assert_eq!(repaired.events_replayed, 1);
-    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "source title");
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
-    conn.execute("UPDATE books SET title='kept on failure' WHERE id='b1'", []).unwrap();
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"),
+        "source title"
+    );
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        1
+    );
+    conn.execute("UPDATE books SET title='kept on failure' WHERE id='b1'", [])
+        .unwrap();
     // A damaged history record makes replay fail after clearing derived tables.
-    conn.execute("UPDATE domain_events SET payload_json='{}' WHERE id='repair-e1'", []).unwrap();
+    conn.execute(
+        "UPDATE domain_events SET payload_json='{}' WHERE id='repair-e1'",
+        [],
+    )
+    .unwrap();
     assert!(events::rebuild_projections_inner(&mut conn).is_err());
-    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "kept on failure");
-    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
+    assert_eq!(
+        scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"),
+        "kept on failure"
+    );
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"),
+        1
+    );
 }
 
 #[test]
@@ -3362,9 +4330,15 @@ fn chat_image_references_survive_event_projection_without_pixels() {
         "attachments": [ { "attachmentId": "a", "kind": "image", "cacheKey": key, "name": "diagram.png" },
             { "attachmentId": "b", "kind": "selection", "text": "Passage", "anchor": "cfi", "chapterHref": "chapter.xhtml" } ]
     }))]).unwrap();
-    let raw = scalar::<String>(&conn, "SELECT attachments_json FROM ai_messages WHERE id='image-message'");
+    let raw = scalar::<String>(
+        &conn,
+        "SELECT attachments_json FROM ai_messages WHERE id='image-message'",
+    );
     let attachments: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(attachments[0], serde_json::json!({ "kind": "image", "cacheKey": key, "name": "diagram.png" }));
+    assert_eq!(
+        attachments[0],
+        serde_json::json!({ "kind": "image", "cacheKey": key, "name": "diagram.png" })
+    );
     assert_eq!(attachments[1]["cfiRange"], "cfi");
     assert_eq!(attachments[1]["kind"], "selection");
     assert!(!raw.contains("base64"));

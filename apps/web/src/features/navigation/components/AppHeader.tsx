@@ -1,33 +1,16 @@
 import { type ReactNode } from "react";
 import { useAtom } from "jotai";
-import {
-  CaretLeft,
-  ChartLineUp,
-  GearSix,
-  MagnifyingGlass,
-  Plus,
-} from "@phosphor-icons/react";
+import { CaretLeft, ChartLineUp, GearSix, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { IconButton, Tooltip } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { usePhoneViewport } from "@read-aware/ui/media";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "../../../i18n";
-import {
-  desktopChromeKind,
-  type DesktopChromeKind,
-} from "../../../platform/environment";
+import { desktopChromeKind, type DesktopChromeKind } from "../../../platform/environment";
 import { activeCollectionAtom, type TopNav } from "../../../state/ui";
-import {
-  MenuOverflow,
-  type MenuOverflowEntry,
-} from "../../menus/components/MenuOverflow";
+import { MenuOverflow, type MenuOverflowEntry } from "../../menus/components/MenuOverflow";
 import { coreMenuMeta } from "../../menus/lib/menu-registry";
-import {
-  CORE_MENU_DEFAULTS,
-  menuConfigAtom,
-  pluginMenuId,
-  resolveSurfaceLayout,
-} from "../../menus/state/menu-config";
+import { CORE_MENU_DEFAULTS, menuConfigAtom, pluginMenuId, resolveSurfaceLayout } from "../../menus/state/menu-config";
 import { PluginHeaderItem } from "../../plugins/components/PluginHeaderCluster";
 import { openHeaderActionDialog } from "../../plugins/lib/open-header-action";
 import { renderPluginIcon } from "../../plugins/lib/plugin-icons";
@@ -95,11 +78,8 @@ export function AppHeader({
   const customChrome = chrome === "custom";
   const statsActive = activeTopNav === "stats";
   const primaryDestinations = usePrimaryDestinations();
-  const primaryTopNavs = primaryDestinations.map(
-    (destination) => destination.topNav,
-  );
-  const [activeCollectionId, setActiveCollectionId] =
-    useAtom(activeCollectionAtom);
+  const primaryTopNavs = primaryDestinations.map((destination) => destination.topNav);
+  const [activeCollectionId, setActiveCollectionId] = useAtom(activeCollectionAtom);
   // Plugin buttons live on the shelf header only (docs/plugins/plugin-system.md §5).
   const onShelf = activeTopNav === "shelf";
   const shelfPluginActions = useAtomValue(headerActionsAtom).filter(
@@ -111,15 +91,9 @@ export function AppHeader({
   const { t: tMenus } = useTranslation("settings");
   const menuConfig = useAtomValue(menuConfigAtom);
   const knownShelfIds = onShelf
-    ? [
-        ...CORE_MENU_DEFAULTS.shelfHeader,
-        ...shelfPluginActions.map((a) => pluginMenuId(a.key)),
-      ]
+    ? [...CORE_MENU_DEFAULTS.shelfHeader, ...shelfPluginActions.map((a) => pluginMenuId(a.key))]
     : CORE_MENU_DEFAULTS.shelfHeader;
-  const shelfLayout = resolveSurfaceLayout(
-    menuConfig.shelfHeader,
-    knownShelfIds,
-  );
+  const shelfLayout = resolveSurfaceLayout(menuConfig.shelfHeader, knownShelfIds);
 
   // The primary navigation is canonical: it never yields width. When the
   // window narrows, cluster ICONS collapse into the dots menu instead — the
@@ -132,19 +106,14 @@ export function AppHeader({
   // (Agent ships three) visibly squeezes it. Everything else stays reachable
   // from the dots menu.
   const phoneActionCap = Math.min(actionCount, 1);
-  const { containerRef, fixedLeftRef, navBoxRef, rightSpacerRef, capacity } =
-    useHeaderClusterCapacity(
-      isPhone ? 1 + phoneActionCap : actions ? actionCount : shelfLayout.visible.length,
-    );
+  const { containerRef, fixedLeftRef, navBoxRef, rightSpacerRef, capacity } = useHeaderClusterCapacity(
+    isPhone ? 1 + phoneActionCap : actions ? actionCount : shelfLayout.visible.length,
+  );
   // Contextual actions collapse from the tail; on phones the search icon
   // folds FIRST (it stays reachable from the dots menu either way).
-  const inlineActionCap = isPhone
-    ? Math.min(phoneActionCap, capacity)
-    : Math.min(actionCount, capacity);
+  const inlineActionCap = isPhone ? Math.min(phoneActionCap, capacity) : Math.min(actionCount, capacity);
   const inlineActionEntries = actions?.slice(0, inlineActionCap) ?? [];
-  const collapsedActionEntries = (actions?.slice(inlineActionCap) ?? []).map(
-    (entry) => entry.overflow,
-  );
+  const collapsedActionEntries = (actions?.slice(inlineActionCap) ?? []).map((entry) => entry.overflow);
   const showSearchInline = capacity >= inlineActionCap + 1;
 
   const coreShelfNodes: Record<string, ReactNode | null> = {
@@ -155,17 +124,12 @@ export function AppHeader({
           size="sm"
           onClick={onOpenSearch}
           className={headerIconButtonClass}
-          icon={
-            <MagnifyingGlass size={16} weight="regular" aria-hidden="true" />
-          }
+          icon={<MagnifyingGlass size={16} weight="regular" aria-hidden="true" />}
         />
       </Tooltip>
     ),
     "core:import": (
-      <Tooltip
-        content={isImporting ? t("header.importing") : t("header.import")}
-        side="bottom"
-      >
+      <Tooltip content={isImporting ? t("header.importing") : t("header.import")} side="bottom">
         <IconButton
           label={t("header.import")}
           size="sm"
@@ -188,13 +152,7 @@ export function AppHeader({
             "relative before:absolute before:-inset-1 before:content-['']",
             statsActive ? "text-fg" : "text-fg-muted hover:text-fg",
           )}
-          icon={
-            <ChartLineUp
-              size={16}
-              weight={statsActive ? "fill" : "regular"}
-              aria-hidden="true"
-            />
-          }
+          icon={<ChartLineUp size={16} weight={statsActive ? "fill" : "regular"} aria-hidden="true" />}
         />
       </Tooltip>
     ),
@@ -221,9 +179,7 @@ export function AppHeader({
    *  AND for visible items the window is currently too narrow to show. */
   const overflowEntryForId = (id: string): MenuOverflowEntry | null => {
     if (id.startsWith("plugin:")) {
-      const action = shelfPluginActions.find(
-        (entry) => pluginMenuId(entry.key) === id,
-      );
+      const action = shelfPluginActions.find((entry) => pluginMenuId(entry.key) === id);
       if (!action) return null;
       return {
         id,
@@ -232,8 +188,7 @@ export function AppHeader({
         checked: action.state?.checked,
         icon: renderPluginIcon(action.icon, 16),
         run: () => {
-          if (action.presentation === "page")
-            onTopNavChange(`plugin:${action.key}`);
+          if (action.presentation === "page") onTopNavChange(`plugin:${action.key}`);
           else void openHeaderActionDialog(action, {});
         },
       };
@@ -266,14 +221,8 @@ export function AppHeader({
   const inCollection = activeTopNav === "shelf" && activeCollectionId !== null;
   const showBack =
     inCollection ||
-    (activeTopNav !== "shelf" &&
-      !(
-        primaryTopNavs.includes(activeTopNav) &&
-        primaryTopNavs.includes("shelf")
-      ));
-  const backLabel = inCollection
-    ? t("header.back.allBooks")
-    : t("header.back.toShelf");
+    (activeTopNav !== "shelf" && !(primaryTopNavs.includes(activeTopNav) && primaryTopNavs.includes("shelf")));
+  const backLabel = inCollection ? t("header.back.allBooks") : t("header.back.toShelf");
   const handleBack = () => {
     if (inCollection) setActiveCollectionId(null);
     else onTopNavChange("shelf");
@@ -337,13 +286,7 @@ export function AppHeader({
                 size="sm"
                 onClick={onOpenSearch}
                 className={cn(headerIconButtonClass, "shrink-0")}
-                icon={
-                  <MagnifyingGlass
-                    size={18}
-                    weight="regular"
-                    aria-hidden="true"
-                  />
-                }
+                icon={<MagnifyingGlass size={18} weight="regular" aria-hidden="true" />}
               />
             )}
             {inlineActionEntries.map((entry) => (
@@ -358,13 +301,7 @@ export function AppHeader({
                       {
                         id: "core:search",
                         label: t("header.search"),
-                        icon: (
-                          <MagnifyingGlass
-                            size={16}
-                            weight="regular"
-                            aria-hidden="true"
-                          />
-                        ),
+                        icon: <MagnifyingGlass size={16} weight="regular" aria-hidden="true" />,
                         run: onOpenSearch,
                       },
                     ]
@@ -372,9 +309,7 @@ export function AppHeader({
                 ...collapsedActionEntries,
                 {
                   id: "core:import",
-                  label: isImporting
-                    ? t("header.importing")
-                    : t("header.import"),
+                  label: isImporting ? t("header.importing") : t("header.import"),
                   icon: <Plus size={16} weight="regular" aria-hidden="true" />,
                   run: onImport,
                   disabled: isImporting,
@@ -382,21 +317,13 @@ export function AppHeader({
                 {
                   id: "core:stats",
                   label: t("header.stats"),
-                  icon: (
-                    <ChartLineUp
-                      size={16}
-                      weight={statsActive ? "fill" : "regular"}
-                      aria-hidden="true"
-                    />
-                  ),
+                  icon: <ChartLineUp size={16} weight={statsActive ? "fill" : "regular"} aria-hidden="true" />,
                   run: () => onTopNavChange("stats"),
                 },
                 {
                   id: "core:settings",
                   label: t("header.settings"),
-                  icon: (
-                    <GearSix size={16} weight="regular" aria-hidden="true" />
-                  ),
+                  icon: <GearSix size={16} weight="regular" aria-hidden="true" />,
                   run: onOpenSettings,
                 },
                 // Plugin actions collapse into the phone overflow menu; popups
@@ -426,8 +353,7 @@ export function AppHeader({
               // A narrow desktop window uses this layout too — keep clear of
               // display cutouts and self-drawn caption controls.
               style={{
-                width:
-                  "calc(max(0px, calc(var(--ra-safe-right) - 0.75rem)) + var(--ra-window-controls-inset))",
+                width: "calc(max(0px, calc(var(--ra-safe-right) - 0.75rem)) + var(--ra-window-controls-inset))",
               }}
             />
           </div>
@@ -440,10 +366,7 @@ export function AppHeader({
   // Visible items past the current capacity collapse into the dots menu,
   // ahead of the items the user parked there deliberately.
   const inlineShelfIds = shelfLayout.visible.slice(0, capacity);
-  const shelfOverflowEntries = [
-    ...shelfLayout.visible.slice(capacity),
-    ...shelfLayout.overflow,
-  ]
+  const shelfOverflowEntries = [...shelfLayout.visible.slice(capacity), ...shelfLayout.overflow]
     .map(overflowEntryForId)
     .filter((entry): entry is MenuOverflowEntry => entry !== null);
 
@@ -465,15 +388,9 @@ export function AppHeader({
         <>
           {inlineShelfIds.map((id) => {
             if (id.startsWith("plugin:")) {
-              const action = shelfPluginActions.find(
-                (entry) => pluginMenuId(entry.key) === id,
-              );
+              const action = shelfPluginActions.find((entry) => pluginMenuId(entry.key) === id);
               return action ? (
-                <PluginHeaderItem
-                  key={id}
-                  action={action}
-                  onOpenPage={(key) => onTopNavChange(`plugin:${key}`)}
-                />
+                <PluginHeaderItem key={id} action={action} onOpenPage={(key) => onTopNavChange(`plugin:${key}`)} />
               ) : null;
             }
             const node = coreShelfNodes[id];
@@ -514,10 +431,7 @@ export function AppHeader({
               className="shrink-0"
               style={{
                 // Clear the macOS traffic lights whenever left content renders.
-                width:
-                  showBack || leadingStatus
-                    ? "max(0px, calc(var(--ra-traffic-light-inset) - 1.25rem))"
-                    : 0,
+                width: showBack || leadingStatus ? "max(0px, calc(var(--ra-traffic-light-inset) - 1.25rem))" : 0,
               }}
             />
             {showBack && (
@@ -549,10 +463,7 @@ export function AppHeader({
             />
           )}
         </div>
-        <div
-          data-tauri-drag-region=""
-          className="flex items-center justify-end"
-        >
+        <div data-tauri-drag-region="" className="flex items-center justify-end">
           {!customChrome && headerCluster}
           <div
             ref={rightSpacerRef}

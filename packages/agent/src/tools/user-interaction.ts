@@ -1,12 +1,5 @@
-import type {
-  AgentToolResult,
-  AgentToolUpdateCallback,
-} from "@earendil-works/pi-agent-core";
-import type {
-  RuntimeDeps,
-  UserInteractionAnswer,
-  UserInteractionRequest,
-} from "../ports";
+import type { AgentToolResult, AgentToolUpdateCallback } from "@earendil-works/pi-agent-core";
+import type { RuntimeDeps, UserInteractionAnswer, UserInteractionRequest } from "../ports";
 
 export const INTERACTIVE_TOOL_NAMES = [
   "ask_user",
@@ -38,21 +31,15 @@ export type UserInteractionToolDetails =
       answer: UserInteractionAnswer;
     };
 
-type WithoutInteractionIdentity<T> = T extends unknown
-  ? Omit<T, "id" | "threadKey">
-  : never;
+type WithoutInteractionIdentity<T> = T extends unknown ? Omit<T, "id" | "threadKey"> : never;
 
 type UserInteractionRequestInput = WithoutInteractionIdentity<UserInteractionRequest>;
 
-function partialResult(
-  details: UserInteractionToolDetails,
-): AgentToolResult<UserInteractionToolDetails> {
+function partialResult(details: UserInteractionToolDetails): AgentToolResult<UserInteractionToolDetails> {
   return { content: [], details };
 }
 
-export function interactionFromToolDetails(
-  value: unknown,
-): UserInteractionToolDetails | undefined {
+export function interactionFromToolDetails(value: unknown): UserInteractionToolDetails | undefined {
   if (!value || typeof value !== "object") return undefined;
   const details = value as Partial<UserInteractionToolDetails>;
   if (details.type !== "user-interaction") return undefined;
@@ -88,9 +75,7 @@ export async function requestUserInteraction(input: {
     threadKey: input.threadKey,
   } as UserInteractionRequest;
   const answerPromise = input.deps.interactions.request(request, input.signal);
-  input.onUpdate?.(
-    partialResult({ type: "user-interaction", phase: "request", request }),
-  );
+  input.onUpdate?.(partialResult({ type: "user-interaction", phase: "request", request }));
   const answer = await answerPromise;
   const details = {
     type: "user-interaction" as const,

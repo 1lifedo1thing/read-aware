@@ -20,27 +20,37 @@ export function useReaderModeSelection(bookId: string, mode?: ReadingModeSnapsho
     };
   }, [bookId]);
   // Only these two fields feed a selection; a new snapshot object alone must not.
-  const requestedActive = mode?.requestedActive, modeKey = mode?.modeKey;
-  const select = useCallback(async (selectModeKey: string) => {
-    if (requestedActive === undefined || pending.current) return false;
-    const controller = new AbortController();
-    pending.current = controller;
-    setBusy(true);
-    try {
-      const sessionId = readingRuntime.snapshot().sessionId ?? undefined;
-      await readingRuntime.configureMode({ active: requestedActive, modeKey: modeKey ?? undefined, selectModeKey },
-        controller.signal, { bookId, sessionId });
-      return true;
-    } catch (error) {
-      if (!controller.signal.aborted) {
-        log.warn("Mode provider selection failed", error);
-        const message = describeError(error);
-        toast({ variant: "destructive", description: message.body });
+  const requestedActive = mode?.requestedActive,
+    modeKey = mode?.modeKey;
+  const select = useCallback(
+    async (selectModeKey: string) => {
+      if (requestedActive === undefined || pending.current) return false;
+      const controller = new AbortController();
+      pending.current = controller;
+      setBusy(true);
+      try {
+        const sessionId = readingRuntime.snapshot().sessionId ?? undefined;
+        await readingRuntime.configureMode(
+          { active: requestedActive, modeKey: modeKey ?? undefined, selectModeKey },
+          controller.signal,
+          { bookId, sessionId },
+        );
+        return true;
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          log.warn("Mode provider selection failed", error);
+          const message = describeError(error);
+          toast({ variant: "destructive", description: message.body });
+        }
+        return false;
+      } finally {
+        if (pending.current === controller) {
+          pending.current = null;
+          setBusy(false);
+        }
       }
-      return false;
-    } finally {
-      if (pending.current === controller) { pending.current = null; setBusy(false); }
-    }
-  }, [bookId, modeKey, requestedActive, toast]);
+    },
+    [bookId, modeKey, requestedActive, toast],
+  );
   return { select, busy };
 }

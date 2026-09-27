@@ -28,38 +28,19 @@ export function Card<T extends ElementType = "div">({
   ...props
 }: CardProps<T>) {
   const Tag = (as || "div") as ElementType;
-  return (
-    <Tag
-      className={cn(variantClasses[variant], paddingClasses[padding], className)}
-      {...props}
-    />
-  );
+  return <Tag className={cn(variantClasses[variant], paddingClasses[padding], className)} {...props} />;
 }
 
-function CardHeader({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("mb-4", className)} {...props} />;
 }
 
-function CardBody({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+function CardBody({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={cn("text-sm leading-relaxed text-fg-muted", className)} {...props} />;
 }
 
-function CardFooter({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("mt-4 flex items-center gap-3 border-t border-border pt-4", className)}
-      {...props}
-    />
-  );
+function CardFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("mt-4 flex items-center gap-3 border-t border-border pt-4", className)} {...props} />;
 }
 
 Card.Header = CardHeader;

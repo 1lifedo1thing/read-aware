@@ -10,8 +10,13 @@ type Receipt = {
 
 function samePosition(a: ReadingModePosition | null, b: ReadingModePosition | null): boolean {
   if (!a || !b) return a === b;
-  return a.modeKey === b.modeKey && a.unitId === b.unitId && a.location.bookId === b.location.bookId
-    && a.location.contentVersion === b.location.contentVersion && a.location.cfi === b.location.cfi;
+  return (
+    a.modeKey === b.modeKey &&
+    a.unitId === b.unitId &&
+    a.location.bookId === b.location.bookId &&
+    a.location.contentVersion === b.location.contentVersion &&
+    a.location.cfi === b.location.cfi
+  );
 }
 
 /** Position failures belong to the landed unit, not every later operation in the mode. */
@@ -44,17 +49,27 @@ export class ReadingModePositionWrites {
     this.latest = receipt;
     this.writes.start(receipt.id);
     this.writes.track(receipt.id, done);
-    void done.catch(() => { receipt.failed = true; }); // Retain failure for the next explicit retry.
+    void done.catch(() => {
+      receipt.failed = true;
+    }); // Retain failure for the next explicit retry.
   }
 
-  retryable(): number | undefined { return this.latest?.failed ? this.latest.id : undefined; }
+  retryable(): number | undefined {
+    return this.latest?.failed ? this.latest.id : undefined;
+  }
 
-  async wait(revision: number, position: ReadingModePosition | null, signal: AbortSignal, retry?: number): Promise<void> {
+  async wait(
+    revision: number,
+    position: ReadingModePosition | null,
+    signal: AbortSignal,
+    retry?: number,
+  ): Promise<void> {
     // Let the commit's remaining React effects register their exact position.
     await Promise.resolve();
     const check = () => {
       if (signal.aborted) throw signal.reason;
-      if (this.retired || revision !== this.revision) throw new AppError("reader/superseded", "Reading mode changed during position persistence");
+      if (this.retired || revision !== this.revision)
+        throw new AppError("reader/superseded", "Reading mode changed during position persistence");
       if (!this.latest) {
         if (position) throw new AppError("reader/unavailable", "Reading position has no persistence receipt");
       } else if (!samePosition(position, this.latest.position)) {
@@ -69,14 +84,18 @@ export class ReadingModePositionWrites {
       check();
       const receipt = this.latest;
       if (!receipt) return;
-      try { await this.writes.wait(receipt.id, signal); }
-      catch (error) {
+      try {
+        await this.writes.wait(receipt.id, signal);
+      } catch (error) {
         if (this.latest === receipt) throw error;
         // Equivalent re-saves share a target but still require the newest receipt.
         check();
         continue;
       }
-      if (this.latest === receipt) { check(); return; }
+      if (this.latest === receipt) {
+        check();
+        return;
+      }
     }
   }
 }

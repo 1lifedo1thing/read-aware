@@ -14,20 +14,33 @@ async function withPagination(
 ) {
   const dom = new JSDOM("<div id='root'></div>", { pretendToBeVisual: true });
   const values = { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true };
-  const globals = new Map(Object.keys(values).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
-  for (const [key, value] of Object.entries(values)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+  const globals = new Map(Object.keys(values).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(values))
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
   const root = createRoot(dom.window.document.getElementById("root")!);
   const viewRef: { current: FoliateView | null } = { current: view };
   let state!: Pagination;
-  const options = { viewRef, readingModeRef: { current: "scroll" as const },
-    shellVisibleRef: { current: false }, onContentScrollRef: { current: undefined },
-    clearSelection: () => {}, onAdvancePastEnd: () => {} };
-  function Harness() { state = useReaderPagination(options); return null; }
+  const options = {
+    viewRef,
+    readingModeRef: { current: "scroll" as const },
+    shellVisibleRef: { current: false },
+    onContentScrollRef: { current: undefined },
+    clearSelection: () => {},
+    onAdvancePastEnd: () => {},
+  };
+  function Harness() {
+    state = useReaderPagination(options);
+    return null;
+  }
   try {
-    await act(async () => { root.render(<Harness />); });
+    await act(async () => {
+      root.render(<Harness />);
+    });
     await body({ state: () => state, viewRef });
   } finally {
-    await act(async () => { root.unmount(); });
+    await act(async () => {
+      root.unmount();
+    });
     dom.window.close();
     for (const [key, value] of globals) {
       if (value) Object.defineProperty(globalThis, key, value);
@@ -39,16 +52,35 @@ async function withPagination(
 /** A navigation that settles only when the test says so. */
 function deferred() {
   let resolve!: () => void;
-  const promise = new Promise<void>(done => { resolve = done; });
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
   return { promise, resolve };
 }
 
 test("chapter crossing suspends native scrolling before fading and resumes after success or failure", async () => {
-  let suspended = false, pauses = 0, resumes = 0, stepped = 0;
-  const view = { renderer: { suspendScroll: () => {
-    suspended = true; pauses++;
-    return () => { suspended = false; resumes++; };
-  } }, next: async () => { stepped++; }, prev: async () => { stepped++; } } as unknown as FoliateView;
+  let suspended = false,
+    pauses = 0,
+    resumes = 0,
+    stepped = 0;
+  const view = {
+    renderer: {
+      suspendScroll: () => {
+        suspended = true;
+        pauses++;
+        return () => {
+          suspended = false;
+          resumes++;
+        };
+      },
+    },
+    next: async () => {
+      stepped++;
+    },
+    prev: async () => {
+      stepped++;
+    },
+  } as unknown as FoliateView;
   await withPagination(view, async ({ state }) => {
     for (const fail of [false, true]) {
       await act(async () => {
@@ -72,11 +104,19 @@ test("chapter crossing suspends native scrolling before fading and resumes after
 
 test("a jump requested mid-crossing lands after it, latest wins, still behind the fade", async () => {
   const landed: string[] = [];
-  let pauses = 0, suspended = false;
-  const view = { renderer: { suspendScroll: () => {
-    pauses++; suspended = true;
-    return () => { suspended = false; };
-  } } } as unknown as FoliateView;
+  let pauses = 0,
+    suspended = false;
+  const view = {
+    renderer: {
+      suspendScroll: () => {
+        pauses++;
+        suspended = true;
+        return () => {
+          suspended = false;
+        };
+      },
+    },
+  } as unknown as FoliateView;
   await withPagination(view, async ({ state }) => {
     const first = deferred();
     // The fade's scroll suspension spans the whole hidden phase, so a jump
@@ -84,21 +124,38 @@ test("a jump requested mid-crossing lands after it, latest wins, still behind th
     const observed: { hidden: boolean | null } = { hidden: null };
     let settled: Promise<void>[] = [];
     await act(async () => {
-      settled.push(state().crossTo(async () => { landed.push("first"); await first.promise; }));
+      settled.push(
+        state().crossTo(async () => {
+          landed.push("first");
+          await first.promise;
+        }),
+      );
       // The fade has not even finished; the first jump has not started yet.
-      settled.push(state().crossTo(() => { landed.push("superseded"); }));
-      settled.push(state().crossTo(() => {
-        landed.push("latest");
-        observed.hidden = suspended;
-      }));
+      settled.push(
+        state().crossTo(() => {
+          landed.push("superseded");
+        }),
+      );
+      settled.push(
+        state().crossTo(() => {
+          landed.push("latest");
+          observed.hidden = suspended;
+        }),
+      );
       // Let the fade elapse so the first navigation is in flight, then queue more.
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
       expect(landed).toEqual(["first"]);
-      settled.push(state().crossTo(() => { landed.push("also superseded"); }));
-      settled.push(state().crossTo(() => {
-        landed.push("newest");
-        observed.hidden = suspended;
-      }));
+      settled.push(
+        state().crossTo(() => {
+          landed.push("also superseded");
+        }),
+      );
+      settled.push(
+        state().crossTo(() => {
+          landed.push("newest");
+          observed.hidden = suspended;
+        }),
+      );
       first.resolve();
       await Promise.all(settled);
     });
@@ -115,11 +172,15 @@ test("a jump requested mid-crossing lands after it, latest wins, still behind th
     settled = [];
     await act(async () => {
       const early = state().crossTo(() => second.promise);
-      void early.then(() => { firstCallerDone = true; });
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const later = state().crossTo(() => { landed.push("after second"); });
+      void early.then(() => {
+        firstCallerDone = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const later = state().crossTo(() => {
+        landed.push("after second");
+      });
       second.resolve();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(firstCallerDone).toBe(false);
       await Promise.all([early, later]);
     });
@@ -131,14 +192,25 @@ test("a jump requested mid-crossing lands after it, latest wins, still behind th
 test("a jump requested during the settle runs as its own crossing", async () => {
   const landed: string[] = [];
   let pauses = 0;
-  const view = { renderer: { suspendScroll: () => { pauses++; return () => {}; } } } as unknown as FoliateView;
+  const view = {
+    renderer: {
+      suspendScroll: () => {
+        pauses++;
+        return () => {};
+      },
+    },
+  } as unknown as FoliateView;
   await withPagination(view, async ({ state }) => {
     await act(async () => {
-      const first = state().crossTo(() => { landed.push("first"); });
+      const first = state().crossTo(() => {
+        landed.push("first");
+      });
       // Past the fade (140ms) and into the settle (120ms more).
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
       expect(landed).toEqual(["first"]);
-      const late = state().crossTo(() => { landed.push("late"); });
+      const late = state().crossTo(() => {
+        landed.push("late");
+      });
       await Promise.all([first, late]);
     });
     expect(landed).toEqual(["first", "late"]);
@@ -155,13 +227,20 @@ test("a jump queued for a replaced engine is discarded; the new engine's jumps s
   await withPagination(oldView, async ({ state, viewRef }) => {
     await act(async () => {
       const running = deferred();
-      const first = state().crossTo(async () => { landed.push("old"); await running.promise; });
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const stale = state().crossTo(() => { landed.push("stale"); });
+      const first = state().crossTo(async () => {
+        landed.push("old");
+        await running.promise;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const stale = state().crossTo(() => {
+        landed.push("stale");
+      });
       // The book is replaced while the old crossing is still navigating.
       viewRef.current = newView;
       state().resetCrossing();
-      const fresh = state().crossTo(() => { landed.push("new"); });
+      const fresh = state().crossTo(() => {
+        landed.push("new");
+      });
       running.resolve();
       await Promise.all([first, stale, fresh]);
     });

@@ -4,22 +4,35 @@ import { buildBookTextTaskTools } from "./book-text-task-tools";
 import type { ThreadScope } from "../thread-scope";
 
 test("both Agent scopes prepare, inspect and cancel the exact task/book without claiming synchronous work", async () => {
-  for (const scope of [{ kind: "book", bookId: "book" }, { kind: "global", threadId: "global" }] satisfies ThreadScope[]) {
+  for (const scope of [
+    { kind: "book", bookId: "book" },
+    { kind: "global", threadId: "global" },
+  ] satisfies ThreadScope[]) {
     const { deps } = createInMemoryDeps({ chapters: { book: [{ text: "Fixture text" }] } });
     const tools = buildBookTextTaskTools(scope, deps);
     const call = async (name: string, input: Record<string, unknown>) => {
-      const result = await tools.find(t => t.name === name)!.execute("test", input);
-      const content = result.content[0]; if (content?.type !== "text") throw Error("Expected text"); return JSON.parse(content.text);
+      const result = await tools.find((t) => t.name === name)!.execute("test", input);
+      const content = result.content[0];
+      if (content?.type !== "text") throw Error("Expected text");
+      return JSON.parse(content.text);
     };
     const bookId = scope.kind === "book" ? "current" : "book";
     const task = await call("prepare_book_text", { bookId, rebuild: true, timeoutMs: 60000 });
     expect(task.timeLimit).toBe("60s");
     expect(task).not.toHaveProperty("timeoutMs");
-    expect(task.bookId).toBe("book"); expect(task.mode).toBe("rebuild");
+    expect(task.bookId).toBe("book");
+    expect(task.mode).toBe("rebuild");
     expect(await call("get_book_text_tasks", { bookId, taskId: task.taskId })).toEqual(task);
-    expect(await call("get_book_text_tasks", { bookId })).toEqual({ tasks: [task], total: 1, offset: 0, nextOffset: null });
+    expect(await call("get_book_text_tasks", { bookId })).toEqual({
+      tasks: [task],
+      total: 1,
+      offset: 0,
+      nextOffset: null,
+    });
     expect(await call("cancel_book_text_task", { bookId, taskId: task.taskId })).toEqual(task);
-    await expect(call("cancel_book_text_task", { bookId: "other", taskId: task.taskId })).rejects.toMatchObject({ code: "library/text-task-not-found" });
+    await expect(call("cancel_book_text_task", { bookId: "other", taskId: task.taskId })).rejects.toMatchObject({
+      code: "library/text-task-not-found",
+    });
     if (scope.kind === "global") await expect(call("prepare_book_text", {})).rejects.toThrow("bookId is required");
   }
 });
@@ -28,25 +41,29 @@ test("task lists are bounded, newest first and page through retained history", a
   const { deps } = createInMemoryDeps({ chapters: { book: [{ text: "Fixture" }] } });
   const created = [];
   for (let i = 0; i < 64; i++) created.push(await deps.bookText.preparation!.start("book"));
-  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(t => t.name === "get_book_text_tasks")!;
+  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(
+    (t) => t.name === "get_book_text_tasks",
+  )!;
   const ids: string[] = [];
   for (let offset = 0; offset < 64; offset += 20) {
     const result = await tool.execute("test", { offset, limit: 20 });
-    const content = result.content[0]; if (content?.type !== "text") throw Error("Expected text");
+    const content = result.content[0];
+    if (content?.type !== "text") throw Error("Expected text");
     expect(content.text.length).toBeLessThanOrEqual(16_000);
     const page = JSON.parse(content.text);
     expect(page.tasks.length).toBeLessThanOrEqual(20);
     expect(page.nextOffset).toBe(offset + 20 < 64 ? offset + 20 : null);
     ids.push(...page.tasks.map((task: { taskId: string }) => task.taskId));
   }
-  expect(ids).toEqual(created.reverse().map(task => task.taskId));
+  expect(ids).toEqual(created.reverse().map((task) => task.taskId));
   for (const input of [{ limit: 21 }, { limit: 0 }, { offset: -1 }, { offset: 1.5 }]) {
     await expect(tool.execute("test", input)).rejects.toMatchObject({ code: "library/invalid-input" });
   }
 });
 
 test("alternate hosts lacking task preparation do not advertise a fake tool", () => {
-  const { deps } = createInMemoryDeps(); delete deps.bookText.preparation;
+  const { deps } = createInMemoryDeps();
+  delete deps.bookText.preparation;
   expect(buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps)).toEqual([]);
 });
 
@@ -54,40 +71,69 @@ test("pause and resume tools preserve the resolved book, exact handle and host f
   const { deps } = createInMemoryDeps({ chapters: { book: [{ text: "Fixture" }] } });
   const task = await deps.bookText.preparation!.start("book");
   const calls: unknown[] = [];
-  deps.bookText.preparation!.pause = async (bookId, taskId) => { calls.push(["pause", bookId, taskId]); return { ...task, status: "paused" }; };
-  deps.bookText.preparation!.resume = async (bookId, taskId) => { calls.push(["resume", bookId, taskId]); return { ...task, status: "running" }; };
+  deps.bookText.preparation!.pause = async (bookId, taskId) => {
+    calls.push(["pause", bookId, taskId]);
+    return { ...task, status: "paused" };
+  };
+  deps.bookText.preparation!.resume = async (bookId, taskId) => {
+    calls.push(["resume", bookId, taskId]);
+    return { ...task, status: "running" };
+  };
   const tools = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps);
   for (const action of ["pause", "resume"] as const) {
-    const tool = tools.find(t => t.name === `${action}_book_text_task`)!;
+    const tool = tools.find((t) => t.name === `${action}_book_text_task`)!;
     const result = await tool.execute("test", { bookId: "current", taskId: task.taskId });
-    const value = result.content[0]; if (value?.type !== "text") throw Error("Expected text");
+    const value = result.content[0];
+    if (value?.type !== "text") throw Error("Expected text");
     expect(JSON.parse(value.text).status).toBe(action === "pause" ? "paused" : "running");
   }
-  expect(calls).toEqual([["pause", "book", task.taskId], ["resume", "book", task.taskId]]);
-  deps.bookText.preparation!.resume = async () => { throw Error("Retired owner"); };
-  await expect(tools.find(t => t.name === "resume_book_text_task")!.execute("test", { taskId: task.taskId })).rejects.toThrow("Retired owner");
+  expect(calls).toEqual([
+    ["pause", "book", task.taskId],
+    ["resume", "book", task.taskId],
+  ]);
+  deps.bookText.preparation!.resume = async () => {
+    throw Error("Retired owner");
+  };
+  await expect(
+    tools.find((t) => t.name === "resume_book_text_task")!.execute("test", { taskId: task.taskId }),
+  ).rejects.toThrow("Retired owner");
 });
-
 
 test("priority tooling resolves the current book and forwards the exact handle without restarting work", async () => {
   const { deps } = createInMemoryDeps({ chapters: { book: [{ text: "Fixture" }] } });
   const task = await deps.bookText.preparation!.start("book");
   const calls: unknown[] = [];
-  deps.bookText.preparation!.setPriority = async (bookId, taskId, priority) => { calls.push([bookId, taskId, priority]); return { ...task, priority }; };
-  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(t => t.name === "set_book_text_task_priority")!;
+  deps.bookText.preparation!.setPriority = async (bookId, taskId, priority) => {
+    calls.push([bookId, taskId, priority]);
+    return { ...task, priority };
+  };
+  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(
+    (t) => t.name === "set_book_text_task_priority",
+  )!;
   const result = await tool.execute("test", { bookId: "current", taskId: task.taskId, priority: "background" });
   expect(calls).toEqual([["book", task.taskId, "background"]]);
   expect(result.content[0]).toMatchObject({ type: "text", text: expect.stringContaining('"priority":"background"') });
 });
 
 test("history forwards actor-owned pages and preserves persistence failures without starting extraction", async () => {
-  const { deps } = createInMemoryDeps(); const calls: unknown[] = [];
+  const { deps } = createInMemoryDeps();
+  const calls: unknown[] = [];
   const page = { items: [], total: 0, nextOffset: null, retainedLimit: 64 };
-  deps.bookText.preparation!.history = async (bookId, query) => { calls.push([bookId, query]); return page; };
-  deps.bookText.preparation!.start = async () => { throw Error("must not prepare from history read"); };
-  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(tool => tool.name === "get_book_text_task_history")!;
+  deps.bookText.preparation!.history = async (bookId, query) => {
+    calls.push([bookId, query]);
+    return page;
+  };
+  deps.bookText.preparation!.start = async () => {
+    throw Error("must not prepare from history read");
+  };
+  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(
+    (tool) => tool.name === "get_book_text_task_history",
+  )!;
   const result = await tool.execute("test", { bookId: "current", offset: 20, limit: 10 });
-  expect(calls).toEqual([["book", { offset: 20, limit: 10 }]]); expect(result.content[0]).toMatchObject({ type: "text", text: JSON.stringify(page) });
-  deps.bookText.preparation!.history = async () => { throw Error("disk unavailable"); };
+  expect(calls).toEqual([["book", { offset: 20, limit: 10 }]]);
+  expect(result.content[0]).toMatchObject({ type: "text", text: JSON.stringify(page) });
+  deps.bookText.preparation!.history = async () => {
+    throw Error("disk unavailable");
+  };
   await expect(tool.execute("test", {})).rejects.toThrow("disk unavailable");
 });

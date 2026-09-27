@@ -32,7 +32,9 @@ export type RuntimeResult = { suite: string; name: string; passed: boolean; deta
 export type RuntimeReport = { done: boolean; results: RuntimeResult[]; error?: string };
 
 declare global {
-  interface Window { __runtimeRegressions?: RuntimeReport }
+  interface Window {
+    __runtimeRegressions?: RuntimeReport;
+  }
 }
 
 const ENGINE_BASE = "/foliate-js/";
@@ -44,22 +46,25 @@ function engine<T>(name: string): Promise<T> {
 }
 
 async function run(report: RuntimeReport): Promise<void> {
-  if (!("__TAURI_INTERNALS__" in window)) Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
-  const [cfi, view, paginator, epub, fixed, fb2, pdf, footnotes, media, search, walker, tts, quote] = await Promise.all([
-    engine<typeof CFI>("epubcfi"),
-    engine<typeof ViewModule>("view"),
-    engine<typeof PaginatorModule>("paginator"),
-    engine<typeof import("../../foliate-js/src/epub")>("epub"),
-    engine<typeof import("../../foliate-js/src/fixed-layout")>("fixed-layout"),
-    engine<typeof import("../../foliate-js/src/fb2")>("fb2"),
-    engine<typeof import("../../foliate-js/src/pdf")>("pdf"),
-    engine<typeof import("../../foliate-js/src/footnotes")>("footnotes"),
-    engine<typeof import("../../foliate-js/src/media-overlay")>("media-overlay"),
-    engine<typeof import("../../foliate-js/src/search")>("search"),
-    engine<typeof import("../../foliate-js/src/text-walker")>("text-walker"),
-    engine<typeof import("../../foliate-js/src/tts")>("tts"),
-    engine<typeof import("../../foliate-js/src/quote-image")>("quote-image"),
-  ]);
+  if (!("__TAURI_INTERNALS__" in window))
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+  const [cfi, view, paginator, epub, fixed, fb2, pdf, footnotes, media, search, walker, tts, quote] = await Promise.all(
+    [
+      engine<typeof CFI>("epubcfi"),
+      engine<typeof ViewModule>("view"),
+      engine<typeof PaginatorModule>("paginator"),
+      engine<typeof import("../../foliate-js/src/epub")>("epub"),
+      engine<typeof import("../../foliate-js/src/fixed-layout")>("fixed-layout"),
+      engine<typeof import("../../foliate-js/src/fb2")>("fb2"),
+      engine<typeof import("../../foliate-js/src/pdf")>("pdf"),
+      engine<typeof import("../../foliate-js/src/footnotes")>("footnotes"),
+      engine<typeof import("../../foliate-js/src/media-overlay")>("media-overlay"),
+      engine<typeof import("../../foliate-js/src/search")>("search"),
+      engine<typeof import("../../foliate-js/src/text-walker")>("text-walker"),
+      engine<typeof import("../../foliate-js/src/tts")>("tts"),
+      engine<typeof import("../../foliate-js/src/quote-image")>("quote-image"),
+    ],
+  );
   const suites: [string, () => Promise<{ name: string; passed: boolean; details?: string }[]>][] = [
     ["foundation", () => runFoliateRegressions(cfi, { search, walker, tts, quote })],
     ["epub", () => runEPUBRegressions({ epub, view })],
@@ -78,7 +83,12 @@ async function run(report: RuntimeReport): Promise<void> {
     try {
       for (const result of await execute()) publish(report, { suite, ...result });
     } catch (error) {
-      publish(report, { suite, name: "suite completed", passed: false, details: error instanceof Error ? error.stack ?? error.message : String(error) });
+      publish(report, {
+        suite,
+        name: "suite completed",
+        passed: false,
+        details: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      });
     }
   }
 }
@@ -103,10 +113,17 @@ function publish(report: RuntimeReport, result: RuntimeResult): void {
 
 const report: RuntimeReport = { done: false, results: [] };
 window.__runtimeRegressions = report;
-run(report).then(() => {
-  const failed = report.results.filter(result => !result.passed).length;
-  setStatus(`${report.results.length - failed} passed, ${failed} failed`);
-}, (error: unknown) => {
-  report.error = error instanceof Error ? error.stack ?? error.message : String(error);
-  setStatus(`Harness failed: ${report.error}`);
-}).finally(() => { report.done = true; });
+run(report)
+  .then(
+    () => {
+      const failed = report.results.filter((result) => !result.passed).length;
+      setStatus(`${report.results.length - failed} passed, ${failed} failed`);
+    },
+    (error: unknown) => {
+      report.error = error instanceof Error ? (error.stack ?? error.message) : String(error);
+      setStatus(`Harness failed: ${report.error}`);
+    },
+  )
+  .finally(() => {
+    report.done = true;
+  });

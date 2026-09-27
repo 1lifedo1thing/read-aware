@@ -21,12 +21,7 @@ import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError, parseManifestJson } from "../lib/manifest";
 import { clearPluginScheduleState } from "./plugin-scheduler";
-import type {
-  InstalledPlugin,
-  PluginDisposable,
-  PluginManifest,
-  PluginBookAccess,
-} from "../lib/plugin-types";
+import type { InstalledPlugin, PluginDisposable, PluginManifest, PluginBookAccess } from "../lib/plugin-types";
 import {
   forgetPluginEnabled,
   getPluginBookAccess,
@@ -56,11 +51,7 @@ import {
   type PluginCandidateDiskEntry,
   type PluginFilePayload,
 } from "./plugin-backend";
-import {
-  startPluginWorker,
-  type SandboxedPlugin,
-  type StartPluginWorkerOptions,
-} from "./plugin-worker-host";
+import { startPluginWorker, type SandboxedPlugin, type StartPluginWorkerOptions } from "./plugin-worker-host";
 import { onAppEvent } from "../../../platform/app-events";
 import { recoverVirtualBookBindings, unbindVirtualBook } from "../lib/virtual-books";
 import { runPluginUpdateTransaction } from "./plugin-update-transaction";
@@ -68,7 +59,13 @@ import { assertPluginManifestCanActivate } from "./plugin-manifest-readiness";
 import { planPluginDataMigration } from "./plugin-data-migration";
 import { PLUGIN_SCHEMA_KEY_PREFIX, pluginDataSchemaVersion } from "./plugin-data-snapshot";
 
-import { beginPluginUpdate, acceptPluginUpdate, rollbackPluginUpdate, finishPluginUpdate, type PluginUpdateJournal } from "./plugin-update-journal";
+import {
+  beginPluginUpdate,
+  acceptPluginUpdate,
+  rollbackPluginUpdate,
+  finishPluginUpdate,
+  type PluginUpdateJournal,
+} from "./plugin-update-journal";
 
 const log = createLogger("plugins");
 
@@ -138,21 +135,24 @@ export async function initializePlugins(): Promise<void> {
   try {
     const { listLibraryBooks } = await import("../../library/lib/library-db");
     await recoverVirtualBookBindings(listLibraryBooks);
-  } catch (error) { log.error("virtual book binding recovery failed; registry preserved", error); }
+  } catch (error) {
+    log.error("virtual book binding recovery failed; registry preserved", error);
+  }
 
   const installed: InstalledPlugin[] = [];
   for (const entry of entries) {
     try {
       const manifest = parseManifestJson(entry.manifest);
       if (manifest.id !== entry.id) {
-        throw new PluginManifestError(
-          `manifest.id "${manifest.id}" does not match folder name "${entry.id}"`,
-        );
+        throw new PluginManifestError(`manifest.id "${manifest.id}" does not match folder name "${entry.id}"`);
       }
       let access: ReturnType<typeof getPluginBookAccess> | undefined;
       let accessError: string | undefined;
-      try { access = getPluginBookAccess(manifest.id); }
-      catch (error) { accessError = errorMessage(error); }
+      try {
+        access = getPluginBookAccess(manifest.id);
+      } catch (error) {
+        accessError = errorMessage(error);
+      }
       installed.push({
         manifest,
         bookAccess: access?.grant,
@@ -201,7 +201,7 @@ export async function initializePlugins(): Promise<void> {
 export async function shutdownPlugins(signal?: AbortSignal, origin: DomainActor = "system"): Promise<void> {
   origin = causalActor(origin);
   signal?.throwIfAborted();
-  const results = await Promise.allSettled([...active.keys()].map(id => deactivatePlugin(id, origin)));
+  const results = await Promise.allSettled([...active.keys()].map((id) => deactivatePlugin(id, origin)));
   for (const result of results) if (result.status === "rejected") log.warn("plugin shutdown failed", result.reason);
 }
 
@@ -227,7 +227,9 @@ function activatePlugin(manifest: PluginManifest, origin: DomainActor = "system"
     }
   })();
   activating.set(manifest.id, work);
-  void work.finally(() => { if (activating.get(manifest.id) === work) activating.delete(manifest.id); });
+  void work.finally(() => {
+    if (activating.get(manifest.id) === work) activating.delete(manifest.id);
+  });
   return work;
 }
 
@@ -259,32 +261,40 @@ async function startPluginInstance(
     });
     await sandbox.checkHealth();
     const instance = { manifest, sandbox, disposables, candidateToken, promoted: false };
-    if (!deferPromotion) await withPluginDataUpdate(manifest.id, async () => {
-      const storedSchema = getPluginDataSchemaVersion(manifest.id);
-      const journal = storedSchema === manifest.schemaVersion ? undefined : await beginPluginUpdate(manifest.id);
-      const publication = journal ? PluginPreferencePublication.begin(manifest.id, journal.baseline.kv) : undefined;
-      try {
-        await migratePluginInstance(instance, journal ? pluginDataSchemaVersion(journal.baseline.schema) : storedSchema);
-        promotePluginInstance(instance);
-        if (journal) {
-          const accepted = await acceptPluginUpdate(journal);
-          publication?.rebase(accepted.accepted!.kv);
-        }
-        if (publication) await acceptPluginPreferencePublication(publication);
-        if (journal) await finishPluginUpdate(journal);
-      } catch (error) {
-        // A teardown failure must not restore under a possibly live writer.
-        try {
-          await instance.sandbox.terminate(options.activationOrigin);
-          if (journal) await rollbackPluginUpdate(journal);
-          publication?.rollback();
-        } catch (recoveryError) {
-          publication?.quarantine();
-          throw recoveryError;
-        }
-        throw error;
-      }
-    }, dataUpdate);
+    if (!deferPromotion)
+      await withPluginDataUpdate(
+        manifest.id,
+        async () => {
+          const storedSchema = getPluginDataSchemaVersion(manifest.id);
+          const journal = storedSchema === manifest.schemaVersion ? undefined : await beginPluginUpdate(manifest.id);
+          const publication = journal ? PluginPreferencePublication.begin(manifest.id, journal.baseline.kv) : undefined;
+          try {
+            await migratePluginInstance(
+              instance,
+              journal ? pluginDataSchemaVersion(journal.baseline.schema) : storedSchema,
+            );
+            promotePluginInstance(instance);
+            if (journal) {
+              const accepted = await acceptPluginUpdate(journal);
+              publication?.rebase(accepted.accepted!.kv);
+            }
+            if (publication) await acceptPluginPreferencePublication(publication);
+            if (journal) await finishPluginUpdate(journal);
+          } catch (error) {
+            // A teardown failure must not restore under a possibly live writer.
+            try {
+              await instance.sandbox.terminate(options.activationOrigin);
+              if (journal) await rollbackPluginUpdate(journal);
+              publication?.rollback();
+            } catch (recoveryError) {
+              publication?.quarantine();
+              throw recoveryError;
+            }
+            throw error;
+          }
+        },
+        dataUpdate,
+      );
     return instance;
   } catch (error) {
     // Quiesce the Worker before closing the scope's write gate: messages
@@ -318,18 +328,18 @@ function promotePluginInstance(instance: ActivePlugin): void {
  * font (`plugin:<fontId>`) is expanded here to the full stored ref, so
  * everything downstream sees one ref shape.
  */
-function registerManifestContributions(
-  manifest: PluginManifest,
-  sandbox: SandboxedPlugin,
-): void {
+function registerManifestContributions(manifest: PluginManifest, sandbox: SandboxedPlugin): void {
   for (const font of manifest.fonts ?? []) {
-    sandbox.stageHostContribution(source =>
-      registerFontContribution({
-        ...font,
-        key: contributionKey(manifest.id, font.id),
-        pluginId: manifest.id,
-        pluginName: manifest.name,
-      }, source),
+    sandbox.stageHostContribution((source) =>
+      registerFontContribution(
+        {
+          ...font,
+          key: contributionKey(manifest.id, font.id),
+          pluginId: manifest.id,
+          pluginName: manifest.name,
+        },
+        source,
+      ),
     );
   }
   for (const theme of manifest.themes ?? []) {
@@ -339,17 +349,20 @@ function registerManifestContributions(
       fontFamily && /^plugin:[a-z0-9][a-z0-9-]*$/.test(fontFamily)
         ? toPluginRef(manifest.id, fontFamily.slice("plugin:".length))
         : fontFamily;
-    sandbox.stageHostContribution(source =>
-      registerThemeContribution({
-        ...theme,
-        reader: theme.reader && {
-          ...theme.reader,
-          typography: typography && { ...typography, fontFamily: expanded },
+    sandbox.stageHostContribution((source) =>
+      registerThemeContribution(
+        {
+          ...theme,
+          reader: theme.reader && {
+            ...theme.reader,
+            typography: typography && { ...typography, fontFamily: expanded },
+          },
+          key: contributionKey(manifest.id, theme.id),
+          pluginId: manifest.id,
+          pluginName: manifest.name,
         },
-        key: contributionKey(manifest.id, theme.id),
-        pluginId: manifest.id,
-        pluginName: manifest.name,
-      }, source),
+        source,
+      ),
     );
   }
 }
@@ -363,7 +376,9 @@ function deactivatePlugin(id: string, origin: DomainActor = "system"): Promise<v
   active.delete(id);
   const work = stopPluginInstance(entry, causalActor(origin));
   deactivating.set(id, work);
-  const release = () => { if (deactivating.get(id) === work) deactivating.delete(id); };
+  const release = () => {
+    if (deactivating.get(id) === work) deactivating.delete(id);
+  };
   // Failed teardown remains a barrier: a retry must not start a new realm
   // over an old writer whose termination was never confirmed.
   void work.then(release, () => {});
@@ -405,20 +420,28 @@ export async function setPluginEnabled(id: string, enabled: boolean, origin: Dom
 }
 
 /** Change authority only after the old realm and its writes have drained. */
-export async function updatePluginBookAccess(id: string, input: PluginBookAccess, origin: DomainActor = "user"): Promise<void> {
+export async function updatePluginBookAccess(
+  id: string,
+  input: PluginBookAccess,
+  origin: DomainActor = "user",
+): Promise<void> {
   origin = causalActor(origin);
   const grant = checkedBookAccess(input);
   assertBookAccessNotChanging(id);
-  const plugin = getInstalled().find(entry => entry.manifest.id === id);
+  const plugin = getInstalled().find((entry) => entry.manifest.id === id);
   if (!plugin) throw new AppError("plugin/invalid-input", "Plugin is not installed");
   changingBookAccess.add(id);
   try {
     await activating.get(id);
-    await withPluginDataUpdate(id, async scope => {
+    await withPluginDataUpdate(id, async (scope) => {
       await deactivatePlugin(id, origin);
       await persistPluginBookAccess(id, grant, origin);
       updateInstalledPlugin(id, { bookAccess: grant, bookAccessSource: "user", error: undefined }, origin);
-      if (plugin.enabled) active.set(id, await startPluginInstance(plugin.manifest, { bookAccess: grant, activationOrigin: origin }, undefined, scope));
+      if (plugin.enabled)
+        active.set(
+          id,
+          await startPluginInstance(plugin.manifest, { bookAccess: grant, activationOrigin: origin }, undefined, scope),
+        );
     });
   } catch (error) {
     updateInstalledPlugin(id, { error: errorMessage(error) }, origin);
@@ -431,9 +454,7 @@ export async function updatePluginBookAccess(id: string, input: PluginBookAccess
 function parseCandidate(entry: PluginCandidateDiskEntry): PluginManifest {
   const manifest = parseManifestJson(entry.manifest);
   if (manifest.id !== entry.id) {
-    throw new PluginManifestError(
-      `manifest.id "${manifest.id}" does not match folder name "${entry.id}"`,
-    );
+    throw new PluginManifestError(`manifest.id "${manifest.id}" does not match folder name "${entry.id}"`);
   }
   return manifest;
 }
@@ -448,10 +469,7 @@ async function setPluginDataSchemaVersion(id: string, version: number | null): P
   else await localKV.setItemAsync(key, String(version));
 }
 
-async function migratePluginInstance(
-  instance: ActivePlugin,
-  storedVersion: number | null,
-): Promise<void> {
+async function migratePluginInstance(instance: ActivePlugin, storedVersion: number | null): Promise<void> {
   const target = instance.manifest.schemaVersion;
   const migration = planPluginDataMigration({
     storedVersion,
@@ -462,7 +480,11 @@ async function migratePluginInstance(
   await setPluginDataSchemaVersion(instance.manifest.id, target);
 }
 
-async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: PluginDataUpdate, origin: DomainActor): Promise<void> {
+async function restartPreviousInstance(
+  previous: ActivePlugin,
+  dataUpdate: PluginDataUpdate,
+  origin: DomainActor,
+): Promise<void> {
   const restored = await startPluginInstance(previous.manifest, { activationOrigin: origin }, undefined, dataUpdate);
   active.set(previous.manifest.id, restored);
 }
@@ -471,7 +493,7 @@ async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: Plugi
  * failure is what the caller reports; a discard failure leaves the candidate
  * staged and is logged rather than masking that error. */
 async function discardCandidateAfterFailure(token: string): Promise<void> {
-  await discardPluginCandidate(token).catch(error => log.warn("Failed candidate cleanup failed", error));
+  await discardPluginCandidate(token).catch((error) => log.warn("Failed candidate cleanup failed", error));
 }
 
 /**
@@ -479,7 +501,11 @@ async function discardCandidateAfterFailure(token: string): Promise<void> {
  * previous version still owns the durable on-disk slot. Only then commit the
  * candidate, switch runtime ownership, and retire the previous sandbox.
  */
-async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: PluginBookAccess, origin: DomainActor = "user"): Promise<InstalledPlugin> {
+async function applyCandidate(
+  entry: PluginCandidateDiskEntry,
+  requestedGrant?: PluginBookAccess,
+  origin: DomainActor = "user",
+): Promise<InstalledPlugin> {
   origin = causalActor(origin);
   let manifest: PluginManifest;
   let previousAccess: ReturnType<typeof getPluginBookAccess>;
@@ -505,7 +531,10 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
   let journal: PluginUpdateJournal | undefined;
   let recovered = false;
   const recoverJournal = async () => {
-    if (journal && !recovered) { await rollbackPluginUpdate(journal); recovered = true; }
+    if (journal && !recovered) {
+      await rollbackPluginUpdate(journal);
+      recovered = true;
+    }
     publication?.rollback();
     if (grantPersisted) {
       if (previousAccess.source === "legacy-domain") await forgetPluginBookAccess(manifest.id, origin);
@@ -518,10 +547,15 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
   let candidateRuntimeError: string | undefined;
   let committed: Awaited<ReturnType<typeof commitPluginCandidate>> | undefined;
   let previousQuiesced = false;
-  const plugin: InstalledPlugin = { manifest, enabled: true, bookAccess: grant, bookAccessSource: requestedGrant ? "user" : previousAccess.source };
+  const plugin: InstalledPlugin = {
+    manifest,
+    enabled: true,
+    bookAccess: grant,
+    bookAccessSource: requestedGrant ? "user" : previousAccess.source,
+  };
 
   let entered = false;
-  await withPluginDataUpdate(manifest.id, async dataUpdate => {
+  await withPluginDataUpdate(manifest.id, async (dataUpdate) => {
     entered = true;
     await runPluginUpdateTransaction<ActivePlugin>({
       startCandidate: () =>
@@ -579,10 +613,10 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
         const decision = await acceptPluginUpdate(journal);
         publication?.rebase(decision.accepted!.kv);
         active.set(manifest.id, next);
-        setInstalledPlugins([
-          ...getInstalled().filter((installed) => installed.manifest.id !== manifest.id),
-          plugin,
-        ], origin);
+        setInstalledPlugins(
+          [...getInstalled().filter((installed) => installed.manifest.id !== manifest.id), plugin],
+          origin,
+        );
         persistPluginEnabled(manifest.id, true, origin);
         accepted = true;
       },
@@ -601,7 +635,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
         await recoverJournal();
         if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate, origin);
       },
-    }).catch(error => {
+    }).catch((error) => {
       // Successful restoration/restart already released its scope. A retained
       // scope denotes unsafe recovery; never let catch-up publish that data.
       publication?.quarantine();
@@ -609,8 +643,11 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
     });
     if (publication) await acceptPluginPreferencePublication(publication);
     if (journal) await finishPluginUpdate(journal);
-  }).catch(async error => {
-    if (!entered) await discardPluginCandidate(entry.token).catch(cleanup => log.warn("Rejected candidate cleanup failed", cleanup));
+  }).catch(async (error) => {
+    if (!entered)
+      await discardPluginCandidate(entry.token).catch((cleanup) =>
+        log.warn("Rejected candidate cleanup failed", cleanup),
+      );
     throw error;
   });
 
@@ -641,9 +678,7 @@ function preparedCandidate(entry: PluginCandidateDiskEntry): PreparedPluginInsta
   };
 }
 
-async function prepareStagedCandidate(
-  staged: Promise<PluginCandidateDiskEntry>,
-): Promise<PreparedPluginInstall> {
+async function prepareStagedCandidate(staged: Promise<PluginCandidateDiskEntry>): Promise<PreparedPluginInstall> {
   const entry = await staged;
   try {
     return preparedCandidate(entry);
@@ -694,6 +729,9 @@ export async function uninstallPlugin(id: string, origin: DomainActor = "user"):
     });
     forgetPluginEnabled(id, origin);
     await forgetPluginBookAccess(id, origin);
-    setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id), origin);
+    setInstalledPlugins(
+      getInstalled().filter((entry) => entry.manifest.id !== id),
+      origin,
+    );
   });
 }

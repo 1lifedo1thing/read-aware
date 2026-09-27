@@ -35,12 +35,17 @@ async function startOauth(
 
 describe("oauth sign-in", () => {
   test("local relay callbacks stay local even if Wrangler rewrites the request host", async () => {
-    const { handle } = makeRelay({ relayOrigin: "http://localhost:8787", appLinkScheme: "readaware-dev" }, { google: fakeProvider() });
+    const { handle } = makeRelay(
+      { relayOrigin: "http://localhost:8787", appLinkScheme: "readaware-dev" },
+      { google: fakeProvider() },
+    );
     const start = await handle(new Request("https://relay.readaware.app/v1/auth/oauth/google/start"));
     const authorize = new URL(start.headers.get("location")!);
     expect(authorize.searchParams.get("redirect_uri")).toBe("http://localhost:8787/v1/auth/oauth/google/callback");
     const state = authorize.searchParams.get("state")!;
-    const callback = await handle(get(`/v1/auth/oauth/google/callback?code=good-code&state=${encodeURIComponent(state)}`));
+    const callback = await handle(
+      get(`/v1/auth/oauth/google/callback?code=good-code&state=${encodeURIComponent(state)}`),
+    );
     const html = await callback.text();
     expect(html).toContain("readaware-dev://sync/login/");
     expect(html).not.toContain("readaware://");
@@ -78,10 +83,7 @@ describe("oauth sign-in", () => {
   });
 
   test("the web finish redirects into the web app with the token in the fragment", async () => {
-    const { handle } = makeRelay(
-      { webAppOrigin: "https://readaware.app" },
-      { github: fakeProvider() },
-    );
+    const { handle } = makeRelay({ webAppOrigin: "https://readaware.app" }, { github: fakeProvider() });
     const state = await startOauth(handle, "github", "web");
     const callback = await handle(
       get(`/v1/auth/oauth/github/callback?code=good-code&state=${encodeURIComponent(state)}`),

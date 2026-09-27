@@ -29,12 +29,9 @@ const BOOKS: BookOverview[] = [
 const SERENDIPITY: DictionaryEntrySnapshot = {
   headword: "serendipity",
   pronunciation: "/ˌsɛɹ.ənˈdɪp.ɪ.ti/",
-  senses: [
-    { partOfSpeech: "noun", definition: "a happy accident", examples: ["Pure serendipity."] },
-  ],
+  senses: [{ partOfSpeech: "noun", definition: "a happy accident", examples: ["Pure serendipity."] }],
   etymology: "coined by Horace Walpole after the tale of the three princes of Serendip",
 };
-
 
 const noopComplete = async () => fauxAssistantMessage('{"new": [], "reinforced": []}');
 
@@ -56,9 +53,7 @@ async function collect(iterable: AsyncIterable<ThreadChunk>): Promise<ThreadChun
 }
 
 function references(chunks: ThreadChunk[]) {
-  return chunks.filter(
-    (chunk): chunk is Extract<ThreadChunk, { type: "reference" }> => chunk.type === "reference",
-  );
+  return chunks.filter((chunk): chunk is Extract<ThreadChunk, { type: "reference" }> => chunk.type === "reference");
 }
 
 describe("present flow", () => {
@@ -76,22 +71,38 @@ describe("present flow", () => {
   test("extension book cards and present_books share per-turn deduplication", async () => {
     const { faux, model } = makeFaux();
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_books_show" })], { stopReason: "toolUse" }),
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_books_show" })], {
+        stopReason: "toolUse",
+      }),
       fauxAssistantMessage([fauxToolCall("plugin_books_show", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("present_books", { bookIds: ["b1", "b2"] })], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("plugin_books_show", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage("Done."),
     ]);
     const { deps } = createInMemoryDeps({ books: BOOKS });
-    deps.extraTools = () => [{ name: "plugin_books_show", label: "Show", description: "Show a book", parameters: Type.Object({}),
-      execute: async () => ({ content: [{ type: "text" as const, text: "Shown" }],
-        details: { reference: { kind: "books", books: [{ bookId: "b1", title: BOOKS[0]!.title }] } } }),
-    }];
+    deps.extraTools = () => [
+      {
+        name: "plugin_books_show",
+        label: "Show",
+        description: "Show a book",
+        parameters: Type.Object({}),
+        execute: async () => ({
+          content: [{ type: "text" as const, text: "Shown" }],
+          details: { reference: { kind: "books", books: [{ bookId: "b1", title: BOOKS[0]!.title }] } },
+        }),
+      },
+    ];
     const thread = makeThread({ kind: "global", threadId: "book-cards" }, deps, model);
     const chunks = await collect(thread.sendTurn({ text: "Show the books" }));
-    expect(references(chunks).map(chunk => chunk.reference.kind === "books" ? chunk.reference.books.map(book => book.bookId) : [])).toEqual([["b1"], ["b2"]]);
+    expect(
+      references(chunks).map((chunk) =>
+        chunk.reference.kind === "books" ? chunk.reference.books.map((book) => book.bookId) : [],
+      ),
+    ).toEqual([["b1"], ["b2"]]);
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_books_show" })], { stopReason: "toolUse" }),
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_books_show" })], {
+        stopReason: "toolUse",
+      }),
       fauxAssistantMessage([fauxToolCall("plugin_books_show", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage("Again."),
     ]);
@@ -122,9 +133,7 @@ describe("present flow", () => {
       kind: "books",
       books: [{ bookId: "b1", title: "Debt: The First 5000 Years", author: "David Graeber" }],
     });
-    expect(
-      chunks.some((c) => c.type === "tool-step" && c.phase === "end" && c.isError === false),
-    ).toBe(true);
+    expect(chunks.some((c) => c.type === "tool-step" && c.phase === "end" && c.isError === false)).toBe(true);
     // ack 让模型看到被跳过的未知 id
     const roundText = JSON.stringify(secondRound?.messages ?? []);
     expect(roundText).toContain("skippedUnknown");
@@ -145,18 +154,17 @@ describe("present flow", () => {
     const chunks = await collect(thread.sendTurn({ text: "show me" }));
 
     expect(references(chunks)).toHaveLength(0);
-    expect(
-      chunks.some((c) => c.type === "tool-step" && c.phase === "end" && c.isError === false),
-    ).toBe(true);
+    expect(chunks.some((c) => c.type === "tool-step" && c.phase === "end" && c.isError === false)).toBe(true);
   });
-
-
 
   test("an extra tool's word card flows to a reference chunk with a visible tool step", async () => {
     const { faux, model } = makeFaux();
     let secondRound: Context | undefined;
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_dictionary_lookup_word" })], { stopReason: "toolUse" }),
+      fauxAssistantMessage(
+        [fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_dictionary_lookup_word" })],
+        { stopReason: "toolUse" },
+      ),
       fauxAssistantMessage(
         [
           fauxToolCall("plugin_dictionary_lookup_word", {
@@ -210,12 +218,7 @@ describe("present flow", () => {
     const chunks = await collect(thread.sendTurn({ text: "what does serendipity mean?" }));
 
     expect(
-      chunks.some(
-        (c) =>
-          c.type === "tool-step" &&
-          c.phase === "start" &&
-          c.tool === "plugin_dictionary_lookup_word",
-      ),
+      chunks.some((c) => c.type === "tool-step" && c.phase === "start" && c.tool === "plugin_dictionary_lookup_word"),
     ).toBe(true);
     const payload = references(chunks)[0]?.reference;
     if (payload?.kind !== "words") throw new Error("expected a words payload");

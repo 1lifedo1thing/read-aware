@@ -29,18 +29,12 @@ function ScenarioDefinition({ scenario }: { scenario: CatalogScenario }) {
         <p>{scenario.description}</p>
         {turns.map((turn, index) => (
           <div className="my-2 grid gap-0.5" key={index}>
-            <span className="text-[10px] text-[var(--subtle)]">
-              第 {index + 1} 轮
-            </span>
-            <strong className="font-medium text-[var(--fg)]">
-              {turn.text}
-            </strong>
+            <span className="text-[10px] text-[var(--subtle)]">第 {index + 1} 轮</span>
+            <strong className="font-medium text-[var(--fg)]">{turn.text}</strong>
           </div>
         ))}
         <details>
-          <summary className="cursor-pointer text-[11px] text-[var(--subtle)]">
-            断言与种子数据
-          </summary>
+          <summary className="cursor-pointer text-[11px] text-[var(--subtle)]">断言与种子数据</summary>
           <pre className="max-h-[360px] overflow-auto">
             {JSON.stringify(
               {
@@ -78,9 +72,7 @@ export function SuitePage({
 
   useEffect(() => {
     const next = history[0]?.runId ?? "";
-    setSelectedRunId((current) =>
-      current && history.some((run) => run.runId === current) ? current : next,
-    );
+    setSelectedRunId((current) => (current && history.some((run) => run.runId === current) ? current : next));
   }, [history]);
 
   useEffect(() => {
@@ -102,32 +94,22 @@ export function SuitePage({
       .catch(() => {});
   }, [selectedRunId, tick]);
 
-  if (!suite)
-    return (
-      <div className="py-6 text-[var(--fail)]">unknown suite: {suiteId}</div>
-    );
+  if (!suite) return <div className="py-6 text-[var(--fail)]">unknown suite: {suiteId}</div>;
 
   const selectedRun = history.find((run) => run.runId === selectedRunId);
   const refOf = (scenarioId: string) =>
-    suite.scenarios.find((scenario) => scenario.id === scenarioId)?.ref ??
-    suite.code;
-  const scenarioOf = (scenarioId: string) =>
-    suite.scenarios.find((scenario) => scenario.id === scenarioId);
+    suite.scenarios.find((scenario) => scenario.id === scenarioId)?.ref ?? suite.code;
+  const scenarioOf = (scenarioId: string) => suite.scenarios.find((scenario) => scenario.id === scenarioId);
 
   return (
     <>
       <header className="mb-4 flex items-start justify-between gap-6 max-md:grid">
         <div>
           <h1 className="m-0 text-2xl font-semibold tracking-normal">
-            <span className={`${refChipClass} align-middle text-sm`}>
-              {suite.code}
-            </span>{" "}
-            {suite.displayName}
+            <span className={`${refChipClass} align-middle text-sm`}>{suite.code}</span> {suite.displayName}
           </h1>
           <p className="mt-1 text-[13px] text-[var(--muted)]">
-            <span className="mr-2 font-mono text-[11px] text-[var(--subtle)]">
-              {suite.id}
-            </span>
+            <span className="mr-2 font-mono text-[11px] text-[var(--subtle)]">{suite.id}</span>
             {suite.description}
           </p>
         </div>
@@ -149,7 +131,8 @@ export function SuitePage({
       {selectedRun && (
         <div className="mb-6 flex items-center gap-3 text-xs text-[var(--muted)] max-sm:flex-wrap">
           <span className="font-semibold">
-            审阅通过 {summarizeQuality(detail?.records ?? [], detail?.humanReviews).pass}/{detail?.records.length ?? 0} · 待审 {summarizeQuality(detail?.records ?? [], detail?.humanReviews).pending}
+            审阅通过 {summarizeQuality(detail?.records ?? [], detail?.humanReviews).pass}/{detail?.records.length ?? 0}{" "}
+            · 待审 {summarizeQuality(detail?.records ?? [], detail?.humanReviews).pending}
           </span>
           <span>
             {selectedRun.provider}:{selectedRun.model}
@@ -159,9 +142,7 @@ export function SuitePage({
       )}
 
       {error && <div className="py-6 text-[var(--fail)]">{error}</div>}
-      {selectedRunId && !detail && !error && (
-        <div className="py-12 text-[var(--subtle)]">加载回答…</div>
-      )}
+      {selectedRunId && !detail && !error && <div className="py-12 text-[var(--subtle)]">加载回答…</div>}
       {detail && (
         <RunReviewWorkspace
           runId={selectedRunId}
@@ -187,9 +168,7 @@ export function SuitePage({
             setDetail((current) => {
               if (!current) return current;
               const sessions = [...(current.manualSessions ?? [])];
-              const index = sessions.findIndex(
-                (entry) => entry.id === session.id,
-              );
+              const index = sessions.findIndex((entry) => entry.id === session.id);
               if (index >= 0) sessions[index] = session;
               else sessions.unshift(session);
               return { ...current, manualSessions: sessions };
@@ -202,16 +181,13 @@ export function SuitePage({
         <div className="my-6 border-y border-[var(--border)] py-5">
           <strong>这个套件还没有模型回答</strong>
           <p className="mt-1 text-[var(--muted)]">
-            `bun run eval:agent {suite.id}`
-            跑完后，问题、回答和评分会直接出现在这里。
+            `bun run eval:agent {suite.id}` 跑完后，问题、回答和评分会直接出现在这里。
           </p>
         </div>
       )}
 
       <details className="mt-8 border-t border-[var(--border)] pt-3">
-        <summary className="cursor-pointer text-xs text-[var(--muted)]">
-          测试定义 · {suite.scenarios.length}
-        </summary>
+        <summary className="cursor-pointer text-xs text-[var(--muted)]">测试定义 · {suite.scenarios.length}</summary>
         <div className="mt-2.5">
           {suite.scenarios.map((scenario) => (
             <ScenarioDefinition key={scenario.id} scenario={scenario} />

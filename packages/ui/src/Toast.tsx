@@ -1,13 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@phosphor-icons/react";
 import { Button } from "./Button";
@@ -46,8 +37,7 @@ const DEFAULT_DURATION_MS = 6000;
 // title carry the weight; no tinted fills (the house style bans loud panels).
 const variantClasses = {
   default: "border-border bg-[var(--ra-main-surface-color)] text-fg-muted",
-  destructive:
-    "border-border-strong bg-[var(--ra-main-surface-color)] text-fg-muted",
+  destructive: "border-border-strong bg-[var(--ra-main-surface-color)] text-fg-muted",
   success:
     "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950 dark:text-emerald-100",
 } as const;
@@ -88,7 +78,11 @@ export function ToastProvider({
       window.clearTimeout(timer);
       timersRef.current.delete(id);
     }
-    try { record.onDismiss?.(); } catch (error) { console.error("Toast cleanup failed", error); }
+    try {
+      record.onDismiss?.();
+    } catch (error) {
+      console.error("Toast cleanup failed", error);
+    }
   }, []);
 
   const toast = useCallback(
@@ -111,7 +105,8 @@ export function ToastProvider({
   useEffect(() => {
     const epoch = ++lifetimeRef.current;
     // The maps live as long as the provider; only their contents change.
-    const timers = timersRef.current, pending = recordsRef.current;
+    const timers = timersRef.current,
+      pending = recordsRef.current;
     return () => {
       // StrictMode's setup/cleanup replay is not a real provider teardown.
       queueMicrotask(() => {
@@ -119,9 +114,14 @@ export function ToastProvider({
         if (lifetimeRef.current !== epoch) return;
         for (const timer of timers.values()) window.clearTimeout(timer);
         timers.clear();
-        const records = [...pending.values()]; pending.clear();
+        const records = [...pending.values()];
+        pending.clear();
         for (const record of records) {
-          try { record.onDismiss?.(); } catch (error) { console.error("Toast cleanup failed", error); }
+          try {
+            record.onDismiss?.();
+          } catch (error) {
+            console.error("Toast cleanup failed", error);
+          }
         }
       });
     };
@@ -148,9 +148,7 @@ export function ToastProvider({
             >
               <div className="min-w-0 flex-1">
                 {entry.title && (
-                  <p className={cn("mb-1 font-medium", titleClasses[entry.variant ?? "default"])}>
-                    {entry.title}
-                  </p>
+                  <p className={cn("mb-1 font-medium", titleClasses[entry.variant ?? "default"])}>{entry.title}</p>
                 )}
                 <div className="max-h-60 overflow-y-auto whitespace-pre-wrap break-words">{entry.description}</div>
                 {entry.action && (
@@ -159,7 +157,11 @@ export function ToastProvider({
                     variant="link"
                     className="mt-1 h-auto p-0 text-xs underline underline-offset-2"
                     onClick={() => {
-                      try { entry.action?.onClick(); } finally { dismiss(entry.id); }
+                      try {
+                        entry.action?.onClick();
+                      } finally {
+                        dismiss(entry.id);
+                      }
                     }}
                   >
                     {entry.action.label}

@@ -38,9 +38,7 @@ export function ThreadsPopoverView({
     onOpenChange(false);
   };
 
-  const activeIsUnsaved = !threads.some(
-    (thread) => thread.id === activeThreadId,
-  );
+  const activeIsUnsaved = !threads.some((thread) => thread.id === activeThreadId);
 
   return (
     <Popover
@@ -51,13 +49,7 @@ export function ThreadsPopoverView({
       triggerTooltip={t("agent.threads.title")}
       triggerTooltipAlign="end"
       triggerClassName={cn(agentHeaderActionClass, open && "text-fg")}
-      trigger={
-        <ChatsCircle
-          size={16}
-          weight={open ? "fill" : "regular"}
-          aria-hidden="true"
-        />
-      }
+      trigger={<ChatsCircle size={16} weight={open ? "fill" : "regular"} aria-hidden="true" />}
       panelClassName="flex max-h-[min(24rem,60vh)] w-[clamp(16rem,24vw,22rem)] flex-col overflow-hidden p-0"
     >
       <div className="flex shrink-0 items-center border-b border-border px-4 py-2.5">
@@ -67,11 +59,7 @@ export function ThreadsPopoverView({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-0.5 px-2 py-2">
           {activeIsUnsaved && (
-            <ThreadRow
-              title={t("agent.threads.untitled")}
-              active
-              onSelect={() => select(activeThreadId)}
-            />
+            <ThreadRow title={t("agent.threads.untitled")} active onSelect={() => select(activeThreadId)} />
           )}
           {threads.map((thread) => (
             <ThreadRow

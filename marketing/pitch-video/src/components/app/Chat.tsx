@@ -36,7 +36,9 @@ export function UserTurn({ passage, text, style }: { passage?: string; text: str
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, ...style }}>
       {passage && <AttachmentChip text={passage} style={{ maxWidth: "90%" }} />}
-      <div style={{ ...content, maxWidth: "90%", borderRadius: 8, background: color.fillStrong, padding: "8px 12px" }}>{text}</div>
+      <div style={{ ...content, maxWidth: "90%", borderRadius: 8, background: color.fillStrong, padding: "8px 12px" }}>
+        {text}
+      </div>
     </div>
   );
 }
@@ -61,7 +63,16 @@ export function Spinner({ frame, size = 12 }: { frame: number; size?: number }) 
 /** One tool step: a spinner while it runs, then a check. */
 export function ToolStep({ label, running, frame }: { label: string; running: boolean; frame: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: font.sans, fontSize: 12, color: running ? color.fgMuted : color.fgSubtle }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        fontFamily: font.sans,
+        fontSize: 12,
+        color: running ? color.fgMuted : color.fgSubtle,
+      }}
+    >
       {running ? <Spinner frame={frame} /> : <CheckIcon size={12} color={color.fgSubtle} />}
       <span>{label}</span>
     </div>
@@ -71,7 +82,16 @@ export function ToolStep({ label, running, frame }: { label: string; running: bo
 /** ChatActivity, collapsed: "› 2 tool calls". */
 export function ToolActivity({ summary }: { summary: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: font.sans, fontSize: 12, color: color.fgSubtle }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        fontFamily: font.sans,
+        fontSize: 12,
+        color: color.fgSubtle,
+      }}
+    >
       <CaretRightIcon size={12} />
       <span>{summary}</span>
     </div>
@@ -127,7 +147,9 @@ export function BookReferenceCard({
         ...style,
       }}
     >
-      <div style={{ width: 44, height: 64, borderRadius: 2, overflow: "hidden", boxShadow: shadow.cover, flexShrink: 0 }}>
+      <div
+        style={{ width: 44, height: 64, borderRadius: 2, overflow: "hidden", boxShadow: shadow.cover, flexShrink: 0 }}
+      >
         <Img src={staticFile(cover)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -138,7 +160,11 @@ export function BookReferenceCard({
             <div style={{ width: 96, height: 4, borderRadius: 4, background: color.fillStrong, overflow: "hidden" }}>
               <div style={{ width: `${progress}%`, height: "100%", background: color.fg }} />
             </div>
-            <span style={{ fontFamily: font.sans, fontSize: 11, color: color.fgMuted, fontVariantNumeric: "tabular-nums" }}>{progress}%</span>
+            <span
+              style={{ fontFamily: font.sans, fontSize: 11, color: color.fgMuted, fontVariantNumeric: "tabular-nums" }}
+            >
+              {progress}%
+            </span>
           </div>
         )}
       </div>
@@ -171,7 +197,17 @@ export function WordReferenceCard({
         <span style={{ fontFamily: font.appSerif, fontStyle: "italic", color: color.fgMuted }}>{partOfSpeech} · </span>
         {definition}
       </div>
-      <div style={{ marginTop: 4, paddingLeft: 12, fontFamily: font.appSerif, fontStyle: "italic", fontSize: 12, lineHeight: 1.625, color: color.fgSubtle }}>
+      <div
+        style={{
+          marginTop: 4,
+          paddingLeft: 12,
+          fontFamily: font.appSerif,
+          fontStyle: "italic",
+          fontSize: 12,
+          lineHeight: 1.625,
+          color: color.fgSubtle,
+        }}
+      >
         {example}
       </div>
     </div>
@@ -200,7 +236,18 @@ export function Composer({
         <div style={{ position: "relative", minHeight: 32, display: "flex", alignItems: "center" }}>
           <span style={{ ...content, color: value ? color.fg : color.fgSubtle, paddingRight: 64 }}>
             {value || placeholder}
-            {caret && <span style={{ display: "inline-block", width: 1.5, height: 17, marginLeft: 1, verticalAlign: "-3px", background: color.fg }} />}
+            {caret && (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 1.5,
+                  height: 17,
+                  marginLeft: 1,
+                  verticalAlign: "-3px",
+                  background: color.fg,
+                }}
+              />
+            )}
           </span>
           <ImageIcon size={16} color={color.fgMuted} style={{ position: "absolute", right: 36, bottom: 8 }} />
           <div

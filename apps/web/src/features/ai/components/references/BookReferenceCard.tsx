@@ -37,13 +37,9 @@ export function BookReferenceCard({
       </div>
       <div className="min-w-0 flex-1">
         <span className="block truncate font-serif text-sm font-medium text-fg">{title}</span>
-        {author && (
-          <span className="mt-0.5 block truncate font-sans text-xs text-fg-muted">{author}</span>
-        )}
+        {author && <span className="mt-0.5 block truncate font-sans text-xs text-fg-muted">{author}</span>}
         {missing ? (
-          <span className="mt-0.5 block font-sans text-xs text-fg-subtle">
-            {t("chat.references.missingBook")}
-          </span>
+          <span className="mt-0.5 block font-sans text-xs text-fg-subtle">{t("chat.references.missingBook")}</span>
         ) : book && book.progressPercent > 0 ? (
           <div className="mt-1.5 flex items-center gap-2">
             <Progress value={book.progressPercent} size="sm" className="w-24" />

@@ -24,12 +24,10 @@ import { readerFontWeightPresets } from "./reader-settings";
  * options with localized labels, so the two surfaces share one set of strings.
  */
 
-export function fontSizeOptions(
-  t: TFunction<"reader">,
-): { value: ReaderFontSize; label: string }[] {
-  return (
-    ["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large"] as const
-  ).map((value) => ({ value, label: t(`fontSizeOption.${value}`) }));
+export function fontSizeOptions(t: TFunction<"reader">): { value: ReaderFontSize; label: string }[] {
+  return (["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large"] as const).map(
+    (value) => ({ value, label: t(`fontSizeOption.${value}`) }),
+  );
 }
 
 export function fontWeightOptions(
@@ -42,63 +40,49 @@ export function fontWeightOptions(
   }));
 }
 
-export function lineSpacingOptions(
-  t: TFunction<"reader">,
-): { value: ReaderLineSpacing; label: string }[] {
+export function lineSpacingOptions(t: TFunction<"reader">): { value: ReaderLineSpacing; label: string }[] {
   return (["compact", "comfortable", "relaxed"] as const).map((value) => ({
     value,
     label: t(`lineSpacingOption.${value}`),
   }));
 }
 
-export function paragraphSpacingOptions(
-  t: TFunction<"reader">,
-): { value: ReaderParagraphSpacing; label: string }[] {
+export function paragraphSpacingOptions(t: TFunction<"reader">): { value: ReaderParagraphSpacing; label: string }[] {
   return (["tight", "normal", "loose"] as const).map((value) => ({
     value,
     label: t(`paragraphSpacingOption.${value}`),
   }));
 }
 
-export function pageMarginsOptions(
-  t: TFunction<"reader">,
-): { value: ReaderPageMargins; label: string }[] {
+export function pageMarginsOptions(t: TFunction<"reader">): { value: ReaderPageMargins; label: string }[] {
   return (["narrow", "medium", "wide"] as const).map((value) => ({
     value,
     label: t(`pageMarginsOption.${value}`),
   }));
 }
 
-export function textAlignOptions(
-  t: TFunction<"reader">,
-): { value: ReaderTextAlign; label: string }[] {
+export function textAlignOptions(t: TFunction<"reader">): { value: ReaderTextAlign; label: string }[] {
   return (["book", "start", "justify"] as const).map((value) => ({
     value,
     label: t(`textAlignOption.${value}`),
   }));
 }
 
-export function readingModeOptions(
-  t: TFunction<"reader">,
-): { value: ReadingMode; label: string }[] {
+export function readingModeOptions(t: TFunction<"reader">): { value: ReadingMode; label: string }[] {
   return (["scroll", "paginated-single", "paginated-double"] as const).map((value) => ({
     value,
     label: t(`readingModeOption.${value}`),
   }));
 }
 
-export function fixedLayoutColorOptions(
-  t: TFunction<"reader">,
-): { value: FixedLayoutColor; label: string }[] {
+export function fixedLayoutColorOptions(t: TFunction<"reader">): { value: FixedLayoutColor; label: string }[] {
   return (["theme", "original"] as const).map((value) => ({
     value,
     label: t(`fixedLayoutColorOption.${value}`),
   }));
 }
 
-export function pageColorOptions(
-  t: TFunction<"reader">,
-): { value: ReaderThemePreference; label: string }[] {
+export function pageColorOptions(t: TFunction<"reader">): { value: ReaderThemePreference; label: string }[] {
   return (["auto", "light", "warm", "dark"] as const).map((value) => ({
     value,
     label: t(`pageColorOption.${value}`),

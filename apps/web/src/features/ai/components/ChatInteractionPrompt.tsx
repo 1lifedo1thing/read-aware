@@ -6,11 +6,7 @@ import { useTranslation } from "../../../i18n";
 import { respondToUserInteraction } from "../agent/ports/user-interaction-port";
 import { ChatInteractionForm } from "./ChatInteractionForm";
 import { formatInteractionFormSummary } from "../lib/interaction-form-summary";
-import type {
-  ChatInteractionAnswer,
-  ChatInteractionPart,
-  ChatPermissionAction,
-} from "../lib/chat-types";
+import type { ChatInteractionAnswer, ChatInteractionPart, ChatPermissionAction } from "../lib/chat-types";
 
 type InteractionResponder = (id: string, answer: ChatInteractionAnswer) => boolean;
 
@@ -126,13 +122,7 @@ const permissionKeys: Record<
   },
 };
 
-function SettledInteraction({
-  part,
-  title,
-}: {
-  part: ChatInteractionPart;
-  title: string;
-}) {
+function SettledInteraction({ part, title }: { part: ChatInteractionPart; title: string }) {
   const { t } = useTranslation("ai");
   const [expanded, setExpanded] = useState(false);
   const contentId = useId();
@@ -146,8 +136,9 @@ function SettledInteraction({
         ? t("chat.interaction.permission.approved")
         : part.request.kind === "form" && part.answer?.values
           ? formatInteractionFormSummary(part.request.fields, part.answer.values, {
-            checked: t("chat.interaction.form.checked"), unchecked: t("chat.interaction.form.unchecked"),
-          })
+              checked: t("chat.interaction.form.checked"),
+              unchecked: t("chat.interaction.form.unchecked"),
+            })
           : part.answer?.text || t("chat.interaction.answered");
   const status = cancelled
     ? t("chat.interaction.skipped")
@@ -169,10 +160,7 @@ function SettledInteraction({
       >
         <CaretRight
           size={12}
-          className={cn(
-            "shrink-0 text-fg-subtle transition-transform",
-            expanded && "rotate-90",
-          )}
+          className={cn("shrink-0 text-fg-subtle transition-transform", expanded && "rotate-90")}
           aria-hidden="true"
         />
         <Caption className="min-w-0 truncate text-fg-subtle">
@@ -197,13 +185,7 @@ function SettledInteraction({
   );
 }
 
-function QuestionPrompt({
-  part,
-  onRespond,
-}: {
-  part: ChatInteractionPart;
-  onRespond: InteractionResponder;
-}) {
+function QuestionPrompt({ part, onRespond }: { part: ChatInteractionPart; onRespond: InteractionResponder }) {
   const { t } = useTranslation("ai");
   const [choice, setChoice] = useState("");
   const [custom, setCustom] = useState("");
@@ -212,9 +194,7 @@ function QuestionPrompt({
   const choices = useMemo(
     () => [
       ...(request?.options.map((option) => ({ value: option.id, label: option.label })) ?? []),
-      ...(request?.allowCustom
-        ? [{ value: CUSTOM_CHOICE, label: t("chat.interaction.customAnswer") }]
-        : []),
+      ...(request?.allowCustom ? [{ value: CUSTOM_CHOICE, label: t("chat.interaction.customAnswer") }] : []),
     ],
     [request, t],
   );
@@ -223,8 +203,7 @@ function QuestionPrompt({
   const selectedOption = request.options.find((option) => option.id === choice);
   const canSubmit =
     !submitting &&
-    ((choice === CUSTOM_CHOICE && custom.trim().length > 0) ||
-      (choice !== CUSTOM_CHOICE && !!selectedOption));
+    ((choice === CUSTOM_CHOICE && custom.trim().length > 0) || (choice !== CUSTOM_CHOICE && !!selectedOption));
 
   function settle(answer: ChatInteractionAnswer): void {
     setSubmitting(true);
@@ -266,12 +245,7 @@ function QuestionPrompt({
         <Button size="sm" type="submit" disabled={!canSubmit}>
           {t("chat.interaction.submit")}
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={submitting}
-          onClick={() => settle({ cancelled: true })}
-        >
+        <Button size="sm" variant="ghost" disabled={submitting} onClick={() => settle({ cancelled: true })}>
           {t("chat.interaction.skip")}
         </Button>
       </div>
@@ -279,13 +253,7 @@ function QuestionPrompt({
   );
 }
 
-function PermissionPrompt({
-  part,
-  onRespond,
-}: {
-  part: ChatInteractionPart;
-  onRespond: InteractionResponder;
-}) {
+function PermissionPrompt({ part, onRespond }: { part: ChatInteractionPart; onRespond: InteractionResponder }) {
   const { t } = useTranslation("ai");
   const [submitting, setSubmitting] = useState(false);
   const request = part.request.kind === "permission" ? part.request : null;
@@ -307,7 +275,12 @@ function PermissionPrompt({
           <Caption>{t("chat.interaction.permission.completeOnboarding.memories")}</Caption>
           {request.onboardingSeeds.map((seed, index) => (
             <Caption as="p" key={index} className="whitespace-pre-wrap break-words leading-5 text-fg-muted">
-              {t(seed.kind === "fact" ? "chat.interaction.permission.completeOnboarding.fact" : "chat.interaction.permission.completeOnboarding.preference")}: {seed.content}
+              {t(
+                seed.kind === "fact"
+                  ? "chat.interaction.permission.completeOnboarding.fact"
+                  : "chat.interaction.permission.completeOnboarding.preference",
+              )}
+              : {seed.content}
             </Caption>
           ))}
         </div>
@@ -327,7 +300,9 @@ function PermissionPrompt({
           disabled={submitting}
           onClick={() => settle({ optionId: "decline", text: "Declined" })}
         >
-          {t(request.action === "complete-onboarding" ? "chat.interaction.skip" : "chat.interaction.permission.decline")}
+          {t(
+            request.action === "complete-onboarding" ? "chat.interaction.skip" : "chat.interaction.permission.decline",
+          )}
         </Button>
       </div>
     </div>
@@ -347,7 +322,9 @@ export function ChatInteractionPrompt({
   const title =
     part.request.kind === "permission"
       ? t(permissionKeys[part.request.action].question, { subject: part.request.subject })
-      : part.request.kind === "form" ? part.request.title : part.request.question;
+      : part.request.kind === "form"
+        ? part.request.title
+        : part.request.question;
 
   if (part.state !== "pending") {
     return <SettledInteraction part={part} title={title} />;
@@ -371,9 +348,11 @@ export function ChatInteractionPrompt({
             {title}
           </Body>
           <div className="mt-3">
-            {part.request.kind === "form"
-              ? <ChatInteractionForm key={part.id} form={part.request} respond={answer => onRespond(part.id, answer)} />
-              : <QuestionPrompt part={part} onRespond={onRespond} />}
+            {part.request.kind === "form" ? (
+              <ChatInteractionForm key={part.id} form={part.request} respond={(answer) => onRespond(part.id, answer)} />
+            ) : (
+              <QuestionPrompt part={part} onRespond={onRespond} />
+            )}
           </div>
         </>
       )}

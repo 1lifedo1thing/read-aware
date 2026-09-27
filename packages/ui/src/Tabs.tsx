@@ -176,7 +176,9 @@ export function Tabs({
           return (
             <button
               key={i}
-              ref={(el) => { tabRefs.current[i] = el; }}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
               id={tabId}
               type="button"
               role="tab"
@@ -187,27 +189,10 @@ export function Tabs({
               className={cn(
                 "inline-flex items-center whitespace-nowrap font-sans text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg",
                 stretch && "flex-1 justify-center text-center",
-                variant === "underline" &&
-                  cn(
-                    "pb-3",
-                    isActive
-                      ? "text-fg"
-                      : "text-fg-muted hover:text-fg",
-                  ),
-                variant === "nav" &&
-                  cn(
-                    "pb-3",
-                    isActive
-                      ? "text-fg"
-                      : "text-fg-subtle hover:text-fg",
-                  ),
+                variant === "underline" && cn("pb-3", isActive ? "text-fg" : "text-fg-muted hover:text-fg"),
+                variant === "nav" && cn("pb-3", isActive ? "text-fg" : "text-fg-subtle hover:text-fg"),
                 variant === "pill" &&
-                  cn(
-                    "rounded px-3 py-1.5",
-                    isActive
-                      ? "bg-surface text-fg"
-                      : "text-fg-muted hover:text-fg",
-                  ),
+                  cn("rounded px-3 py-1.5", isActive ? "bg-surface text-fg" : "text-fg-muted hover:text-fg"),
               )}
             >
               {item.label}

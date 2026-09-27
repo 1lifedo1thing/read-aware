@@ -1,4 +1,10 @@
-import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  actorFromEvent,
+  causalActor,
+  ObservationCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 /**
  * Declarative plugin settings (manifest.settings): the app renders the form,
  * values persist as ONE object under the plugin's storage key `settings`
@@ -8,11 +14,7 @@ import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type D
 import { pluginDataRevision, withPluginDataWrites } from "../../../platform/plugin-data-access";
 import { emitAppEvent } from "../../../platform/app-events";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
-import {
-  deletePluginSecret,
-  getPluginSecret,
-  setPluginSecret,
-} from "../../../platform/secret-store";
+import { deletePluginSecret, getPluginSecret, setPluginSecret } from "../../../platform/secret-store";
 import { getSettingsOptionsProvider } from "../state/plugin-store";
 import type {
   InstalledPlugin,
@@ -35,7 +37,10 @@ onLocalKVChange((key, _value, origin) => {
   if (!key.startsWith(prefix) || !key.endsWith(suffix)) return;
   const pluginId = key.slice(prefix.length, -suffix.length);
   const pending = pendingInvalidations.get(pluginId);
-  if (pending) { pending.add(stampEventCause({}, origin)); return; }
+  if (pending) {
+    pending.add(stampEventCause({}, origin));
+    return;
+  }
   const causes = new ObservationCauses(origin);
   pendingInvalidations.set(pluginId, causes);
   queueMicrotask(() => {
@@ -56,9 +61,7 @@ export function readPluginSettingsValues(pluginId: string): PluginFormValues {
 }
 
 /** Build the settings form for a manifest, prefilled with stored values. */
-export function buildPluginSettingsView(
-  manifest: PluginManifest,
-): PluginFormView | null {
+export function buildPluginSettingsView(manifest: PluginManifest): PluginFormView | null {
   const fields = manifest.settings;
   if (!fields || fields.length === 0) return null;
   const stored = readPluginSettingsValues(manifest.id);
@@ -82,14 +85,16 @@ export function buildPluginSettingsView(
     }),
     onSubmit: (values) => {
       const origin = causalActor("user");
-      return withPluginDataWrites([manifest.id],
-        () => localKV.setItemAsync(pluginSettingsKey(manifest.id), JSON.stringify(values), origin), expected);
+      return withPluginDataWrites(
+        [manifest.id],
+        () => localKV.setItemAsync(pluginSettingsKey(manifest.id), JSON.stringify(values), origin),
+        expected,
+      );
     },
     // Dynamic selects resolve through the source the plugin bound at
     // activate() (ctx.contributions.settingsOptions.register); an unbound field resolves
     // empty and renders as free text input.
-    resolveOptions: (fieldId, values) =>
-      getSettingsOptionsProvider(manifest.id, fieldId)?.resolve(values) ?? [],
+    resolveOptions: (fieldId, values) => getSettingsOptionsProvider(manifest.id, fieldId)?.resolve(values) ?? [],
     // Secret fields write straight to the plugin's encrypted secret
     // namespace — the same store ctx.secrets reads on the plugin side.
     secrets: {
@@ -116,7 +121,9 @@ export function writePluginSettingsValues(
   origin: DomainActor = "user",
 ): Promise<void> {
   origin = causalActor(origin);
-  return withPluginDataWrites([pluginId], () => localKV.setItemAsync(pluginSettingsKey(pluginId), JSON.stringify(values), origin));
+  return withPluginDataWrites([pluginId], () =>
+    localKV.setItemAsync(pluginSettingsKey(pluginId), JSON.stringify(values), origin),
+  );
 }
 
 export type AgentPluginSettings = {
@@ -131,9 +138,7 @@ export type AgentPluginSettings = {
  * plugins keep their stored values but drop out of the catalog, mirroring
  * how their other contributions disappear.
  */
-export function agentVisiblePluginSettings(
-  plugins: InstalledPlugin[],
-): AgentPluginSettings[] {
+export function agentVisiblePluginSettings(plugins: InstalledPlugin[]): AgentPluginSettings[] {
   return plugins
     .filter((plugin) => plugin.enabled && plugin.manifest.settings?.length)
     .map((plugin) => ({
@@ -141,9 +146,7 @@ export function agentVisiblePluginSettings(
       pluginName: plugin.manifest.name,
       fields: (plugin.manifest.settings ?? []).filter(
         (field) =>
-          !field.agentHidden &&
-          field.kind !== "secret" &&
-          !(field.kind === "text" && field.inputMode === "password"),
+          !field.agentHidden && field.kind !== "secret" && !(field.kind === "text" && field.inputMode === "password"),
       ),
     }))
     .filter((plugin) => plugin.fields.length > 0);

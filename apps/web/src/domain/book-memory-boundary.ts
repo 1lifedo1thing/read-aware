@@ -3,16 +3,29 @@ import type { DigestFlavor, ReadingSessionSnapshot } from "@read-aware/core";
 
 /** Resolve only persisted chapter identities; querying memory never starts extraction. */
 export function bookMemoryBoundary(
-  book: { id: string; narrativity?: DigestFlavor | null; spoilerSensitive?: boolean | null; readingStatus: string; progress: { href: string | null } | null },
+  book: {
+    id: string;
+    narrativity?: DigestFlavor | null;
+    spoilerSensitive?: boolean | null;
+    readingStatus: string;
+    progress: { href: string | null } | null;
+  },
   session: ReadingSessionSnapshot,
   chapters: readonly { index: number; hrefs?: string[] }[] | null,
 ): BookGraphBoundary {
-  const policyBook = { narrativity: book.narrativity, spoilerSensitive: book.spoilerSensitive, status: book.readingStatus };
+  const policyBook = {
+    narrativity: book.narrativity,
+    spoilerSensitive: book.spoilerSensitive,
+    status: book.readingStatus,
+  };
   const policy = chapterMemoryPolicy(policyBook);
   if (policy.boundary.kind === "all") return policy.boundary;
-  const href = session.bookId === book.id
-    ? session.status === "ready" ? session.location?.href : undefined
-    : book.progress?.href;
+  const href =
+    session.bookId === book.id
+      ? session.status === "ready"
+        ? session.location?.href
+        : undefined
+      : book.progress?.href;
   if (!href || !chapters) return { kind: "unknown" };
   const chapter = findChapterByHref(chapters, href);
   return chapterMemoryPolicy(policyBook, chapter?.index).boundary;

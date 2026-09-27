@@ -39,16 +39,19 @@ export function buildConversationTools(scope: ThreadScope, deps: RuntimeDeps, st
       const call = readingContextCall(deps.readingContextPolicy, signal, state?.readingContextPermissions);
       try {
         call.assertAllowed();
-        const results = await call.wait(deps.conversations.searchTurns({
-          queries: queries.slice(0, 8),
-          threadKey:
-            allThreads || scope.kind === "global" ? undefined : threadScopeKey(scope),
-          limit: 10,
-          includeAttachments: call.permissions.selection,
-        }));
+        const results = await call.wait(
+          deps.conversations.searchTurns({
+            queries: queries.slice(0, 8),
+            threadKey: allThreads || scope.kind === "global" ? undefined : threadScopeKey(scope),
+            limit: 10,
+            includeAttachments: call.permissions.selection,
+          }),
+        );
         call.assertAllowed();
         return textResult(turnsForModel(permittedTurnRecords(results, call.permissions)));
-      } finally { call.dispose(); }
+      } finally {
+        call.dispose();
+      }
     },
   };
 
@@ -56,11 +59,9 @@ export function buildConversationTools(scope: ThreadScope, deps: RuntimeDeps, st
     name: "get_recent_turns",
     label: "Recent turns",
     description:
-      "Rewind: fetch the last N verbatim messages of this conversation. Your context only carries the immediately previous exchange — when the user follows up on anything older (\"你上次说的那个…\", \"back to your earlier point\"), call this FIRST instead of answering from guesswork. bookId reads another book thread's tail (global thread only).",
+      'Rewind: fetch the last N verbatim messages of this conversation. Your context only carries the immediately previous exchange — when the user follows up on anything older ("你上次说的那个…", "back to your earlier point"), call this FIRST instead of answering from guesswork. bookId reads another book thread\'s tail (global thread only).',
     parameters: Type.Object({
-      n: Type.Optional(
-        Type.Number({ description: "How many recent messages to fetch (default 6, max 20)" }),
-      ),
+      n: Type.Optional(Type.Number({ description: "How many recent messages to fetch (default 6, max 20)" })),
       bookId: Type.Optional(Type.String({ description: "Book id (global thread only)" })),
     }),
     execute: async (_id, params, signal) => {
@@ -74,7 +75,9 @@ export function buildConversationTools(scope: ThreadScope, deps: RuntimeDeps, st
         const clamped = Math.min(Math.max(1, Math.floor(n)), 20);
         call.assertAllowed();
         return textResult(turnsForModel(permittedTurnRecords(records.slice(-clamped), call.permissions)));
-      } finally { call.dispose(); }
+      } finally {
+        call.dispose();
+      }
     },
   };
 
@@ -83,22 +86,41 @@ export function buildConversationTools(scope: ThreadScope, deps: RuntimeDeps, st
     label: "Conversation summary",
     description:
       "Read a stored rolling conversation summary, not verbatim history or a freshly generated summary. Choose bookId or threadId (global thread id), never both; omit both for this conversation. null means no stored summary, not no conversation. Summaries can lag recent turns. Available in global scope only; book scopes already receive their own rolling context.",
-    parameters: Type.Object({
-      bookId: Type.Optional(Type.String({ minLength: 1, maxLength: 256, description: "Book id" })),
-      threadId: Type.Optional(Type.String({ minLength: 1, maxLength: 256, description: "Global thread id from get_conversation_state" })),
-    }, { additionalProperties: false }),
+    parameters: Type.Object(
+      {
+        bookId: Type.Optional(Type.String({ minLength: 1, maxLength: 256, description: "Book id" })),
+        threadId: Type.Optional(
+          Type.String({ minLength: 1, maxLength: 256, description: "Global thread id from get_conversation_state" }),
+        ),
+      },
+      { additionalProperties: false },
+    ),
     execute: async (_id, params, signal) => {
       signal?.throwIfAborted();
       const input = params as { bookId?: string; threadId?: string };
-      if (!input || typeof input !== "object" || Array.isArray(input)
-        || Object.keys(input).some(key => key !== "bookId" && key !== "threadId")
-        || input.bookId !== undefined && input.threadId !== undefined) throw new AppError("ui/invalid-target", "Choose one conversation target");
-      const target = normalizeConversationTarget(input.bookId !== undefined ? { kind: "book", id: input.bookId }
-        : input.threadId !== undefined ? { kind: "global", id: input.threadId }
-        : scope.kind === "book" ? { kind: "book", id: scope.bookId } : { kind: "global", id: scope.threadId });
+      if (
+        !input ||
+        typeof input !== "object" ||
+        Array.isArray(input) ||
+        Object.keys(input).some((key) => key !== "bookId" && key !== "threadId") ||
+        (input.bookId !== undefined && input.threadId !== undefined)
+      )
+        throw new AppError("ui/invalid-target", "Choose one conversation target");
+      const target = normalizeConversationTarget(
+        input.bookId !== undefined
+          ? { kind: "book", id: input.bookId }
+          : input.threadId !== undefined
+            ? { kind: "global", id: input.threadId }
+            : scope.kind === "book"
+              ? { kind: "book", id: scope.bookId }
+              : { kind: "global", id: scope.threadId },
+      );
       const summary = await deps.conversations.getInsights(`${target.kind}:${target.id}`);
       signal?.throwIfAborted();
-      return textResult({ ...(target.kind === "book" ? { bookId: target.id } : { threadId: target.id }), summary: summary ?? null });
+      return textResult({
+        ...(target.kind === "book" ? { bookId: target.id } : { threadId: target.id }),
+        summary: summary ?? null,
+      });
     },
   };
 

@@ -47,10 +47,7 @@ export function InlineError({
       size="sm"
       variant="ghost"
       onClick={onRetry}
-      className={cn(
-        "h-7 shrink-0 gap-1 px-2 text-xs text-fg-muted hover:text-fg",
-        !compact && "-my-1 -mr-1.5",
-      )}
+      className={cn("h-7 shrink-0 gap-1 px-2 text-xs text-fg-muted hover:text-fg", !compact && "-my-1 -mr-1.5")}
     >
       <ArrowsClockwise size={13} aria-hidden="true" />
       {retryLabel}
@@ -71,10 +68,7 @@ export function InlineError({
   }
 
   return (
-    <div
-      role="alert"
-      className={cn("max-w-full rounded-sm border border-border bg-fill/60 px-3.5 py-2.5", className)}
-    >
+    <div role="alert" className={cn("max-w-full rounded-sm border border-border bg-fill/60 px-3.5 py-2.5", className)}>
       {(title || retry) && (
         <div className="flex items-center justify-between gap-3">
           {title && <p className="text-sm font-medium leading-5 text-fg">{title}</p>}
@@ -82,10 +76,7 @@ export function InlineError({
         </div>
       )}
       <div
-        className={cn(
-          "text-xs leading-relaxed text-fg-muted [overflow-wrap:anywhere]",
-          (title || retry) && "mt-0.5",
-        )}
+        className={cn("text-xs leading-relaxed text-fg-muted [overflow-wrap:anywhere]", (title || retry) && "mt-0.5")}
       >
         {children}
         {action != null && <> {action}</>}

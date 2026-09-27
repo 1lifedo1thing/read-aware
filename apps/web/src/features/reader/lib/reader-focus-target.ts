@@ -3,11 +3,22 @@ import type { DomainActor } from "../../../platform/domain-actor";
 import { focusWithReadingSource } from "./reading-document-input";
 
 function visible(element: HTMLElement): boolean {
-  if (!element.isConnected || element.closest('[inert],[hidden],[aria-hidden="true"]') || !element.getClientRects().length) return false;
+  if (
+    !element.isConnected ||
+    element.closest('[inert],[hidden],[aria-hidden="true"]') ||
+    !element.getClientRects().length
+  )
+    return false;
   const view = element.ownerDocument.defaultView;
   for (let node: HTMLElement | null = element; node; node = node.parentElement) {
     const style = view?.getComputedStyle(node);
-    if (style?.display === "none" || style?.visibility === "hidden" || style?.visibility === "collapse" || style?.opacity === "0") return false;
+    if (
+      style?.display === "none" ||
+      style?.visibility === "hidden" ||
+      style?.visibility === "collapse" ||
+      style?.opacity === "0"
+    )
+      return false;
   }
   return true;
 }

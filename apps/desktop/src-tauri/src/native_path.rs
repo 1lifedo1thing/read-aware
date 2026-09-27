@@ -57,7 +57,10 @@ pub(crate) fn materialize(app: &AppHandle, raw: &str) -> Result<MaterializedPath
     materialize_reader(app, source)
 }
 
-pub(crate) fn materialize_reader(app: &AppHandle, source: impl Read) -> Result<MaterializedPath, CommandError> {
+pub(crate) fn materialize_reader(
+    app: &AppHandle,
+    source: impl Read,
+) -> Result<MaterializedPath, CommandError> {
     let cache_dir = app
         .path()
         .app_cache_dir()

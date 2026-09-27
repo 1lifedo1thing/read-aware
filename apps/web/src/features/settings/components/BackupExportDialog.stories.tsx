@@ -9,13 +9,32 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Password: Story = {
-  args: { flow: { ...meta.args.flow, view: { step: "form", form: {
-    password: "", confirmation: "", passwordError: false, confirmationError: false,
-  } } } },
+  args: {
+    flow: {
+      ...meta.args.flow,
+      view: {
+        step: "form",
+        form: {
+          password: "",
+          confirmation: "",
+          passwordError: false,
+          confirmationError: false,
+        },
+      },
+    },
+  },
 };
 export const Capturing: Story = {
-  args: { flow: { ...meta.args.flow, view: { step: "running", cancelling: false,
-    progress: { phase: "database", remainingPages: 25, totalPages: 100 } } } },
+  args: {
+    flow: {
+      ...meta.args.flow,
+      view: {
+        step: "running",
+        cancelling: false,
+        progress: { phase: "database", remainingPages: 25, totalPages: 100 },
+      },
+    },
+  },
 };
 export const Cancelling: Story = {
   args: { flow: { ...meta.args.flow, view: { step: "running", cancelling: true, progress: { phase: "encrypting" } } } },

@@ -24,9 +24,7 @@ const backInterceptors: BackRequestInterceptor[] = [];
  * are consulted newest-first, so the most recently opened layer unwinds first.
  * Returns the unregister function.
  */
-export function registerBackInterceptor(
-  interceptor: BackRequestInterceptor,
-): () => void {
+export function registerBackInterceptor(interceptor: BackRequestInterceptor): () => void {
   backInterceptors.push(interceptor);
   return () => {
     const index = backInterceptors.indexOf(interceptor);

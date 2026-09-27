@@ -21,21 +21,17 @@ export const Route = createFileRoute("/cbz-cbr-reader")({
     >
       <h2>The archive is the book</h2>
       <p>
-        A CBZ or CBR file is just a zipped or RAR-packed folder of page
-        images, and most tools make you convert it or unpack it before
-        reading. ReadAware treats the archive itself as the book: import it
-        and read, page by page, with your position remembered per comic. The
-        file you downloaded is the file you keep — nothing is converted,
+        A CBZ or CBR file is just a zipped or RAR-packed folder of page images, and most tools make you convert it or
+        unpack it before reading. ReadAware treats the archive itself as the book: import it and read, page by page,
+        with your position remembered per comic. The file you downloaded is the file you keep — nothing is converted,
         re-compressed, or uploaded anywhere.
       </p>
 
       <h2>Comics and books on one shelf</h2>
       <p>
-        Comic readers tend to be a separate world from ebook readers.
-        ReadAware's single engine reads CBZ and CBR alongside EPUB, MOBI,
-        AZW3, FB2, TXT, HTML, and PDF, so one library holds your whole
-        collection — graphic novels next to prose, manga next to reference
-        PDFs — with one reading history across all of it.
+        Comic readers tend to be a separate world from ebook readers. ReadAware's single engine reads CBZ and CBR
+        alongside EPUB, MOBI, AZW3, FB2, TXT, HTML, and PDF, so one library holds your whole collection — graphic novels
+        next to prose, manga next to reference PDFs — with one reading history across all of it.
       </p>
 
       <div className="my-10">
@@ -48,13 +44,10 @@ export const Route = createFileRoute("/cbz-cbr-reader")({
 
       <h2>Your place follows you</h2>
       <p>
-        On its own, everything is local-first: your comics and your progress
-        live on your device and reading works fully offline. With the
-        optional sync plan, the issue you stopped reading on your desktop is
-        open at the same page on your phone, end-to-end encrypted in transit
-        — the relay only ever stores ciphertext. ReadAware is open source
-        (AGPL-3.0) and free on{" "}
-        <Link to="/epub-reader-for-windows">Windows</Link>, macOS, Linux, and{" "}
+        On its own, everything is local-first: your comics and your progress live on your device and reading works fully
+        offline. With the optional sync plan, the issue you stopped reading on your desktop is open at the same page on
+        your phone, end-to-end encrypted in transit — the relay only ever stores ciphertext. ReadAware is open source
+        (AGPL-3.0) and free on <Link to="/epub-reader-for-windows">Windows</Link>, macOS, Linux, and{" "}
         <Link to="/epub-reader-for-android">Android</Link>.
       </p>
     </TopicPage>
@@ -84,7 +77,6 @@ const FAQS: TopicFaq[] = [
   },
   {
     question: "What platforms does it run on?",
-    answer:
-      "Windows, macOS, and Linux on desktop, and Android via a direct APK. iOS is on the way.",
+    answer: "Windows, macOS, and Linux on desktop, and Android via a direct APK. iOS is on the way.",
   },
 ];

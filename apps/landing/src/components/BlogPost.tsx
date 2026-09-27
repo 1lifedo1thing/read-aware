@@ -12,23 +12,19 @@ const DATE_LOCALE: Record<BlogLocale, string> = {
 
 export function formatPostDate(isoDate: string, locale: BlogLocale): string {
   const [year, month, day] = isoDate.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(
-    DATE_LOCALE[locale],
-    { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
-  );
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(DATE_LOCALE[locale], {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 /**
  * Shared article frame for every blog URL. The route supplies only a slug and
  * locale; title, metadata, and Markdown body come from the i18next resource.
  */
-export function BlogPost({
-  slug,
-  locale = "en",
-}: {
-  slug: BlogPostSlug;
-  locale?: BlogLocale;
-}) {
+export function BlogPost({ slug, locale = "en" }: { slug: BlogPostSlug; locale?: BlogLocale }) {
   const copy = useSiteCopy("blog");
   const post = copy.posts[slug];
 

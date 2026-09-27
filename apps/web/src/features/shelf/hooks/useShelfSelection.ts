@@ -26,10 +26,7 @@ export function useShelfSelection() {
     [setSelection],
   );
 
-  const selectAll = useCallback(
-    (allIds: string[]) => setSelection((s) => ({ ...s, ids: allIds })),
-    [setSelection],
-  );
+  const selectAll = useCallback((allIds: string[]) => setSelection((s) => ({ ...s, ids: allIds })), [setSelection]);
 
   return { active, ids, selectedIds, enter, exit, clear, toggle, selectAll };
 }

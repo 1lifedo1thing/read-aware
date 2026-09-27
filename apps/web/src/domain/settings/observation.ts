@@ -1,8 +1,25 @@
-import { AppError, errorCode, type SettingsObservation, type SettingsObservationCause, type SettingsSnapshot } from "@read-aware/core";
-import { copyEventCause, eventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../platform/domain-actor";
+import {
+  AppError,
+  errorCode,
+  type SettingsObservation,
+  type SettingsObservationCause,
+  type SettingsSnapshot,
+} from "@read-aware/core";
+import {
+  copyEventCause,
+  eventCause,
+  mergeEventCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../platform/domain-actor";
 
 const mergeCause = (a: SettingsObservationCause | undefined, b: SettingsObservationCause): SettingsObservationCause =>
-  !a ? b : mergeEventCauses([a, b], { source: a.source === b.source ? a.source : "mixed", origin: a.origin === b.origin ? a.origin : null });
+  !a
+    ? b
+    : mergeEventCauses([a, b], {
+        source: a.source === b.source ? a.source : "mixed",
+        origin: a.origin === b.origin ? a.origin : null,
+      });
 
 /** Invalidation clock, not a second settings store. Each consumer reads the settled authorized projection. */
 export class SettingsObservationHub {
@@ -16,9 +33,16 @@ export class SettingsObservationHub {
     for (const listener of [...this.listeners]) listener(cause);
   }
 
-  observe(read: () => Promise<SettingsSnapshot>, handler: (observation: SettingsObservation) => unknown, actor?: DomainActor): () => void {
+  observe(
+    read: () => Promise<SettingsSnapshot>,
+    handler: (observation: SettingsObservation) => unknown,
+    actor?: DomainActor,
+  ): () => void {
     if (this.listeners.size >= 64) throw new AppError("settings/observer-limit", "Too many settings observers");
-    let disposed = false, running = false, dirty = false, first = true;
+    let disposed = false,
+      running = false,
+      dirty = false,
+      first = true;
     let pending: SettingsObservationCause | undefined, previous: string | undefined;
     const run = async () => {
       if (running || disposed) return;
@@ -26,30 +50,58 @@ export class SettingsObservationHub {
       try {
         while (dirty && !disposed) {
           dirty = false;
-          const cause = pending!; pending = undefined;
+          const cause = pending!;
+          pending = undefined;
           let observation: SettingsObservation;
-          try { observation = { ...cause, status: "ready", snapshot: await read() }; }
-          catch (error) {
+          try {
+            observation = { ...cause, status: "ready", snapshot: await read() };
+          } catch (error) {
             this.report(error);
-            observation = { ...cause, status: "error", revision: this.revision, code: errorCode(error) ?? "settings/unavailable" };
+            observation = {
+              ...cause,
+              status: "error",
+              revision: this.revision,
+              code: errorCode(error) ?? "settings/unavailable",
+            };
           }
           if (disposed) return;
           // Never attach an old cause to a snapshot taken after a newer commit.
-          if (dirty) { pending = mergeCause(cause, pending!); continue; }
-          const identity = observation.status === "ready"
-            ? JSON.stringify({ ...observation.snapshot, revision: 0 }) : `error:${observation.code}`;
+          if (dirty) {
+            pending = mergeCause(cause, pending!);
+            continue;
+          }
+          const identity =
+            observation.status === "ready"
+              ? JSON.stringify({ ...observation.snapshot, revision: 0 })
+              : `error:${observation.code}`;
           if (identity === previous) continue;
           previous = identity;
-          if (first) { observation.source = "initial"; observation.origin = null; first = false; }
-          try { await handler(copyEventCause(cause, observation)); } catch (error) { this.report(error); }
+          if (first) {
+            observation.source = "initial";
+            observation.origin = null;
+            first = false;
+          }
+          try {
+            await handler(copyEventCause(cause, observation));
+          } catch (error) {
+            this.report(error);
+          }
         }
-      } finally { running = false; }
+      } finally {
+        running = false;
+      }
     };
     const notify = (cause: SettingsObservationCause) => {
       if (disposed) return;
-      pending = mergeCause(pending, cause); dirty = true; void run();
+      pending = mergeCause(pending, cause);
+      dirty = true;
+      void run();
     };
-    this.listeners.add(notify); notify(stampEventCause({ source: "initial", origin: null }, actor));
-    return () => { disposed = true; this.listeners.delete(notify); };
+    this.listeners.add(notify);
+    notify(stampEventCause({ source: "initial", origin: null }, actor));
+    return () => {
+      disposed = true;
+      this.listeners.delete(notify);
+    };
   }
 }

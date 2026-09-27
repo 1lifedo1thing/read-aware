@@ -21,7 +21,14 @@ import { isTauri } from "./environment";
 import { createLogger } from "./logger";
 import { KVWriteQueue, type KVCommit, type KVWriteOrigin } from "./kv-write-queue";
 
-import { saveActorSource, actorOrigin, causalActor, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
+import {
+  saveActorSource,
+  actorOrigin,
+  causalActor,
+  copyEventCause,
+  stampEventCause,
+  type DomainActor,
+} from "./domain-actor";
 
 const log = createLogger("secrets");
 
@@ -36,11 +43,7 @@ const log = createLogger("secrets");
  * slots by prefix (`secret_keys`); plugin credentials go through their own
  * async helpers below and never enter this snapshot.
  */
-export type SecretKey =
-  | "ai-api-key"
-  | `ai-api-key.${string}`
-  | "sync.session"
-  | "sync.master-key";
+export type SecretKey = "ai-api-key" | `ai-api-key.${string}` | "sync.session" | "sync.master-key";
 const SECRET_PREFIXES = ["ai-api-key", "sync."] as const;
 
 /** Where older builds kept the key in the clear; migrated away on first boot. */
@@ -64,27 +67,52 @@ export function onSecretCommit(listener: SecretCommitListener): () => void {
 }
 function notifyCommit(key: SecretKey, source: KVWriteOrigin, commit: SecretCommit): void {
   for (const listener of [...commitListeners]) {
-    try { listener(key, source, commit); } catch (error) { log.warn("Credential observer failed", error); }
+    try {
+      listener(key, source, commit);
+    } catch (error) {
+      log.warn("Credential observer failed", error);
+    }
   }
 }
 const writes = new KVWriteQueue({
-  read: key => snapshot.get(key as SecretKey) ?? null,
-  mirror: (key, value) => { if (value === null) snapshot.delete(key as SecretKey); else snapshot.set(key as SecretKey, value); },
-  persist: (key, value, origin, actor) => value === null
-    ? invoke("secret_delete", { key, roam: origin === "local", source: origin === "local" ? saveActorSource(actor) : null })
-    : invoke("secret_set", { key, value, roam: origin === "local", source: origin === "local" ? saveActorSource(actor) : null }),
+  read: (key) => snapshot.get(key as SecretKey) ?? null,
+  mirror: (key, value) => {
+    if (value === null) snapshot.delete(key as SecretKey);
+    else snapshot.set(key as SecretKey, value);
+  },
+  persist: (key, value, origin, actor) =>
+    value === null
+      ? invoke("secret_delete", {
+          key,
+          roam: origin === "local",
+          source: origin === "local" ? saveActorSource(actor) : null,
+        })
+      : invoke("secret_set", {
+          key,
+          value,
+          roam: origin === "local",
+          source: origin === "local" ? saveActorSource(actor) : null,
+        }),
   committed: (key, value, source) => {
     if (source !== "local") return;
     for (const listener of [...writeListeners]) {
-      try { listener(key as SecretKey, value); } catch (error) { log.warn("Credential publication failed", error); }
+      try {
+        listener(key as SecretKey, value);
+      } catch (error) {
+        log.warn("Credential publication failed", error);
+      }
     }
   },
-  settled: commit => {
+  settled: (commit) => {
     const notice = copyEventCause(commit, { source: commit.source, origin: commit.actor });
-    for (const { key } of commit.entries) notifyCommit(key as SecretKey, commit.source === "remote" ? "remote" : "local", notice);
+    for (const { key } of commit.entries)
+      notifyCommit(key as SecretKey, commit.source === "remote" ? "remote" : "local", notice);
   },
   failed: (key, error) => {
-    if (errorCode(error) === "ui/superseded") { log.debug("Deferred stale credential overlay while local publication is pending"); return; }
+    if (errorCode(error) === "ui/superseded") {
+      log.debug("Deferred stale credential overlay while local publication is pending");
+      return;
+    }
     log.error(`failed to persist "${key}"`, error);
     emitAppEvent("local-write-failed", { kind: "secret", code: errorCode(error) });
   },
@@ -149,22 +177,41 @@ export function getDurableSecret(key: SecretKey): string {
   return writes.readDurable(key) ?? "";
 }
 
-export function setSecretAsync(key: SecretKey, value: string, source: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
+export function setSecretAsync(
+  key: SecretKey,
+  value: string,
+  source: KVWriteOrigin = "local",
+  actor: DomainActor | null = null,
+): Promise<void> {
   const cause = causalActor(actor ?? "system");
-  if (isTauri()) return runObservedDomainWrite(() => writes.write(key, value || null, source, cause), error => {
-    log.warn("Credential write admission failed", error);
-    emitAppEvent("local-write-failed", { kind: "secret", code: errorCode(error) });
-  });
-  if (value) snapshot.set(key, value); else snapshot.delete(key);
+  if (isTauri())
+    return runObservedDomainWrite(
+      () => writes.write(key, value || null, source, cause),
+      (error) => {
+        log.warn("Credential write admission failed", error);
+        emitAppEvent("local-write-failed", { kind: "secret", code: errorCode(error) });
+      },
+    );
+  if (value) snapshot.set(key, value);
+  else snapshot.delete(key);
   notifyCommit(key, source, stampEventCause({ source, origin: actor === null ? null : actorOrigin(actor) }, cause));
   return Promise.resolve();
 }
 
-export function deleteSecretAsync(key: SecretKey, source: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
+export function deleteSecretAsync(
+  key: SecretKey,
+  source: KVWriteOrigin = "local",
+  actor: DomainActor | null = null,
+): Promise<void> {
   return setSecretAsync(key, "", source, actor);
 }
 
-export function setSecret(key: SecretKey, value: string, source: KVWriteOrigin = "local", actor: DomainActor | null = null): void {
+export function setSecret(
+  key: SecretKey,
+  value: string,
+  source: KVWriteOrigin = "local",
+  actor: DomainActor | null = null,
+): void {
   void setSecretAsync(key, value, source, actor);
 }
 

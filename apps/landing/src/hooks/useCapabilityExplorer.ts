@@ -59,24 +59,15 @@ export function useManifestDraft(sample: string) {
   return useState(sample);
 }
 
-export function useCapabilityDetail(
-  entry: CapabilityEntry,
-  initialQuery: string,
-) {
+export function useCapabilityDetail(entry: CapabilityEntry, initialQuery: string) {
   // A method query follows the developer into the detail; a general task query does not hide the API.
   const [methodQuery, setMethodQuery] = useState(() =>
-    entry.methods.some((method) =>
-      normalizeSearchText(method.path).includes(
-        normalizeSearchText(initialQuery),
-      ),
-    )
+    entry.methods.some((method) => normalizeSearchText(method.path).includes(normalizeSearchText(initialQuery)))
       ? initialQuery
       : "",
   );
   const [access, setAccess] = useState<"read" | "write">("read");
-  const [section, setSection] = useState<"methods" | "configuration">(
-    "methods",
-  );
+  const [section, setSection] = useState<"methods" | "configuration">("methods");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const terms = normalizeSearchText(methodQuery).split(/\s+/).filter(Boolean);
   const methods = entry.methods.filter((method) =>
@@ -84,9 +75,7 @@ export function useCapabilityDetail(
   );
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true });
-    headingRef.current
-      ?.closest(".capability-detail")
-      ?.scrollIntoView({ block: "start" });
+    headingRef.current?.closest(".capability-detail")?.scrollIntoView({ block: "start" });
   }, []);
   return {
     methodQuery,
@@ -123,9 +112,7 @@ export function useExplorerReturnFocus(cap?: CapabilityKey) {
   const previous = useRef(cap);
   useEffect(() => {
     if (!cap && previous.current) {
-      const card = document.querySelector<HTMLAnchorElement>(
-        `[data-capability="${previous.current}"]`,
-      );
+      const card = document.querySelector<HTMLAnchorElement>(`[data-capability="${previous.current}"]`);
       card?.focus({ preventScroll: true });
       card?.scrollIntoView({ block: "nearest" });
     }

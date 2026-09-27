@@ -144,7 +144,10 @@ pub(crate) fn entity_commit_inner(
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     registry::require_fresh(&tx)?;
     if registry::revision(&tx)? != expected_revision {
-        return Err(CommandError::new("memory/conflict", "Entity registry changed since the decision was prepared"));
+        return Err(CommandError::new(
+            "memory/conflict",
+            "Entity registry changed since the decision was prepared",
+        ));
     }
     let changed = apply_decision(&tx, event)?;
     let canonical_id = registry::root(&tx, id)?

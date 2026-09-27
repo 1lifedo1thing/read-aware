@@ -29,12 +29,8 @@ const base: LibraryBook = {
 
 describe("toBookSummary", () => {
   test("carries narrativity through to the canonical read model", () => {
-    expect(toBookSummary({ ...base, narrativity: "expository" }).narrativity).toBe(
-      "expository",
-    );
-    expect(toBookSummary({ ...base, narrativity: "narrative" }).narrativity).toBe(
-      "narrative",
-    );
+    expect(toBookSummary({ ...base, narrativity: "expository" }).narrativity).toBe("expository");
+    expect(toBookSummary({ ...base, narrativity: "narrative" }).narrativity).toBe("narrative");
   });
 
   test("unclassified books stay undefined", () => {

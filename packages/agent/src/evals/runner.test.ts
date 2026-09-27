@@ -16,11 +16,7 @@ function scenario(evaluate: Scenario["evaluate"]): Scenario {
   };
 }
 
-function variant(
-  id: string,
-  value: number,
-  order?: string[],
-): EvalVariant<Scenario, Observation> {
+function variant(id: string, value: number, order?: string[]): EvalVariant<Scenario, Observation> {
   return {
     id,
     metadata: { model: id },
@@ -43,24 +39,29 @@ describe("eval runner", () => {
   test("repeats, balances variant order, and computes paired comparisons", async () => {
     const order: string[] = [];
     const result = await runEvalSuite(
-      { id: "suite", displayName: "Suite", code: "S00", description: "suite", scenarios: [scenario((output) => assessmentFromChecks([
-        {
-          id: "value",
-          category: "quality",
-          passed: output.value > 0,
-          message: "value is positive",
-        },
-      ]))] },
+      {
+        id: "suite",
+        displayName: "Suite",
+        code: "S00",
+        description: "suite",
+        scenarios: [
+          scenario((output) =>
+            assessmentFromChecks([
+              {
+                id: "value",
+                category: "quality",
+                passed: output.value > 0,
+                message: "value is positive",
+              },
+            ]),
+          ),
+        ],
+      },
       [variant("baseline", 0, order), variant("candidate", 2, order)],
       { repetitions: 2 },
     );
 
-    expect(order).toEqual([
-      "1:baseline",
-      "1:candidate",
-      "2:candidate",
-      "2:baseline",
-    ]);
+    expect(order).toEqual(["1:baseline", "1:candidate", "2:candidate", "2:baseline"]);
     expect(result.plan.suiteDisplayName).toBe("Suite");
     expect(result.summary).toMatchObject({
       suiteDisplayName: "Suite",
@@ -118,11 +119,7 @@ describe("eval runner", () => {
       { timeoutMs: 5 },
     );
 
-    expect(result.records.map((record) => record.error?.stage)).toEqual([
-      "setup",
-      "scoring",
-      "timeout",
-    ]);
+    expect(result.records.map((record) => record.error?.stage)).toEqual(["setup", "scoring", "timeout"]);
     expect(result.summary.errors).toBe(3);
   });
 
@@ -130,7 +127,13 @@ describe("eval runner", () => {
     const duplicate = variant("same", 1);
     await expect(
       runEvalSuite(
-        { id: "suite", displayName: "Suite", code: "S00", description: "suite", scenarios: [scenario(() => assessmentFromChecks([]))] },
+        {
+          id: "suite",
+          displayName: "Suite",
+          code: "S00",
+          description: "suite",
+          scenarios: [scenario(() => assessmentFromChecks([]))],
+        },
         [duplicate, duplicate],
       ),
     ).rejects.toThrow("variants contains duplicate id");
@@ -138,7 +141,8 @@ describe("eval runner", () => {
 
   test("retains timeout diagnostics without grading an interrupted observation", async () => {
     const interrupted: EvalVariant<Scenario, Observation> = {
-      id: "interrupted", metadata: {},
+      id: "interrupted",
+      metadata: {},
       run: async (_scenario, context) => {
         context.capturePartial?.(() => ({ observation: { value: 7 }, telemetry: { wallTimeMs: 3, rounds: 2 } }));
         return new Promise((_resolve, reject) => {
@@ -147,21 +151,53 @@ describe("eval runner", () => {
       },
     };
     let graded = false;
-    const result = await runEvalSuite({ id: "partial", displayName: "Partial", code: "S00", description: "partial",
-      scenarios: [scenario(() => { graded = true; return assessmentFromChecks([]); })] }, [interrupted], { timeoutMs: 5 });
+    const result = await runEvalSuite(
+      {
+        id: "partial",
+        displayName: "Partial",
+        code: "S00",
+        description: "partial",
+        scenarios: [
+          scenario(() => {
+            graded = true;
+            return assessmentFromChecks([]);
+          }),
+        ],
+      },
+      [interrupted],
+      { timeoutMs: 5 },
+    );
     expect(graded).toBe(false);
-    expect(result.records[0]).toMatchObject({ status: "error", partialOutput: { value: 7 },
-      error: { stage: "timeout" }, telemetry: { rounds: 2 } });
+    expect(result.records[0]).toMatchObject({
+      status: "error",
+      partialOutput: { value: 7 },
+      error: { stage: "timeout" },
+      telemetry: { rounds: 2 },
+    });
     expect(result.records[0]?.output).toBeUndefined();
   });
 
   test("a broken diagnostic snapshot preserves the original failure", async () => {
-    const broken: EvalVariant<Scenario, Observation> = { id: "broken", metadata: {}, run: async (_scenario, context) => {
-      context.capturePartial?.(() => { throw Error("snapshot failed"); });
-      throw Error("provider failed");
-    } };
-    const result = await runEvalSuite({ id: "partial", displayName: "Partial", code: "S00", description: "partial",
-      scenarios: [scenario(() => assessmentFromChecks([]))] }, [broken]);
+    const broken: EvalVariant<Scenario, Observation> = {
+      id: "broken",
+      metadata: {},
+      run: async (_scenario, context) => {
+        context.capturePartial?.(() => {
+          throw Error("snapshot failed");
+        });
+        throw Error("provider failed");
+      },
+    };
+    const result = await runEvalSuite(
+      {
+        id: "partial",
+        displayName: "Partial",
+        code: "S00",
+        description: "partial",
+        scenarios: [scenario(() => assessmentFromChecks([]))],
+      },
+      [broken],
+    );
     expect(result.records[0]?.error?.message).toBe("provider failed");
     expect(result.records[0]?.partialOutput).toBeUndefined();
   });
@@ -175,17 +211,18 @@ describe("eval runner", () => {
         code: "S00",
         description: "scoring timeout",
         scenarios: [
-          scenario((_observation, context) =>
-            new Promise((_resolve, reject) => {
-              context?.signal?.addEventListener(
-                "abort",
-                () => {
-                  aborted = true;
-                  reject(context.signal?.reason);
-                },
-                { once: true },
-              );
-            }),
+          scenario(
+            (_observation, context) =>
+              new Promise((_resolve, reject) => {
+                context?.signal?.addEventListener(
+                  "abort",
+                  () => {
+                    aborted = true;
+                    reject(context.signal?.reason);
+                  },
+                  { once: true },
+                );
+              }),
           ),
         ],
       },
@@ -200,9 +237,7 @@ describe("eval runner", () => {
 
 describe("eval runner concurrency", () => {
   test("parallel units still produce every paired record", async () => {
-    const passing = assessmentFromChecks([
-      { id: "ok", category: "answer", passed: true, message: "ok" },
-    ]);
+    const passing = assessmentFromChecks([{ id: "ok", category: "answer", passed: true, message: "ok" }]);
     const scenarios = ["s1", "s2", "s3", "s4"].map((id) => ({
       ...scenario(async () => passing),
       id,
@@ -216,13 +251,8 @@ describe("eval runner concurrency", () => {
     expect(result.records).toHaveLength(24);
     for (const id of ["s1", "s2", "s3", "s4"]) {
       for (let repetition = 1; repetition <= 3; repetition += 1) {
-        const pair = result.records.filter(
-          (record) => record.scenarioId === id && record.repetition === repetition,
-        );
-        expect(pair.map((record) => record.variantId).sort()).toEqual([
-          "baseline",
-          "candidate",
-        ]);
+        const pair = result.records.filter((record) => record.scenarioId === id && record.repetition === repetition);
+        expect(pair.map((record) => record.variantId).sort()).toEqual(["baseline", "candidate"]);
       }
     }
     const comparison = result.summary.comparisons[0];

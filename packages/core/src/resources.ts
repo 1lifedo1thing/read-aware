@@ -4,8 +4,12 @@ import externalFormats from "./resource-external-formats.json";
 export const RESOURCE_EXTERNAL_EXTENSIONS: readonly string[] = Object.freeze(externalFormats);
 /** Opaque, activation/thread-local reference. Never a path or native storage key. */
 export type ResourceRef = {
-  id: string; name: string; mimeType: string; size: number;
-  state: "writing" | "ready"; expiresAt: number;
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  state: "writing" | "ready";
+  expiresAt: number;
   source: "picked" | "created" | "book" | "cover" | "image" | "context" | "asset";
 };
 export type ResourcePickOptions = { multiple?: boolean; extensions?: string[] };
@@ -14,12 +18,14 @@ export type ResourceDirectoryRef = { id: string; name: string; expiresAt: number
 export type ResourceDirectoryQuery = { relativePath?: string; cursor?: string; limit?: number };
 export type ResourceDirectoryPage = {
   entries: { name: string; relativePath: string; kind: "file" | "directory"; size: number | null }[];
-  nextCursor: string | null; omittedCount: number;
+  nextCursor: string | null;
+  omittedCount: number;
 };
 export type ResourceCreateOptions = { name: string; mimeType?: string };
 export type ResourceChunk = { data: ArrayBuffer; nextOffset: number; eof: boolean };
 export type ResourceImageReceipt = { copied: true; width: number; height: number };
-export type ResourceOperationQuery = { operation: "resources.save"; resourceId: string; filename?: string }
+export type ResourceOperationQuery =
+  | { operation: "resources.save"; resourceId: string; filename?: string }
   | { operation: "resources.openAssociated"; resourceId: string };
 export type ResourcePort = {
   /** Owner-local metadata check; never reads bytes, opens a dialog or dispatches an export. */

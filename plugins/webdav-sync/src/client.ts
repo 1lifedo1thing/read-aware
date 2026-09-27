@@ -55,9 +55,7 @@ export function webdavError(status: number, method: string, url: string): Error 
 
 const networkError = (method: string, url: string, cause: unknown): Error =>
   Object.assign(
-    new Error(
-      `webdav: ${method} ${url} failed: ${cause instanceof Error ? cause.message : String(cause)}`,
-    ),
+    new Error(`webdav: ${method} ${url} failed: ${cause instanceof Error ? cause.message : String(cause)}`),
     { code: "sync/network" },
   );
 
@@ -119,7 +117,12 @@ export function createWebdavClient(options: WebdavClientOptions) {
     if (closed) throw closedError();
     const controller = new AbortController();
     let finished!: () => void;
-    requests.set(controller, new Promise<void>(resolve => { finished = resolve; }));
+    requests.set(
+      controller,
+      new Promise<void>((resolve) => {
+        finished = resolve;
+      }),
+    );
     const timer = setTimeout(() => controller.abort(), init.timeoutMs ?? timeoutMs);
     try {
       const response = await options.fetchFn(url, {
@@ -272,7 +275,7 @@ export function createWebdavClient(options: WebdavClientOptions) {
     const pending = [...requests.values()];
     const cancelled = Object.assign(new Error("WebDAV session is closing"), { code: "plugin/cancelled" });
     for (const controller of requests.keys()) controller.abort(cancelled);
-    return closing = Promise.all(pending).then(() => {});
+    return (closing = Promise.all(pending).then(() => {}));
   }
 
   return { get, put, remove, ensureCollections, listChildren, probe, close };

@@ -8,12 +8,24 @@ import { openExternalUrl } from "../../../platform/external-link";
 import { createLogger } from "../../../platform/logger";
 import { siteBaseUrl } from "../../../platform/site-url";
 import { getSyncConnectionBusy } from "../../../platform/sync/connection-operation";
-import { getSyncConnectionGeneration, getSyncStatusSnapshot, syncRelayClient } from "../../../platform/sync/sync-scheduler";
+import {
+  getSyncConnectionGeneration,
+  getSyncStatusSnapshot,
+  syncRelayClient,
+} from "../../../platform/sync/sync-scheduler";
 import { hostSyncFlows } from "../../../services/sync";
 import type { useSyncConnection } from "./useSyncConnection";
 
 const log = createLogger("sync");
-const LANDING_LOCALE: Record<string, string> = { "zh-Hans": "zh", "zh-Hant": "zh-hant", ja: "ja", fr: "fr", de: "de", ru: "ru", es: "es" };
+const LANDING_LOCALE: Record<string, string> = {
+  "zh-Hans": "zh",
+  "zh-Hant": "zh-hant",
+  ja: "ja",
+  fr: "fr",
+  de: "de",
+  ru: "ru",
+  es: "es",
+};
 
 /** Settings owns all secrets, confirmations and user-facing failures. The
  * shared controller correlates only the action and its final outcome.
@@ -33,7 +45,8 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
 
   const close = () => {
     setConnectOpen(false);
-    setDisconnectOpen(false); setDeleteAccountOpen(false);
+    setDisconnectOpen(false);
+    setDeleteAccountOpen(false);
   };
   const change = (action: HostSyncFlow, open: boolean, set: (open: boolean) => void) => {
     if (working || getSyncConnectionBusy()) return;
@@ -42,51 +55,90 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
   };
   const failure = (error: unknown) => {
     log.error("sync account action failed", error);
-    toast({ variant: "destructive", title: t("dataSync.noticeError"),
-      description: describeError(error, { fallback: t("dataSync.connect.failed") }).body });
+    toast({
+      variant: "destructive",
+      title: t("dataSync.noticeError"),
+      description: describeError(error, { fallback: t("dataSync.connect.failed") }).body,
+    });
   };
-  const perform = async (action: HostSyncFlow, operation: (signal?: AbortSignal, origin?: DomainActor) => Promise<unknown>, origin?: DomainActor) => {
+  const perform = async (
+    action: HostSyncFlow,
+    operation: (signal?: AbortSignal, origin?: DomainActor) => Promise<unknown>,
+    origin?: DomainActor,
+  ) => {
     setWorking(true);
-    try { await hostSyncFlows.run(action, operation, false, origin); close(); }
-    catch (error) { failure(error); }
-    finally { setWorking(false); }
-  };
-  const billing = (action: "upgrade" | "billing", origin?: DomainActor) => perform(action, async signal => {
-    if (!purchaseAllowed) throw new AppError("ui/unavailable", "External purchases are unavailable");
-    const status = getSyncStatusSnapshot();
-    if (!status.accountConnected || status.backend !== "relay" || getSyncConnectionBusy()) throw new AppError("ui/unavailable", "No available relay account");
-    const client = syncRelayClient();
-    const generation = getSyncConnectionGeneration();
-    const account = await client.account();
-    if (account.tier === "staff" || (action === "billing" ? !account.hasBilling : account.tier !== "free")) throw new AppError("ui/unavailable", "This account has no requested billing action");
-    let target: string;
-    if (action === "billing") target = await client.createPortal();
-    else {
-      const prefix = LANDING_LOCALE[i18n.language];
-      target = `${siteBaseUrl()}${prefix ? `/${prefix}` : ""}/pricing`;
-      try { target += `#upgrade=${encodeURIComponent(await client.billingTicket())}`; }
-      catch { /* Older/offline relays retain the existing email-bound pricing fallback. */ }
+    try {
+      await hostSyncFlows.run(action, operation, false, origin);
+      close();
+    } catch (error) {
+      failure(error);
+    } finally {
+      setWorking(false);
     }
-    signal?.throwIfAborted();
-    if (generation !== getSyncConnectionGeneration() || getSyncConnectionBusy()) throw new AppError("ui/superseded", "Sync account changed before external handoff");
-    await openExternalUrl(target);
-  }, origin);
+  };
+  const billing = (action: "upgrade" | "billing", origin?: DomainActor) =>
+    perform(
+      action,
+      async (signal) => {
+        if (!purchaseAllowed) throw new AppError("ui/unavailable", "External purchases are unavailable");
+        const status = getSyncStatusSnapshot();
+        if (!status.accountConnected || status.backend !== "relay" || getSyncConnectionBusy())
+          throw new AppError("ui/unavailable", "No available relay account");
+        const client = syncRelayClient();
+        const generation = getSyncConnectionGeneration();
+        const account = await client.account();
+        if (account.tier === "staff" || (action === "billing" ? !account.hasBilling : account.tier !== "free"))
+          throw new AppError("ui/unavailable", "This account has no requested billing action");
+        let target: string;
+        if (action === "billing") target = await client.createPortal();
+        else {
+          const prefix = LANDING_LOCALE[i18n.language];
+          target = `${siteBaseUrl()}${prefix ? `/${prefix}` : ""}/pricing`;
+          try {
+            target += `#upgrade=${encodeURIComponent(await client.billingTicket())}`;
+          } catch {
+            /* Older/offline relays retain the existing email-bound pricing fallback. */
+          }
+        }
+        signal?.throwIfAborted();
+        if (generation !== getSyncConnectionGeneration() || getSyncConnectionBusy())
+          throw new AppError("ui/superseded", "Sync account changed before external handoff");
+        await openExternalUrl(target);
+      },
+      origin,
+    );
 
   const latest = useRef({ open: (_request: import("@read-aware/core").HostSyncFlowRequest) => {}, close });
   latest.current = {
     close,
-    open: request => {
-      if (working || getSyncConnectionBusy() || connectOpen || disconnectOpen || deleteAccountOpen) throw new AppError("ui/unavailable", "A native sync dialog is already active");
+    open: (request) => {
+      if (working || getSyncConnectionBusy() || connectOpen || disconnectOpen || deleteAccountOpen)
+        throw new AppError("ui/unavailable", "A native sync dialog is already active");
       const status = getSyncStatusSnapshot();
-      const blocked = syncFlowConditions(request, status, getSyncConnectionBusy(), sync.transports, purchaseAllowed).find(value => value.state === "unavailable");
-      if (blocked) throw new AppError(blocked.errorCode === "sync/transport-unavailable" ? "sync/transport-unavailable" : "ui/unavailable", blocked.reason);
+      const blocked = syncFlowConditions(
+        request,
+        status,
+        getSyncConnectionBusy(),
+        sync.transports,
+        purchaseAllowed,
+      ).find((value) => value.state === "unavailable");
+      if (blocked)
+        throw new AppError(
+          blocked.errorCode === "sync/transport-unavailable" ? "sync/transport-unavailable" : "ui/unavailable",
+          blocked.reason,
+        );
       if (request.action === "connect") {
-        if (request.transportRef) throw new AppError("ui/unavailable", "Transport connect is owned by the plugin's settings page");
+        if (request.transportRef)
+          throw new AppError("ui/unavailable", "Transport connect is owned by the plugin's settings page");
         setConnectOpen(true);
       } else if (request.action === "disconnect") {
         // Disconnecting a transport belongs to its plugin page; only a binding
         // whose plugin is gone (no registered transport) is torn down here.
-        if (status.backend === "transport" && status.transportRef && sync.transports.some(item => item.ref === status.transportRef))
+        if (
+          status.backend === "transport" &&
+          status.transportRef &&
+          sync.transports.some((item) => item.ref === status.transportRef)
+        )
           throw new AppError("ui/unavailable", "Transport disconnect is owned by the plugin's settings page");
         setDisconnectOpen(true);
       } else {
@@ -95,21 +147,31 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
       }
     },
   };
-  useLayoutEffect(() => hostSyncFlows.bind({ open: request => latest.current.open(request), close: () => latest.current.close() }), []);
+  useLayoutEffect(
+    () => hostSyncFlows.bind({ open: (request) => latest.current.open(request), close: () => latest.current.close() }),
+    [],
+  );
 
   return {
-    connectOpen, setConnectOpen: (open: boolean) => change("connect", open, setConnectOpen),
-    disconnectOpen, setDisconnectOpen: (open: boolean) => change("disconnect", open, setDisconnectOpen),
-    deleteAccountOpen, setDeleteAccountOpen: (open: boolean) => change("delete-account", open, setDeleteAccountOpen),
+    connectOpen,
+    setConnectOpen: (open: boolean) => change("connect", open, setConnectOpen),
+    disconnectOpen,
+    setDisconnectOpen: (open: boolean) => change("disconnect", open, setDisconnectOpen),
+    deleteAccountOpen,
+    setDeleteAccountOpen: (open: boolean) => change("delete-account", open, setDeleteAccountOpen),
     working,
     disconnect: () => perform("disconnect", (_signal, origin) => sync.disconnect(origin)),
-    deleteAccount: () => perform("delete-account", async (_signal, origin) => {
-      await sync.deleteAccount(origin);
-      toast({ title: t("dataSync.noticeDone"), description: t("dataSync.deleteAccount.done") });
-    }),
-    openPortal: () => billing("billing"), openUpgrade: () => billing("upgrade"),
-    sync: { ...sync,
-      finishConnect: (...args: Parameters<typeof sync.finishConnect>) => hostSyncFlows.run("connect", (_signal, origin) => sync.finishConnect(args[0], args[1], origin), true),
+    deleteAccount: () =>
+      perform("delete-account", async (_signal, origin) => {
+        await sync.deleteAccount(origin);
+        toast({ title: t("dataSync.noticeDone"), description: t("dataSync.deleteAccount.done") });
+      }),
+    openPortal: () => billing("billing"),
+    openUpgrade: () => billing("upgrade"),
+    sync: {
+      ...sync,
+      finishConnect: (...args: Parameters<typeof sync.finishConnect>) =>
+        hostSyncFlows.run("connect", (_signal, origin) => sync.finishConnect(args[0], args[1], origin), true),
     },
   };
 }

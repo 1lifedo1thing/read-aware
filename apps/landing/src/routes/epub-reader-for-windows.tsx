@@ -22,21 +22,18 @@ export const Route = createFileRoute("/epub-reader-for-windows")({
     >
       <h2>Reading EPUB on Windows, minus the friction</h2>
       <p>
-        Windows still has no good built-in way to open an EPUB. ReadAware is a
-        desktop app, not a browser tab: install it once, drop your files in,
-        and read. There is no account to create, no cloud upload, and no
-        conversion step — the EPUB you import is the EPUB you keep, with your
-        highlights, notes, and reading position attached to the original
-        text. It ships as a regular installer, an MSI, or a portable ZIP that
-        runs from a folder without installing anything.
+        Windows still has no good built-in way to open an EPUB. ReadAware is a desktop app, not a browser tab: install
+        it once, drop your files in, and read. There is no account to create, no cloud upload, and no conversion step —
+        the EPUB you import is the EPUB you keep, with your highlights, notes, and reading position attached to the
+        original text. It ships as a regular installer, an MSI, or a portable ZIP that runs from a folder without
+        installing anything.
       </p>
 
       <h2>Not just EPUB</h2>
       <p>
-        The same reader opens MOBI, AZW3, FB2, CBZ, CBR, TXT, HTML, and PDF,
-        with the same selection, highlights, and progress in every format. A
-        DRM-free Kindle file reads as comfortably as an EPUB; a comic archive
-        sits on the same shelf as your novels.
+        The same reader opens MOBI, AZW3, FB2, CBZ, CBR, TXT, HTML, and PDF, with the same selection, highlights, and
+        progress in every format. A DRM-free Kindle file reads as comfortably as an EPUB; a comic archive sits on the
+        same shelf as your novels.
       </p>
 
       <div className="my-10">
@@ -49,21 +46,17 @@ export const Route = createFileRoute("/epub-reader-for-windows")({
 
       <h2>Reading that leaves a trace you can use</h2>
       <p>
-        Highlight a line and it stays highlighted; add a note and it stays
-        with the passage. When you want more focus, read sentence by sentence
-        — the page holds back, a floating strip steps you through, and
-        read-aloud can follow along. And everything you mark feeds the
-        assistant: ask about a passage, a book, or your whole shelf, and it
+        Highlight a line and it stays highlighted; add a note and it stays with the passage. When you want more focus,
+        read sentence by sentence — the page holds back, a floating strip steps you through, and read-aloud can follow
+        along. And everything you mark feeds the assistant: ask about a passage, a book, or your whole shelf, and it
         answers from your own reading, on an API key you bring.
       </p>
 
       <h2>Your desktop reading, on your phone too</h2>
       <p>
-        ReadAware also runs on macOS, Linux, and{" "}
-        <Link to="/epub-reader-for-android">Android</Link>. With the optional
-        sync plan, your books, highlights, and place in each of them follow
-        you between machines, end-to-end encrypted — the relay only ever
-        stores ciphertext.
+        ReadAware also runs on macOS, Linux, and <Link to="/epub-reader-for-android">Android</Link>. With the optional
+        sync plan, your books, highlights, and place in each of them follow you between machines, end-to-end encrypted —
+        the relay only ever stores ciphertext.
       </p>
     </TopicPage>
   ),

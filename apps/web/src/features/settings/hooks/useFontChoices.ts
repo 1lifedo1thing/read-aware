@@ -121,9 +121,7 @@ export function useFontChoices({ value, onChange, defaultLabel, fontWeight }: Fo
   const choose = (next: string) =>
     // The union guarantees a null-accepting handler whenever the default
     // option can be picked, so the cast only widens for that caller.
-    (onChange as (v: ReaderFontFamily | null) => void)(
-      next === DEFAULT_OPTION ? null : (next as ReaderFontFamily),
-    );
+    (onChange as (v: ReaderFontFamily | null) => void)(next === DEFAULT_OPTION ? null : (next as ReaderFontFamily));
 
   return {
     /** Listing the device's installed fonts rather than the curated set. */

@@ -26,8 +26,7 @@ export const NewNote: Story = {};
 /** Editing an existing note: prefilled body plus the delete affordance. */
 export const EditingNote: Story = {
   args: {
-    initialContent:
-      "Identity-based habits — tie this back to the introduction's outcome/process/identity layers.",
+    initialContent: "Identity-based habits — tie this back to the introduction's outcome/process/identity layers.",
     isEditing: true,
     onDelete: () => {},
   },

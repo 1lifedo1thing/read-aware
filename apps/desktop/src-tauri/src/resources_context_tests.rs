@@ -33,15 +33,32 @@ fn sealing_validates_artifact_and_binds_once_without_allowing_generic_consumptio
     let info = staged(&mut entries, &original);
     seal(&mut conn, &mut entries, &info.id, &revision).unwrap();
     assert!(entries[&info.id].ready);
-    assert_eq!(entries[&info.id].context_revision.as_deref(), Some(revision.as_str()));
-    assert_eq!(with_revision(&mut conn, &revision, || read(&mut entries, &info.id, 0, MAX_CHUNK)).unwrap(), original);
+    assert_eq!(
+        entries[&info.id].context_revision.as_deref(),
+        Some(revision.as_str())
+    );
+    assert_eq!(
+        with_revision(&mut conn, &revision, || read(
+            &mut entries,
+            &info.id,
+            0,
+            MAX_CHUNK
+        ))
+        .unwrap(),
+        original
+    );
     assert!(lease(&mut entries, &info.id).is_err());
     assert!(append(&mut entries, &info.id, original.len() as u64, b"!").is_err());
     assert!(seal(&mut conn, &mut entries, &info.id, &revision).is_err());
     mutate(&conn, "changed");
     let newer = clock(&mut conn);
     assert!(seal(&mut conn, &mut entries, &info.id, &newer).is_err());
-    assert_eq!(with_revision(&mut conn, &revision, || read(&mut entries, &info.id, 0, 1)).unwrap_err().code, "memory/conflict");
+    assert_eq!(
+        with_revision(&mut conn, &revision, || read(&mut entries, &info.id, 0, 1))
+            .unwrap_err()
+            .code,
+        "memory/conflict"
+    );
     entries.remove(&info.id);
     assert!(entries.is_empty());
 }
@@ -53,7 +70,11 @@ fn invalid_json_hash_and_stale_sources_never_seal_or_replace_output() {
     let mut entries = HashMap::new();
     let mut bad: serde_json::Value = serde_json::from_slice(&artifact()).unwrap();
     bad["version"] = "cb1:forged".into();
-    for bytes in [b"not json".to_vec(), serde_json::to_vec(&bad).unwrap(), vec![b' '; 2 * MAX_CHUNK + 1]] {
+    for bytes in [
+        b"not json".to_vec(),
+        serde_json::to_vec(&bad).unwrap(),
+        vec![b' '; 2 * MAX_CHUNK + 1],
+    ] {
         let info = staged(&mut entries, &bytes);
         assert!(seal(&mut conn, &mut entries, &info.id, &revision).is_err());
         assert!(!entries[&info.id].ready);
@@ -62,7 +83,12 @@ fn invalid_json_hash_and_stale_sources_never_seal_or_replace_output() {
     }
     let info = staged(&mut entries, &artifact());
     mutate(&conn, "before seal");
-    assert_eq!(seal(&mut conn, &mut entries, &info.id, &revision).unwrap_err().code, "memory/conflict");
+    assert_eq!(
+        seal(&mut conn, &mut entries, &info.id, &revision)
+            .unwrap_err()
+            .code,
+        "memory/conflict"
+    );
     assert!(!entries[&info.id].ready);
     let current = clock(&mut conn);
     seal(&mut conn, &mut entries, &info.id, &current).unwrap();
@@ -70,7 +96,13 @@ fn invalid_json_hash_and_stale_sources_never_seal_or_replace_output() {
     let path = dir.path().join("bundle.json");
     std::fs::write(&path, b"previous").unwrap();
     mutate(&conn, "before save");
-    assert!(with_revision(&mut conn, &current, || save(&mut entries, &info.id, &LocalFiles, FilePath::Path(path.clone()))).is_err());
+    assert!(with_revision(&mut conn, &current, || save(
+        &mut entries,
+        &info.id,
+        &LocalFiles,
+        FilePath::Path(path.clone())
+    ))
+    .is_err());
     assert_eq!(std::fs::read(&path).unwrap(), b"previous");
 }
 
@@ -79,19 +111,37 @@ fn rollback_keeps_admission_but_aba_missing_or_corrupt_state_deny() {
     let mut conn = database();
     mutate(&conn, "A");
     let revision = clock(&mut conn);
-    { let tx = conn.transaction().unwrap(); mutate(&tx, "rollback"); }
+    {
+        let tx = conn.transaction().unwrap();
+        mutate(&tx, "rollback");
+    }
     with_revision(&mut conn, &revision, || Ok(())).unwrap();
-    mutate(&conn, "B"); mutate(&conn, "A");
+    mutate(&conn, "B");
+    mutate(&conn, "A");
     assert!(with_revision(&mut conn, &revision, || Ok(())).is_err());
     let current = clock(&mut conn);
-    conn.execute("DELETE FROM context_bundle_source_clock", []).unwrap();
+    conn.execute("DELETE FROM context_bundle_source_clock", [])
+        .unwrap();
     assert!(with_revision(&mut conn, &current, || Ok(())).is_err());
-    assert_eq!(conn.query_row("SELECT count(*) FROM context_bundle_source_clock", [], |row| row.get::<_, i64>(0)).unwrap(), 0);
+    assert_eq!(
+        conn.query_row(
+            "SELECT count(*) FROM context_bundle_source_clock",
+            [],
+            |row| row.get::<_, i64>(0)
+        )
+        .unwrap(),
+        0
+    );
     let current = clock(&mut conn);
-    conn.execute("UPDATE context_bundle_source_clock SET generation='invalid'", []).unwrap();
+    conn.execute(
+        "UPDATE context_bundle_source_clock SET generation='invalid'",
+        [],
+    )
+    .unwrap();
     assert!(with_revision(&mut conn, &current, || Ok(())).is_err());
     assert!(with_revision(&mut conn, "cbsource1:invalid:0", || Ok(())).is_err());
-    conn.execute("DROP TABLE context_bundle_source_clock", []).unwrap();
+    conn.execute("DROP TABLE context_bundle_source_clock", [])
+        .unwrap();
     assert!(with_revision(&mut conn, &current, || Ok(())).is_err());
 }
 
@@ -112,8 +162,14 @@ fn second_connection_changes_are_checked_at_native_admission_and_not_only_in_js(
     let output = dir.path().join("bundle.json");
     with_revision(&mut conn, &revision, || {
         mutate(&other, "after admission");
-        save(&mut entries, &info.id, &LocalFiles, FilePath::Path(output.clone()))
-    }).unwrap();
+        save(
+            &mut entries,
+            &info.id,
+            &LocalFiles,
+            FilePath::Path(output.clone()),
+        )
+    })
+    .unwrap();
     assert_eq!(std::fs::read(&output).unwrap(), artifact());
     assert!(with_revision(&mut conn, &revision, || read(&mut entries, &info.id, 0, 1)).is_err());
     drop(conn);
@@ -128,9 +184,19 @@ fn stale_projection_and_wipe_reject_retained_files_without_recreating_a_proof() 
     let mut entries = HashMap::new();
     let info = staged(&mut entries, &artifact());
     seal(&mut conn, &mut entries, &info.id, &revision).unwrap();
-    conn.execute("INSERT INTO sync_profile(id,projections_stale,updated_at) VALUES(1,1,'now')", []).unwrap();
-    assert_eq!(with_revision(&mut conn, &revision, || Ok(())).unwrap_err().code, "memory/conflict");
-    conn.execute("UPDATE sync_profile SET projections_stale=0", []).unwrap();
+    conn.execute(
+        "INSERT INTO sync_profile(id,projections_stale,updated_at) VALUES(1,1,'now')",
+        [],
+    )
+    .unwrap();
+    assert_eq!(
+        with_revision(&mut conn, &revision, || Ok(()))
+            .unwrap_err()
+            .code,
+        "memory/conflict"
+    );
+    conn.execute("UPDATE sync_profile SET projections_stale=0", [])
+        .unwrap();
     with_revision(&mut conn, &revision, || Ok(())).unwrap();
     let dir = tempfile::tempdir().unwrap();
     crate::storage::wipe_all_data_inner(&mut conn, dir.path()).unwrap();

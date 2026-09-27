@@ -41,16 +41,12 @@ export class SqlRateLimitStore implements RateLimitStore {
   }
 
   async cleanup(beforeMs: number): Promise<void> {
-    await this.db
-      .prepare(`DELETE FROM rate_windows WHERE window_start_ms < ?1`)
-      .bind(beforeMs)
-      .run();
+    await this.db.prepare(`DELETE FROM rate_windows WHERE window_start_ms < ?1`).bind(beforeMs).run();
   }
 }
 
 /** The window an instant falls into, as its inclusive start millisecond. */
-export const windowStartMs = (nowMs: number, windowMs: number): number =>
-  Math.floor(nowMs / windowMs) * windowMs;
+export const windowStartMs = (nowMs: number, windowMs: number): number => Math.floor(nowMs / windowMs) * windowMs;
 
 /**
  * Fold a client address into the unit that per-IP throttling counts:
@@ -79,5 +75,8 @@ export function foldClientIp(ip: string): string {
   for (let i = 0; i < Math.max(0, fill); i += 1) groups.push(0);
   for (const group of tail.split(":").filter(Boolean)) groups.push(...parseGroup(group));
   while (groups.length < 8) groups.push(0);
-  return `${groups.slice(0, 4).map((g) => g.toString(16).padStart(4, "0")).join(":")}:/64`;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.toString(16).padStart(4, "0"))
+    .join(":")}:/64`;
 }

@@ -37,8 +37,11 @@ export function subscribeWheelPhaseEdges(
   const handler = (event: Event) => {
     const edge: unknown = (event as CustomEvent<unknown>).detail;
     if (edge !== "touch" && edge !== "momentum" && edge !== "end") return;
-    try { Promise.resolve(onEdge(edge)).catch(error => log.warn("Wheel phase consumer failed", error)); }
-    catch (error) { log.warn("Wheel phase consumer failed", error); }
+    try {
+      Promise.resolve(onEdge(edge)).catch((error) => log.warn("Wheel phase consumer failed", error));
+    } catch (error) {
+      log.warn("Wheel phase consumer failed", error);
+    }
   };
   target.addEventListener(WHEEL_PHASE_EVENT, handler);
   return () => {

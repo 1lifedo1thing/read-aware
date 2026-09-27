@@ -49,9 +49,7 @@ export function useLibraryCommands({ reportError, reload }: LibraryCommandOption
     (id: string, name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;
-      setCollections((current) =>
-        sortCollections(current.map((c) => (c.id === id ? { ...c, name: trimmed } : c))),
-      );
+      setCollections((current) => sortCollections(current.map((c) => (c.id === id ? { ...c, name: trimmed } : c))));
       void userDomain.library.commands.collections.rename(id, trimmed).catch((error) => {
         void reload();
         reportError(error);
@@ -63,9 +61,7 @@ export function useLibraryCommands({ reportError, reload }: LibraryCommandOption
   const handleDeleteCollection = useCallback(
     (id: string) => {
       setCollections((current) => current.filter((c) => c.id !== id));
-      setBooks((current) =>
-        current.map((book) => (book.collectionId === id ? { ...book, collectionId: null } : book)),
-      );
+      setBooks((current) => current.map((book) => (book.collectionId === id ? { ...book, collectionId: null } : book)));
       void userDomain.library.commands.collections.remove(id).catch((error) => {
         void reload();
         reportError(error);
@@ -123,7 +119,8 @@ export function useLibraryCommands({ reportError, reload }: LibraryCommandOption
       void remove
         .then((receipt) => {
           setBooks((current) => removeBooks(current, ids));
-          if (receipt && receipt.files.status === "pending") reportError(new AppError("library/removal-cleanup-pending", "Books removed; local files need cleanup"));
+          if (receipt && receipt.files.status === "pending")
+            reportError(new AppError("library/removal-cleanup-pending", "Books removed; local files need cleanup"));
           // Best-effort: a failure strands orphaned full-text rows, not user data.
           void deleteBookText(ids).catch((error: unknown) => {
             log.warn("full-text cleanup failed after book removal", error);
@@ -134,10 +131,7 @@ export function useLibraryCommands({ reportError, reload }: LibraryCommandOption
     [reportError, setBooks],
   );
 
-  const handleRemoveBook = useCallback(
-    (book: LibraryBook) => removeBooksById([book.id]),
-    [removeBooksById],
-  );
+  const handleRemoveBook = useCallback((book: LibraryBook) => removeBooksById([book.id]), [removeBooksById]);
 
   return {
     handleCreateCollection,

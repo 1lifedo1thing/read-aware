@@ -35,10 +35,7 @@ export type PluginFilePayload = {
   encoding?: "base64";
 };
 
-export function stagePluginFiles(
-  id: string,
-  files: PluginFilePayload[],
-): Promise<PluginCandidateDiskEntry> {
+export function stagePluginFiles(id: string, files: PluginFilePayload[]): Promise<PluginCandidateDiskEntry> {
   return invoke<PluginCandidateDiskEntry>("plugins_stage_files", { id, files });
 }
 
@@ -91,19 +88,11 @@ export function pluginDocsPut(
   });
 }
 
-export function pluginDocsGet(
-  pluginId: string,
-  collection: string,
-  id: string,
-): Promise<PluginDocumentRow | null> {
+export function pluginDocsGet(pluginId: string, collection: string, id: string): Promise<PluginDocumentRow | null> {
   return invoke<PluginDocumentRow | null>("plugin_docs_get", { pluginId, collection, id });
 }
 
-export function pluginDocsDelete(
-  pluginId: string,
-  collection: string,
-  id: string,
-): Promise<void> {
+export function pluginDocsDelete(pluginId: string, collection: string, id: string): Promise<void> {
   return invoke("plugin_docs_delete", { pluginId, collection, id });
 }
 
@@ -125,12 +114,14 @@ export type PluginDocumentPageFilter = import("@read-aware/plugin-types").Plugin
 export type PluginDocumentPageRow =
   | { status: "stale-cursor" }
   | { status: "ready"; items: PluginDocumentRow[]; nextCursor: string | null };
-export type PluginDocumentMutation = Omit<PluginDocumentChange, "kind"> & (
-  | { kind: "put"; json: string; bookId?: string; anchor?: string }
-  | { kind: "delete" | "check" }
-);
+export type PluginDocumentMutation = Omit<PluginDocumentChange, "kind"> &
+  ({ kind: "put"; json: string; bookId?: string; anchor?: string } | { kind: "delete" | "check" });
 
-export function pluginDocsPage(pluginId: string, collection: string, query: PluginDocumentPageFilter): Promise<PluginDocumentPageRow> {
+export function pluginDocsPage(
+  pluginId: string,
+  collection: string,
+  query: PluginDocumentPageFilter,
+): Promise<PluginDocumentPageRow> {
   return invoke("plugin_docs_page", { pluginId, collection, query });
 }
 
@@ -147,10 +138,7 @@ export function pluginDocsSnapshot(pluginId: string): Promise<PluginDocumentSnap
   return invoke<PluginDocumentSnapshotRow[]>("plugin_docs_snapshot", { pluginId });
 }
 
-export function pluginDocsRestore(
-  pluginId: string,
-  rows: PluginDocumentSnapshotRow[],
-): Promise<void> {
+export function pluginDocsRestore(pluginId: string, rows: PluginDocumentSnapshotRow[]): Promise<void> {
   return invoke("plugin_docs_restore", { pluginId, rows });
 }
 

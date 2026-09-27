@@ -8,15 +8,26 @@ const log = createLogger("update");
 const loadCurrentVersion = () => softwareUpdater.loadCurrentVersion();
 const checkForUpdates = async () => {
   if (!canUseSoftwareUpdater()) return;
-  try { await softwareUpdater.checkForUpdates(); }
-  catch { /* The shared controller logs and publishes the persistent check error. */ }
+  try {
+    await softwareUpdater.checkForUpdates();
+  } catch {
+    /* The shared controller logs and publishes the persistent check error. */
+  }
 };
 const installUpdate = async () => {
-  try { await softwareUpdater.installUpdate(); }
-  catch (error) { log.warn("Update installation was not dispatched", error); }
+  try {
+    await softwareUpdater.installUpdate();
+  } catch (error) {
+    log.warn("Update installation was not dispatched", error);
+  }
 };
 
 export function useSoftwareUpdate() {
-  return { state: useAtomValue(softwareUpdateAtom), supported: canUseSoftwareUpdater(),
-    loadCurrentVersion, checkForUpdates, installUpdate };
+  return {
+    state: useAtomValue(softwareUpdateAtom),
+    supported: canUseSoftwareUpdater(),
+    loadCurrentVersion,
+    checkForUpdates,
+    installUpdate,
+  };
 }

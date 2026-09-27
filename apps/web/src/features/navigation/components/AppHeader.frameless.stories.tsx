@@ -33,11 +33,7 @@ const pluginActions: RegisteredHeaderAction[] = [
 ];
 
 const viewControl = (
-  <IconButton
-    size="sm"
-    label="Shelf view"
-    icon={<ArrowsClockwise size={16} weight="regular" aria-hidden="true" />}
-  />
+  <IconButton size="sm" label="Shelf view" icon={<ArrowsClockwise size={16} weight="regular" aria-hidden="true" />} />
 );
 
 /**

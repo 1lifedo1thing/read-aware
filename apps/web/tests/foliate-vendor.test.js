@@ -7,8 +7,6 @@ describe("vendored foliate runtime", () => {
     header.set([31, 139, 8, 0]);
 
     const dictionary = new DictdDict();
-    await expect(
-      dictionary.loadDict(new Blob([header]), (data) => data),
-    ).rejects.toThrow("Missing FEXTRA flag");
+    await expect(dictionary.loadDict(new Blob([header]), (data) => data)).rejects.toThrow("Missing FEXTRA flag");
   });
 });

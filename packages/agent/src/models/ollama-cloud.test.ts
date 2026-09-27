@@ -1,17 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import {
-  OLLAMA_CLOUD_BASE_URL,
-  OLLAMA_CLOUD_MODELS,
-  OLLAMA_CLOUD_PROVIDER_ID,
-} from "./ollama-cloud";
+import { OLLAMA_CLOUD_BASE_URL, OLLAMA_CLOUD_MODELS, OLLAMA_CLOUD_PROVIDER_ID } from "./ollama-cloud";
 import { buildBuiltinProviderRegistry } from "../evals/builtin-registry";
 
 describe("Ollama Cloud provider", () => {
   test("registers its curated models under its own provider id", () => {
     const registry = buildBuiltinProviderRegistry();
-    expect(registry.getModels(OLLAMA_CLOUD_PROVIDER_ID).map((model) => model.id)).toEqual([
-      ...OLLAMA_CLOUD_MODELS,
-    ]);
+    expect(registry.getModels(OLLAMA_CLOUD_PROVIDER_ID).map((model) => model.id)).toEqual([...OLLAMA_CLOUD_MODELS]);
     expect(registry.getModel(OLLAMA_CLOUD_PROVIDER_ID, OLLAMA_CLOUD_MODELS[0])).toMatchObject({
       provider: OLLAMA_CLOUD_PROVIDER_ID,
       baseUrl: OLLAMA_CLOUD_BASE_URL,

@@ -12,9 +12,12 @@ export type ModelCatalogPage = {
   checkedAt: number | null;
   errorCode: string | null;
   models: Array<{
-    id: string; name: string; reasoning: boolean;
+    id: string;
+    name: string;
+    reasoning: boolean;
     input: Array<"text" | "image">;
-    contextWindow: number; maxOutputTokens: number;
+    contextWindow: number;
+    maxOutputTokens: number;
   }>;
   total: number;
   offset: number;

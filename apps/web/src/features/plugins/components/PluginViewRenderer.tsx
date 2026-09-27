@@ -1,17 +1,7 @@
 /** Host renderer for the declarative plugin component vocabulary. */
 import { CaretLeft } from "@phosphor-icons/react";
 import { useCallback, useEffect, useLayoutEffect } from "react";
-import {
-  InlineError,
-  Body,
-  Button,
-  Dialog,
-  Divider,
-  IconButton,
-  ScrollArea,
-  Spinner,
-  Stack,
-} from "@read-aware/ui";
+import { InlineError, Body, Button, Dialog, Divider, IconButton, ScrollArea, Spinner, Stack } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useTranslation } from "../../../i18n";
 import { describeError } from "../../../i18n/describe-error";
@@ -76,7 +66,17 @@ export function PluginViewRenderer({
   className,
 }: PluginViewRendererProps) {
   const { t } = useTranslation(["plugins", "common"]);
-  const { session, stack, renderKey, forms, error: viewError, liveError, busy, searchQuery, dialog: detailDialog } = usePluginViewSession(view, provided, onClose, onRequestRefresh);
+  const {
+    session,
+    stack,
+    renderKey,
+    forms,
+    error: viewError,
+    liveError,
+    busy,
+    searchQuery,
+    dialog: detailDialog,
+  } = usePluginViewSession(view, provided, onClose, onRequestRefresh);
 
   useEffect(() => {
     onDepthChange?.(stack.length);
@@ -84,17 +84,23 @@ export function PluginViewRenderer({
 
   const current = stack.length > 0 ? stack[stack.length - 1] : null;
   const title = current?.title && !(stack.length === 1 && current.title === containerTitle) ? current.title : undefined;
-  useLayoutEffect(() => { session.acknowledgeRender(current); }, [session, current]);
+  useLayoutEffect(() => {
+    session.acknowledgeRender(current);
+  }, [session, current]);
   const liveFailure = liveError ? describeError(liveError, { fallback: t("viewer.liveFailed") }) : null;
 
   const closeDetailDialog = () => session.closeDialog(true);
-  const handleResult = useCallback<PluginResultRunner>((run, options) => session.runFrom(renderKey, run, options), [session, renderKey]);
-  const handleQuery = useCallback<PluginQueryRunner>((query, run) => session.refine(renderKey, query, run), [session, renderKey]);
+  const handleResult = useCallback<PluginResultRunner>(
+    (run, options) => session.runFrom(renderKey, run, options),
+    [session, renderKey],
+  );
+  const handleQuery = useCallback<PluginQueryRunner>(
+    (query, run) => session.refine(renderKey, query, run),
+    [session, renderKey],
+  );
 
   if (viewError) {
-    return (
-      <InlineError className={className}>{t("viewer.invalidView")}</InlineError>
-    );
+    return <InlineError className={className}>{t("viewer.invalidView")}</InlineError>;
   }
 
   if (!current) {
@@ -107,9 +113,7 @@ export function PluginViewRenderer({
 
   const currentView = (
     <PluginFormDraftContext.Provider key={renderKey} value={forms}>
-      {current.kind === "markdown" && (
-        <Markdown>{current.markdown}</Markdown>
-      )}
+      {current.kind === "markdown" && <Markdown>{current.markdown}</Markdown>}
       {current.kind === "list" && (
         <PluginListViewBody
           view={current}
@@ -122,24 +126,13 @@ export function PluginViewRenderer({
           viewStateKey={stack.length === 1 ? viewStateKey : undefined}
         />
       )}
-      {current.kind === "form" && (
-        <PluginFormViewBody
-          view={current}
-          busy={busy}
-          onResult={handleResult}
-        />
-      )}
+      {current.kind === "form" && <PluginFormViewBody view={current} busy={busy} onResult={handleResult} />}
       {current.kind === "table" && <PluginTableViewBody view={current} busy={busy} onResult={handleResult} />}
       {current.kind === "tree" && <PluginTreeViewBody view={current} busy={busy} onResult={handleResult} />}
       {current.kind === "image" && <PluginImageViewBody view={current} />}
       {current.kind === "editor" && <PluginEditorViewBody view={current} busy={busy} onResult={handleResult} />}
       {current.kind === "blocks" && (
-        <PluginBlocks
-          blocks={current.blocks}
-          stackDepth={stack.length}
-          busy={busy}
-          onResult={handleResult}
-        />
+        <PluginBlocks blocks={current.blocks} stackDepth={stack.length} busy={busy} onResult={handleResult} />
       )}
       {current.kind === "detail" && (
         <PluginDetailViewBody
@@ -155,11 +148,7 @@ export function PluginViewRenderer({
     </PluginFormDraftContext.Provider>
   );
   const busyOverlay = busy ? (
-    <Stack
-      align="center"
-      justify="center"
-      className="absolute inset-0 bg-[var(--ra-main-surface-color)]/70"
-    >
+    <Stack align="center" justify="center" className="absolute inset-0 bg-[var(--ra-main-surface-color)]/70">
       <Spinner size="sm" />
     </Stack>
   ) : null;
@@ -167,10 +156,17 @@ export function PluginViewRenderer({
   return (
     <>
       <Stack gap="sm" className={cn("min-h-0", className)}>
-        {current.fileDrop && <PluginFileDrop drop={current.fileDrop} busy={busy} visible={!detailDialog} onResult={handleResult} />}
-        {liveFailure && <InlineError onRetry={liveFailure.retryable ? session.retryLive : undefined} retryLabel={t("common:errorBoundary.retry")}>
-          {liveFailure.body}
-        </InlineError>}
+        {current.fileDrop && (
+          <PluginFileDrop drop={current.fileDrop} busy={busy} visible={!detailDialog} onResult={handleResult} />
+        )}
+        {liveFailure && (
+          <InlineError
+            onRetry={liveFailure.retryable ? session.retryLive : undefined}
+            retryLabel={t("common:errorBoundary.retry")}
+          >
+            {liveFailure.body}
+          </InlineError>
+        )}
         {(stack.length > 1 || title) && (
           <Stack direction="horizontal" gap="xs" align="center" className="shrink-0">
             {stack.length > 1 && (
@@ -182,9 +178,7 @@ export function PluginViewRenderer({
                 icon={<CaretLeft size={16} weight="regular" aria-hidden="true" />}
               />
             )}
-            {title && (
-              <Body className="truncate text-sm font-semibold text-fg">{title}</Body>
-            )}
+            {title && <Body className="truncate text-sm font-semibold text-fg">{title}</Body>}
           </Stack>
         )}
 
@@ -210,19 +204,9 @@ export function PluginViewRenderer({
             <Divider />
             <Stack direction="horizontal" gap="sm" align="center" justify="end" wrap>
               {current.kind === "detail" && current.actions && current.actions.length > 0 && (
-                <PluginActionGroup
-                  actions={current.actions}
-                  busy={busy}
-                  display="buttons"
-                  onResult={handleResult}
-                />
+                <PluginActionGroup actions={current.actions} busy={busy} display="buttons" onResult={handleResult} />
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={session.close}
-              >
+              <Button variant="outline" size="sm" disabled={busy} onClick={session.close}>
                 {t("viewer.close")}
               </Button>
             </Stack>

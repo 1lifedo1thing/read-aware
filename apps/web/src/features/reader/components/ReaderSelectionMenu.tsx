@@ -1,11 +1,4 @@
-import {
-  ChatCircleDots,
-  Check,
-  Copy,
-  Highlighter,
-  NotePencil,
-  TextUnderline,
-} from "@phosphor-icons/react";
+import { ChatCircleDots, Check, Copy, Highlighter, NotePencil, TextUnderline } from "@phosphor-icons/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAtomValue } from "jotai";
 import { IconButton, Tooltip } from "@read-aware/ui";
@@ -14,12 +7,7 @@ import { useTranslation } from "../../../i18n";
 import { useAskAiEnabled } from "../../ai/hooks/useAskAiEnabled";
 import { MenuOverflow, type MenuOverflowEntry } from "../../menus/components/MenuOverflow";
 import { coreMenuMeta } from "../../menus/lib/menu-registry";
-import {
-  CORE_MENU_DEFAULTS,
-  menuConfigAtom,
-  pluginMenuId,
-  resolveSurfaceLayout,
-} from "../../menus/state/menu-config";
+import { CORE_MENU_DEFAULTS, menuConfigAtom, pluginMenuId, resolveSurfaceLayout } from "../../menus/state/menu-config";
 import { renderPluginIcon } from "../../plugins/lib/plugin-icons";
 import { runPluginContribution } from "../../plugins/lib/run-result";
 import type { SelectionActionInput } from "../../plugins/lib/plugin-types";
@@ -34,10 +22,9 @@ import { READING_AI_ICONS } from "../../ai/lib/reading-ai-icons";
  * 菜单只消费选区的锚点/文本/CFI —— 收窄类型后，逐句模式可以把静息句
  * 合成为同一形状喂进来，共用整套动作与用户自定义排布。
  */
-export type ReaderSelectionMenuTarget = Pick<
-  ReaderSelectionState,
-  "anchorRect" | "cfiRange" | "text" | "captured"
-> & { context?: string };
+export type ReaderSelectionMenuTarget = Pick<ReaderSelectionState, "anchorRect" | "cfiRange" | "text" | "captured"> & {
+  context?: string;
+};
 
 type ReaderSelectionMenuProps = {
   selection: ReaderSelectionMenuTarget | null;
@@ -80,7 +67,7 @@ export function ReaderSelectionMenu({
   const askEnabled = useAskAiEnabled();
   const readingAi = useReadingAiControls(!!selection, selection?.captured?.id ?? null);
   const menuConfig = useAtomValue(menuConfigAtom);
-  const pluginActions = useAtomValue(selectionActionsAtom).filter(action => action.state?.visible !== false);
+  const pluginActions = useAtomValue(selectionActionsAtom).filter((action) => action.state?.visible !== false);
 
   useEffect(() => {
     return () => {
@@ -113,8 +100,7 @@ export function ReaderSelectionMenu({
   }
 
   // Quiet, monochrome ghost button — matches the design system's menu surfaces.
-  const actionButtonClass =
-    "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg";
+  const actionButtonClass = "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg";
 
   // Availability gates: fixed-layout books offer copy only; Ask AI needs a key.
   const availableCore = CORE_MENU_DEFAULTS.selection.filter((id) => {
@@ -122,20 +108,12 @@ export function ReaderSelectionMenu({
     if (id === "core:askAI" && !askEnabled) return false;
     return true;
   });
-  const availablePluginIds = pluginInput
-    ? pluginActions.map((action) => pluginMenuId(action.key))
-    : [];
-  const layout = resolveSurfaceLayout(
-    menuConfig.selection,
-    [...availableCore, ...availablePluginIds],
-    {
-      defaultVisibleIds: pluginInput
-        ? pluginActions
-            .filter((action) => action.role === "lookup")
-            .map((action) => pluginMenuId(action.key))
-        : [],
-    },
-  );
+  const availablePluginIds = pluginInput ? pluginActions.map((action) => pluginMenuId(action.key)) : [];
+  const layout = resolveSurfaceLayout(menuConfig.selection, [...availableCore, ...availablePluginIds], {
+    defaultVisibleIds: pluginInput
+      ? pluginActions.filter((action) => action.role === "lookup").map((action) => pluginMenuId(action.key))
+      : [],
+  });
 
   const coreNodes: Record<string, ReactNode> = {
     "core:copy": (
@@ -222,12 +200,10 @@ export function ReaderSelectionMenu({
           checked: action.state?.checked,
           icon: renderPluginIcon(action.icon, 15),
           run: () =>
-            void runPluginContribution(
-              action.pluginId,
-              action.pluginName,
-              () => action.run(pluginInput),
-              { presentation: action.presentation, owner: action.run },
-            ),
+            void runPluginContribution(action.pluginId, action.pluginName, () => action.run(pluginInput), {
+              presentation: action.presentation,
+              owner: action.run,
+            }),
         };
       }
       const meta = coreMenuMeta("selection", id);
@@ -245,10 +221,7 @@ export function ReaderSelectionMenu({
   let renderedPluginBoundary = false;
 
   return (
-    <div
-      ref={containerRef}
-      className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
-    >
+    <div ref={containerRef} className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
       <div
         ref={menuRef}
         className="ra-motion-overlay-pop pointer-events-auto absolute flex max-w-[calc(100vw-1.25rem)] flex-wrap items-center gap-0.5 rounded-lg border border-border bg-[var(--ra-main-surface-color)] p-1 shadow-[0_4px_16px_-6px_rgba(28,25,23,0.25)]"
@@ -270,12 +243,10 @@ export function ReaderSelectionMenu({
                     aria-pressed={action.state?.checked}
                     size="sm"
                     onClick={() =>
-                      void runPluginContribution(
-                        action.pluginId,
-                        action.pluginName,
-                        () => action.run(pluginInput),
-                        { presentation: action.presentation, owner: action.run },
-                      )
+                      void runPluginContribution(action.pluginId, action.pluginName, () => action.run(pluginInput), {
+                        presentation: action.presentation,
+                        owner: action.run,
+                      })
                     }
                     className={actionButtonClass}
                     icon={renderPluginIcon(action.icon, 14)}
@@ -285,14 +256,30 @@ export function ReaderSelectionMenu({
             );
           }
           const node = coreNodes[id];
-          return node ? <span key={id} className="contents">{node}</span> : null;
+          return node ? (
+            <span key={id} className="contents">
+              {node}
+            </span>
+          ) : null;
         })}
-        <MenuOverflow entries={[...overflowEntries, ...readingAi.actions.map(action => {
-          const Icon = READING_AI_ICONS[action];
-          return { id: `reading-ai:${action}`, label: tMenus(`ai.featureList.${action}.label`),
-            icon: <Icon size={15} weight="regular" aria-hidden="true" />, disabled: readingAi.disabled(action),
-            run: () => { void readingAi.run(action).catch(readingAi.report); } };
-        })]} size="sm" />
+        <MenuOverflow
+          entries={[
+            ...overflowEntries,
+            ...readingAi.actions.map((action) => {
+              const Icon = READING_AI_ICONS[action];
+              return {
+                id: `reading-ai:${action}`,
+                label: tMenus(`ai.featureList.${action}.label`),
+                icon: <Icon size={15} weight="regular" aria-hidden="true" />,
+                disabled: readingAi.disabled(action),
+                run: () => {
+                  void readingAi.run(action).catch(readingAi.report);
+                },
+              };
+            }),
+          ]}
+          size="sm"
+        />
       </div>
     </div>
   );

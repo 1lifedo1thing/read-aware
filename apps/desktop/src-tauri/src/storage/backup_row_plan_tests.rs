@@ -120,7 +120,10 @@ fn backup_row_plan_covers_every_current_table_and_preserves_actual_legacy_and_pr
         policy::table("reading_sessions_pending").unwrap(),
         RowPolicy::RecoverReading
     );
-    assert_eq!(policy::table("annotations_fts").unwrap(), RowPolicy::Rebuild);
+    assert_eq!(
+        policy::table("annotations_fts").unwrap(),
+        RowPolicy::Rebuild
+    );
     assert!(plan.tables["domain_events"].comparisons.is_none());
     assert!(plan.tables["schema_migrations"].comparisons.is_none());
     assert!(

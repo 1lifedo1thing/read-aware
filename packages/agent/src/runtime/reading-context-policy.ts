@@ -11,21 +11,36 @@ export interface ReadingContextPolicy {
 export const FULL_READING_CONTEXT: ReadingContextPermissions = { selection: true, surrounding: true };
 
 /** Tightening revokes this operation permanently; granting more only affects a new turn. */
-export function readingContextCall(policy: ReadingContextPolicy | undefined, signal?: AbortSignal,
-  permissions = policy?.snapshot() ?? FULL_READING_CONTEXT) {
+export function readingContextCall(
+  policy: ReadingContextPolicy | undefined,
+  signal?: AbortSignal,
+  permissions = policy?.snapshot() ?? FULL_READING_CONTEXT,
+) {
   const captured = { ...permissions };
-  const call = policyCall({
-    enabled: () => {
-      const current = policy?.snapshot() ?? FULL_READING_CONTEXT;
-      return (!captured.selection || current.selection) && (!captured.surrounding || current.surrounding);
+  const call = policyCall(
+    {
+      enabled: () => {
+        const current = policy?.snapshot() ?? FULL_READING_CONTEXT;
+        return (!captured.selection || current.selection) && (!captured.surrounding || current.surrounding);
+      },
+      subscribe: (listener) => policy?.subscribe(listener) ?? (() => {}),
     },
-    subscribe: listener => policy?.subscribe(listener) ?? (() => {}),
-  }, () => new AppError(ERR_AI_CONTEXT_CHANGED, "[ai/context-changed] Reading context permissions changed during the request.", { retryable: true }), signal);
+    () =>
+      new AppError(
+        ERR_AI_CONTEXT_CHANGED,
+        "[ai/context-changed] Reading context permissions changed during the request.",
+        { retryable: true },
+      ),
+    signal,
+  );
   return { ...call, permissions: captured };
 }
 export type ReadingContextCall = ReturnType<typeof readingContextCall>;
 
-export function permittedReadingCursor(cursor: ReadingCursor | undefined, permissions: ReadingContextPermissions): ReadingCursor | undefined {
+export function permittedReadingCursor(
+  cursor: ReadingCursor | undefined,
+  permissions: ReadingContextPermissions,
+): ReadingCursor | undefined {
   if (!cursor || (permissions.selection && permissions.surrounding)) return cursor;
   // The viewport may contain the selected passage. Withhold it as a whole,
   // rather than using approximate substring redaction as a privacy boundary.
@@ -35,5 +50,5 @@ export function permittedReadingCursor(cursor: ReadingCursor | undefined, permis
 
 /** Local attachments remain intact; only the inference copy is filtered. */
 export function permittedTurnRecords(records: TurnRecord[], permissions: ReadingContextPermissions): TurnRecord[] {
-  return permissions.selection ? records : records.map(record => ({ ...record, attachments: undefined }));
+  return permissions.selection ? records : records.map((record) => ({ ...record, attachments: undefined }));
 }

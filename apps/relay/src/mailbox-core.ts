@@ -8,7 +8,10 @@ import type { SealedEventWire } from "@read-aware/core";
 
 /** The one sql-execution shape both `ctx.storage.sql` and the tests provide. */
 export type SqlExec = {
-  exec(query: string, ...bindings: (string | number | null)[]): {
+  exec(
+    query: string,
+    ...bindings: (string | number | null)[]
+  ): {
     toArray(): Record<string, unknown>[];
   };
 };
@@ -55,9 +58,7 @@ export class MailboxCore {
       // burns an AUTOINCREMENT value, so every crash-redelivery would blow
       // holes in the seq space. The DO's single-threaded execution makes the
       // two statements race-free.
-      const existing = this.sql
-        .exec(`SELECT seq FROM events WHERE event_id = ?1`, ev.id)
-        .toArray()[0];
+      const existing = this.sql.exec(`SELECT seq FROM events WHERE event_id = ?1`, ev.id).toArray()[0];
       if (existing) {
         seqs[ev.id] = Number(existing.seq);
         continue;
@@ -81,11 +82,7 @@ export class MailboxCore {
 
   listAfter(after: number, limit: number): { events: SealedEventWire[]; next: number; seqs: number[] } {
     const rows = this.sql
-      .exec(
-        `SELECT seq, envelope_json FROM events WHERE seq > ?1 ORDER BY seq LIMIT ?2`,
-        after,
-        limit,
-      )
+      .exec(`SELECT seq, envelope_json FROM events WHERE seq > ?1 ORDER BY seq LIMIT ?2`, after, limit)
       .toArray();
     const events = rows.map((row) => JSON.parse(String(row.envelope_json)) as SealedEventWire);
     const seqs = rows.map((row) => Number(row.seq));

@@ -91,7 +91,7 @@ const meta = {
     isOpen: true,
     onClose: () => {},
     ctx,
-    executeHost: async request => ({ commandId: request.id, status: "completed", completed: ["workspace"] }),
+    executeHost: async (request) => ({ commandId: request.id, status: "completed", completed: ["workspace"] }),
   },
 } satisfies Meta<typeof CommandPalette>;
 

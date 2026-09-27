@@ -139,11 +139,7 @@ async function priceIdFor(ctx: BillingContext, plan: BillingPlan): Promise<strin
     limit: "1",
   });
   const price = asRecord((listed.data as unknown[] | undefined)?.[0]);
-  if (
-    !price ||
-    typeof price.id !== "string" ||
-    planOfCanonicalPrice(price, true) !== plan
-  ) {
+  if (!price || typeof price.id !== "string" || planOfCanonicalPrice(price, true) !== plan) {
     throw new StripeError(500, `no valid ReadAware price with lookup_key ${PLAN_LOOKUP_KEY[plan]}`);
   }
   ctx.priceIds.set(plan, price.id);
@@ -154,10 +150,7 @@ const TERMINAL_SUBSCRIPTION_STATUSES = new Set(["canceled", "incomplete_expired"
 const isTerminalSubscription = (object: Record<string, unknown> | null) =>
   typeof object?.status === "string" && TERMINAL_SUBSCRIPTION_STATUSES.has(object.status);
 
-async function hasCurrentReadAwareSubscription(
-  ctx: BillingContext,
-  customerId: string,
-): Promise<boolean> {
+async function hasCurrentReadAwareSubscription(ctx: BillingContext, customerId: string): Promise<boolean> {
   let startingAfter: string | undefined;
   do {
     const listed = await stripeApi(ctx.stripe, "GET", "/v1/subscriptions", {
@@ -170,10 +163,7 @@ async function hasCurrentReadAwareSubscription(
     if (
       subscriptions.some((subscription) => {
         const object = asRecord(subscription);
-        return (
-          belongsToReadAware(object) &&
-          !isTerminalSubscription(object)
-        );
+        return belongsToReadAware(object) && !isTerminalSubscription(object);
       })
     ) {
       return true;
@@ -195,10 +185,7 @@ async function hasCurrentReadAwareSubscription(
  * this Stripe account hosts other products, and a shared customer must not
  * lose theirs.
  */
-export async function cancelReadAwareSubscriptions(
-  ctx: BillingContext,
-  customerId: string,
-): Promise<void> {
+export async function cancelReadAwareSubscriptions(ctx: BillingContext, customerId: string): Promise<void> {
   let startingAfter: string | undefined;
   do {
     const listed = await stripeApi(ctx.stripe, "GET", "/v1/subscriptions", {
@@ -235,10 +222,7 @@ export type CheckoutRequest = {
  * an active subscription is refused with 409 — plan changes go through the
  * portal; a second checkout would mint a second subscription.
  */
-export async function createCheckoutSession(
-  ctx: BillingContext,
-  request: CheckoutRequest,
-): Promise<{ url: string }> {
+export async function createCheckoutSession(ctx: BillingContext, request: CheckoutRequest): Promise<{ url: string }> {
   const account = request.account;
   if (account?.stripeCustomerId) {
     // Stripe cannot filter subscription lists by metadata. Walk every page
@@ -310,13 +294,9 @@ async function sha256Hex(message: string): Promise<string> {
 }
 
 async function hmacSha256Hex(secret: string, message: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ]);
   const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
   return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -396,8 +376,7 @@ export async function applyStripeEvent(accounts: AccountStore, event: StripeEven
     if (!account) {
       // Web checkout: no session, only the paid email. Accounts are keyed by
       // email, so fulfillment pre-creates the row the buyer will sign into.
-      const email =
-        asRecord(object.customer_details)?.email ?? object.customer_email;
+      const email = asRecord(object.customer_details)?.email ?? object.customer_email;
       if (typeof email !== "string" || !email) return;
       account = await accounts.findOrCreateByEmail(email.trim().toLowerCase(), nowIso);
     }

@@ -33,10 +33,7 @@ export function createLibraryPort(): LibraryPort {
   const { library, reading } = createDomainApi("agent");
 
   const listOverviews = async (): Promise<BookOverview[]> => {
-    const [summaries, states] = await Promise.all([
-      library.queries.books.list(),
-      reading.queries.stats.list(),
-    ]);
+    const [summaries, states] = await Promise.all([library.queries.books.list(), reading.queries.stats.list()]);
     const stateByBook = new Map(states.map((state) => [state.bookId, state]));
     return summaries.map((book) => toOverview(book, stateByBook.get(book.id)));
   };
@@ -52,35 +49,30 @@ export function createLibraryPort(): LibraryPort {
     getEnrichment: library.queries.books.getEnrichment,
     getContentState: library.queries.books.getContentState,
     retryEnrichment: library.commands.books.retryEnrichment,
-    startImportResource: (threadKey, id, signal) => agentBookImportTasks(threadKey).start({ kind: "resource", resourceId: id }, signal),
+    startImportResource: (threadKey, id, signal) =>
+      agentBookImportTasks(threadKey).start({ kind: "resource", resourceId: id }, signal),
     getImportTask: (threadKey, id, waitMs, signal) => agentBookImportTasks(threadKey).wait(id, waitMs, signal),
-    listImportTasks: async threadKey => agentBookImportTasks(threadKey).list(),
+    listImportTasks: async (threadKey) => agentBookImportTasks(threadKey).list(),
     cancelImportTask: async (threadKey, id) => agentBookImportTasks(threadKey).cancel(id),
-    listBookRemovalCleanup: query => library.queries.books.listRemovalCleanup(query),
-    getBook: async (bookId) =>
-      (await listOverviews()).find((book) => book.id === String(bookId)),
+    listBookRemovalCleanup: (query) => library.queries.books.listRemovalCleanup(query),
+    getBook: async (bookId) => (await listOverviews()).find((book) => book.id === String(bookId)),
     listCollections: () => library.queries.collections.list(),
     booksInCollection: async (collectionId) =>
       (await library.queries.collections.booksIn(collectionId)).map((bookId) => bookId as Id),
-    getBookStats: async (bookId) =>
-      (await reading.queries.stats.forBook(String(bookId))) ?? undefined,
+    getBookStats: async (bookId) => (await reading.queries.stats.forBook(String(bookId))) ?? undefined,
     listBookStats: () => reading.queries.stats.list(),
     getStatsOverview: () => reading.queries.stats.overview(),
-    getReadingTime: query => reading.queries.stats.time(query),
-    getReadingInsights: query => reading.queries.stats.insights(query),
-    editBookMetadata: (bookId, patch) =>
-      library.commands.books.editMetadata(String(bookId), patch),
-    setBookStarred: (bookId, starred) =>
-      library.commands.books.setStarred(String(bookId), starred),
-    setBookFinished: (bookId, finished) =>
-      reading.commands.setFinished(String(bookId), finished),
+    getReadingTime: (query) => reading.queries.stats.time(query),
+    getReadingInsights: (query) => reading.queries.stats.insights(query),
+    editBookMetadata: (bookId, patch) => library.commands.books.editMetadata(String(bookId), patch),
+    setBookStarred: (bookId, starred) => library.commands.books.setStarred(String(bookId), starred),
+    setBookFinished: (bookId, finished) => reading.commands.setFinished(String(bookId), finished),
     classifyBookIfUnclassified,
     removeBook: (bookId) => library.commands.books.remove(String(bookId)),
-    removeBooks: bookIds => library.commands.books.removeMany(bookIds),
-    retryBookRemovalCleanup: bookIds => library.commands.books.retryRemovalCleanup(bookIds),
+    removeBooks: (bookIds) => library.commands.books.removeMany(bookIds),
+    retryBookRemovalCleanup: (bookIds) => library.commands.books.retryRemovalCleanup(bookIds),
     createCollection: (name) => library.commands.collections.create(name),
-    renameCollection: (collectionId, name) =>
-      library.commands.collections.rename(collectionId, name),
+    renameCollection: (collectionId, name) => library.commands.collections.rename(collectionId, name),
     removeCollection: (collectionId) => library.commands.collections.remove(collectionId),
     assignBooksToCollection: (bookIds, collectionId) =>
       library.commands.collections.assignBooks(bookIds.map(String), collectionId),

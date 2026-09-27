@@ -5,21 +5,10 @@
  * engine over an in-memory dumb-storage session.
  */
 import { describe, expect, test } from "bun:test";
-import type {
-  PluginSyncTransportSession,
-  SealedEventWire,
-} from "@read-aware/plugin-types";
+import type { PluginSyncTransportSession, SealedEventWire } from "@read-aware/plugin-types";
 import { deriveMasterKey } from "../sync-envelope";
-import {
-  establishEncryptionWithStore,
-  transportKeyMaterialStore,
-  WrongPassphraseError,
-} from "./connect";
-import {
-  createTransportFeedRelay,
-  type TransportFeedJournal,
-  type TransportFeedStore,
-} from "./transport-feed";
+import { establishEncryptionWithStore, transportKeyMaterialStore, WrongPassphraseError } from "./connect";
+import { createTransportFeedRelay, type TransportFeedJournal, type TransportFeedStore } from "./transport-feed";
 import { engineFor, fakeDevice, plain, TEST_KDF } from "./sync-test-kit";
 
 const sealedStub = (id: string, deviceId = "dev-a"): SealedEventWire => ({
@@ -111,11 +100,7 @@ function memoryStore(): TransportFeedStore & { journal: TransportFeedJournal | n
   };
 }
 
-function feedFor(
-  remote: ReturnType<typeof fakeSession>,
-  deviceId: string,
-  store: TransportFeedStore = memoryStore(),
-) {
+function feedFor(remote: ReturnType<typeof fakeSession>, deviceId: string, store: TransportFeedStore = memoryStore()) {
   return createTransportFeedRelay({
     session: async () => remote.session,
     deviceId,
@@ -167,10 +152,7 @@ describe("transport feed: pull", () => {
 
   test("re-serving the same cursor yields the same events (crash replay)", async () => {
     const remote = fakeSession();
-    remote.batches.set("dev-b", [
-      [sealedStub("b1", "dev-b")],
-      [sealedStub("b2", "dev-b")],
-    ]);
+    remote.batches.set("dev-b", [[sealedStub("b1", "dev-b")], [sealedStub("b2", "dev-b")]]);
     const store = memoryStore();
     const feed = feedFor(remote, "dev-a", store);
     const first = await feed.pullEvents(0, 1);
@@ -219,10 +201,7 @@ describe("transport feed: pull", () => {
 
   test("serves known journal entries without touching the remote listing", async () => {
     const remote = fakeSession();
-    remote.batches.set("dev-b", [
-      [sealedStub("b1", "dev-b")],
-      [sealedStub("b2", "dev-b")],
-    ]);
+    remote.batches.set("dev-b", [[sealedStub("b1", "dev-b")], [sealedStub("b2", "dev-b")]]);
     const store = memoryStore();
     const feed = feedFor(remote, "dev-a", store);
     await feed.pullEvents(0, 10);
@@ -251,9 +230,7 @@ describe("transport key material", () => {
     const remote = fakeSession();
     const store = transportKeyMaterialStore(remote.session);
     await establishEncryptionWithStore(store, "正确口令", { derive, kdfParams: TEST_KDF });
-    await expect(
-      establishEncryptionWithStore(store, "错误口令", { derive }),
-    ).rejects.toThrow(WrongPassphraseError);
+    await expect(establishEncryptionWithStore(store, "错误口令", { derive })).rejects.toThrow(WrongPassphraseError);
   });
 
   test("losing the publish race adopts the winner's material", async () => {
@@ -282,9 +259,7 @@ describe("transport key material", () => {
     const remote = fakeSession();
     remote.metas.set("keys", new TextEncoder().encode("{not json"));
     const store = transportKeyMaterialStore(remote.session);
-    await expect(
-      establishEncryptionWithStore(store, "任意口令", { derive }),
-    ).rejects.toThrow(/not valid JSON/);
+    await expect(establishEncryptionWithStore(store, "任意口令", { derive })).rejects.toThrow(/not valid JSON/);
   });
 });
 
@@ -319,15 +294,11 @@ describe("two devices over dumb storage", () => {
 
     // The blob rode along sealed; B fetches and decrypts it lazily.
     expect(await engineB.fetchBlob("bookfile:shared")).toBe("fetched");
-    expect(new TextDecoder().decode(deviceB.blobs.get("bookfile:shared")!)).toBe(
-      "整本书的字节",
-    );
+    expect(new TextDecoder().decode(deviceB.blobs.get("bookfile:shared")!)).toBe("整本书的字节");
 
     // Nothing on the remote is plaintext: not the events, not the blob.
     const everything = [
-      ...[...remote.batches.values()].flat().flatMap((batch) =>
-        batch.map((event) => JSON.stringify(event)),
-      ),
+      ...[...remote.batches.values()].flat().flatMap((batch) => batch.map((event) => JSON.stringify(event))),
       ...[...remote.shelf.values()].map((bytes) => new TextDecoder().decode(bytes)),
     ].join("\n");
     expect(everything).not.toContain("甲");
@@ -348,8 +319,6 @@ describe("two devices over dumb storage", () => {
     const fresh = fakeDevice();
     const engineFresh = engineFor(fresh, feedFor(remote, "device-new"));
     await engineFresh.syncOnce();
-    expect(fresh.applied.map((event) => event.id).sort()).toEqual(
-      ["a1", "a2", "a3", "a4", "a5", "a6", "a7"],
-    );
+    expect(fresh.applied.map((event) => event.id).sort()).toEqual(["a1", "a2", "a3", "a4", "a5", "a6", "a7"]);
   });
 });

@@ -35,18 +35,11 @@ type TransportConnectDialogProps = {
   sync: ReturnType<typeof useSyncConnection>;
 };
 
-export function TransportConnectDialog({
-  transport,
-  onClose,
-  sync,
-}: TransportConnectDialogProps) {
+export function TransportConnectDialog({ transport, onClose, sync }: TransportConnectDialogProps) {
   const { t } = useTranslation("settings");
   const { toast } = useToast();
 
-  type Step =
-    | { name: "probing" }
-    | { name: "unreachable"; message: string }
-    | { name: "passphrase"; hasKeys: boolean };
+  type Step = { name: "probing" } | { name: "unreachable"; message: string } | { name: "passphrase"; hasKeys: boolean };
   const [step, setStep] = useState<Step>({ name: "probing" });
   const [passphrase, setPassphrase] = useState("");
   const [passphraseError, setPassphraseError] = useState<string | null>(null);
@@ -166,9 +159,7 @@ export function TransportConnectDialog({
       ) : (
         <div className="mt-4 space-y-4">
           <p className="text-caption leading-relaxed text-fg-muted">
-            {step.hasKeys
-              ? t("dataSync.transport.existingRemote")
-              : t("dataSync.transport.freshRemote")}
+            {step.hasKeys ? t("dataSync.transport.existingRemote") : t("dataSync.transport.freshRemote")}
           </p>
           <TextField
             label={t("dataSync.connect.passphraseLabel")}

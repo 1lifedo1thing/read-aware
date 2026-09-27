@@ -91,10 +91,7 @@ function ItemTable() {
       ) : (
         <div className="flex flex-col">
           {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 border-t border-border py-2 first:border-t-0"
-            >
+            <div key={item.id} className="flex items-center gap-3 border-t border-border py-2 first:border-t-0">
               <span className="w-4 shrink-0 text-fg-muted">{item.icon}</span>
               <span className="min-w-0 flex-1 text-sm text-fg">{item.title}</span>
               <span className="text-xs text-fg-muted">{item.subtitle}</span>
@@ -110,20 +107,13 @@ function ItemTable() {
 /** Explicit plugin commands plus shelf header actions — reader ones excluded. */
 export const CommandsAndShelfActions: Story = {
   render: () => <ItemTable />,
-  decorators: [
-    withAtoms(
-      seed(pluginCommandsAtom, commands),
-      seed(headerActionsAtom, headerActions),
-    ),
-  ],
+  decorators: [withAtoms(seed(pluginCommandsAtom, commands), seed(headerActionsAtom, headerActions))],
 };
 
 /** Only declared commands, with no header actions registered. */
 export const CommandsOnly: Story = {
   render: () => <ItemTable />,
-  decorators: [
-    withAtoms(seed(pluginCommandsAtom, commands), seed(headerActionsAtom, [])),
-  ],
+  decorators: [withAtoms(seed(pluginCommandsAtom, commands), seed(headerActionsAtom, []))],
 };
 
 /**
@@ -135,7 +125,10 @@ export const ReaderActionsAreExcluded: Story = {
   decorators: [
     withAtoms(
       seed(pluginCommandsAtom, [] as never),
-      seed(headerActionsAtom, headerActions.filter((a) => a.surface === "reader")),
+      seed(
+        headerActionsAtom,
+        headerActions.filter((a) => a.surface === "reader"),
+      ),
     ),
   ],
 };
@@ -143,7 +136,5 @@ export const ReaderActionsAreExcluded: Story = {
 /** No plugins installed. */
 export const NoPlugins: Story = {
   render: () => <ItemTable />,
-  decorators: [
-    withAtoms(seed(pluginCommandsAtom, [] as never), seed(headerActionsAtom, [])),
-  ],
+  decorators: [withAtoms(seed(pluginCommandsAtom, [] as never), seed(headerActionsAtom, []))],
 };

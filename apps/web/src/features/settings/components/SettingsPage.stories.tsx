@@ -43,13 +43,7 @@ export const WithoutDescription: Story = {
 /** The description can carry markup, which is why it takes a node. */
 export const RichDescription: Story = {
   args: {
-    description: (
-      <Trans
-        ns="settings"
-        i18nKey="about.diagnostics.description"
-        components={{ strong: <strong /> }}
-      />
-    ),
+    description: <Trans ns="settings" i18nKey="about.diagnostics.description" components={{ strong: <strong /> }} />,
   },
 };
 

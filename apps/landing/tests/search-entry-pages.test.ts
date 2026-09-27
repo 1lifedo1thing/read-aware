@@ -6,10 +6,7 @@ import { LOCALES, localizePath } from "../src/lib/i18n";
 const dist = new URL("../dist/", import.meta.url);
 
 async function inspect(path: string) {
-  const html = await readFile(
-    new URL(`${path.replace(/^\//, "")}index.html`, dist),
-    "utf8",
-  );
+  const html = await readFile(new URL(`${path.replace(/^\//, "")}index.html`, dist), "utf8");
   const result = {
     primary: [] as string[],
     header: [] as string[],
@@ -24,13 +21,19 @@ async function inspect(path: string) {
   };
   const rewriter = new HTMLRewriter()
     .on("article > header a", {
-      element(el) { result.primary.push(el.getAttribute("href") ?? ""); },
+      element(el) {
+        result.primary.push(el.getAttribute("href") ?? "");
+      },
     })
     .on("header a", {
-      element(el) { result.header.push(el.getAttribute("href") ?? ""); },
+      element(el) {
+        result.header.push(el.getAttribute("href") ?? "");
+      },
     })
     .on("footer a", {
-      element(el) { result.footer.push(el.getAttribute("href") ?? ""); },
+      element(el) {
+        result.footer.push(el.getAttribute("href") ?? "");
+      },
     })
     .on("picture img", {
       element(el) {
@@ -43,21 +46,20 @@ async function inspect(path: string) {
       },
     })
     .on("picture source", {
-      element(el) { result.sources.push(el.getAttribute("srcset") ?? ""); },
+      element(el) {
+        result.sources.push(el.getAttribute("srcset") ?? "");
+      },
     });
   await rewriter.transform(new Response(html)).text();
   return result;
 }
 
-test.each(["android", "windows"] as const)(
-  "%s topic has its own direct download in static HTML",
-  async (platform) => {
-    const page = await inspect(`/epub-reader-for-${platform}/`);
-    const download = DOWNLOADS.find((entry) => entry.id === platform)?.primary;
-    if (!download) throw new Error(`No primary ${platform} download`);
-    expect(page.primary[0]).toBe(download.url);
-  },
-);
+test.each(["android", "windows"] as const)("%s topic has its own direct download in static HTML", async (platform) => {
+  const page = await inspect(`/epub-reader-for-${platform}/`);
+  const download = DOWNLOADS.find((entry) => entry.id === platform)?.primary;
+  if (!download) throw new Error(`No primary ${platform} download`);
+  expect(page.primary[0]).toBe(download.url);
+});
 
 test.each([...LOCALES])("%s navigation stays localized and secondary links are crawlable", async (locale) => {
   const page = await inspect(localizePath("/", locale));

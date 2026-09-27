@@ -75,7 +75,9 @@ export async function classifyBookReadingPolicy(
     input.log?.warn("narrativity classification did not complete");
     return undefined;
   }
-  const raw = extractText(message).replace(/```(?:json)?/g, "").trim();
+  const raw = extractText(message)
+    .replace(/```(?:json)?/g, "")
+    .trim();
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -92,6 +94,13 @@ export async function classifyBookReadingPolicy(
   if (!parsed || typeof parsed !== "object") return undefined;
   const { narrativity, spoilerSensitive, confidence } = parsed as Record<string, unknown>;
   if (narrativity !== "narrative" && narrativity !== "expository") return undefined;
-  if (typeof spoilerSensitive !== "boolean" || typeof confidence !== "number" || !Number.isFinite(confidence) || confidence < MIN_CONFIDENCE || confidence > 1) return undefined;
+  if (
+    typeof spoilerSensitive !== "boolean" ||
+    typeof confidence !== "number" ||
+    !Number.isFinite(confidence) ||
+    confidence < MIN_CONFIDENCE ||
+    confidence > 1
+  )
+    return undefined;
   return { narrativity, spoilerSensitive };
 }

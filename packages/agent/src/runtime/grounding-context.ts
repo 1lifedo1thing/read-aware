@@ -54,8 +54,7 @@ function locate(
   if (!trimmed) return undefined;
   const exact = chapterText.indexOf(trimmed);
   if (exact >= 0) return { start: exact, end: exact + trimmed.length };
-  const probe =
-    probeFrom === "head" ? trimmed.slice(0, LOCATE_PROBE_CHARS) : trimmed.slice(-LOCATE_PROBE_CHARS);
+  const probe = probeFrom === "head" ? trimmed.slice(0, LOCATE_PROBE_CHARS) : trimmed.slice(-LOCATE_PROBE_CHARS);
   if (probe.length < 12) return undefined;
   const at = chapterText.indexOf(probe);
   return at >= 0 ? { start: at, end: at + probe.length } : undefined;
@@ -106,10 +105,7 @@ export function renderGroundingContext(input: {
 
   let budget = TOTAL_BUDGET;
   if (precedingText) {
-    const clipped =
-      precedingText.length > budget
-        ? precedingText.slice(precedingText.length - budget)
-        : precedingText;
+    const clipped = precedingText.length > budget ? precedingText.slice(precedingText.length - budget) : precedingText;
     budget -= clipped.length;
     const label =
       precedingChapterIndex !== undefined
@@ -139,9 +135,7 @@ export function renderGroundingContext(input: {
  * 装配入口：取当前章正文、切前文窗口、搜更早章节，渲染成随轮块。
  * 任何一步失败（端口报错、书未抽取、定位不了）都降级，绝不 throw。
  */
-export async function buildGroundingContext(
-  options: BuildGroundingContextOptions,
-): Promise<string | undefined> {
+export async function buildGroundingContext(options: BuildGroundingContextOptions): Promise<string | undefined> {
   try {
     const selection = options.attachments.find((a) => a.text.trim())?.text.trim();
     if (!selection) return undefined;
@@ -150,15 +144,12 @@ export async function buildGroundingContext(
     if (options.narrativeFence && chapterIndex === undefined) return undefined;
 
     const chapterText =
-      chapterIndex !== undefined
-        ? await options.bookText.getChapterText(options.bookId, chapterIndex)
-        : undefined;
+      chapterIndex !== undefined ? await options.bookText.getChapterText(options.bookId, chapterIndex) : undefined;
     const precedingText = chapterText
       ? precedingWindow(chapterText, selection, options.cursor?.visibleText)
       : undefined;
 
-    const throughChapterIndex =
-      options.narrativeFence && chapterIndex !== undefined ? chapterIndex - 1 : undefined;
+    const throughChapterIndex = options.narrativeFence && chapterIndex !== undefined ? chapterIndex - 1 : undefined;
     const hits =
       throughChapterIndex !== undefined && throughChapterIndex < 0
         ? [] // 读者还在第一章：没有"更早章节"可搜

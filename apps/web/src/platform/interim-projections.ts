@@ -118,9 +118,7 @@ async function migrateReadingStatsKv(kv: LegacyKvAccess): Promise<void> {
           })),
         ),
         hourly: books.flatMap((book) =>
-          (book.byHour ?? []).flatMap((ms, localHour) =>
-            ms > 0 ? [{ bookId: book.bookId, localHour, ms }] : [],
-          ),
+          (book.byHour ?? []).flatMap((ms, localHour) => (ms > 0 ? [{ bookId: book.bookId, localHour, ms }] : [])),
         ),
       };
       await invoke("reading_time_import", { wire });

@@ -1,5 +1,13 @@
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
@@ -51,35 +59,44 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
     };
   }, []);
 
-  const applyScale = useCallback((nextScaleRaw: number, aroundClientX: number, aroundClientY: number, origin: DomainActor = "user") => {
-    beginIntent(origin);
-    setTransform((current) => {
-      const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScaleRaw));
-      if (nextScale === 1) return IDENTITY;
-      const cursor = toCenterFrame(aroundClientX, aroundClientY);
-      // Keep the content point under the cursor stationary while scaling.
-      const ratio = nextScale / current.scale;
-      return {
-        scale: nextScale,
-        x: cursor.x - (cursor.x - current.x) * ratio,
-        y: cursor.y - (cursor.y - current.y) * ratio,
-      };
-    });
-  }, [toCenterFrame, beginIntent]);
+  const applyScale = useCallback(
+    (nextScaleRaw: number, aroundClientX: number, aroundClientY: number, origin: DomainActor = "user") => {
+      beginIntent(origin);
+      setTransform((current) => {
+        const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScaleRaw));
+        if (nextScale === 1) return IDENTITY;
+        const cursor = toCenterFrame(aroundClientX, aroundClientY);
+        // Keep the content point under the cursor stationary while scaling.
+        const ratio = nextScale / current.scale;
+        return {
+          scale: nextScale,
+          x: cursor.x - (cursor.x - current.x) * ratio,
+          y: cursor.y - (cursor.y - current.y) * ratio,
+        };
+      });
+    },
+    [toCenterFrame, beginIntent],
+  );
 
-  const onWheel = useCallback((event: ReactWheelEvent) => {
-    event.stopPropagation();
-    // Trackpad pinch reports ctrlKey with fine deltas; plain wheel zooms too —
-    // a lightbox has nothing to scroll.
-    const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.002));
-    applyScale(transformRef.current.scale * factor, event.clientX, event.clientY);
-  }, [applyScale]);
+  const onWheel = useCallback(
+    (event: ReactWheelEvent) => {
+      event.stopPropagation();
+      // Trackpad pinch reports ctrlKey with fine deltas; plain wheel zooms too —
+      // a lightbox has nothing to scroll.
+      const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.002));
+      applyScale(transformRef.current.scale * factor, event.clientX, event.clientY);
+    },
+    [applyScale],
+  );
 
-  const onDoubleClick = useCallback((event: ReactPointerEvent | React.MouseEvent) => {
-    event.stopPropagation();
-    const { scale } = transformRef.current;
-    applyScale(scale > 1.01 ? 1 : TOGGLE_SCALE, event.clientX, event.clientY);
-  }, [applyScale]);
+  const onDoubleClick = useCallback(
+    (event: ReactPointerEvent | React.MouseEvent) => {
+      event.stopPropagation();
+      const { scale } = transformRef.current;
+      applyScale(scale > 1.01 ? 1 : TOGGLE_SCALE, event.clientX, event.clientY);
+    },
+    [applyScale],
+  );
 
   const onPointerDown = useCallback((event: ReactPointerEvent) => {
     if (!event.isPrimary && pointersRef.current.size === 0) return;
@@ -95,76 +112,86 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
     }
   }, []);
 
-  const panByPixels = useCallback((dx: number, dy: number, origin: DomainActor = "user") => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    beginIntent(origin);
-    setTransform(current => current.scale <= 1 ? current : {
-      ...current,
-      x: Math.max(-stage.clientWidth * MAX_SCALE, Math.min(stage.clientWidth * MAX_SCALE, current.x + dx)),
-      y: Math.max(-stage.clientHeight * MAX_SCALE, Math.min(stage.clientHeight * MAX_SCALE, current.y + dy)),
-    });
-  }, [beginIntent]);
-  const pan = useCallback((dx: number, dy: number, origin: DomainActor = "user") => {
-    const stage = stageRef.current;
-    if (stage) panByPixels(dx * stage.clientWidth, dy * stage.clientHeight, origin);
-  }, [panByPixels]);
+  const panByPixels = useCallback(
+    (dx: number, dy: number, origin: DomainActor = "user") => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      beginIntent(origin);
+      setTransform((current) =>
+        current.scale <= 1
+          ? current
+          : {
+              ...current,
+              x: Math.max(-stage.clientWidth * MAX_SCALE, Math.min(stage.clientWidth * MAX_SCALE, current.x + dx)),
+              y: Math.max(-stage.clientHeight * MAX_SCALE, Math.min(stage.clientHeight * MAX_SCALE, current.y + dy)),
+            },
+      );
+    },
+    [beginIntent],
+  );
+  const pan = useCallback(
+    (dx: number, dy: number, origin: DomainActor = "user") => {
+      const stage = stageRef.current;
+      if (stage) panByPixels(dx * stage.clientWidth, dy * stage.clientHeight, origin);
+    },
+    [panByPixels],
+  );
 
-  const onPointerMove = useCallback((event: ReactPointerEvent) => {
-    const previous = pointersRef.current.get(event.pointerId);
-    if (!previous) return;
-    const next = { x: event.clientX, y: event.clientY };
-    pointersRef.current.set(event.pointerId, next);
+  const onPointerMove = useCallback(
+    (event: ReactPointerEvent) => {
+      const previous = pointersRef.current.get(event.pointerId);
+      if (!previous) return;
+      const next = { x: event.clientX, y: event.clientY };
+      pointersRef.current.set(event.pointerId, next);
 
-    if (pointersRef.current.size === 2 && pinchStartRef.current) {
-      const [a, b] = [...pointersRef.current.values()];
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      const start = pinchStartRef.current;
-      if (start.distance > 0) {
-        movedRef.current = true;
-        applyScale(
-          start.scale * (distance / start.distance),
-          (a.x + b.x) / 2,
-          (a.y + b.y) / 2,
-        );
+      if (pointersRef.current.size === 2 && pinchStartRef.current) {
+        const [a, b] = [...pointersRef.current.values()];
+        const distance = Math.hypot(a.x - b.x, a.y - b.y);
+        const start = pinchStartRef.current;
+        if (start.distance > 0) {
+          movedRef.current = true;
+          applyScale(start.scale * (distance / start.distance), (a.x + b.x) / 2, (a.y + b.y) / 2);
+        }
+        return;
       }
-      return;
-    }
 
-    // Single pointer: pan when zoomed in.
-    if (transformRef.current.scale > 1) {
-      const dx = next.x - previous.x;
-      const dy = next.y - previous.y;
-      if (dx !== 0 || dy !== 0) movedRef.current = true;
-      panByPixels(dx, dy);
-    }
-  }, [applyScale, panByPixels]);
+      // Single pointer: pan when zoomed in.
+      if (transformRef.current.scale > 1) {
+        const dx = next.x - previous.x;
+        const dy = next.y - previous.y;
+        if (dx !== 0 || dy !== 0) movedRef.current = true;
+        panByPixels(dx, dy);
+      }
+    },
+    [applyScale, panByPixels],
+  );
 
   const onPointerEnd = useCallback((event: ReactPointerEvent) => {
     pointersRef.current.delete(event.pointerId);
     if (pointersRef.current.size < 2) pinchStartRef.current = null;
   }, []);
 
-  const reset = useCallback((origin: DomainActor = "user") => {
-    beginIntent(origin);
-    setTransform(IDENTITY);
-    rotationRef.current = 0;
-    setRotation(0);
-    setRotationFit(1);
-  }, [beginIntent]);
+  const reset = useCallback(
+    (origin: DomainActor = "user") => {
+      beginIntent(origin);
+      setTransform(IDENTITY);
+      rotationRef.current = 0;
+      setRotation(0);
+      setRotationFit(1);
+    },
+    [beginIntent],
+  );
 
   /** Toolbar zoom steps, anchored at the stage center. */
-  const zoomBy = useCallback((factor: number, origin: DomainActor) => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const rect = stage.getBoundingClientRect();
-    applyScale(
-      transformRef.current.scale * factor,
-      rect.left + rect.width / 2,
-      rect.top + rect.height / 2,
-      origin,
-    );
-  }, [applyScale]);
+  const zoomBy = useCallback(
+    (factor: number, origin: DomainActor) => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      const rect = stage.getBoundingClientRect();
+      applyScale(transformRef.current.scale * factor, rect.left + rect.width / 2, rect.top + rect.height / 2, origin);
+    },
+    [applyScale],
+  );
   const zoomIn = useCallback((origin: DomainActor = "user") => zoomBy(1.5, origin), [zoomBy]);
   const zoomOut = useCallback((origin: DomainActor = "user") => zoomBy(1 / 1.5, origin), [zoomBy]);
 
@@ -173,41 +200,47 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
    * plate — and odd turns pick up the shrink that fits the swapped
    * width/height inside the stage.
    */
-  const rotateRight = useCallback((origin: DomainActor = "user") => {
-    beginIntent(origin);
-    const next = (rotationRef.current + 90) % 360;
-    rotationRef.current = next;
-    let fit = 1;
-    const stage = stageRef.current;
-    const img = imgRef.current;
-    if (next % 180 !== 0 && stage && img && img.naturalWidth > 0) {
-      const stageW = stage.clientWidth;
-      const stageH = stage.clientHeight;
-      const contain = Math.min(
-        stageW / img.naturalWidth,
-        stageH / img.naturalHeight,
-        1,
-      );
-      const displayedW = img.naturalWidth * contain;
-      const displayedH = img.naturalHeight * contain;
-      fit = Math.min(stageW / displayedH, stageH / displayedW, 1);
-    }
-    setTransform(IDENTITY);
-    setRotation(next);
-    setRotationFit(fit);
-  }, [beginIntent]);
+  const rotateRight = useCallback(
+    (origin: DomainActor = "user") => {
+      beginIntent(origin);
+      const next = (rotationRef.current + 90) % 360;
+      rotationRef.current = next;
+      let fit = 1;
+      const stage = stageRef.current;
+      const img = imgRef.current;
+      if (next % 180 !== 0 && stage && img && img.naturalWidth > 0) {
+        const stageW = stage.clientWidth;
+        const stageH = stage.clientHeight;
+        const contain = Math.min(stageW / img.naturalWidth, stageH / img.naturalHeight, 1);
+        const displayedW = img.naturalWidth * contain;
+        const displayedH = img.naturalHeight * contain;
+        fit = Math.min(stageW / displayedH, stageH / displayedW, 1);
+      }
+      setTransform(IDENTITY);
+      setRotation(next);
+      setRotationFit(fit);
+    },
+    [beginIntent],
+  );
 
-  const style = useMemo<CSSProperties>(() => ({
-    transform: `translate(${transform.x}px, ${transform.y}px) rotate(${rotation}deg) scale(${transform.scale * rotationFit})`,
-    transformOrigin: "center center",
-    transition: pointersRef.current.size > 0 ? undefined : "transform 120ms ease-out",
-  }), [transform, rotation, rotationFit]);
+  const style = useMemo<CSSProperties>(
+    () => ({
+      transform: `translate(${transform.x}px, ${transform.y}px) rotate(${rotation}deg) scale(${transform.scale * rotationFit})`,
+      transformOrigin: "center center",
+      transition: pointersRef.current.size > 0 ? undefined : "transform 120ms ease-out",
+    }),
+    [transform, rotation, rotationFit],
+  );
 
-  const snapshot = useCallback(() => ({
-    scale: transform.scale, rotation,
-    panX: transform.x / (stageRef.current?.clientWidth || 1),
-    panY: transform.y / (stageRef.current?.clientHeight || 1),
-  }), [transform, rotation]);
+  const snapshot = useCallback(
+    () => ({
+      scale: transform.scale,
+      rotation,
+      panX: transform.x / (stageRef.current?.clientWidth || 1),
+      panY: transform.y / (stageRef.current?.clientHeight || 1),
+    }),
+    [transform, rotation],
+  );
 
   return {
     origin,

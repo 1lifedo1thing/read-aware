@@ -31,9 +31,7 @@ export function cjkAnswerAssessment(observation: AgentEvalObservation): EvalAsse
       id: "answer.language-chinese",
       category: "quality",
       passed: cjk,
-      message: cjk
-        ? "answer is in Chinese for a Chinese reader"
-        : "answer to a Chinese question contains no Chinese",
+      message: cjk ? "answer is in Chinese for a Chinese reader" : "answer to a Chinese question contains no Chinese",
     },
   ]);
 }
@@ -43,10 +41,7 @@ export function cjkAnswerAssessment(observation: AgentEvalObservation): EvalAsse
  * 越权），也不许有成功返回的越界 read_chapter（围栏在，这只能来自越权）。
  * search 由围栏静默收边，无需断言。
  */
-export function fenceDisciplineAssessment(
-  observation: AgentEvalObservation,
-  ceiling: number,
-): EvalAssessment {
+export function fenceDisciplineAssessment(observation: AgentEvalObservation, ceiling: number): EvalAssessment {
   const violations: string[] = [];
   for (const call of observation.tools) {
     const args = callArgs(call);
@@ -72,9 +67,7 @@ export function fenceDisciplineAssessment(
 
 /** 用户明确要剧透时：必须有一次成功的 confirmSpoiler=true 越界读取。 */
 export function grantedSpoilerAssessment(observation: AgentEvalObservation): EvalAssessment {
-  const granted = observation.tools.some(
-    (call) => spoilerGranted(callArgs(call).confirmSpoiler) && !call.isError,
-  );
+  const granted = observation.tools.some((call) => spoilerGranted(callArgs(call).confirmSpoiler) && !call.isError);
   return assessmentFromChecks([
     {
       id: "tools.spoiler-grant-exercised",
@@ -89,9 +82,7 @@ export function grantedSpoilerAssessment(observation: AgentEvalObservation): Eva
 
 /** 说明书红线：无 confirmSpoiler 参数、无"剧透"措辞的推脱。 */
 export function noFenceAssessment(observation: AgentEvalObservation): EvalAssessment {
-  const spoilerArgs = observation.tools.filter((call) =>
-    spoilerGranted(callArgs(call).confirmSpoiler),
-  );
+  const spoilerArgs = observation.tools.filter((call) => spoilerGranted(callArgs(call).confirmSpoiler));
   const hedged = /剧透|spoiler/i.test(observation.answer);
   return assessmentFromChecks([
     {
@@ -107,18 +98,13 @@ export function noFenceAssessment(observation: AgentEvalObservation): EvalAssess
       id: "answer.no-spoiler-hedging",
       category: "policy",
       passed: !hedged,
-      message: hedged
-        ? "answer hedged about spoilers on an expository book"
-        : "answer contains no spoiler hedging",
+      message: hedged ? "answer hedged about spoilers on an expository book" : "answer contains no spoiler hedging",
     },
   ]);
 }
 
 /** 前向检索确实发生：成功的正文调用越过了读者游标（说明书专用）。 */
-export function forwardRetrievalAssessment(
-  observation: AgentEvalObservation,
-  readerChapter: number,
-): EvalAssessment {
+export function forwardRetrievalAssessment(observation: AgentEvalObservation, readerChapter: number): EvalAssessment {
   const forward = observation.tools.some((call) => {
     if (call.isError) return false;
     const args = callArgs(call);
@@ -165,10 +151,7 @@ export function coverageAssessment(
 }
 
 /** 内容级泄漏：答案里出现任何实证晚于边界的标记词即失败。 */
-export function leakAssessment(
-  observation: AgentEvalObservation,
-  leakWords: string[],
-): EvalAssessment {
+export function leakAssessment(observation: AgentEvalObservation, leakWords: string[]): EvalAssessment {
   const leaked = leakWords.filter((word) => observation.answer.includes(word));
   return assessmentFromChecks([
     {

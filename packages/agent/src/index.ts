@@ -5,8 +5,7 @@ export * from "./memory/book-graph";
 export * from "./settings";
 // 宿主注入 extraTools 时需要的工具类型（apps/web 的插件桥用它，避免直依 pi）。
 export type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
-export { searchChapters,
-  searchTurnRecords, type ChapterLike, type ChapterHit } from "./text/search";
+export { searchChapters, searchTurnRecords, type ChapterLike, type ChapterHit } from "./text/search";
 export * from "./models/roles";
 export * from "./models/accounts";
 export {
@@ -59,7 +58,16 @@ export { chapterMemoryPolicy } from "./memory/book-memory-policy";
 // eval viewer 的数据源：套件目录（场景定义本身就是可序列化的）。
 export { planMemoryMaintenance } from "./memory/maintenance-plan";
 export { WEB_PROVIDERS, isWebProviderId, type WebProviderId } from "./web/providers";
-export type { WebImage, WebClient, WebPort, WebProvider, WebSearchInput, WebSearchResult, WebFetchInput, WebFetchResult } from "./web/types";
+export type {
+  WebImage,
+  WebClient,
+  WebPort,
+  WebProvider,
+  WebSearchInput,
+  WebSearchResult,
+  WebFetchInput,
+  WebFetchResult,
+} from "./web/types";
 
 export { publicWebUrl } from "./web/shared";
 

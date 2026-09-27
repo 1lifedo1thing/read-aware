@@ -11,7 +11,9 @@ import { useCallback, useState } from "react";
  * closed, so a collapse that never reports (reduced motion) leaves nothing
  * reachable behind.
  */
-export function useRetainedWhileClosing<K extends string>(active: K | null): {
+export function useRetainedWhileClosing<K extends string>(
+  active: K | null,
+): {
   shown: K | null;
   settle: () => void;
 } {

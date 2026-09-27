@@ -7,15 +7,11 @@ import { buildSettingsTools } from "./settings-tools";
 
 function resultJson(result: AgentToolResult<unknown>): unknown {
   const content = result.content[0];
-  if (!content || content.type !== "text")
-    throw new Error("expected a text tool result");
+  if (!content || content.type !== "text") throw new Error("expected a text tool result");
   return JSON.parse(content.text);
 }
 
-function setting(
-  settings: AgentSettingDescriptor[],
-  path: string,
-): AgentSettingDescriptor {
+function setting(settings: AgentSettingDescriptor[], path: string): AgentSettingDescriptor {
   const match = settings.find((candidate) => candidate.path === path);
   if (!match) throw new Error(`missing fixture setting: ${path}`);
   return match;
@@ -23,23 +19,36 @@ function setting(
 
 describe("settings tools", () => {
   test("option discovery is bounded, keeps book scope and forwards exact font values", async () => {
-    for (const scope of [{ kind: "global", threadId: "test" }, { kind: "book", bookId: "book-1" }] as const) {
+    for (const scope of [
+      { kind: "global", threadId: "test" },
+      { kind: "book", bookId: "book-1" },
+    ] as const) {
       const { deps } = createInMemoryDeps({ books: [{ id: "book-1", title: "The Book" }] });
       let received: unknown;
-      deps.settings.getSettingOptions = async query => {
+      deps.settings.getSettingOptions = async (query) => {
         received = query;
-        return { path: query.path, revision: 7, total: 1, offset: 0, nextOffset: null,
-          options: [{ value: "system:Arial", label: "Arial", source: "system" }] };
+        return {
+          path: query.path,
+          revision: 7,
+          total: 1,
+          offset: 0,
+          nextOffset: null,
+          options: [{ value: "system:Arial", label: "Arial", source: "system" }],
+        };
       };
-      const tool = buildSettingsTools(scope, deps).find(tool => tool.name === "get_setting_options")!;
+      const tool = buildSettingsTools(scope, deps).find((tool) => tool.name === "get_setting_options")!;
       const result = resultJson(await tool.execute("options", { path: "reading.fontFamily", search: "Arial" }));
       expect(received).toMatchObject({ path: "reading.fontFamily", search: "Arial", limit: 20 });
       expect(result).toMatchObject({ revision: 7, options: [{ value: "system:Arial", source: "system" }] });
-      await expect(tool.execute("oversize", { path: "reading.fontFamily", limit: 51 })).rejects.toMatchObject({ code: "settings/options-invalid" });
+      await expect(tool.execute("oversize", { path: "reading.fontFamily", limit: 51 })).rejects.toMatchObject({
+        code: "settings/options-invalid",
+      });
       if (scope.kind === "book") {
         await tool.execute("book", { path: "reading.fontFamily", target: { kind: "book" } });
         expect(received).toMatchObject({ target: { kind: "book", bookId: "book-1" } });
-        await expect(tool.execute("foreign", { path: "reading.fontFamily", target: { kind: "book", bookId: "different" } })).rejects.toThrow();
+        await expect(
+          tool.execute("foreign", { path: "reading.fontFamily", target: { kind: "book", bookId: "different" } }),
+        ).rejects.toThrow();
       }
     }
   });
@@ -50,9 +59,7 @@ describe("settings tools", () => {
     );
     if (!tool) throw new Error("get_settings was not registered");
 
-    const result = resultJson(
-      await tool.execute("call-1", { section: "reading" }),
-    ) as {
+    const result = resultJson(await tool.execute("call-1", { section: "reading" })) as {
       settings: {
         target: { kind: string };
         settings: AgentSettingDescriptor[];
@@ -61,18 +68,14 @@ describe("settings tools", () => {
     };
 
     expect(result.settings.target).toEqual({ kind: "global" });
-    expect(
-      result.settings.settings.every((entry) => entry.section === "reading"),
-    ).toBe(true);
+    expect(result.settings.settings.every((entry) => entry.section === "reading")).toBe(true);
     expect(setting(result.settings.settings, "reading.theme")).toMatchObject({
       value: "warm",
       kind: "enum",
       writable: true,
       supportedTargets: ["global", "all-books", "book"],
     });
-    expect(
-      setting(result.settings.settings, "reading.fontSize").options,
-    ).toContainEqual({
+    expect(setting(result.settings.settings, "reading.fontSize").options).toContainEqual({
       value: "large",
       label: "large",
     });
@@ -134,18 +137,10 @@ describe("settings tools", () => {
     const result = resultJson(await tool.execute("call-2", { changes }));
 
     expect(result).toMatchObject({ updated: true });
-    expect(setting(stores.settings.settings, "general.startView").value).toBe(
-      "resume",
-    );
-    expect(setting(stores.settings.settings, "reading.fontSize").value).toBe(
-      "large",
-    );
-    expect(setting(stores.settings.settings, "reading.readingMode").value).toBe(
-      "scroll",
-    );
-    expect(
-      setting(stores.settings.settings, "ai.preferences.followStreaming").value,
-    ).toBe(true);
+    expect(setting(stores.settings.settings, "general.startView").value).toBe("resume");
+    expect(setting(stores.settings.settings, "reading.fontSize").value).toBe("large");
+    expect(setting(stores.settings.settings, "reading.readingMode").value).toBe("scroll");
+    expect(setting(stores.settings.settings, "ai.preferences.followStreaming").value).toBe(true);
   });
 
   test("preserves every generic value type through pi argument validation", () => {
@@ -174,14 +169,9 @@ describe("settings tools", () => {
   test("keeps credentials and endpoint destinations outside the tool boundary", async () => {
     const { deps } = createInMemoryDeps();
     const tools = buildSettingsTools({ kind: "global", threadId: "test" }, deps);
-    const getTool = tools.find(
-      (candidate) => candidate.name === "get_settings",
-    );
-    const updateTool = tools.find(
-      (candidate) => candidate.name === "update_settings",
-    );
-    if (!getTool || !updateTool)
-      throw new Error("settings tools were not registered");
+    const getTool = tools.find((candidate) => candidate.name === "get_settings");
+    const updateTool = tools.find((candidate) => candidate.name === "update_settings");
+    if (!getTool || !updateTool) throw new Error("settings tools were not registered");
 
     const catalog = resultJson(await getTool.execute("call-safe-read", {}));
     const serialized = JSON.stringify({
@@ -194,10 +184,7 @@ describe("settings tools", () => {
 
   test("discovers and applies plugin choices without theme-specific tool fields", async () => {
     const { deps, stores } = createInMemoryDeps();
-    const appearanceTheme = setting(
-      stores.settings.settings,
-      "appearance.theme",
-    );
+    const appearanceTheme = setting(stores.settings.settings, "appearance.theme");
     appearanceTheme.options?.push({
       value: "plugin:editorial-themes:gutenberg",
       label: "Gutenberg",
@@ -206,21 +193,14 @@ describe("settings tools", () => {
       polarity: "light",
     });
     const tools = buildSettingsTools({ kind: "global", threadId: "test" }, deps);
-    const getTool = tools.find(
-      (candidate) => candidate.name === "get_settings",
-    );
-    const updateTool = tools.find(
-      (candidate) => candidate.name === "update_settings",
-    );
-    if (!getTool || !updateTool)
-      throw new Error("settings tools were not registered");
+    const getTool = tools.find((candidate) => candidate.name === "get_settings");
+    const updateTool = tools.find((candidate) => candidate.name === "update_settings");
+    if (!getTool || !updateTool) throw new Error("settings tools were not registered");
 
-    const result = resultJson(
-      await getTool.execute("call-theme-read", { section: "appearance" }),
-    ) as { settings: { settings: AgentSettingDescriptor[] } };
-    expect(
-      setting(result.settings.settings, "appearance.theme").options,
-    ).toContainEqual(
+    const result = resultJson(await getTool.execute("call-theme-read", { section: "appearance" })) as {
+      settings: { settings: AgentSettingDescriptor[] };
+    };
+    expect(setting(result.settings.settings, "appearance.theme").options).toContainEqual(
       expect.objectContaining({
         value: "plugin:editorial-themes:gutenberg",
         source: "plugin",
@@ -235,9 +215,7 @@ describe("settings tools", () => {
         },
       ],
     });
-    expect(setting(stores.settings.settings, "appearance.theme").value).toBe(
-      "plugin:editorial-themes:gutenberg",
-    );
+    expect(setting(stores.settings.settings, "appearance.theme").value).toBe("plugin:editorial-themes:gutenberg");
 
     const schema = JSON.stringify(updateTool.parameters);
     expect(schema).toContain('"path"');
@@ -322,8 +300,6 @@ describe("settings tools", () => {
     );
     if (!tool) throw new Error("update_settings was not registered");
 
-    await expect(tool.execute("call-3", { changes: [] })).rejects.toThrow(
-      "at least one settings change is required",
-    );
+    await expect(tool.execute("call-3", { changes: [] })).rejects.toThrow("at least one settings change is required");
   });
 });

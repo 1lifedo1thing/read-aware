@@ -15,33 +15,43 @@ export function useShortcutPreferences() {
   const { toast } = useToast();
   const locked = useRef(false);
   const [busy, setBusy] = useState(false);
-  const submit = useCallback(async (changes: () => Promise<SettingChange[]>): Promise<boolean> => {
-    if (locked.current) return false;
-    locked.current = true;
-    setBusy(true);
-    try {
-      const batch = await changes();
-      if (batch.length) await settings.commands.update(batch);
-      return true;
-    } catch (error) {
-      log.warn("Shortcut change failed", error);
-      toast({ variant: "destructive", description: describeError(error).body });
-      return false;
-    } finally {
-      locked.current = false;
-      setBusy(false);
-    }
-  }, [toast]);
-  const rebind = useCallback((id: ShortcutId, chord: KeyChord) => submit(async () => [
-    { path: shortcutSettingPath(id), value: shortcutTokens(chord) },
-  ]), [submit]);
-  const reset = useCallback((id: ShortcutId) => submit(async () => [
-    { path: shortcutSettingPath(id), value: null },
-  ]), [submit]);
-  const resetAll = useCallback(() => submit(async () =>
-    (await settings.queries.snapshot({ section: "shortcuts" })).settings
-      .filter(setting => setting.shortcut?.overridden)
-      .map(setting => ({ path: setting.path, value: null })),
-  ), [submit]);
+  const submit = useCallback(
+    async (changes: () => Promise<SettingChange[]>): Promise<boolean> => {
+      if (locked.current) return false;
+      locked.current = true;
+      setBusy(true);
+      try {
+        const batch = await changes();
+        if (batch.length) await settings.commands.update(batch);
+        return true;
+      } catch (error) {
+        log.warn("Shortcut change failed", error);
+        toast({ variant: "destructive", description: describeError(error).body });
+        return false;
+      } finally {
+        locked.current = false;
+        setBusy(false);
+      }
+    },
+    [toast],
+  );
+  const rebind = useCallback(
+    (id: ShortcutId, chord: KeyChord) =>
+      submit(async () => [{ path: shortcutSettingPath(id), value: shortcutTokens(chord) }]),
+    [submit],
+  );
+  const reset = useCallback(
+    (id: ShortcutId) => submit(async () => [{ path: shortcutSettingPath(id), value: null }]),
+    [submit],
+  );
+  const resetAll = useCallback(
+    () =>
+      submit(async () =>
+        (await settings.queries.snapshot({ section: "shortcuts" })).settings
+          .filter((setting) => setting.shortcut?.overridden)
+          .map((setting) => ({ path: setting.path, value: null })),
+      ),
+    [submit],
+  );
   return { busy, rebind, reset, resetAll };
 }

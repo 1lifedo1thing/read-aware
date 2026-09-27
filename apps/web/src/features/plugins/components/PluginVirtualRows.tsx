@@ -33,10 +33,7 @@ export function PluginVirtualRows({ rows }: { rows: VirtualRow[] }) {
     setScroller(host);
     if (!host) return;
     const measure = () => {
-      const margin =
-        el.getBoundingClientRect().top -
-        host.getBoundingClientRect().top +
-        host.scrollTop;
+      const margin = el.getBoundingClientRect().top - host.getBoundingClientRect().top + host.scrollTop;
       setScrollMargin(Math.max(0, Math.round(margin)));
     };
     measure();
@@ -47,11 +44,7 @@ export function PluginVirtualRows({ rows }: { rows: VirtualRow[] }) {
     // observe that whole chain.
     const raf = requestAnimationFrame(measure);
     const observer = new ResizeObserver(measure);
-    for (
-      let node: HTMLElement | null = el;
-      node && node !== host;
-      node = node.parentElement
-    ) {
+    for (let node: HTMLElement | null = el; node && node !== host; node = node.parentElement) {
       observer.observe(node);
     }
     observer.observe(host);

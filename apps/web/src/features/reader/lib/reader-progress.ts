@@ -33,10 +33,7 @@ export function buildProgressMarks(entries: TocEntry[]): ProgressMark[] {
 }
 
 /** The mark a position falls in: the last one at or before it. */
-export function findMarkAt(
-  marks: ProgressMark[],
-  fraction: number,
-): ProgressMark | null {
+export function findMarkAt(marks: ProgressMark[], fraction: number): ProgressMark | null {
   let found: ProgressMark | null = null;
 
   for (const mark of marks) {

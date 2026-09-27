@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  hasExplicitSpoilerPermission,
-  interactionGrantsSpoilerPermission,
-} from "./spoiler-permission";
+import { hasExplicitSpoilerPermission, interactionGrantsSpoilerPermission } from "./spoiler-permission";
 
 describe("spoiler permission", () => {
   test("recognizes explicit reader grants without treating curiosity as permission", () => {
@@ -40,15 +37,22 @@ describe("spoiler permission", () => {
   });
 
   test("accepts the explicit English confirmation returned by the real reader flow", () => {
-    expect(interactionGrantsSpoilerPermission({
-      question: "May I read ahead and spoil the ending?",
-      options: [{ id: "yes_spoil", label: "Yes, spoil it" }, { id: "no", label: "No spoilers" }],
-      answer: { optionId: "yes_spoil", text: "Yes, spoil it" },
-    })).toBe(true);
-    expect(interactionGrantsSpoilerPermission({
-      question: "May I read ahead and spoil the ending?",
-      options: [{ id: "yes_spoil", label: "Yes, spoil it" }],
-      answer: { optionId: "yes_spoil", text: "Don't spoil it" },
-    })).toBe(false);
+    expect(
+      interactionGrantsSpoilerPermission({
+        question: "May I read ahead and spoil the ending?",
+        options: [
+          { id: "yes_spoil", label: "Yes, spoil it" },
+          { id: "no", label: "No spoilers" },
+        ],
+        answer: { optionId: "yes_spoil", text: "Yes, spoil it" },
+      }),
+    ).toBe(true);
+    expect(
+      interactionGrantsSpoilerPermission({
+        question: "May I read ahead and spoil the ending?",
+        options: [{ id: "yes_spoil", label: "Yes, spoil it" }],
+        answer: { optionId: "yes_spoil", text: "Don't spoil it" },
+      }),
+    ).toBe(false);
   });
 });

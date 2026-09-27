@@ -1,25 +1,11 @@
 import { useEffect, useState } from "react";
-import {
-  Button,
-  Checkbox,
-  ChoiceGroup,
-  Select,
-  Stack,
-  TextArea,
-  TextField,
-  TimeField,
-  Toggle,
-} from "@read-aware/ui";
+import { Button, Checkbox, ChoiceGroup, Select, Stack, TextArea, TextField, TimeField, Toggle } from "@read-aware/ui";
 import { usePluginFormDraft } from "../hooks/usePluginFormDraft";
 import { useTranslation } from "../../../i18n";
 import { usePluginFieldOptions } from "../hooks/usePluginFieldOptions";
 import { contributionText } from "../lib/plugin-i18n";
 import { renderPluginIcon } from "../lib/plugin-icons";
-import type {
-  PluginFormField,
-  PluginFormValues,
-  PluginFormView,
-} from "../lib/plugin-types";
+import type { PluginFormField, PluginFormValues, PluginFormView } from "../lib/plugin-types";
 import type { PluginResultRunner } from "./plugin-view-types";
 
 type PluginFormViewBodyProps = {
@@ -36,9 +22,7 @@ type PluginFormViewBodyProps = {
 function fieldVisible(field: PluginFormField, values: PluginFormValues): boolean {
   if (!field.visibleWhen) return true;
   const actual = values[field.visibleWhen.field];
-  const expected = Array.isArray(field.visibleWhen.equals)
-    ? field.visibleWhen.equals
-    : [field.visibleWhen.equals];
+  const expected = Array.isArray(field.visibleWhen.equals) ? field.visibleWhen.equals : [field.visibleWhen.equals];
   return expected.some((entry) => actual === entry || String(actual) === entry);
 }
 
@@ -90,9 +74,7 @@ function PluginSecretField({ field, adapter, onChanged, error }: SecretFieldProp
         type="password"
         className="min-w-0 flex-1"
         placeholder={
-          configured
-            ? t("viewer.secretConfigured")
-            : field.placeholder && contributionText(field.placeholder)
+          configured ? t("viewer.secretConfigured") : field.placeholder && contributionText(field.placeholder)
         }
         helperText={field.helperText && contributionText(field.helperText)}
         error={error}
@@ -268,169 +250,169 @@ export function PluginFormViewBody({ view, busy, onResult }: PluginFormViewBodyP
         submit();
       }}
     >
-      {view.fields.filter((field) => fieldVisible(field, values)).map((field) => {
-        if (field.kind === "text") {
-          return (
-            <TextField
-              key={field.id}
-              label={contributionText(field.label)}
-              variant="outlined"
-              type={field.inputMode ?? "text"}
-              placeholder={field.placeholder && contributionText(field.placeholder)}
-              helperText={field.helperText && contributionText(field.helperText)}
-              error={errors[field.id]}
-              value={String(values[field.id] ?? "")}
-              onChange={(event) => updateValue(field.id, event.target.value)}
-              onBlur={reactive ? flush : undefined}
-            />
-          );
-        }
-        if (field.kind === "textarea") {
-          return (
-            <TextArea
-              key={field.id}
-              label={contributionText(field.label)}
-              placeholder={field.placeholder && contributionText(field.placeholder)}
-              helperText={field.helperText && contributionText(field.helperText)}
-              rows={field.rows ?? 4}
-              error={errors[field.id]}
-              value={String(values[field.id] ?? "")}
-              onChange={(event) => updateValue(field.id, event.target.value)}
-              onBlur={reactive ? flush : undefined}
-            />
-          );
-        }
-        if (field.kind === "time") {
-          return (
-            <TimeField
-              key={field.id}
-              label={contributionText(field.label)}
-              helperText={field.helperText && contributionText(field.helperText)}
-              error={errors[field.id]}
-              minuteStep={field.minuteStep}
-              hoursLabel={t("viewer.hours")}
-              minutesLabel={t("viewer.minutes")}
-              value={String(values[field.id] ?? "")}
-              onChange={(value) => {
-                updateValue(field.id, value);
-                if (reactive) flush();
-              }}
-            />
-          );
-        }
-        if (field.kind === "number") {
-          return (
-            <TextField
-              key={field.id}
-              label={contributionText(field.label)}
-              variant="outlined"
-              type="number"
-              min={field.min}
-              max={field.max}
-              step={field.step}
-              helperText={field.helperText && contributionText(field.helperText)}
-              error={errors[field.id]}
-              value={String(values[field.id] ?? 0)}
-              onChange={(event) => updateValue(field.id, Number(event.target.value))}
-              onBlur={reactive ? flush : undefined}
-            />
-          );
-        }
-        if (field.kind === "secret") {
-          return (
-            <PluginSecretField
-              key={field.id}
-              field={field}
-              adapter={view.secrets}
-              error={errors[field.id]}
-              onChanged={() => setSecretsRevision((current) => current + 1)}
-            />
-          );
-        }
-        if (field.kind === "select") {
-          if (field.dynamicOptions) {
+      {view.fields
+        .filter((field) => fieldVisible(field, values))
+        .map((field) => {
+          if (field.kind === "text") {
             return (
-              <PluginDynamicSelectField
+              <TextField
                 key={field.id}
-                field={field}
-                value={String(values[field.id] ?? "")}
-                values={values}
-                resolve={view.resolveOptions}
-                revision={secretsRevision}
+                label={contributionText(field.label)}
+                variant="outlined"
+                type={field.inputMode ?? "text"}
+                placeholder={field.placeholder && contributionText(field.placeholder)}
+                helperText={field.helperText && contributionText(field.helperText)}
                 error={errors[field.id]}
-                onChange={(value) => updateValue(field.id, value)}
+                value={String(values[field.id] ?? "")}
+                onChange={(event) => updateValue(field.id, event.target.value)}
                 onBlur={reactive ? flush : undefined}
               />
             );
           }
+          if (field.kind === "textarea") {
+            return (
+              <TextArea
+                key={field.id}
+                label={contributionText(field.label)}
+                placeholder={field.placeholder && contributionText(field.placeholder)}
+                helperText={field.helperText && contributionText(field.helperText)}
+                rows={field.rows ?? 4}
+                error={errors[field.id]}
+                value={String(values[field.id] ?? "")}
+                onChange={(event) => updateValue(field.id, event.target.value)}
+                onBlur={reactive ? flush : undefined}
+              />
+            );
+          }
+          if (field.kind === "time") {
+            return (
+              <TimeField
+                key={field.id}
+                label={contributionText(field.label)}
+                helperText={field.helperText && contributionText(field.helperText)}
+                error={errors[field.id]}
+                minuteStep={field.minuteStep}
+                hoursLabel={t("viewer.hours")}
+                minutesLabel={t("viewer.minutes")}
+                value={String(values[field.id] ?? "")}
+                onChange={(value) => {
+                  updateValue(field.id, value);
+                  if (reactive) flush();
+                }}
+              />
+            );
+          }
+          if (field.kind === "number") {
+            return (
+              <TextField
+                key={field.id}
+                label={contributionText(field.label)}
+                variant="outlined"
+                type="number"
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                helperText={field.helperText && contributionText(field.helperText)}
+                error={errors[field.id]}
+                value={String(values[field.id] ?? 0)}
+                onChange={(event) => updateValue(field.id, Number(event.target.value))}
+                onBlur={reactive ? flush : undefined}
+              />
+            );
+          }
+          if (field.kind === "secret") {
+            return (
+              <PluginSecretField
+                key={field.id}
+                field={field}
+                adapter={view.secrets}
+                error={errors[field.id]}
+                onChanged={() => setSecretsRevision((current) => current + 1)}
+              />
+            );
+          }
+          if (field.kind === "select") {
+            if (field.dynamicOptions) {
+              return (
+                <PluginDynamicSelectField
+                  key={field.id}
+                  field={field}
+                  value={String(values[field.id] ?? "")}
+                  values={values}
+                  resolve={view.resolveOptions}
+                  revision={secretsRevision}
+                  error={errors[field.id]}
+                  onChange={(value) => updateValue(field.id, value)}
+                  onBlur={reactive ? flush : undefined}
+                />
+              );
+            }
+            return (
+              <Select
+                key={field.id}
+                label={contributionText(field.label)}
+                variant="outlined"
+                helperText={field.helperText && contributionText(field.helperText)}
+                options={field.options.map((option) => ({
+                  value: option.value,
+                  label: contributionText(option.label),
+                }))}
+                value={String(values[field.id] ?? "")}
+                error={errors[field.id]}
+                onChange={(value) => updateValue(field.id, value)}
+              />
+            );
+          }
+          if (field.kind === "choice") {
+            return (
+              <ChoiceGroup
+                key={field.id}
+                label={contributionText(field.label)}
+                error={errors[field.id]}
+                options={field.options.map((option) => ({
+                  value: option.value,
+                  label: contributionText(option.label),
+                  icon: option.icon ? renderPluginIcon(option.icon, 15) : undefined,
+                }))}
+                value={String(values[field.id] ?? "")}
+                onChange={(value) => updateValue(field.id, value)}
+              />
+            );
+          }
+          if (field.kind === "checkbox") {
+            return (
+              <Checkbox
+                key={field.id}
+                label={contributionText(field.label)}
+                description={field.description && contributionText(field.description)}
+                error={errors[field.id]}
+                checked={values[field.id] === true}
+                onChange={(event) => updateValue(field.id, event.target.checked)}
+              />
+            );
+          }
+          // Same row anatomy as the app's own settings panels (SettingsRow):
+          // title + optional description on the left, the switch trailing.
           return (
-            <Select
-              key={field.id}
-              label={contributionText(field.label)}
-              variant="outlined"
-              helperText={field.helperText && contributionText(field.helperText)}
-              options={field.options.map((option) => ({
-                value: option.value,
-                label: contributionText(option.label),
-              }))}
-              value={String(values[field.id] ?? "")}
-              error={errors[field.id]}
-              onChange={(value) => updateValue(field.id, value)}
-            />
-          );
-        }
-        if (field.kind === "choice") {
-          return (
-            <ChoiceGroup
-              key={field.id}
-              label={contributionText(field.label)}
-              error={errors[field.id]}
-              options={field.options.map((option) => ({
-                value: option.value,
-                label: contributionText(option.label),
-                icon: option.icon ? renderPluginIcon(option.icon, 15) : undefined,
-              }))}
-              value={String(values[field.id] ?? "")}
-              onChange={(value) => updateValue(field.id, value)}
-            />
-          );
-        }
-        if (field.kind === "checkbox") {
-          return (
-            <Checkbox
-              key={field.id}
-              label={contributionText(field.label)}
-              description={field.description && contributionText(field.description)}
-              error={errors[field.id]}
-              checked={values[field.id] === true}
-              onChange={(event) => updateValue(field.id, event.target.checked)}
-            />
-          );
-        }
-        // Same row anatomy as the app's own settings panels (SettingsRow):
-        // title + optional description on the left, the switch trailing.
-        return (
-          <div key={field.id} className="flex items-start justify-between gap-6">
-            <div className="min-w-0">
-              <p className="font-sans text-sm font-medium text-fg">
-                {contributionText(field.label)}
-              </p>
-              {field.description && (
-                <p className="mt-0.5 font-sans text-[13px] leading-5 text-fg-muted">
-                  {contributionText(field.description)}
-                </p>
-              )}
+            <div key={field.id} className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <p className="font-sans text-sm font-medium text-fg">{contributionText(field.label)}</p>
+                {field.description && (
+                  <p className="mt-0.5 font-sans text-[13px] leading-5 text-fg-muted">
+                    {contributionText(field.description)}
+                  </p>
+                )}
+              </div>
+              <Toggle
+                aria-label={contributionText(field.label)}
+                error={errors[field.id]}
+                checked={values[field.id] === true}
+                onChange={(checked) => updateValue(field.id, checked)}
+                className="shrink-0 pt-0.5"
+              />
             </div>
-            <Toggle
-              aria-label={contributionText(field.label)}
-              error={errors[field.id]}
-              checked={values[field.id] === true}
-              onChange={(checked) => updateValue(field.id, checked)}
-              className="shrink-0 pt-0.5"
-            />
-          </div>
-        );
-      })}
+          );
+        })}
       {!reactive && (
         <Stack direction="horizontal" justify="end">
           <Button type="submit" size="sm" disabled={busy}>

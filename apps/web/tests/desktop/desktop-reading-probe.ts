@@ -24,9 +24,17 @@ async function assertIsolated(): Promise<string> {
 /** Real native import of deterministic, non-user content. No fake reader/storage. */
 export async function importReadingProbeBook() {
   await assertIsolated();
-  const sections = ["Alpha", "Beta", "Gamma"].map((title, index) => `<section id="chapter-${index}"><title><p>${title}</p></title>${Array.from({ length: 40 }, (_, paragraph) => `<p>${title} paragraph ${paragraph + 1}. The reader follows a precise location, checks a chapter, and returns to the previous passage. This text is deterministic test content, not a user's book.</p>`).join("")}</section>`).join("");
+  const sections = ["Alpha", "Beta", "Gamma"]
+    .map(
+      (title, index) =>
+        `<section id="chapter-${index}"><title><p>${title}</p></title>${Array.from({ length: 40 }, (_, paragraph) => `<p>${title} paragraph ${paragraph + 1}. The reader follows a precise location, checks a chapter, and returns to the previous passage. This text is deterministic test content, not a user's book.</p>`).join("")}</section>`,
+    )
+    .join("");
   const source = `<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>science</genre><author><first-name>ReadAware</first-name><last-name>Tests</last-name></author><book-title>Reading Capability Probe</book-title><lang>en</lang></title-info><document-info><author><nickname>ReadAware</nickname></author><date>2026-09-08</date><id>reading-capability-probe-v1</id><version>1.0</version></document-info></description><body>${sections}</body></FictionBook>`;
-  return createLibraryDomain("user").commands.books.importBook({ fileName: "reading-capability-probe.fb2", data: new TextEncoder().encode(source) });
+  return createLibraryDomain("user").commands.books.importBook({
+    fileName: "reading-capability-probe.fb2",
+    data: new TextEncoder().encode(source),
+  });
 }
 
 export async function runDesktopReadingProbe(bookId: string, readOnly = false) {
@@ -35,24 +43,39 @@ export async function runDesktopReadingProbe(bookId: string, readOnly = false) {
   const prefix = `read-aware-plugin.${id}.`;
   await localKV.setItemAsync(prefix + "bookId", JSON.stringify(bookId));
   const manifest: PluginManifest = {
-    id, name: "Reading capability probe", version: "1.0.0", schemaVersion: 1,
+    id,
+    name: "Reading capability probe",
+    version: "1.0.0",
+    schemaVersion: 1,
     description: readOnly ? "read-only" : "write",
-    permissions: [readOnly ? "reading:read" : "reading:write"], requires: { domains: { reading: "^2.0.0" }, services: { storage: "^2.0.0" } },
+    permissions: [readOnly ? "reading:read" : "reading:write"],
+    requires: { domains: { reading: "^2.0.0" }, services: { storage: "^2.0.0" } },
   };
   const disposables: PluginDisposable[] = [];
-  const worker = await startPluginWorker(manifest, "0.5.4", disposables, { moduleUrl: new URL("./reading-probe.ts", import.meta.url).href });
-  return withProbeCleanup(async () => {
-    await worker.checkHealth(); worker.promote();
-    const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id);
-    if (!command) throw new Error("Reading probe command did not register");
-    await command.run();
-    const disk = await invoke<Record<string, string>>("load_kv_all");
-    return { dataDir, result: JSON.parse(disk[prefix + "result"] ?? "null") as unknown };
-  }, async () => {
-    try { await worker.terminate(); }
-    finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
-    if (inspectContributions(id).length) throw new Error("Reading probe left contributions behind");
+  const worker = await startPluginWorker(manifest, "0.5.4", disposables, {
+    moduleUrl: new URL("./reading-probe.ts", import.meta.url).href,
   });
+  return withProbeCleanup(
+    async () => {
+      await worker.checkHealth();
+      worker.promote();
+      const command = getDefaultStore()
+        .get(pluginCommandsAtom)
+        .find((command) => command.pluginId === id);
+      if (!command) throw new Error("Reading probe command did not register");
+      await command.run();
+      const disk = await invoke<Record<string, string>>("load_kv_all");
+      return { dataDir, result: JSON.parse(disk[prefix + "result"] ?? "null") as unknown };
+    },
+    async () => {
+      try {
+        await worker.terminate();
+      } finally {
+        for (const disposable of disposables.reverse()) disposable.dispose();
+      }
+      if (inspectContributions(id).length) throw new Error("Reading probe left contributions behind");
+    },
+  );
 }
 
 export async function runDesktopAgentReadingProbe(bookId: string) {
@@ -60,7 +83,7 @@ export async function runDesktopAgentReadingProbe(bookId: string) {
   const deps = buildRuntimeDeps();
   const tools = buildReaderTools({ kind: "book", bookId }, deps);
   const call = async (name: string, parameters: Record<string, unknown>) => {
-    const result = await tools.find(tool => tool.name === name)!.execute("reading-e2e", parameters);
+    const result = await tools.find((tool) => tool.name === name)!.execute("reading-e2e", parameters);
     if (result.content[0]?.type !== "text") throw new Error("Expected a reading tool text result");
     return JSON.parse(result.content[0].text) as unknown;
   };
@@ -79,11 +102,14 @@ export async function runDesktopJumperProbe(bookId: string) {
     const deadline = Date.now() + 8_000;
     while (!check()) {
       if (Date.now() > deadline) throw new Error("Jumper live view did not settle");
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
     }
   };
   const readyCommand = async (id: string) => {
-    const current = () => getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "jumper" && item.id === id);
+    const current = () =>
+      getDefaultStore()
+        .get(pluginCommandsAtom)
+        .find((item) => item.pluginId === "jumper" && item.id === id);
     await until(() => current()?.state?.enabled === true);
     return current()!;
   };
@@ -91,7 +117,7 @@ export async function runDesktopJumperProbe(bookId: string) {
   const command = await readyCommand("open");
   const root = await command.run();
   if (!root || root.view?.kind !== "blocks") throw new Error("Jumper did not return its root view");
-  const form = root.view.blocks.find(block => block.kind === "form");
+  const form = root.view.blocks.find((block) => block.kind === "form");
   if (!form || form.kind !== "form") throw new Error("Jumper search form missing");
   const beforeMissing = await deps.reader.getSession();
   const missing = await form.onSubmit({ mode: "ordinal", query: "99999" });
@@ -104,21 +130,29 @@ export async function runDesktopJumperProbe(bookId: string) {
   // Search now starts after its real host view subscribes. Calling onSubmit
   // alone only returns a progress view, not the asynchronously published hits.
   await runPluginContribution("jumper", "Jumper", async () => search, { presentation: "dialog", owner: command.run });
-  const hits = () => [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] li button')]
-    .filter(button => button.textContent?.includes("Beta paragraph 17"));
+  const hits = () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] li button')].filter((button) =>
+      button.textContent?.includes("Beta paragraph 17"),
+    );
   await until(() => hits().length === 1);
   const match = hits()[0]!.textContent!;
   hits()[0]!.click();
   await until(() => !document.querySelector('[role="dialog"]'));
   const atMatch = await deps.reader.getSession();
   const back = await readyCommand("back");
-  await back.run(); const afterBack = await deps.reader.getSession();
+  await back.run();
+  const afterBack = await deps.reader.getSession();
   const forward = await readyCommand("forward");
-  await forward.run(); const afterForward = await deps.reader.getSession();
-  if (afterBack.location?.cfi === atMatch.location?.cfi || afterForward.location?.cfi !== atMatch.location?.cfi) throw new Error("Jumper history did not retrace actual locations");
-  const tools = [...buildNavigationTools({ kind: "book", bookId }, deps), ...buildReaderTools({ kind: "book", bookId }, deps)];
+  await forward.run();
+  const afterForward = await deps.reader.getSession();
+  if (afterBack.location?.cfi === atMatch.location?.cfi || afterForward.location?.cfi !== atMatch.location?.cfi)
+    throw new Error("Jumper history did not retrace actual locations");
+  const tools = [
+    ...buildNavigationTools({ kind: "book", bookId }, deps),
+    ...buildReaderTools({ kind: "book", bookId }, deps),
+  ];
   const run = async (name: string, params: Record<string, unknown>) => {
-    const result = await tools.find(tool => tool.name === name)!.execute("jumper-e2e", params);
+    const result = await tools.find((tool) => tool.name === name)!.execute("jumper-e2e", params);
     if (result.content[0]?.type !== "text") throw new Error("Expected Agent text result");
     return JSON.parse(result.content[0].text);
   };
@@ -126,12 +160,26 @@ export async function runDesktopJumperProbe(bookId: string) {
   if (agentSearch.hits.length !== 1) throw new Error("Agent precise search mismatch");
   const agentNavigation = await run("open_book", { location: agentSearch.hits[0].location });
   let stale: string | undefined;
-  try { await deps.reader.goTo({ ...agentSearch.hits[0].location, contentVersion: "sha256:old" }); }
-  catch (error) { stale = (error as { code?: string }).code; }
+  try {
+    await deps.reader.goTo({ ...agentSearch.hits[0].location, contentVersion: "sha256:old" });
+  } catch (error) {
+    stale = (error as { code?: string }).code;
+  }
   if (stale !== "reader/stale-location") throw new Error("Stale navigation was not rejected");
-  return { dataDir, toc, missing, beforeMissing: beforeMissing.location, afterMissing: afterMissing.location,
-    match, atMatch: atMatch.location, afterBack: afterBack.location, afterForward: afterForward.location,
-    agentSearch, agentNavigation, stale };
+  return {
+    dataDir,
+    toc,
+    missing,
+    beforeMissing: beforeMissing.location,
+    afterMissing: afterMissing.location,
+    match,
+    atMatch: atMatch.location,
+    afterBack: afterBack.location,
+    afterForward: afterForward.location,
+    agentSearch,
+    agentNavigation,
+    stale,
+  };
 }
 
 export async function importReadingProbePdf() {
@@ -145,7 +193,16 @@ export async function importReadingProbePdf() {
   for (let index = 1; index <= 4; index++) {
     const page = pdf.addPage([600, 800]);
     page.drawText(`Reading paint probe - page ${index}`, { font, size: 24, x: 45, y: 735 });
-    for (let row = 0; row < 18; row++) page.drawText(`Page ${index}, line ${row + 1}: navigation must wait for this page.`, { font, size: 15, x: 45, y: 680 - row * 30 });
+    for (let row = 0; row < 18; row++)
+      page.drawText(`Page ${index}, line ${row + 1}: navigation must wait for this page.`, {
+        font,
+        size: 15,
+        x: 45,
+        y: 680 - row * 30,
+      });
   }
-  return createLibraryDomain("user").commands.books.importBook({ fileName: "reading-paint-probe.pdf", data: await pdf.save() });
+  return createLibraryDomain("user").commands.books.importBook({
+    fileName: "reading-paint-probe.pdf",
+    data: await pdf.save(),
+  });
 }

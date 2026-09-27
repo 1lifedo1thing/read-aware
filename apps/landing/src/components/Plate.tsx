@@ -22,10 +22,7 @@ export function Plate({
   return (
     <figure className="m-0">
       <picture>
-        <source
-          media="(prefers-color-scheme: dark)"
-          srcSet={`/screenshots/${base}-dark.webp${SHOT_VERSION}`}
-        />
+        <source media="(prefers-color-scheme: dark)" srcSet={`/screenshots/${base}-dark.webp${SHOT_VERSION}`} />
         <img
           src={`/screenshots/${base}-light.webp${SHOT_VERSION}`}
           alt={alt}
@@ -35,9 +32,7 @@ export function Plate({
           className="block w-full border border-border-strong"
         />
       </picture>
-      <figcaption className="mt-3 text-[0.9375rem] italic leading-normal text-fg-muted">
-        {caption}
-      </figcaption>
+      <figcaption className="mt-3 text-[0.9375rem] italic leading-normal text-fg-muted">{caption}</figcaption>
     </figure>
   );
 }

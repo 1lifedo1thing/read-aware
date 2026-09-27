@@ -28,10 +28,7 @@ export type ReaderThemePreference = ReaderTheme | "auto";
  * - `plugin:<pluginId>:<fontId>` — a font bundled by an enabled plugin,
  *   served straight from its folder.
  */
-export type ReaderFontFamily =
-  | `curated:${string}`
-  | `system:${string}`
-  | `plugin:${string}`;
+export type ReaderFontFamily = `curated:${string}` | `system:${string}` | `plugin:${string}`;
 
 export const CURATED_FONT_PREFIX = "curated:";
 export const SYSTEM_FONT_PREFIX = "system:";
@@ -106,10 +103,7 @@ export function readerFontWeightPresets(fontFamily?: ReaderFontFamily): ReaderFo
  * agree on the available face. All curated families supply 400 and 700: CSS
  * matches 500 downward to 400, and weights above 500 upward first.
  */
-export function resolveReaderFontWeight(
-  preferred: ReaderFontWeight,
-  fontFamily?: ReaderFontFamily,
-): ReaderFontWeight {
+export function resolveReaderFontWeight(preferred: ReaderFontWeight, fontFamily?: ReaderFontFamily): ReaderFontWeight {
   const presets = readerFontWeightPresets(fontFamily);
   if (presets.includes(preferred)) return preferred;
   const weight = READER_FONT_WEIGHTS[preferred];
@@ -199,7 +193,10 @@ export type ReaderSettingsPreferences = Omit<ReaderSettings, "theme"> & {
 };
 
 /** Book overrides receive a flat snapshot, never another copy of the language table. */
-export function readerPreferencesForLanguage(prefs: ReaderSettingsPreferences, language?: string): ReaderSettingsPreferences {
+export function readerPreferencesForLanguage(
+  prefs: ReaderSettingsPreferences,
+  language?: string,
+): ReaderSettingsPreferences {
   const { languageFonts, ...base } = prefs;
   const font = languageFonts?.[normalizeBookLanguage(language) ?? "und"];
   return copyEventCause(prefs, { ...base, ...font });
@@ -207,16 +204,26 @@ export function readerPreferencesForLanguage(prefs: ReaderSettingsPreferences, l
 
 /** In-book global font edits affect this language; every other control stays shared. */
 export function updateReaderLanguagePreferences(
-  global: ReaderSettingsPreferences, language: string | undefined, next: ReaderSettingsPreferences,
+  global: ReaderSettingsPreferences,
+  language: string | undefined,
+  next: ReaderSettingsPreferences,
 ): ReaderSettingsPreferences {
   const current = readerPreferencesForLanguage(global, language);
   const { languageFonts: _ignored, ...base } = next;
   const changed = next.fontFamily !== current.fontFamily || next.fontWeight !== current.fontWeight;
   return {
-    ...global, ...base, fontFamily: global.fontFamily, fontWeight: global.fontWeight,
-    ...(changed ? { languageFonts: { ...global.languageFonts,
-      [normalizeBookLanguage(language) ?? "und"]: { fontFamily: next.fontFamily, fontWeight: next.fontWeight },
-    } } : {}),
+    ...global,
+    ...base,
+    fontFamily: global.fontFamily,
+    fontWeight: global.fontWeight,
+    ...(changed
+      ? {
+          languageFonts: {
+            ...global.languageFonts,
+            [normalizeBookLanguage(language) ?? "und"]: { fontFamily: next.fontFamily, fontWeight: next.fontWeight },
+          },
+        }
+      : {}),
   };
 }
 
@@ -225,7 +232,12 @@ function normalizeLanguageFonts(value: unknown): Record<string, ReaderFontPrefer
   const entries = Object.entries(value).flatMap(([key, font]) => {
     const language = key === "und" ? key : normalizeBookLanguage(key);
     if (!language || !font || typeof font !== "object" || Array.isArray(font)) return [];
-    return [[language, { fontFamily: normalizeFontFamily(font.fontFamily), fontWeight: normalizeFontWeight(font.fontWeight) }] as const];
+    return [
+      [
+        language,
+        { fontFamily: normalizeFontFamily(font.fontFamily), fontWeight: normalizeFontWeight(font.fontWeight) },
+      ] as const,
+    ];
   });
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
@@ -353,18 +365,14 @@ export function getReaderPreferences(): ReaderSettingsPreferences {
       paragraphSpacing: parsed.paragraphSpacing ?? DEFAULT_READER_PREFERENCES.paragraphSpacing,
       pageMargins: normalizePageMargins(parsed.pageMargins),
       textAlign: normalizeTextAlign(parsed.textAlign),
-      readingMode:
-        normalizeReadingMode(parsed.readingMode) ?? DEFAULT_READER_PREFERENCES.readingMode,
+      readingMode: normalizeReadingMode(parsed.readingMode) ?? DEFAULT_READER_PREFERENCES.readingMode,
       // Absent in every store written before the split — which is exactly the
       // migration: existing installs' PDFs adopt continuous scroll, and only
       // an explicit later choice writes anything else.
       fixedLayoutReadingMode:
-        normalizeReadingMode(parsed.fixedLayoutReadingMode)
-        ?? DEFAULT_READER_PREFERENCES.fixedLayoutReadingMode,
+        normalizeReadingMode(parsed.fixedLayoutReadingMode) ?? DEFAULT_READER_PREFERENCES.fixedLayoutReadingMode,
       fixedLayoutColor:
-        parsed.fixedLayoutColor === "original"
-          ? "original"
-          : DEFAULT_READER_PREFERENCES.fixedLayoutColor,
+        parsed.fixedLayoutColor === "original" ? "original" : DEFAULT_READER_PREFERENCES.fixedLayoutColor,
     };
   } catch {
     return DEFAULT_READER_PREFERENCES;
@@ -376,10 +384,7 @@ export function saveReaderPreferences(prefs: ReaderSettingsPreferences, origin: 
 }
 
 /** Resolve a (possibly `auto`) page color against the resolved app theme. */
-export function resolveReaderTheme(
-  theme: ReaderThemePreference,
-  appTheme: "light" | "dark",
-): ReaderTheme {
+export function resolveReaderTheme(theme: ReaderThemePreference, appTheme: "light" | "dark"): ReaderTheme {
   if (theme !== "auto") return theme;
   return appTheme === "dark" ? "dark" : "warm";
 }

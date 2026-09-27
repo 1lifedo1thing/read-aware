@@ -28,10 +28,7 @@ export function resolveAttribution(
   const source = sourceFrom(url, referrer);
   // A browser-language redirect preserves UTM parameters. Do not count it as
   // another entry or replace the original landing path with its translation.
-  const fresh =
-    !valid ||
-    external ||
-    (url.searchParams.has("utm_source") && source !== old.source);
+  const fresh = !valid || external || (url.searchParams.has("utm_source") && source !== old.source);
   const attribution: Attribution = fresh
     ? {
         source,

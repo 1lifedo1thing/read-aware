@@ -25,15 +25,19 @@ type PluginPageHostProps = {
 };
 
 export function PluginPageHost({ navKey, onExit }: PluginPageHostProps) {
-  const key = navKey.startsWith(PLUGIN_NAV_PREFIX)
-    ? navKey.slice(PLUGIN_NAV_PREFIX.length)
-    : navKey;
+  const key = navKey.startsWith(PLUGIN_NAV_PREFIX) ? navKey.slice(PLUGIN_NAV_PREFIX.length) : navKey;
   const actions = useAtomValue(headerActionsAtom);
-  const action = actions.find((entry) => entry.key === key && entry.surface === "shelf" && actionVisible(entry)) ?? null;
+  const action =
+    actions.find((entry) => entry.key === key && entry.surface === "shelf" && actionVisible(entry)) ?? null;
   const [viewDepth, setViewDepth] = useState(0);
-  const { view, refresh: refreshView } = usePluginViewSource(action?.view, action !== null,
+  const { view, refresh: refreshView } = usePluginViewSource(
+    action?.view,
+    action !== null,
     () => action!.view({}),
-    () => { showPluginFailureToast(action?.pluginName); onExit(); },
+    () => {
+      showPluginFailureToast(action?.pluginName);
+      onExit();
+    },
   );
 
   useEffect(() => {
@@ -55,9 +59,7 @@ export function PluginPageHost({ navKey, onExit }: PluginPageHostProps) {
       {viewDepth <= 1 && (
         <Stack gap="xs" className={cn("shrink-0", action.pluginName === title ? "mb-4" : "mb-6")}>
           <Heading as="h1">{title}</Heading>
-          {action.pluginName !== title && (
-            <Caption className="text-fg-subtle">{action.pluginName}</Caption>
-          )}
+          {action.pluginName !== title && <Caption className="text-fg-subtle">{action.pluginName}</Caption>}
         </Stack>
       )}
       <PluginViewRenderer

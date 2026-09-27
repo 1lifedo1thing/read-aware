@@ -68,9 +68,7 @@ const epub = loadEpubFixture(EPUB_PATH);
 // Calibre 元数据的书名带一长串营销文案，截到第一个全角括号前
 const bookTitle = epub.title.split("【")[0].trim();
 
-const BOOKS: BookOverview[] = [
-  { id: BOOK_ID, title: bookTitle, author: epub.author, progressPercent: 35 },
-];
+const BOOKS: BookOverview[] = [{ id: BOOK_ID, title: bookTitle, author: epub.author, progressPercent: 35 }];
 
 /** 从章节正文里取一句 20–80 字的完整句，保证标注与书文本一致（可被全文检索命中）。 */
 function pickSentence(chapterIndex: number): { sentence: string; chapter?: string } {
@@ -148,7 +146,11 @@ async function runTurn(scope: ThreadScope, text: string): Promise<void> {
   };
 
   try {
-    for await (const chunk of hostTurn(stores.turns, { key: threadScopeKey(scope), sendTurn: input => runtime.sendTurn(scope, input) }, { text })) {
+    for await (const chunk of hostTurn(
+      stores.turns,
+      { key: threadScopeKey(scope), sendTurn: (input) => runtime.sendTurn(scope, input) },
+      { text },
+    )) {
       switch (chunk.type) {
         case "thinking":
           switchChannel("thinking");

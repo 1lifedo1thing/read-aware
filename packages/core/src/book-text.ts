@@ -16,11 +16,17 @@ export type BookTextPriority = "normal" | "background";
 export type BookTextWaitReason = "queue" | "reader" | null;
 export type BookTextPrepareOptions = { rebuild?: boolean; priority?: BookTextPriority; timeoutMs?: number };
 /** Shared by operation discovery and task admission. */
-export function normalizeBookTextPrepareOptions(options: BookTextPrepareOptions = {}): Required<BookTextPrepareOptions> {
-  if (!options || typeof options !== "object" || Array.isArray(options)
-    || Object.keys(options).some(key => !["rebuild", "priority", "timeoutMs"].includes(key))
-    || options.rebuild !== undefined && typeof options.rebuild !== "boolean"
-    || options.priority !== undefined && options.priority !== "normal" && options.priority !== "background") {
+export function normalizeBookTextPrepareOptions(
+  options: BookTextPrepareOptions = {},
+): Required<BookTextPrepareOptions> {
+  if (
+    !options ||
+    typeof options !== "object" ||
+    Array.isArray(options) ||
+    Object.keys(options).some((key) => !["rebuild", "priority", "timeoutMs"].includes(key)) ||
+    (options.rebuild !== undefined && typeof options.rebuild !== "boolean") ||
+    (options.priority !== undefined && options.priority !== "normal" && options.priority !== "background")
+  ) {
     throw new AppError("library/invalid-input", "Invalid text preparation options");
   }
   const timeoutMs = options.timeoutMs === undefined ? 30 * 60_000 : options.timeoutMs;
@@ -57,4 +63,9 @@ export type BookTextTaskHistoryEntry = {
   interrupted: boolean;
 };
 export type BookTextTaskHistoryQuery = { offset?: number; limit?: number };
-export type BookTextTaskHistoryPage = { items: BookTextTaskHistoryEntry[]; total: number; nextOffset: number | null; retainedLimit: number };
+export type BookTextTaskHistoryPage = {
+  items: BookTextTaskHistoryEntry[];
+  total: number;
+  nextOffset: number | null;
+  retainedLimit: number;
+};

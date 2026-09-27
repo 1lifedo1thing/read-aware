@@ -10,7 +10,10 @@ import { onLocalKVCommit } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { GENERAL_SETTINGS_KEY, type GeneralSettings } from "../lib/general-settings";
 
-type StartupState = { status: "loading" } | { status: "ready"; enabled: boolean } | { status: "failed"; error: unknown };
+type StartupState =
+  | { status: "loading" }
+  | { status: "ready"; enabled: boolean }
+  | { status: "failed"; error: unknown };
 const domain = createSettingsDomain("user");
 const log = createLogger("general-settings");
 
@@ -33,20 +36,27 @@ export function useGeneralSettings() {
       try {
         if (!desktopStartup.supported()) throw new AppError("ui/unavailable", "Startup registration requires desktop");
         const result = await domain.queries.read("general.launchAtStartup");
-        if (!owner.signal.aborted && current === request) setStartup({ status: "ready", enabled: result.value === true });
+        if (!owner.signal.aborted && current === request)
+          setStartup({ status: "ready", enabled: result.value === true });
       } catch (error) {
         if (owner.signal.aborted || current !== request) return;
         log.error("Reading startup registration failed", error);
         setStartup({ status: "failed", error });
       }
     };
-    const onFocus = () => { void refresh(); };
-    const unsubscribe = onLocalKVCommit(commit => {
-      if (commit.entries.some(entry => entry.key === GENERAL_SETTINGS_KEY)) void refresh();
+    const onFocus = () => {
+      void refresh();
+    };
+    const unsubscribe = onLocalKVCommit((commit) => {
+      if (commit.entries.some((entry) => entry.key === GENERAL_SETTINGS_KEY)) void refresh();
     });
     window.addEventListener("focus", onFocus);
     void refresh();
-    return () => { owner.abort(); unsubscribe(); window.removeEventListener("focus", onFocus); };
+    return () => {
+      owner.abort();
+      unsubscribe();
+      window.removeEventListener("focus", onFocus);
+    };
   }, [revision]);
 
   const update = async <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
@@ -64,8 +74,19 @@ export function useGeneralSettings() {
       }
     } finally {
       active.current = false;
-      if (!owner.signal.aborted) { setBusy(false); setRevision(value => value + 1); }
+      if (!owner.signal.aborted) {
+        setBusy(false);
+        setRevision((value) => value + 1);
+      }
     }
   };
-  return { settings, startup, busy, update, retry: () => { if (!active.current) setRevision(value => value + 1); } };
+  return {
+    settings,
+    startup,
+    busy,
+    update,
+    retry: () => {
+      if (!active.current) setRevision((value) => value + 1);
+    },
+  };
 }

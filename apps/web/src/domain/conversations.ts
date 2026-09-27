@@ -8,17 +8,17 @@ import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 import type { ChatMessageSummary, ThreadSummary } from "@read-aware/core";
 import { normalizeConversationTarget, type ConversationTarget } from "@read-aware/core";
 import { getStoredConversationInsights } from "../features/ai/lib/conversation-insights-store";
-import {
-  listGlobalThreads,
-  loadConversation,
-} from "../features/ai/lib/conversation-store";
+import { listGlobalThreads, loadConversation } from "../features/ai/lib/conversation-store";
 import { CONVERSATION_EVENTS, domainSubscribe, type DomainEventSubscribe } from "./events";
-import { conversationCommands, conversationSnapshot, conversationTurnRequests, observeConversations } from "./conversation-control";
+import {
+  conversationCommands,
+  conversationSnapshot,
+  conversationTurnRequests,
+  observeConversations,
+} from "./conversation-control";
 import { observeConversationInvalidation } from "./projection-invalidation";
 
-function toMessages(
-  messages: Awaited<ReturnType<typeof loadConversation>>,
-): ChatMessageSummary[] {
+function toMessages(messages: Awaited<ReturnType<typeof loadConversation>>): ChatMessageSummary[] {
   return messages
     .filter((message) => message.role === "user" || message.role === "assistant")
     .map((message) => ({
@@ -46,7 +46,9 @@ export type ConversationsDomain = {
   commands: ReturnType<typeof conversationCommands>;
   events: {
     observeInvalidation(handler: (event: import("@read-aware/core").ProjectionInvalidation) => unknown): () => void;
-    observeRuntime(handler: (snapshot: import("@read-aware/core").ConversationRuntimeSnapshot, source?: object) => unknown): () => void;
+    observeRuntime(
+      handler: (snapshot: import("@read-aware/core").ConversationRuntimeSnapshot, source?: object) => unknown,
+    ): () => void;
     subscribe: DomainEventSubscribe<(typeof CONVERSATION_EVENTS)[number]>;
   };
 };
@@ -54,7 +56,7 @@ export type ConversationsDomain = {
 export function createConversationsDomain(origin: DomainActor, lifetime?: AbortSignal): ConversationsDomain {
   return {
     queries: {
-      getInsights: async input => {
+      getInsights: async (input) => {
         lifetime?.throwIfAborted();
         const target = normalizeConversationTarget(input);
         return getStoredConversationInsights(`${target.kind}:${target.id}`) ?? null;
@@ -71,6 +73,10 @@ export function createConversationsDomain(origin: DomainActor, lifetime?: AbortS
       getThread: async (threadId) => toMessages(await loadConversation(String(threadId))),
     },
     commands: conversationCommands(origin),
-    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)), observeRuntime: handler => observeConversations(handler, origin, lifetime) },
+    events: {
+      observeInvalidation: (handler) => observeConversationInvalidation(handler, lifetime, origin),
+      subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)),
+      observeRuntime: (handler) => observeConversations(handler, origin, lifetime),
+    },
   };
 }

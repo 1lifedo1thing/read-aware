@@ -20,10 +20,7 @@ type JotaiStore = ReturnType<typeof createStore>;
 
 /** One atom paired with the value to seed it with, type-checked together. */
 export type AtomSeed = <TResult>(
-  apply: <TValue>(
-    atom: WritableAtom<unknown, [TValue], unknown>,
-    value: TValue,
-  ) => TResult,
+  apply: <TValue>(atom: WritableAtom<unknown, [TValue], unknown>, value: TValue) => TResult,
 ) => TResult;
 
 /**
@@ -31,10 +28,7 @@ export type AtomSeed = <TResult>(
  * keeps the pairing honest — the value must match the atom's write type, which
  * a plain `[atom, value]` tuple in an array would widen away.
  */
-export function seed<TValue>(
-  atom: WritableAtom<unknown, [TValue], unknown>,
-  value: TValue,
-): AtomSeed {
+export function seed<TValue>(atom: WritableAtom<unknown, [TValue], unknown>, value: TValue): AtomSeed {
   return (apply) => apply(atom, value);
 }
 

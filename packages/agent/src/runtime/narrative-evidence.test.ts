@@ -49,9 +49,7 @@ describe("narrative evidence boundary", () => {
       cursor: { chapterIndex: 0, visibleText: "眼前只有红岸基地。" },
       book: indexed,
     });
-    expect(violations).toEqual([
-      { kind: "ungrounded-quote", phrase: "奇迹神秘权威" },
-    ]);
+    expect(violations).toEqual([{ kind: "ungrounded-quote", phrase: "奇迹神秘权威" }]);
   });
 
   test("catches a near-match formula from another edition", () => {
@@ -72,10 +70,7 @@ describe("narrative evidence boundary", () => {
   });
 
   test("allows future facts after a verified grant but rejects another edition's name", () => {
-    const edition = book([
-      "读者眼前。",
-      "格露莘卡说完便走了。格露莘卡问他，格露莘卡答道。后来案件结束。",
-    ]);
+    const edition = book(["读者眼前。", "格露莘卡说完便走了。格露莘卡问他，格露莘卡答道。后来案件结束。"]);
     const violations = inspectNarrativeEvidence({
       answer: "后来案件结束，信封是用来勾引格鲁申卡的。",
       readerText: "可以剧透",
@@ -88,10 +83,7 @@ describe("narrative evidence boundary", () => {
   });
 
   test("blocks a future-only outcome label even outside a refusal or progress answer", () => {
-    const edition = book([
-      "眼前只介绍了父亲和三个儿子。",
-      "后来发生弑父案件，众人追查真凶。",
-    ]);
+    const edition = book(["眼前只介绍了父亲和三个儿子。", "后来发生弑父案件，众人追查真凶。"]);
     const violations = inspectNarrativeEvidence({
       answer: "这一家最后会围绕弑父展开。",
       readerText: "帮我梳理这家人的关系",
@@ -125,10 +117,7 @@ describe("narrative evidence boundary", () => {
   });
 
   test("still rejects a recurring future character name", () => {
-    const repeated = Array.from(
-      { length: 5 },
-      () => "智子说，智子问，智子答，智子走。",
-    ).join("");
+    const repeated = Array.from({ length: 5 }, () => "智子说，智子问，智子答，智子走。").join("");
     const edition = book(["眼前的讨论。", repeated], "第一章");
     const violations = inspectNarrativeEvidence({
       answer: "后来智子说了秘密。",

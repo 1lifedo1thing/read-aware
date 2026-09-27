@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  pickChangelogEntry,
-  siteLocaleKey,
-  type WhatsNewEntry,
-} from "./changelog-feed";
+import { pickChangelogEntry, siteLocaleKey, type WhatsNewEntry } from "./changelog-feed";
 
 const REGISTRY = [
   {
@@ -76,9 +72,7 @@ describe("pickChangelogEntry", () => {
   test("malformed registries and entries degrade to null, never throw", () => {
     expect(pickChangelogEntry(null, "0.4.2", "en")).toBeNull();
     expect(pickChangelogEntry("nope", "0.4.2", "en")).toBeNull();
-    expect(
-      pickChangelogEntry([{ version: "0.4.2", text: { en: { summary: 3 } } }], "0.4.2", "en"),
-    ).toBeNull();
+    expect(pickChangelogEntry([{ version: "0.4.2", text: { en: { summary: 3 } } }], "0.4.2", "en")).toBeNull();
     // A malformed group invalidates only that locale's text — the entry
     // itself is skipped rather than half-rendered.
     expect(

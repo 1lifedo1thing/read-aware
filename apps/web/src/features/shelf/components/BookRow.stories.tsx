@@ -109,10 +109,31 @@ export const List: Story = {
   args: { book: base },
   render: () => {
     const books: LibraryBook[] = [
-      { ...base, id: "1", title: "The Master and Margarita", author: "Mikhail Bulgakov", progressPercent: 64, readingStatus: "reading" },
-      { ...base, id: "2", title: "Thinking, Fast and Slow", author: "Daniel Kahneman", progressPercent: 23, readingStatus: "reading" },
+      {
+        ...base,
+        id: "1",
+        title: "The Master and Margarita",
+        author: "Mikhail Bulgakov",
+        progressPercent: 64,
+        readingStatus: "reading",
+      },
+      {
+        ...base,
+        id: "2",
+        title: "Thinking, Fast and Slow",
+        author: "Daniel Kahneman",
+        progressPercent: 23,
+        readingStatus: "reading",
+      },
       { ...base, id: "3", title: "Invisible Cities", author: "Italo Calvino" },
-      { ...base, id: "4", title: "The Plague", author: "Albert Camus", progressPercent: 100, readingStatus: "finished" },
+      {
+        ...base,
+        id: "4",
+        title: "The Plague",
+        author: "Albert Camus",
+        progressPercent: 100,
+        readingStatus: "finished",
+      },
     ];
     return (
       <div className="flex flex-col divide-y divide-border/60">

@@ -46,9 +46,7 @@ export function Detail({
         </Stack>
       ) : null}
       {scrollable ? (
-        <ScrollArea className={cn("min-h-0 min-w-0 flex-1", bodyClassName)}>
-          {children}
-        </ScrollArea>
+        <ScrollArea className={cn("min-h-0 min-w-0 flex-1", bodyClassName)}>{children}</ScrollArea>
       ) : (
         <div className={cn("min-w-0", bodyClassName)}>{children}</div>
       )}

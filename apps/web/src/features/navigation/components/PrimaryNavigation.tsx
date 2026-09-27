@@ -32,10 +32,7 @@ export function PrimaryNavigation({
           {index > 0 && (
             <span
               aria-hidden="true"
-              className={cn(
-                "select-none font-sans text-fg-subtle/50",
-                compact ? "text-xs" : "text-sm",
-              )}
+              className={cn("select-none font-sans text-fg-subtle/50", compact ? "text-xs" : "text-sm")}
             >
               /
             </span>

@@ -46,28 +46,45 @@ pub(crate) const ANNOTATION_ITEM_BYTES: usize = 512 * 1024;
 const ANNOTATION_PAGE_BYTES: usize = 1024 * 1024;
 
 pub(crate) fn annotation_budget_error() -> CommandError {
-    CommandError::new("annotations/read-budget-exceeded", "Annotation read exceeds its payload budget")
+    CommandError::new(
+        "annotations/read-budget-exceeded",
+        "Annotation read exceeds its payload budget",
+    )
 }
 
 /// Inspect borrowed SQLite values before copying text or parsing range JSON.
 pub(crate) fn bounded_annotation(row: &rusqlite::Row) -> Result<(Annotation, usize), CommandError> {
     let mut bytes = 0usize;
     for index in 0..row.as_ref().column_count() {
-        if let rusqlite::types::ValueRef::Text(value) | rusqlite::types::ValueRef::Blob(value) = row.get_ref(index)? {
+        if let rusqlite::types::ValueRef::Text(value) | rusqlite::types::ValueRef::Blob(value) =
+            row.get_ref(index)?
+        {
             bytes = bytes.saturating_add(value.len());
-            if bytes > ANNOTATION_ITEM_BYTES { return Err(annotation_budget_error()); }
+            if bytes > ANNOTATION_ITEM_BYTES {
+                return Err(annotation_budget_error());
+            }
         }
     }
     let annotation = row_to_annotation(row)?;
-    let bytes = serde_json::to_vec(&annotation).map_err(|error| CommandError::internal(error.to_string()))?.len();
-    if bytes > ANNOTATION_ITEM_BYTES { return Err(annotation_budget_error()); }
+    let bytes = serde_json::to_vec(&annotation)
+        .map_err(|error| CommandError::internal(error.to_string()))?
+        .len();
+    if bytes > ANNOTATION_ITEM_BYTES {
+        return Err(annotation_budget_error());
+    }
     Ok((annotation, bytes))
 }
 
-pub(crate) fn bounded_annotation_get(conn: &Connection, id: &str) -> Result<Option<Annotation>, CommandError> {
+pub(crate) fn bounded_annotation_get(
+    conn: &Connection,
+    id: &str,
+) -> Result<Option<Annotation>, CommandError> {
     let mut statement = conn.prepare("SELECT * FROM annotations WHERE id=?1")?;
     let mut rows = statement.query([id])?;
-    rows.next()?.map(bounded_annotation).transpose().map(|item| item.map(|(item, _)| item))
+    rows.next()?
+        .map(bounded_annotation)
+        .transpose()
+        .map(|item| item.map(|(item, _)| item))
 }
 
 pub(crate) fn annotations_page_inner(
@@ -162,14 +179,24 @@ pub(crate) fn annotations_page_inner(
     let mut bytes = 0usize;
     let mut more = false;
     while let Some(row) = rows.next()? {
-        if items.len() == limit { more = true; break; }
+        if items.len() == limit {
+            more = true;
+            break;
+        }
         let (item, size) = match bounded_annotation(row) {
             Ok(value) => value,
-            Err(error) if !items.is_empty() && error.code == "annotations/read-budget-exceeded" => { more = true; break; }
+            Err(error) if !items.is_empty() && error.code == "annotations/read-budget-exceeded" => {
+                more = true;
+                break;
+            }
             Err(error) => return Err(error),
         };
-        if bytes + size > ANNOTATION_PAGE_BYTES { more = true; break; }
-        bytes += size; items.push(item);
+        if bytes + size > ANNOTATION_PAGE_BYTES {
+            more = true;
+            break;
+        }
+        bytes += size;
+        items.push(item);
     }
     let next_cursor = if more {
         let last = items.last().expect("positive page limit");
@@ -215,11 +242,21 @@ mod tests {
     #[test]
     fn annotation_payload_pages_stop_before_budget_and_resume_without_skipping() {
         let conn = database();
-        for id in ["a", "b", "c"] { insert(&conn, id, "b", "note", ""); }
-        conn.execute("UPDATE annotations SET content=?1", ["界".repeat(140_000)]).unwrap();
+        for id in ["a", "b", "c"] {
+            insert(&conn, id, "b", "note", "");
+        }
+        conn.execute("UPDATE annotations SET content=?1", ["界".repeat(140_000)])
+            .unwrap();
         let first = annotations_page_inner(&conn, query(100)).unwrap();
         assert_eq!(first.items.len(), 2);
-        let next = annotations_page_inner(&conn, AnnotationPageQuery { cursor: first.next_cursor, ..query(100) }).unwrap();
+        let next = annotations_page_inner(
+            &conn,
+            AnnotationPageQuery {
+                cursor: first.next_cursor,
+                ..query(100)
+            },
+        )
+        .unwrap();
         assert_eq!(next.items.len(), 1);
         assert_eq!(next.items[0].id, "a");
         assert!(next.next_cursor.is_none());
@@ -229,11 +266,28 @@ mod tests {
     fn annotation_payload_rejects_oversized_text_and_range_before_deserialization() {
         let conn = database();
         insert(&conn, "a", "b", "note", "");
-        conn.execute("UPDATE annotations SET content=?1", ["x".repeat(ANNOTATION_ITEM_BYTES + 1)]).unwrap();
-        assert_eq!(bounded_annotation_get(&conn, "a").unwrap_err().code, "annotations/read-budget-exceeded");
-        assert_eq!(annotations_page_inner(&conn, query(1)).unwrap_err().code, "annotations/read-budget-exceeded");
-        conn.execute("UPDATE annotations SET content=NULL,range_json=?1", ["x".repeat(ANNOTATION_ITEM_BYTES + 1)]).unwrap();
-        assert_eq!(bounded_annotation_get(&conn, "a").unwrap_err().code, "annotations/read-budget-exceeded");
+        conn.execute(
+            "UPDATE annotations SET content=?1",
+            ["x".repeat(ANNOTATION_ITEM_BYTES + 1)],
+        )
+        .unwrap();
+        assert_eq!(
+            bounded_annotation_get(&conn, "a").unwrap_err().code,
+            "annotations/read-budget-exceeded"
+        );
+        assert_eq!(
+            annotations_page_inner(&conn, query(1)).unwrap_err().code,
+            "annotations/read-budget-exceeded"
+        );
+        conn.execute(
+            "UPDATE annotations SET content=NULL,range_json=?1",
+            ["x".repeat(ANNOTATION_ITEM_BYTES + 1)],
+        )
+        .unwrap();
+        assert_eq!(
+            bounded_annotation_get(&conn, "a").unwrap_err().code,
+            "annotations/read-budget-exceeded"
+        );
         assert!(bounded_annotation_get(&conn, "missing").unwrap().is_none());
     }
 

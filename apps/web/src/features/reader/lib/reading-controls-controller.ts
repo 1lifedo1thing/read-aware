@@ -2,7 +2,12 @@ import { AppError, type ReadingControlsSnapshot } from "@read-aware/core";
 import { causalActor, copyEventCause, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 type RenderState = { visible: boolean; revision: number; origin: DomainActor };
-type Pending = { state: RenderState; resolve(value: ReadingControlsSnapshot): void; reject(error: unknown): void; cleanup(): void };
+type Pending = {
+  state: RenderState;
+  resolve(value: ReadingControlsSnapshot): void;
+  reject(error: unknown): void;
+  cleanup(): void;
+};
 
 /** Requested state drives React; only a committed render acknowledges a command. */
 export class ReadingControlsController {
@@ -12,14 +17,19 @@ export class ReadingControlsController {
   private readonly renderListeners = new Set<() => void>();
   private readonly observers = new Set<(origin?: DomainActor) => void>();
 
-  constructor(private readonly report: (error: unknown) => void, private readonly deadlineMs = 10_000) {}
+  constructor(
+    private readonly report: (error: unknown) => void,
+    private readonly deadlineMs = 10_000,
+  ) {}
 
   getRenderState = (): RenderState => this.desired;
   subscribeRender = (listener: () => void): (() => void) => {
     this.renderListeners.add(listener);
     return () => this.renderListeners.delete(listener);
   };
-  snapshot(): ReadingControlsSnapshot { return copyEventCause(this.rendered, { ...this.rendered }); }
+  snapshot(): ReadingControlsSnapshot {
+    return copyEventCause(this.rendered, { ...this.rendered });
+  }
   observe(listener: (origin?: DomainActor) => void): () => void {
     this.observers.add(listener);
     return () => this.observers.delete(listener);
@@ -32,7 +42,8 @@ export class ReadingControlsController {
   };
 
   setVisible(visible: boolean, signal?: AbortSignal, origin: DomainActor = "system"): Promise<ReadingControlsSnapshot> {
-    if (typeof visible !== "boolean") return Promise.reject(new AppError("reader/invalid-target", "Controls visibility must be boolean"));
+    if (typeof visible !== "boolean")
+      return Promise.reject(new AppError("reader/invalid-target", "Controls visibility must be boolean"));
     if (signal?.aborted) return Promise.reject(signal.reason);
     origin = causalActor(origin);
     this.cancel(new AppError("reader/superseded", "A newer reader controls intent replaced this command"));
@@ -44,9 +55,15 @@ export class ReadingControlsController {
         this.render(this.rendered.visible, origin);
       };
       const timer = setTimeout(abort, this.deadlineMs);
-      this.pending = { state, resolve, reject, cleanup: () => {
-        clearTimeout(timer); signal?.removeEventListener("abort", abort);
-      } };
+      this.pending = {
+        state,
+        resolve,
+        reject,
+        cleanup: () => {
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", abort);
+        },
+      };
       signal?.addEventListener("abort", abort, { once: true });
       this.desired = state;
       this.notify(this.renderListeners);
@@ -76,16 +93,25 @@ export class ReadingControlsController {
   private cancel(error: unknown): void {
     const pending = this.pending;
     this.pending = undefined;
-    pending?.cleanup(); pending?.reject(error);
+    pending?.cleanup();
+    pending?.reject(error);
   }
   private render(visible: boolean, origin: DomainActor): void {
     this.desired = { visible, revision: this.desired.revision + 1, origin };
     this.notify(this.renderListeners);
   }
-  private notify(listeners: Set<(origin?: DomainActor) => void>, origin?: DomainActor, current: () => boolean = () => true): void {
+  private notify(
+    listeners: Set<(origin?: DomainActor) => void>,
+    origin?: DomainActor,
+    current: () => boolean = () => true,
+  ): void {
     for (const listener of [...listeners]) {
       if (!current()) break;
-      try { listener(origin); } catch (error) { this.report(error); }
+      try {
+        listener(origin);
+      } catch (error) {
+        this.report(error);
+      }
     }
   }
 }

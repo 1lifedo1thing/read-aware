@@ -12,7 +12,10 @@ const server = Bun.serve({
     requests.push(entry);
     console.log(JSON.stringify(entry));
     return new Response(path.endsWith(".js") ? 'export const probe = "fixed-test-marker";' : "fixed-test-marker", {
-      headers: { "access-control-allow-origin": "*", "content-type": path.endsWith(".js") ? "text/javascript" : "text/plain" },
+      headers: {
+        "access-control-allow-origin": "*",
+        "content-type": path.endsWith(".js") ? "text/javascript" : "text/plain",
+      },
     });
   },
 });

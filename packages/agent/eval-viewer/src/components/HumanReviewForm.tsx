@@ -56,9 +56,7 @@ export function HumanReviewForm({
 }) {
   const initial = draftOf(review);
   const [draft, setDraft] = useState<ReviewDraft>(initial);
-  const [state, setState] = useState<
-    "idle" | "queued" | "saving" | "saved" | "error"
-  >("idle");
+  const [state, setState] = useState<"idle" | "queued" | "saving" | "saved" | "error">("idle");
   const draftRef = useRef(initial);
   const saveRef = useRef(onSave);
   const savingRef = useRef(false);
@@ -89,11 +87,7 @@ export function HumanReviewForm({
         setState("error");
       } finally {
         savingRef.current = false;
-        if (
-          !failed &&
-          (pendingRef.current ||
-            signatureOf(targetId, draftRef.current) !== lastSavedRef.current)
-        ) {
+        if (!failed && (pendingRef.current || signatureOf(targetId, draftRef.current) !== lastSavedRef.current)) {
           pendingRef.current = false;
           void persistDraft();
         }
@@ -118,14 +112,9 @@ export function HumanReviewForm({
   };
 
   return (
-    <section
-      className="mt-1 grid gap-2.5 border-y border-[var(--border)] py-3.5"
-      aria-label="人工评测"
-    >
+    <section className="mt-1 grid gap-2.5 border-y border-[var(--border)] py-3.5" aria-label="人工评测">
       <div className="flex min-h-8 items-center gap-3 max-sm:flex-wrap">
-        <span className="text-xs font-medium text-[var(--muted)]">
-          你的评分
-        </span>
+        <span className="text-xs font-medium text-[var(--muted)]">你的评分</span>
         <ChoiceGroup
           ariaLabel="总体评分"
           value={draft.score === undefined ? "" : String(draft.score)}
@@ -143,9 +132,7 @@ export function HumanReviewForm({
           }}
         />
         <span
-          className={`ml-auto text-[11px] ${
-            state === "error" ? "text-[var(--fail)]" : "text-[var(--subtle)]"
-          }`}
+          className={`ml-auto text-[11px] ${state === "error" ? "text-[var(--fail)]" : "text-[var(--subtle)]"}`}
           aria-live="polite"
         >
           {state === "queued" || state === "saving"
@@ -158,10 +145,7 @@ export function HumanReviewForm({
         </span>
       </div>
 
-      <fieldset
-        className="flex flex-wrap gap-x-5 gap-y-2 border-0 p-0"
-        aria-label="问题标签"
-      >
+      <fieldset className="flex flex-wrap gap-x-5 gap-y-2 border-0 p-0" aria-label="问题标签">
         {REVIEW_FLAGS.map((flag) => (
           <Checkbox
             key={flag}
@@ -186,9 +170,7 @@ export function HumanReviewForm({
         rows={2}
         placeholder="写下你的判断：哪里好，哪里不可信或不好用…"
         onBlur={() => void flush()}
-        onChange={(event) =>
-          update((current) => ({ ...current, notes: event.target.value }))
-        }
+        onChange={(event) => update((current) => ({ ...current, notes: event.target.value }))}
       />
     </section>
   );

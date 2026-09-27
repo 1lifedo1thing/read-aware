@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  fetchAttention,
-  type AttentionItem,
-  type CatalogSuite,
-  type RunListing,
-} from "../api";
+import { fetchAttention, type AttentionItem, type CatalogSuite, type RunListing } from "../api";
 
 const refChipClass =
   "inline-block select-all rounded-[5px] bg-[var(--accent-bg)] px-2 py-0.5 font-mono text-[11px] text-[var(--accent)]";
@@ -31,22 +26,16 @@ function latestBySuite(runs: RunListing[]): Map<string, RunListing> {
   return map;
 }
 
-export function CatalogPage({
-  catalog,
-  runs,
-  tick,
-}: {
-  catalog: CatalogSuite[];
-  runs: RunListing[];
-  tick?: number;
-}) {
+export function CatalogPage({ catalog, runs, tick }: { catalog: CatalogSuite[]; runs: RunListing[]; tick?: number }) {
   const totalScenarios = catalog.reduce((sum, suite) => sum + suite.scenarios.length, 0);
   const activeSuiteIds = new Set(catalog.map((suite) => suite.id));
   const visibleRuns = runs.filter((run) => activeSuiteIds.has(run.suiteId));
   const latest = latestBySuite(visibleRuns);
   const [attention, setAttention] = useState<AttentionItem[] | null>(null);
   useEffect(() => {
-    fetchAttention().then(setAttention).catch(() => setAttention([]));
+    fetchAttention()
+      .then(setAttention)
+      .catch(() => setAttention([]));
   }, [tick]);
 
   const refOf = (suiteId: string, scenarioId: string): string => {
@@ -54,8 +43,7 @@ export function CatalogPage({
     const index = suite?.scenarios.findIndex((scenario) => scenario.id === scenarioId) ?? -1;
     return suite && index >= 0 ? `${suite.code}.${index + 1}` : suiteId;
   };
-  const suiteName = (suiteId: string): string =>
-    catalog.find((suite) => suite.id === suiteId)?.displayName ?? suiteId;
+  const suiteName = (suiteId: string): string => catalog.find((suite) => suite.id === suiteId)?.displayName ?? suiteId;
   const visibleAttention = (attention ?? []).filter((item) => activeSuiteIds.has(item.suiteId));
 
   // 各套件最新一次的通过聚合——顶部大盘（进行中/中断的 run 不进聚合）
@@ -74,7 +62,9 @@ export function CatalogPage({
 
       <div className="my-6 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-px overflow-hidden rounded-[6px] border border-[var(--border)] bg-[var(--border)] max-sm:grid-cols-2">
         <div className="bg-[var(--bg)] px-4 py-4">
-          <div className={`text-[22px] font-semibold tabular-nums ${latestRuns > 0 && latestPassed === latestRuns ? "text-[var(--ok)]" : "text-[var(--muted)]"}`}>
+          <div
+            className={`text-[22px] font-semibold tabular-nums ${latestRuns > 0 && latestPassed === latestRuns ? "text-[var(--ok)]" : "text-[var(--muted)]"}`}
+          >
             {pending}
           </div>
           <div className="mt-0.5 text-xs text-[var(--muted)]">待语义审阅（各套件最近一次）</div>
@@ -86,7 +76,9 @@ export function CatalogPage({
           <div className="mt-0.5 text-xs text-[var(--muted)]">审阅通过 / 总样本</div>
         </div>
         <div className="bg-[var(--bg)] px-4 py-4">
-          <div className={`text-[22px] font-semibold tabular-nums ${visibleAttention.length ? "text-[var(--fail)]" : "text-[var(--ok)]"}`}>
+          <div
+            className={`text-[22px] font-semibold tabular-nums ${visibleAttention.length ? "text-[var(--fail)]" : "text-[var(--ok)]"}`}
+          >
             {attention === null ? "…" : visibleAttention.length}
           </div>
           <div className="mt-0.5 text-xs text-[var(--muted)]">已发现问题</div>
@@ -110,7 +102,13 @@ export function CatalogPage({
                 <span className={refChipClass}>{refOf(item.suiteId, item.scenarioId)}</span>
                 <span className="font-mono text-xs font-medium">{item.scenarioId}</span>
                 <span className={statusClass(item.status === "error" ? "error" : "fail")}>
-                  {item.status === "error" ? "运行错误" : item.status === "diagnostic" ? "诊断提示 · 待审" : item.status === "partial" ? "部分达标" : "审阅未通过"}
+                  {item.status === "error"
+                    ? "运行错误"
+                    : item.status === "diagnostic"
+                      ? "诊断提示 · 待审"
+                      : item.status === "partial"
+                        ? "部分达标"
+                        : "审阅未通过"}
                 </span>
                 <span className="ml-auto text-xs text-[var(--subtle)]">{suiteName(item.suiteId)}</span>
               </div>
@@ -218,17 +216,23 @@ export function CatalogPage({
                   </td>
                   <td className={tdClass}>
                     {run.status === "running" ? (
-                      <span className={statusClass("running")}>跑 {run.runs ?? 0}/{run.total ?? "?"}</span>
+                      <span className={statusClass("running")}>
+                        跑 {run.runs ?? 0}/{run.total ?? "?"}
+                      </span>
                     ) : run.status === "stale" ? (
-                      <span className={statusClass("neutral")}>中断 {run.runs ?? 0}/{run.total ?? "?"}</span>
+                      <span className={statusClass("neutral")}>
+                        中断 {run.runs ?? 0}/{run.total ?? "?"}
+                      </span>
                     ) : (
-                      <span className={statusClass(run.quality?.pending ? "neutral" : run.quality?.pass === run.runs ? "ok" : "fail")}>
+                      <span
+                        className={statusClass(
+                          run.quality?.pending ? "neutral" : run.quality?.pass === run.runs ? "ok" : "fail",
+                        )}
+                      >
                         审阅 {run.quality?.pass ?? 0}/{run.runs ?? "?"} · 待审 {run.quality?.pending ?? run.runs ?? "?"}
                       </span>
                     )}
-                    {run.errors ? (
-                      <span className={`${statusClass("error")} ml-1.5`}>{run.errors} 错误</span>
-                    ) : null}
+                    {run.errors ? <span className={`${statusClass("error")} ml-1.5`}>{run.errors} 错误</span> : null}
                   </td>
                   <td className={`${tdClass} font-mono text-xs`}>
                     {run.provider}:{run.model} · {run.thinkingLevel}

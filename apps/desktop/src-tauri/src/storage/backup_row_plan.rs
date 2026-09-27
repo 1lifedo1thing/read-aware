@@ -14,12 +14,12 @@ mod candidate;
 mod choices;
 #[path = "backup_row_identity.rs"]
 mod identity;
+#[path = "backup_restore_rows.rs"]
+mod restore;
 #[path = "backup_sql_cancel.rs"]
 mod sql_cancel;
 #[path = "backup_row_structure.rs"]
 mod structure;
-#[path = "backup_restore_rows.rs"]
-mod restore;
 pub(crate) use structure::{RowIssuePage, RowStructureReceipt};
 #[path = "backup_file_plan.rs"]
 mod files;
@@ -29,7 +29,7 @@ pub(crate) use choices::{RowChoiceReceipt, RowChoiceRequest, RowDecisionState};
 #[path = "backup_row_scan.rs"]
 mod scan;
 pub(crate) use files::{FileMatchKind, FilePlan, ReviewPage, ReviewQuery};
-pub(crate) use files::{RestoreRequest, RestoreReceipt};
+pub(crate) use files::{RestoreReceipt, RestoreRequest};
 pub(crate) use review::{RowFieldPage, RowFieldsPage, RowSide};
 
 #[derive(Debug, Default)]
@@ -307,4 +307,4 @@ pub(super) fn plan(
 #[path = "backup_row_plan_tests.rs"]
 mod tests;
 
-pub(crate) use files::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};
+pub(crate) use files::{ProgramStageQuery, ProgramStageReceipt, ProgramStageRequest};

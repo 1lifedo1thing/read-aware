@@ -26,13 +26,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function Avatar({
-  src,
-  alt,
-  initials,
-  size = "md",
-  className,
-}: AvatarProps) {
+export function Avatar({ src, alt, initials, size = "md", className }: AvatarProps) {
   const { t } = useTranslation("ui");
   const fallback = initials ?? (alt ? getInitials(alt) : "?");
 
@@ -45,11 +39,7 @@ export function Avatar({
           className,
         )}
       >
-        <img
-          src={src}
-          alt={alt ?? t("avatar")}
-          className="h-full w-full object-cover"
-        />
+        <img src={src} alt={alt ?? t("avatar")} className="h-full w-full object-cover" />
       </span>
     );
   }

@@ -1,7 +1,12 @@
 import type { Api, Model, ModelCost, ModelCostRates } from "@earendil-works/pi-ai";
 import { AppError, ERR_AI_PROVIDER } from "@read-aware/core";
 import { createCustomOpenAIModel } from "./custom-openai";
-import { PROVIDER_DEFINITIONS, providerBaseUrl, supportsProviderApi, type KnownProviderId } from "./provider-definitions";
+import {
+  PROVIDER_DEFINITIONS,
+  providerBaseUrl,
+  supportsProviderApi,
+  type KnownProviderId,
+} from "./provider-definitions";
 
 export type CatalogModel = Model<Api>;
 export type CatalogCache = {
@@ -27,14 +32,21 @@ function positive(value: unknown): value is number {
 function parseRates(value: unknown): ModelCostRates {
   if (!record(value)) invalid();
   const { input, output, cacheRead, cacheWrite } = value;
-  if (typeof input !== "number" || typeof output !== "number" ||
-    typeof cacheRead !== "number" || typeof cacheWrite !== "number" ||
-    [input, output, cacheRead, cacheWrite].some((rate) => !Number.isFinite(rate))) invalid();
+  if (
+    typeof input !== "number" ||
+    typeof output !== "number" ||
+    typeof cacheRead !== "number" ||
+    typeof cacheWrite !== "number" ||
+    [input, output, cacheRead, cacheWrite].some((rate) => !Number.isFinite(rate))
+  )
+    invalid();
   // Routing aliases use negative rates for unknown pricing. Pi requires numbers;
   // omit these unknown costs from estimates rather than calculating negative spend.
   return {
-    input: Math.max(0, input), output: Math.max(0, output),
-    cacheRead: Math.max(0, cacheRead), cacheWrite: Math.max(0, cacheWrite),
+    input: Math.max(0, input),
+    output: Math.max(0, output),
+    cacheRead: Math.max(0, cacheRead),
+    cacheWrite: Math.max(0, cacheWrite),
   };
 }
 
@@ -56,19 +68,38 @@ export function parseCatalogModels(provider: KnownProviderId, value: unknown): C
   if (entries.length > 5_000) invalid();
   const ids = new Set<string>();
   return entries.map((entry) => {
-    if (!record(entry) || typeof entry.id !== "string" || !entry.id.trim() || entry.id.length > 512 ||
-      typeof entry.name !== "string" || !entry.name.trim() || entry.name.length > 512 ||
-      typeof entry.api !== "string" || !supportsProviderApi(provider, entry.api) ||
-      entry.provider !== provider || typeof entry.reasoning !== "boolean" ||
-      !Array.isArray(entry.input) || !entry.input.includes("text") ||
+    if (
+      !record(entry) ||
+      typeof entry.id !== "string" ||
+      !entry.id.trim() ||
+      entry.id.length > 512 ||
+      typeof entry.name !== "string" ||
+      !entry.name.trim() ||
+      entry.name.length > 512 ||
+      typeof entry.api !== "string" ||
+      !supportsProviderApi(provider, entry.api) ||
+      entry.provider !== provider ||
+      typeof entry.reasoning !== "boolean" ||
+      !Array.isArray(entry.input) ||
+      !entry.input.includes("text") ||
       entry.input.some((kind) => kind !== "text" && kind !== "image") ||
-      !positive(entry.contextWindow) || !positive(entry.maxTokens) || !record(entry.cost) ||
-      ids.has(entry.id)) invalid();
+      !positive(entry.contextWindow) ||
+      !positive(entry.maxTokens) ||
+      !record(entry.cost) ||
+      ids.has(entry.id)
+    )
+      invalid();
     ids.add(entry.id);
     const cost = parseCost(entry.cost);
     if (entry.compat !== undefined && !record(entry.compat)) invalid();
-    if (entry.thinkingLevelMap !== undefined && (!record(entry.thinkingLevelMap) ||
-      Object.values(entry.thinkingLevelMap).some((level) => level !== null && typeof level !== "string" && typeof level !== "number"))) invalid();
+    if (
+      entry.thinkingLevelMap !== undefined &&
+      (!record(entry.thinkingLevelMap) ||
+        Object.values(entry.thinkingLevelMap).some(
+          (level) => level !== null && typeof level !== "string" && typeof level !== "number",
+        ))
+    )
+      invalid();
     return {
       id: entry.id,
       name: entry.name,
@@ -87,10 +118,17 @@ export function parseCatalogModels(provider: KnownProviderId, value: unknown): C
 }
 
 export function parseCatalogCache(provider: KnownProviderId, value: unknown): CatalogCache {
-  if (!record(value) || value.version !== 1 || typeof value.checkedAt !== "number" ||
-    !Number.isFinite(value.checkedAt) || value.checkedAt < 0 ||
-    !Array.isArray(value.models) || !Array.isArray(value.retained) ||
-    (value.etag !== undefined && typeof value.etag !== "string")) invalid();
+  if (
+    !record(value) ||
+    value.version !== 1 ||
+    typeof value.checkedAt !== "number" ||
+    !Number.isFinite(value.checkedAt) ||
+    value.checkedAt < 0 ||
+    !Array.isArray(value.models) ||
+    !Array.isArray(value.retained) ||
+    (value.etag !== undefined && typeof value.etag !== "string")
+  )
+    invalid();
   return {
     version: 1,
     models: parseCatalogModels(provider, value.models),
@@ -104,7 +142,14 @@ export function parseOllamaCatalog(value: unknown): CatalogModel[] {
   if (!record(value) || !Array.isArray(value.data) || value.data.length > 5_000) invalid();
   const ids = new Set<string>();
   return value.data.map((entry) => {
-    if (!record(entry) || typeof entry.id !== "string" || !entry.id.trim() || entry.id.length > 512 || ids.has(entry.id)) invalid();
+    if (
+      !record(entry) ||
+      typeof entry.id !== "string" ||
+      !entry.id.trim() ||
+      entry.id.length > 512 ||
+      ids.has(entry.id)
+    )
+      invalid();
     ids.add(entry.id);
     return createCustomOpenAIModel(entry.id, {
       providerId: "ollama-cloud",

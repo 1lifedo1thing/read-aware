@@ -6,10 +6,7 @@
  * its peers.
  */
 import type { DomainEventType } from "@read-aware/core";
-import {
-  onDomainEventBroadcast,
-  type DomainEventBroadcast,
-} from "../platform/domain-events";
+import { onDomainEventBroadcast, type DomainEventBroadcast } from "../platform/domain-events";
 import { createLogger } from "../platform/logger";
 
 const log = createLogger("domain");
@@ -79,8 +76,7 @@ export function domainSubscribe<E extends DomainEventType>(
     }
     return onDomainEventBroadcast((broadcast) => {
       if (broadcast.type !== event) return;
-      const report = (error: unknown) =>
-        log.error(`event handler from "${consumerLabel}" failed`, error);
+      const report = (error: unknown) => log.error(`event handler from "${consumerLabel}" failed`, error);
       try {
         // A sandboxed consumer's handler is an async proxy into its Worker —
         // its failures arrive as a rejection, not a throw.

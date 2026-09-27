@@ -12,15 +12,20 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
   if (!("__TAURI_INTERNALS__" in window)) throw new Error("Run inside Tauri");
   const results: Result[] = [];
   const check = async (name: string, run: () => Promise<void>) => {
-    try { await run(); results.push({ name, passed: true }); }
-    catch (error) { results.push({ name, passed: false, details: String(error) }); }
+    try {
+      await run();
+      results.push({ name, passed: true });
+    } catch (error) {
+      results.push({ name, passed: false, details: String(error) });
+    }
   };
   const equal = (actual: unknown, expected: unknown) => {
     if (actual !== expected) throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
   };
   const mount = () => {
     const view = new modules.view.View();
-    view.style.cssText = "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
+    view.style.cssText =
+      "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
     document.body.append(view);
     return view;
   };
@@ -44,7 +49,11 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
       await view.goTo("OPS/two.xhtml#note");
       equal(rendererOf(view).getContents()[0]?.index, 1);
       equal(rendererOf(view).getContents()[0]?.doc.querySelector("aside")?.textContent, "Footnote text.");
-    } finally { await view.close(); view.remove(); book.destroy(); }
+    } finally {
+      await view.close();
+      view.remove();
+      book.destroy();
+    }
   });
 
   for (const name of ["santi", "karamazov", "lebon", "refactoring", "berger"]) {
@@ -56,7 +65,7 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
       try {
         if (!book.sections.length) throw new Error("Book has no sections");
         await view.open(book);
-        const index = book.sections.findIndex(section => section.linear !== "no");
+        const index = book.sections.findIndex((section) => section.linear !== "no");
         await view.goTo(index);
         const content: { doc: Document; index: number } | undefined = rendererOf(view).getContents()[0];
         if (!content) throw new Error("First chapter did not load");
@@ -67,8 +76,10 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
           if (img.getAttribute("src")) await img.decode();
         }
         const walker = content.doc.createTreeWalker(content.doc.body, NodeFilter.SHOW_TEXT, {
-          acceptNode: node => node.textContent?.trim() && !node.parentElement?.closest("script,style")
-            ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+          acceptNode: (node) =>
+            node.textContent?.trim() && !node.parentElement?.closest("script,style")
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_REJECT,
         });
         const text = walker.nextNode();
         if (text) {
@@ -76,7 +87,11 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
           range.selectNodeContents(text);
           equal(anchorRangeOf(view.resolveCFI(view.getCFI(index, range)), content.doc).toString(), range.toString());
         }
-      } finally { await view.close(); view.remove(); await book.destroy?.(); }
+      } finally {
+        await view.close();
+        view.remove();
+        await book.destroy?.();
+      }
     });
   }
   return results;

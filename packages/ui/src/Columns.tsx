@@ -40,35 +40,17 @@ type ColumnProps = {
  * their minimum width no longer fits, so consumers never need viewport
  * breakpoints or raw flexbox controls.
  */
-export function Columns({
-  children,
-  gap = "md",
-  align = "start",
-  className,
-}: ColumnsProps) {
-  return (
-    <div className={cn("flex flex-wrap", gapClasses[gap], alignClasses[align], className)}>
-      {children}
-    </div>
-  );
+export function Columns({ children, gap = "md", align = "start", className }: ColumnsProps) {
+  return <div className={cn("flex flex-wrap", gapClasses[gap], alignClasses[align], className)}>{children}</div>;
 }
 
-function Column({
-  children,
-  weight = 1,
-  minWidth = "standard",
-  className,
-}: ColumnProps) {
+function Column({ children, weight = 1, minWidth = "standard", className }: ColumnProps) {
   const safeWeight = Number.isFinite(weight) ? Math.max(0.25, weight) : 1;
   const style = { "--ra-column-weight": safeWeight } as CSSProperties;
 
   return (
     <div
-      className={cn(
-        "min-w-0 basis-0 flex-[var(--ra-column-weight)]",
-        minWidthClasses[minWidth],
-        className,
-      )}
+      className={cn("min-w-0 basis-0 flex-[var(--ra-column-weight)]", minWidthClasses[minWidth], className)}
       style={style}
     >
       {children}

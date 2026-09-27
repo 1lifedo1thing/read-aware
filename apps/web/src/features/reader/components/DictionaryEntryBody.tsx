@@ -30,21 +30,13 @@ function inlineEmphasis(text: string): ReactNode {
   return parts.map((part, index) => <Fragment key={index}>{part}</Fragment>);
 }
 
-export function DictionaryEntryHeading({
-  headword,
-  pronunciation,
-}: {
-  headword: string;
-  pronunciation?: string;
-}) {
+export function DictionaryEntryHeading({ headword, pronunciation }: { headword: string; pronunciation?: string }) {
   return (
     <Stack gap="xs" className="min-w-0">
       <Heading as="h2" size="2xl" className="font-serif leading-tight">
         {headword}
       </Heading>
-      {pronunciation && (
-        <Caption className="font-mono text-sm text-fg-muted">{pronunciation}</Caption>
-      )}
+      {pronunciation && <Caption className="font-mono text-sm text-fg-muted">{pronunciation}</Caption>}
     </Stack>
   );
 }
@@ -55,18 +47,12 @@ export function DictionaryEntryBody({ entry }: { entry: DictionaryEntrySnapshot 
     <div className="flex flex-col gap-4">
       {entry.senses.map((sense, index) => (
         <div key={index} className="flex gap-3">
-          <span className="mt-0.5 font-mono text-xs tabular-nums text-fg-subtle">
-            {index + 1}
-          </span>
+          <span className="mt-0.5 font-mono text-xs tabular-nums text-fg-subtle">{index + 1}</span>
           <div className="flex flex-col gap-1.5">
             {sense.partOfSpeech && (
-              <span className="font-serif text-sm italic text-fg-muted">
-                {sense.partOfSpeech}
-              </span>
+              <span className="font-serif text-sm italic text-fg-muted">{sense.partOfSpeech}</span>
             )}
-            <Body className="text-sm leading-relaxed text-fg">
-              {inlineEmphasis(sense.definition)}
-            </Body>
+            <Body className="text-sm leading-relaxed text-fg">{inlineEmphasis(sense.definition)}</Body>
             {sense.examples.length > 0 && (
               <ul className="mt-0.5 flex flex-col gap-1">
                 {sense.examples.map((example, exampleIndex) => (
@@ -86,18 +72,14 @@ export function DictionaryEntryBody({ entry }: { entry: DictionaryEntrySnapshot 
       {entry.contextualMeaning && (
         <div className="flex flex-col gap-1 rounded-md bg-fill p-3">
           <Eyebrow className="text-fg-subtle">{t("dictionary.contextLabel")}</Eyebrow>
-          <Body className="text-sm leading-relaxed text-fg">
-            {inlineEmphasis(entry.contextualMeaning)}
-          </Body>
+          <Body className="text-sm leading-relaxed text-fg">{inlineEmphasis(entry.contextualMeaning)}</Body>
         </div>
       )}
 
       {entry.etymology && (
         <div className="flex flex-col gap-1">
           <Eyebrow className="text-fg-subtle">{t("dictionary.etymologyLabel")}</Eyebrow>
-          <Body className="text-sm leading-relaxed text-fg-muted">
-            {inlineEmphasis(entry.etymology)}
-          </Body>
+          <Body className="text-sm leading-relaxed text-fg-muted">{inlineEmphasis(entry.etymology)}</Body>
         </div>
       )}
     </div>

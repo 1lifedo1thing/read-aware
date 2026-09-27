@@ -14,8 +14,7 @@ const MODELS: AiModel[] = deepseekModels("upstream-key");
 
 type Handle = (req: Request) => Promise<Response>;
 
-const setTier = (handle: Handle, email: string, tier: string) =>
-  handle(post("/v1/admin/tier", { email, tier }, ADMIN));
+const setTier = (handle: Handle, email: string, tier: string) => handle(post("/v1/admin/tier", { email, tier }, ADMIN));
 
 const completions = (handle: Handle, session: string, body: unknown) =>
   handle(post("/v1/ai/chat/completions", body, session));
@@ -192,9 +191,7 @@ describe("the meter", () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toBe(upstream.text);
     // The proxy must force the usage chunk on, or the meter goes blind.
-    expect(
-      (upstream.requests[0].body.stream_options as { include_usage: boolean }).include_usage,
-    ).toBe(true);
+    expect((upstream.requests[0].body.stream_options as { include_usage: boolean }).include_usage).toBe(true);
 
     await settleBackground();
     // 0.5M miss ($0.22) + 0.25M out ($0.33) ⇒ 550 credits.
@@ -212,23 +209,13 @@ describe("the budget", () => {
 
   test("an exhausted month answers 402 until the calendar turns", async () => {
     const { fetchFn } = jsonUpstream(expensive);
-    const { handle, advance } = makeRelay(
-      { adminToken: ADMIN },
-      {},
-      { models: MODELS, fetch: fetchFn },
-    );
+    const { handle, advance } = makeRelay({ adminToken: ADMIN }, {}, { models: MODELS, fetch: fetchFn });
     const session = await proAccount(handle);
-    expect(
-      (await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status,
-    ).toBe(200);
-    expect(
-      (await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status,
-    ).toBe(402);
+    expect((await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status).toBe(200);
+    expect((await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status).toBe(402);
 
     advance(32 * 24 * 60 * 60 * 1000); // a new UTC month is a new usage row
-    expect(
-      (await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status,
-    ).toBe(200);
+    expect((await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status).toBe(200);
   });
 
   test("staff is unmetered but still accounted", async () => {
@@ -236,9 +223,7 @@ describe("the budget", () => {
     const { handle } = makeRelay({ adminToken: ADMIN }, {}, { models: MODELS, fetch: fetchFn });
     const session = await proAccount(handle, "staff");
     for (let i = 0; i < 3; i++) {
-      expect(
-        (await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status,
-      ).toBe(200);
+      expect((await completions(handle, session, { model: "deepseek-v4-flash", messages: [] })).status).toBe(200);
     }
     const account = await accountOf(handle, session);
     expect(account.limits.aiMonthlyCredits).toBeNull();

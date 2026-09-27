@@ -6,11 +6,7 @@ import type { ReaderSelectionState } from "../lib/selection-overlay";
  * 消失，由这层用捕获时算好的 rects 补回来。坐标已是 reader 根元素空间；
  * 任何滚动/翻页本来就会清掉选区，快照式静态绘制正好。
  */
-export function ReaderSelectionHighlight({
-  selection,
-}: {
-  selection: ReaderSelectionState | null;
-}) {
+export function ReaderSelectionHighlight({ selection }: { selection: ReaderSelectionState | null }) {
   if (!selection || selection.rects.length === 0) return null;
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">

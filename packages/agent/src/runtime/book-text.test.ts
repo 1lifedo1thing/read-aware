@@ -81,10 +81,9 @@ describe("book text tools", () => {
   test("search_book_text finds prose with a snippet", async () => {
     let payload = "";
     const { thread } = setup([
-      fauxAssistantMessage(
-        [fauxToolCall("search_book_text", { queries: ["物物交换", "以物易物"] })],
-        { stopReason: "toolUse" },
-      ),
+      fauxAssistantMessage([fauxToolCall("search_book_text", { queries: ["物物交换", "以物易物"] })], {
+        stopReason: "toolUse",
+      }),
       (context: Context) => {
         payload = JSON.stringify(context.messages[context.messages.length - 1]);
         return fauxAssistantMessage("找到了。");

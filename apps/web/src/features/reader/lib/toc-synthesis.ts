@@ -63,7 +63,11 @@ const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim()
 /** Case, punctuation and spacing differ freely between a nav label and the
  *  heading it names ("Childhood: Abandoned and Chosen" vs "CHILDHOOD" +
  *  "Abandoned and Chosen"); compare the letters only. */
-const labelKey = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[\p{P}\p{S}\s]+/gu, "");
+const labelKey = (value: string) =>
+  value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\p{P}\p{S}\s]+/gu, "");
 
 /** File part of an href, canonicalized the way epub-utils does. */
 function fileOf(href: string): string {
@@ -73,16 +77,13 @@ function fileOf(href: string): string {
 }
 
 function flattenNav(items: NavItemLike[] | null | undefined): NavItemLike[] {
-  return (items ?? []).flatMap((item) => [
-    item,
-    ...flattenNav(item.subitems ?? undefined),
-  ]);
+  return (items ?? []).flatMap((item) => [item, ...flattenNav(item.subitems ?? undefined)]);
 }
 
 /** The section a nav href points at, by the engine's own mapping when it has one. */
 async function sectionIndexOfHref(book: BookLike, href: string, sections: SectionLike[]): Promise<number> {
   if (typeof book.splitTOCHref === "function") {
-    let split: Awaited<ReturnType<NonNullable<Book['splitTOCHref']>>>;
+    let split: Awaited<ReturnType<NonNullable<Book["splitTOCHref"]>>>;
     try {
       split = await book.splitTOCHref(href);
     } catch (error) {
@@ -134,10 +135,7 @@ function labelFromDocument(doc: Document): string | null {
     .find((text) => text.length > 0);
   if (heading) return truncateLabel(heading);
 
-  const candidates = [
-    ...Array.from(doc.body?.querySelectorAll("p") ?? []),
-    ...Array.from(doc.body?.children ?? []),
-  ];
+  const candidates = [...Array.from(doc.body?.querySelectorAll("p") ?? []), ...Array.from(doc.body?.children ?? [])];
   for (const el of candidates) {
     const text = normalizeWhitespace(el.textContent ?? "");
     if (text.length >= MIN_LABEL_SOURCE_CHARS) return truncateLabel(text);
@@ -165,7 +163,8 @@ function blockLines(block: Element): string[] {
     for (const child of Array.from(node.childNodes)) {
       if (child.nodeType === 3) current += child.textContent ?? "";
       else if (child.nodeType === 1) {
-        const element = child as Element, tag = element.tagName.toLowerCase();
+        const element = child as Element,
+          tag = element.tagName.toLowerCase();
         if (tag === "br") flush();
         else if (tag === "a" && element.getAttribute("href")) flush();
         else walk(child);
@@ -229,8 +228,9 @@ async function repairCollapsedTargets(book: BookLike, nav: NavItemLike[], sectio
   }
   if (!collapsed.size) return false;
   const startedAt = performance.now();
-  const labels = [...new Set([...collapsed].map((item) => item.label?.trim() ?? ""))]
-    .filter((label) => labelKey(label).length >= MIN_LABEL_KEY_CHARS);
+  const labels = [...new Set([...collapsed].map((item) => item.label?.trim() ?? ""))].filter(
+    (label) => labelKey(label).length >= MIN_LABEL_KEY_CHARS,
+  );
   const listsChapters = (lines: readonly string[]) =>
     labels.filter((label) => opensWithLabel(label, lines)).length >= CONTENTS_PAGE_LABELS;
 
@@ -239,18 +239,19 @@ async function repairCollapsedTargets(book: BookLike, nav: NavItemLike[], sectio
     let pending = openings.get(index);
     if (!pending) {
       const section = sections[index]!;
-      pending = section.linear === "no" || typeof section.createDocument !== "function"
-        ? Promise.resolve(null)
-        : Promise.resolve()
-          .then(() => section.createDocument!())
-          .then((doc) => {
-            const lines = openingBlockTexts(doc, CONTENTS_SCAN_LINES);
-            return listsChapters(lines) ? null : lines.slice(0, OPENING_BLOCKS);
-          })
-          .catch((error: unknown) => {
-            log.warn("Could not read a section while repairing the table of contents", error);
-            return null;
-          });
+      pending =
+        section.linear === "no" || typeof section.createDocument !== "function"
+          ? Promise.resolve(null)
+          : Promise.resolve()
+              .then(() => section.createDocument!())
+              .then((doc) => {
+                const lines = openingBlockTexts(doc, CONTENTS_SCAN_LINES);
+                return listsChapters(lines) ? null : lines.slice(0, OPENING_BLOCKS);
+              })
+              .catch((error: unknown) => {
+                log.warn("Could not read a section while repairing the table of contents", error);
+                return null;
+              });
       openings.set(index, pending);
     }
     return pending;
@@ -277,7 +278,10 @@ async function repairCollapsedTargets(book: BookLike, nav: NavItemLike[], sectio
     }
   }
   log.info("Repaired collapsed table-of-contents targets", {
-    repaired, collapsed: collapsed.size, sectionsRead: openings.size, ms: Math.round(performance.now() - startedAt),
+    repaired,
+    collapsed: collapsed.size,
+    sectionsRead: openings.size,
+    ms: Math.round(performance.now() - startedAt),
   });
   return repaired > 0;
 }

@@ -16,6 +16,7 @@ test("search errors use localized copy and do not suggest blind retries", async 
 test("all eight locale catalogs contain explicit search error copy", async () => {
   for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"]) {
     const catalog = await Bun.file(new URL(`./locales/${locale}/common.json`, import.meta.url)).json();
-    for (const key of ["bookSearchCancelled", "bookSearchInvalid", "bookNotFound"]) expect(catalog.errors[key]).toBeTruthy();
+    for (const key of ["bookSearchCancelled", "bookSearchInvalid", "bookNotFound"])
+      expect(catalog.errors[key]).toBeTruthy();
   }
 });

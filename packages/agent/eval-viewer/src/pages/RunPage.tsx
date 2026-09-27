@@ -1,26 +1,16 @@
 import { summarizeQuality } from "../reviews";
 import { Select } from "@read-aware/ui";
 import { useEffect, useState } from "react";
-import {
-  fetchRun,
-  usd,
-  type CatalogSuite,
-  type RunDetail,
-  type RunRecord,
-} from "../api";
+import { fetchRun, usd, type CatalogSuite, type RunDetail, type RunRecord } from "../api";
 import { RunReviewWorkspace } from "../components/RunReviewWorkspace";
 
 /** Variant metadata is free-form JSON; only scalars read as labels. */
-const metadataText = (value: unknown) =>
-  typeof value === "string" || typeof value === "number" ? String(value) : "";
+const metadataText = (value: unknown) => (typeof value === "string" || typeof value === "number" ? String(value) : "");
 
 const refChipClass =
   "inline-block select-all rounded-[5px] bg-[var(--accent-bg)] px-2 py-0.5 font-mono text-[11px] text-[var(--accent)]";
 
-function synthesizeSummary(
-  records: RunRecord[],
-  suiteId: string,
-): NonNullable<RunDetail["summary"]> {
+function synthesizeSummary(records: RunRecord[], suiteId: string): NonNullable<RunDetail["summary"]> {
   return {
     suiteId,
     generatedAt: "",
@@ -33,15 +23,7 @@ function synthesizeSummary(
   };
 }
 
-export function RunPage({
-  runId,
-  catalog,
-  tick,
-}: {
-  runId: string;
-  catalog: CatalogSuite[];
-  tick?: number;
-}) {
+export function RunPage({ runId, catalog, tick }: { runId: string; catalog: CatalogSuite[]; tick?: number }) {
   const [detail, setDetail] = useState<RunDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeRescore, setActiveRescore] = useState("");
@@ -63,29 +45,19 @@ export function RunPage({
   }, [runId, activeRescore, tick]);
 
   if (error) return <div className="py-6 text-[var(--fail)]">{error}</div>;
-  if (!detail)
-    return <div className="py-12 text-[var(--subtle)]">加载回答…</div>;
+  if (!detail) return <div className="py-12 text-[var(--subtle)]">加载回答…</div>;
 
   const { records } = detail;
   const planSuiteId = detail.manifest?.plan?.suiteId ?? runId.split("-")[0]!;
   const summary = detail.summary ?? synthesizeSummary(records, planSuiteId);
   const suite = catalog.find((entry) => entry.id === summary.suiteId);
   const refOf = (scenarioId: string) => {
-    const index =
-      suite?.scenarios.findIndex((scenario) => scenario.id === scenarioId) ??
-      -1;
+    const index = suite?.scenarios.findIndex((scenario) => scenario.id === scenarioId) ?? -1;
     return index >= 0 ? `${suite!.code}.${index + 1}` : summary.suiteId;
   };
-  const scenarioOf = (scenarioId: string) =>
-    suite?.scenarios.find((scenario) => scenario.id === scenarioId);
-  const totalCost = records.reduce(
-    (sum, record) => sum + (record.telemetry.costUsd ?? 0),
-    0,
-  );
-  const totalTokens = records.reduce(
-    (sum, record) => sum + (record.telemetry.tokens?.total ?? 0),
-    0,
-  );
+  const scenarioOf = (scenarioId: string) => suite?.scenarios.find((scenario) => scenario.id === scenarioId);
+  const totalCost = records.reduce((sum, record) => sum + (record.telemetry.costUsd ?? 0), 0);
+  const totalTokens = records.reduce((sum, record) => sum + (record.telemetry.tokens?.total ?? 0), 0);
   const variants = detail.manifest?.plan?.variants ?? [];
   const git = detail.manifest?.git;
 
@@ -93,8 +65,7 @@ export function RunPage({
     <>
       {detail.status === "running" && (
         <div className="mb-4 flex items-center gap-2 rounded-[6px] border border-[#0070f359] bg-[#0070f314] px-3.5 py-2.5 text-[13px] text-[#0070f3]">
-          <span className="live-pulse h-2 w-2 rounded-full bg-[#0070f3]" />{" "}
-          运行中 · 已完成 {summary.runs}
+          <span className="live-pulse h-2 w-2 rounded-full bg-[#0070f3]" /> 运行中 · 已完成 {summary.runs}
         </div>
       )}
       {detail.status === "stale" && (
@@ -106,10 +77,7 @@ export function RunPage({
       <header className="mb-4 flex items-start justify-between gap-6 max-md:grid">
         <div>
           <h1 className="m-0 text-2xl font-semibold tracking-normal">
-            <a
-              href={`#/suites/${summary.suiteId}`}
-              className={`${refChipClass} align-middle text-sm`}
-            >
+            <a href={`#/suites/${summary.suiteId}`} className={`${refChipClass} align-middle text-sm`}>
               {suite?.code ?? summary.suiteId}
             </a>{" "}
             {suite?.displayName ??
@@ -118,9 +86,7 @@ export function RunPage({
               summary.suiteId}
           </h1>
           <p className="mt-1 text-[13px] text-[var(--muted)]">
-            <span className="mr-2 font-mono text-[11px] text-[var(--subtle)]">
-              {summary.suiteId}
-            </span>
+            <span className="mr-2 font-mono text-[11px] text-[var(--subtle)]">{summary.suiteId}</span>
             {summary.generatedAt || runId}
           </p>
         </div>
@@ -144,9 +110,12 @@ export function RunPage({
 
       <div className="mb-6 flex items-center gap-3 text-xs text-[var(--muted)] max-sm:flex-wrap">
         <span className="font-semibold">
-          审阅通过 {summarizeQuality(records, detail.humanReviews).pass}/{records.length} · 待审 {summarizeQuality(records, detail.humanReviews).pending}
+          审阅通过 {summarizeQuality(records, detail.humanReviews).pass}/{records.length} · 待审{" "}
+          {summarizeQuality(records, detail.humanReviews).pending}
         </span>
-        <span>辅助检查 {summary.passed}/{summary.runs}</span>
+        <span>
+          辅助检查 {summary.passed}/{summary.runs}
+        </span>
         <span>{totalTokens.toLocaleString()} tokens</span>
         <span>{usd(totalCost)}</span>
       </div>
@@ -175,9 +144,7 @@ export function RunPage({
           setDetail((current) => {
             if (!current) return current;
             const sessions = [...(current.manualSessions ?? [])];
-            const index = sessions.findIndex(
-              (entry) => entry.id === session.id,
-            );
+            const index = sessions.findIndex((entry) => entry.id === session.id);
             if (index >= 0) sessions[index] = session;
             else sessions.unshift(session);
             return { ...current, manualSessions: sessions };
@@ -186,17 +153,13 @@ export function RunPage({
       />
 
       <details className="mt-8 border-t border-[var(--border)] pt-3">
-        <summary className="cursor-pointer text-xs text-[var(--muted)]">
-          运行信息
-        </summary>
+        <summary className="cursor-pointer text-xs text-[var(--muted)]">运行信息</summary>
         <dl className="mt-3 grid grid-cols-[90px_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
           <dt className="text-[var(--subtle)]">Run</dt>
           <dd className="m-0 whitespace-pre-wrap">{runId}</dd>
           <dt className="text-[var(--subtle)]">Git</dt>
           <dd className="m-0 whitespace-pre-wrap">
-            {git?.commit
-              ? `${git.branch ?? ""}@${String(git.commit).slice(0, 8)}${git.dirty ? " (dirty)" : ""}`
-              : "—"}
+            {git?.commit ? `${git.branch ?? ""}@${String(git.commit).slice(0, 8)}${git.dirty ? " (dirty)" : ""}` : "—"}
           </dd>
           <dt className="text-[var(--subtle)]">模型</dt>
           <dd className="m-0 whitespace-pre-wrap">
@@ -209,8 +172,7 @@ export function RunPage({
           </dd>
           <dt className="text-[var(--subtle)]">辅助检查结果</dt>
           <dd className="m-0 whitespace-pre-wrap">
-            {summary.passed} 通过 · {summary.failed} 失败 · {summary.errors}{" "}
-            错误
+            {summary.passed} 通过 · {summary.failed} 失败 · {summary.errors} 错误
           </dd>
         </dl>
       </details>

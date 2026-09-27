@@ -24,11 +24,7 @@ export type InstallSoftwareUpdateResult = "installer-started" | "permission-requ
 const ANDROID_CHECK_TIMEOUT_MS = 45_000;
 const ANDROID_INSTALL_TIMEOUT_MS = 6 * 60_000;
 
-async function invokeWithTimeout<T>(
-  command: string,
-  timeoutMs: number,
-  args?: Record<string, unknown>,
-): Promise<T> {
+async function invokeWithTimeout<T>(command: string, timeoutMs: number, args?: Record<string, unknown>): Promise<T> {
   let timer: number | undefined;
   try {
     return await Promise.race([
@@ -71,11 +67,9 @@ export async function findSoftwareUpdate(): Promise<AvailableSoftwareUpdate | nu
 
   if (isAndroid()) {
     const manifestUrl = beta ? betaManifestUrl("latest-android.json") : null;
-    return invokeWithTimeout<AvailableSoftwareUpdate | null>(
-      "android_update_check",
-      ANDROID_CHECK_TIMEOUT_MS,
-      { manifestUrl },
-    );
+    return invokeWithTimeout<AvailableSoftwareUpdate | null>("android_update_check", ANDROID_CHECK_TIMEOUT_MS, {
+      manifestUrl,
+    });
   }
 
   desktopUpdateReady = false;
@@ -88,13 +82,11 @@ export async function findSoftwareUpdate(): Promise<AvailableSoftwareUpdate | nu
 export async function installSoftwareUpdate(
   onProgress: (progress: DownloadProgress) => void,
 ): Promise<InstallSoftwareUpdateResult> {
-  if (!canUseSoftwareUpdater()) throw new AppError("ui/unavailable", "Software updates are unavailable in this app environment.");
+  if (!canUseSoftwareUpdater())
+    throw new AppError("ui/unavailable", "Software updates are unavailable in this app environment.");
   if (isAndroid()) {
     onProgress({ phase: "downloading", progress: null });
-    return invokeWithTimeout<InstallSoftwareUpdateResult>(
-      "android_update_install",
-      ANDROID_INSTALL_TIMEOUT_MS,
-    );
+    return invokeWithTimeout<InstallSoftwareUpdateResult>("android_update_install", ANDROID_INSTALL_TIMEOUT_MS);
   }
 
   if (!desktopUpdateReady) throw new AppError("ui/unavailable", "No software update is ready to install.");

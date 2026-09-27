@@ -85,12 +85,7 @@ function array(value: unknown, context: string, max: number): unknown[] {
   return value;
 }
 
-function oneOf<T extends string | number>(
-  value: unknown,
-  allowed: readonly T[],
-  fallback: T,
-  context: string,
-): T {
+function oneOf<T extends string | number>(value: unknown, allowed: readonly T[], fallback: T, context: string): T {
   if (value == null) return fallback;
   if (!allowed.includes(value as T)) {
     throw new PluginViewError(`${context} must be one of: ${allowed.join(", ")}`);
@@ -105,18 +100,11 @@ function normalizeAction(input: unknown, context: string): PluginAction {
     id: string(value.id, `${context}.id`)!,
     label: string(value.label, `${context}.label`)!,
     icon: string(value.icon, `${context}.icon`, true),
-    variant: oneOf(
-      value.variant,
-      ["solid", "outline", "ghost", "danger"] as const,
-      "outline",
-      `${context}.variant`,
-    ),
-    priority: value.priority === undefined ? undefined : oneOf(
-      value.priority,
-      ["primary", "secondary"] as const,
-      "primary",
-      `${context}.priority`,
-    ),
+    variant: oneOf(value.variant, ["solid", "outline", "ghost", "danger"] as const, "outline", `${context}.variant`),
+    priority:
+      value.priority === undefined
+        ? undefined
+        : oneOf(value.priority, ["primary", "secondary"] as const, "primary", `${context}.priority`),
     disabled: value.disabled === undefined ? undefined : boolean(value.disabled, `${context}.disabled`),
     run: value.run as PluginAction["run"],
   };
@@ -133,9 +121,7 @@ function normalizeListSearch(input: unknown, context: string): PluginListSearch 
 }
 
 function normalizeActions(value: unknown, context: string): PluginAction[] {
-  return array(value, context, MAX_ACTIONS).map((action, index) =>
-    normalizeAction(action, `${context}[${index}]`),
-  );
+  return array(value, context, MAX_ACTIONS).map((action, index) => normalizeAction(action, `${context}[${index}]`));
 }
 
 function normalizeDetailControl(input: unknown, context: string): PluginDetailControl {
@@ -147,15 +133,13 @@ function normalizeDetailControl(input: unknown, context: string): PluginDetailCo
   if (typeof value.onChange !== "function") {
     throw new PluginViewError(`${context}.onChange must be a function`);
   }
-  const options = array(value.options, `${context}.options`, MAX_CONTROL_OPTIONS).map(
-    (option, index) => {
-      const entry = record(option, `${context}.options[${index}]`);
-      return {
-        value: string(entry.value, `${context}.options[${index}].value`)!,
-        label: string(entry.label, `${context}.options[${index}].label`)!,
-      };
-    },
-  );
+  const options = array(value.options, `${context}.options`, MAX_CONTROL_OPTIONS).map((option, index) => {
+    const entry = record(option, `${context}.options[${index}]`);
+    return {
+      value: string(entry.value, `${context}.options[${index}].value`)!,
+      label: string(entry.label, `${context}.options[${index}].label`)!,
+    };
+  });
   if (options.length === 0) {
     throw new PluginViewError(`${context}.options must contain at least one option`);
   }
@@ -210,17 +194,12 @@ function normalizeListItem(input: unknown, context: string): PluginListItem {
     presentation:
       value.presentation == null
         ? undefined
-        : oneOf(
-            value.presentation,
-            ["push", "dialog"] as const,
-            "push",
-            `${context}.presentation`,
-          ),
+        : oneOf(value.presentation, ["push", "dialog"] as const, "push", `${context}.presentation`),
     keywords:
       value.keywords == null
         ? undefined
-        : array(value.keywords, `${context}.keywords`, 40).map((keyword, index) =>
-            string(keyword, `${context}.keywords[${index}]`)!,
+        : array(value.keywords, `${context}.keywords`, 40).map(
+            (keyword, index) => string(keyword, `${context}.keywords[${index}]`)!,
           ),
     accessories:
       value.accessories == null
@@ -239,10 +218,7 @@ function normalizeListView(input: Record<string, unknown>, context: string): Plu
     items: array(input.items, `${context}.items`, MAX_LIST_ITEMS).map((item, index) =>
       normalizeListItem(item, `${context}.items[${index}]`),
     ),
-    actions:
-      input.actions == null
-        ? undefined
-        : normalizeActions(input.actions, `${context}.actions`),
+    actions: input.actions == null ? undefined : normalizeActions(input.actions, `${context}.actions`),
     emptyText: string(input.emptyText, `${context}.emptyText`, true),
     searchable: input.searchable === true,
     searchPlaceholder: string(input.searchPlaceholder, `${context}.searchPlaceholder`, true),
@@ -259,18 +235,26 @@ function normalizePagination(input: unknown, context: string): PluginViewPaginat
   const value = record(input, context);
   const positiveInteger = (input: unknown, key: string): number => {
     const number = finiteNumber(input, `${context}.${key}`);
-    if (!Number.isSafeInteger(number) || number < 1) throw new PluginViewError(`${context}.${key} must be a positive safe integer`);
+    if (!Number.isSafeInteger(number) || number < 1)
+      throw new PluginViewError(`${context}.${key} must be a positive safe integer`);
     return number;
   };
   const page = positiveInteger(value.page, "page");
   const pageCount = value.pageCount == null ? undefined : positiveInteger(value.pageCount, "pageCount");
   if (pageCount !== undefined && page > pageCount) throw new PluginViewError(`${context}.page exceeds pageCount`);
   for (const key of ["onPrevious", "onNext"] as const) {
-    if (value[key] != null && typeof value[key] !== "function") throw new PluginViewError(`${context}.${key} must be a function`);
+    if (value[key] != null && typeof value[key] !== "function")
+      throw new PluginViewError(`${context}.${key} must be a function`);
   }
   if (page === 1 && value.onPrevious != null) throw new PluginViewError(`${context}.onPrevious cannot precede page 1`);
-  if (pageCount === page && value.onNext != null) throw new PluginViewError(`${context}.onNext cannot exceed pageCount`);
-  return { page, pageCount, onPrevious: value.onPrevious as PluginViewPagination["onPrevious"], onNext: value.onNext as PluginViewPagination["onNext"] };
+  if (pageCount === page && value.onNext != null)
+    throw new PluginViewError(`${context}.onNext cannot exceed pageCount`);
+  return {
+    page,
+    pageCount,
+    onPrevious: value.onPrevious as PluginViewPagination["onPrevious"],
+    onNext: value.onNext as PluginViewPagination["onNext"],
+  };
 }
 
 function normalizeTableView(input: Record<string, unknown>, context: string): PluginTableView {
@@ -281,8 +265,12 @@ function normalizeTableView(input: Record<string, unknown>, context: string): Pl
     const id = string(value.id, `${path}.id`)!;
     if (!id || columnIds.has(id)) throw new PluginViewError(`${path}.id must be nonempty and unique`);
     columnIds.add(id);
-    return { id, label: string(value.label, `${path}.label`)!,
-      align: oneOf(value.align, ["start", "end"] as const, "start", `${path}.align`), sortable: value.sortable === true };
+    return {
+      id,
+      label: string(value.label, `${path}.label`)!,
+      align: oneOf(value.align, ["start", "end"] as const, "start", `${path}.align`),
+      sortable: value.sortable === true,
+    };
   });
   if (!columns.length) throw new PluginViewError(`${context}.columns must not be empty`);
   let sort: PluginTableView["sort"];
@@ -293,12 +281,22 @@ function normalizeTableView(input: Record<string, unknown>, context: string): Pl
     if (value.value != null) {
       const current = record(value.value, `${context}.sort.value`);
       const column = string(current.column, `${context}.sort.value.column`)!;
-      if (!columns.some(entry => entry.id === column && entry.sortable)) throw new PluginViewError(`${context}.sort.value.column must name a sortable column`);
+      if (!columns.some((entry) => entry.id === column && entry.sortable))
+        throw new PluginViewError(`${context}.sort.value.column must name a sortable column`);
       if (current.direction == null) throw new PluginViewError(`${context}.sort.value.direction is required`);
-      sort.value = { column, direction: oneOf(current.direction, ["ascending", "descending"] as const, "ascending", `${context}.sort.value.direction`) };
+      sort.value = {
+        column,
+        direction: oneOf(
+          current.direction,
+          ["ascending", "descending"] as const,
+          "ascending",
+          `${context}.sort.value.direction`,
+        ),
+      };
     }
   }
-  if (!sort && columns.some(column => column.sortable)) throw new PluginViewError(`${context}.sort is required for sortable columns`);
+  if (!sort && columns.some((column) => column.sortable))
+    throw new PluginViewError(`${context}.sort is required for sortable columns`);
   const rowIds = new Set<string>();
   const rows = array(input.rows, `${context}.rows`, MAX_TABLE_ROWS).map((input, index): PluginTableRow => {
     const path = `${context}.rows[${index}]`;
@@ -307,70 +305,111 @@ function normalizeTableView(input: Record<string, unknown>, context: string): Pl
     if (!id || rowIds.has(id)) throw new PluginViewError(`${path}.id must be nonempty and unique`);
     rowIds.add(id);
     const cells = record(value.cells, `${path}.cells`);
-    if (Object.keys(cells).length !== columns.length || Object.keys(cells).some(key => !columnIds.has(key))) {
+    if (Object.keys(cells).length !== columns.length || Object.keys(cells).some((key) => !columnIds.has(key))) {
       throw new PluginViewError(`${path}.cells must match the declared columns`);
     }
-    const normalizedCells = Object.fromEntries(columns.map(({ id }) => {
-      const cell = cells[id];
-      if (cell !== null && typeof cell !== "string" && (typeof cell !== "number" || !Number.isFinite(cell))) {
-        throw new PluginViewError(`${path}.cells.${id} must be text, a finite number, or null`);
-      }
-      return [id, cell as string | number | null];
-    }));
-    if (value.onSelect != null && typeof value.onSelect !== "function") throw new PluginViewError(`${path}.onSelect must be a function`);
-    return { id, label: string(value.label, `${path}.label`)!, cells: normalizedCells,
+    const normalizedCells = Object.fromEntries(
+      columns.map(({ id }) => {
+        const cell = cells[id];
+        if (cell !== null && typeof cell !== "string" && (typeof cell !== "number" || !Number.isFinite(cell))) {
+          throw new PluginViewError(`${path}.cells.${id} must be text, a finite number, or null`);
+        }
+        return [id, cell as string | number | null];
+      }),
+    );
+    if (value.onSelect != null && typeof value.onSelect !== "function")
+      throw new PluginViewError(`${path}.onSelect must be a function`);
+    return {
+      id,
+      label: string(value.label, `${path}.label`)!,
+      cells: normalizedCells,
       presentation: oneOf(value.presentation, ["push", "dialog"] as const, "push", `${path}.presentation`),
-      onSelect: value.onSelect as PluginTableRow["onSelect"] };
+      onSelect: value.onSelect as PluginTableRow["onSelect"],
+    };
   });
-  return { kind: "table", title: string(input.title, `${context}.title`, true), columns, rows, sort,
+  return {
+    kind: "table",
+    title: string(input.title, `${context}.title`, true),
+    columns,
+    rows,
+    sort,
     actions: input.actions == null ? undefined : normalizeActions(input.actions, `${context}.actions`),
     emptyText: string(input.emptyText, `${context}.emptyText`, true),
-    pagination: normalizePagination(input.pagination, `${context}.pagination`) };
+    pagination: normalizePagination(input.pagination, `${context}.pagination`),
+  };
 }
 
 function normalizeTreeView(input: Record<string, unknown>, context: string): PluginTreeView {
-  const ids = new Set<string>(), branches = new Set<string>();
+  const ids = new Set<string>(),
+    branches = new Set<string>();
   const nodes = (input: unknown, path: string, depth: number): PluginTreeNode[] => {
     const entries = array(input, path, 500);
     if (entries.length && depth > 12) throw new PluginViewError(`${path} exceeds 12 tree levels`);
     return entries.map((input, index) => {
-      const entryPath = `${path}[${index}]`, value = record(input, entryPath);
+      const entryPath = `${path}[${index}]`,
+        value = record(input, entryPath);
       const id = string(value.id, `${entryPath}.id`)!;
-      if (!id.trim() || ids.has(id)) throw new PluginViewError(`${entryPath}.id must be nonempty and unique throughout the tree`);
+      if (!id.trim() || ids.has(id))
+        throw new PluginViewError(`${entryPath}.id must be nonempty and unique throughout the tree`);
       ids.add(id);
       if (ids.size > 500) throw new PluginViewError(`${context} exceeds 500 tree nodes`);
       const title = string(value.title, `${entryPath}.title`)!;
       if (!title.trim()) throw new PluginViewError(`${entryPath}.title must be nonempty`);
-      if (value.onSelect != null && typeof value.onSelect !== "function") throw new PluginViewError(`${entryPath}.onSelect must be a function`);
+      if (value.onSelect != null && typeof value.onSelect !== "function")
+        throw new PluginViewError(`${entryPath}.onSelect must be a function`);
       const children = value.children == null ? undefined : nodes(value.children, `${entryPath}.children`, depth + 1);
       if (children?.length) branches.add(id);
-      return { id, title, subtitle: string(value.subtitle, `${entryPath}.subtitle`, true),
-        icon: string(value.icon, `${entryPath}.icon`, true), children,
+      return {
+        id,
+        title,
+        subtitle: string(value.subtitle, `${entryPath}.subtitle`, true),
+        icon: string(value.icon, `${entryPath}.icon`, true),
+        children,
         presentation: oneOf(value.presentation, ["push", "dialog"] as const, "push", `${entryPath}.presentation`),
-        onSelect: value.onSelect as PluginTreeNode["onSelect"] };
+        onSelect: value.onSelect as PluginTreeNode["onSelect"],
+      };
     });
   };
   const normalized = nodes(input.nodes, `${context}.nodes`, 1);
-  const expandedIds = input.expandedIds == null ? undefined : array(input.expandedIds, `${context}.expandedIds`, 500)
-    .map((id, index) => string(id, `${context}.expandedIds[${index}]`)!);
-  if (expandedIds && (new Set(expandedIds).size !== expandedIds.length || expandedIds.some(id => !branches.has(id)))) {
+  const expandedIds =
+    input.expandedIds == null
+      ? undefined
+      : array(input.expandedIds, `${context}.expandedIds`, 500).map(
+          (id, index) => string(id, `${context}.expandedIds[${index}]`)!,
+        );
+  if (
+    expandedIds &&
+    (new Set(expandedIds).size !== expandedIds.length || expandedIds.some((id) => !branches.has(id)))
+  ) {
     throw new PluginViewError(`${context}.expandedIds must name unique populated branches`);
   }
   const title = string(input.title, `${context}.title`)!;
   if (!title.trim()) throw new PluginViewError(`${context}.title must be nonempty`);
-  return { kind: "tree", title, nodes: normalized, expandedIds,
+  return {
+    kind: "tree",
+    title,
+    nodes: normalized,
+    expandedIds,
     actions: input.actions == null ? undefined : normalizeActions(input.actions, `${context}.actions`),
     emptyText: string(input.emptyText, `${context}.emptyText`, true),
-    pagination: normalizePagination(input.pagination, `${context}.pagination`) };
+    pagination: normalizePagination(input.pagination, `${context}.pagination`),
+  };
 }
 
 function normalizeImageView(input: Record<string, unknown>, context: string): PluginImageView {
   const resourceId = string(input.resourceId, `${context}.resourceId`)!;
-  if (!resourceId.trim() || resourceId.length > 256) throw new PluginViewError(`${context}.resourceId must be a bounded resource ID`);
+  if (!resourceId.trim() || resourceId.length > 256)
+    throw new PluginViewError(`${context}.resourceId must be a bounded resource ID`);
   const aspectRatio = input.aspectRatio == null ? 4 / 3 : finiteNumber(input.aspectRatio, `${context}.aspectRatio`);
   if (aspectRatio < 0.25 || aspectRatio > 4) throw new PluginViewError(`${context}.aspectRatio must be 0.25..4`);
-  const view: PluginImageView = { kind: "image", resourceId, alt: string(input.alt, `${context}.alt`)!, aspectRatio,
-    title: string(input.title, `${context}.title`, true), caption: string(input.caption, `${context}.caption`, true) };
+  const view: PluginImageView = {
+    kind: "image",
+    resourceId,
+    alt: string(input.alt, `${context}.alt`)!,
+    aspectRatio,
+    title: string(input.title, `${context}.title`, true),
+    caption: string(input.caption, `${context}.caption`, true),
+  };
   bindPluginImageOwner(input, view);
   return view;
 }
@@ -413,11 +452,7 @@ function normalizeEditorView(input: Record<string, unknown>, context: string): P
  */
 function pluginText(value: unknown, context: string): PluginText;
 function pluginText(value: unknown, context: string, optional: true): PluginText | undefined;
-function pluginText(
-  value: unknown,
-  context: string,
-  optional = false,
-): PluginText | undefined {
+function pluginText(value: unknown, context: string, optional = false): PluginText | undefined {
   if (value == null && optional) return undefined;
   if (typeof value === "string") return value;
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
@@ -450,8 +485,8 @@ function normalizeVisibleWhen(
   const field = string(condition.field, `${context}.field`)!;
   const equals = condition.equals;
   if (typeof equals === "string") return { field, equals };
-  const values = array(equals, `${context}.equals`, 20).map((entry, index) =>
-    string(entry, `${context}.equals[${index}]`)!,
+  const values = array(equals, `${context}.equals`, 20).map(
+    (entry, index) => string(entry, `${context}.equals[${index}]`)!,
   );
   if (values.length === 0) {
     throw new PluginViewError(`${context}.equals must not be empty`);
@@ -476,19 +511,12 @@ function normalizeFormField(input: unknown, context: string): PluginFormField {
       value: string(value.value, `${context}.value`, true),
       placeholder: pluginText(value.placeholder, `${context}.placeholder`, true),
       helperText: pluginText(value.helperText, `${context}.helperText`, true),
-      inputMode: oneOf(
-        value.inputMode,
-        ["text", "email", "url", "password"] as const,
-        "text",
-        `${context}.inputMode`,
-      ),
+      inputMode: oneOf(value.inputMode, ["text", "email", "url", "password"] as const, "text", `${context}.inputMode`),
     };
   }
   if (kind === "time") {
     const declared = string(value.value, `${context}.value`, true);
-    const step = value.minuteStep == null
-      ? undefined
-      : finiteNumber(value.minuteStep, `${context}.minuteStep`);
+    const step = value.minuteStep == null ? undefined : finiteNumber(value.minuteStep, `${context}.minuteStep`);
     return {
       ...base,
       kind,
@@ -537,9 +565,7 @@ function normalizeFormField(input: unknown, context: string): PluginFormField {
       return {
         value: string(entry.value, `${context}.options[${index}].value`)!,
         label: pluginText(entry.label, `${context}.options[${index}].label`),
-        ...(kind === "choice"
-          ? { icon: string(entry.icon, `${context}.options[${index}].icon`, true) }
-          : {}),
+        ...(kind === "choice" ? { icon: string(entry.icon, `${context}.options[${index}].icon`, true) } : {}),
       };
     });
     return {
@@ -557,9 +583,7 @@ function normalizeFormField(input: unknown, context: string): PluginFormField {
                   dynamicOptions: true,
                   // Opt-out only: a list is a catalog unless the plugin says
                   // it is the whole set.
-                  ...(value.allowManualEntry === false
-                    ? { allowManualEntry: false }
-                    : {}),
+                  ...(value.allowManualEntry === false ? { allowManualEntry: false } : {}),
                 }
               : {}),
           }
@@ -589,10 +613,7 @@ function normalizeFormField(input: unknown, context: string): PluginFormField {
   throw new PluginViewError(`${context}.kind is not supported`);
 }
 
-function normalizeSecretsAdapter(
-  value: unknown,
-  context: string,
-): PluginFormView["secrets"] {
+function normalizeSecretsAdapter(value: unknown, context: string): PluginFormView["secrets"] {
   if (value == null) return undefined;
   const adapter = record(value, context);
   for (const method of ["has", "set", "remove"] as const) {
@@ -616,12 +637,7 @@ function normalizeFormView(input: Record<string, unknown>, context: string): Plu
     fields: array(input.fields, `${context}.fields`, MAX_FORM_FIELDS).map((field, index) =>
       normalizeFormField(field, `${context}.fields[${index}]`),
     ),
-    submitMode: oneOf(
-      input.submitMode,
-      ["explicit", "change"] as const,
-      "explicit",
-      `${context}.submitMode`,
-    ),
+    submitMode: oneOf(input.submitMode, ["explicit", "change"] as const, "explicit", `${context}.submitMode`),
     submitLabel: string(input.submitLabel, `${context}.submitLabel`, true),
     onSubmit: input.onSubmit as PluginFormView["onSubmit"],
     resolveOptions: input.resolveOptions as PluginFormView["resolveOptions"],
@@ -645,8 +661,8 @@ function normalizeMetadataItem(input: unknown, context: string): PluginMetadataI
     return {
       kind,
       label: string(value.label, `${context}.label`)!,
-      values: array(value.values, `${context}.values`, 30).map((tag, index) =>
-        string(tag, `${context}.values[${index}]`)!,
+      values: array(value.values, `${context}.values`, 30).map(
+        (tag, index) => string(tag, `${context}.values[${index}]`)!,
       ),
     };
   }
@@ -658,12 +674,7 @@ function normalizeColumnCell(input: unknown, context: string, depth: number): Pl
   const weight = value.weight == null ? undefined : finiteNumber(value.weight, `${context}.weight`);
   return {
     weight: weight == null ? undefined : Math.min(4, Math.max(0.25, weight)),
-    minWidth: oneOf(
-      value.minWidth,
-      ["compact", "standard", "wide"] as const,
-      "standard",
-      `${context}.minWidth`,
-    ),
+    minWidth: oneOf(value.minWidth, ["compact", "standard", "wide"] as const, "standard", `${context}.minWidth`),
     blocks: normalizeBlocks(value.blocks, `${context}.blocks`, depth + 1),
   };
 }
@@ -679,11 +690,7 @@ function normalizeDictionaryEntry(input: unknown, context: string): PluginDictio
         partOfSpeech: string(entry.partOfSpeech, `${context}.senses[${index}].partOfSpeech`)!,
         definition: string(entry.definition, `${context}.senses[${index}].definition`)!,
         examples: array(entry.examples, `${context}.senses[${index}].examples`, 30).map(
-          (example, exampleIndex) =>
-            string(
-              example,
-              `${context}.senses[${index}].examples[${exampleIndex}]`,
-            )!,
+          (example, exampleIndex) => string(example, `${context}.senses[${index}].examples[${exampleIndex}]`)!,
         ),
       };
     }),
@@ -694,9 +701,7 @@ function normalizeDictionaryEntry(input: unknown, context: string): PluginDictio
 
 function normalizeBlocks(value: unknown, context: string, depth: number): PluginBlock[] {
   if (depth > MAX_DEPTH) throw new PluginViewError(`${context} exceeds the ${MAX_DEPTH}-level limit`);
-  return array(value, context, MAX_BLOCKS).map((block, index) =>
-    normalizeBlock(block, `${context}[${index}]`, depth),
-  );
+  return array(value, context, MAX_BLOCKS).map((block, index) => normalizeBlock(block, `${context}[${index}]`, depth));
 }
 
 function normalizeBlock(input: unknown, context: string, depth: number): PluginBlock {
@@ -709,18 +714,8 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
     return {
       kind,
       text: string(value.text, `${context}.text`)!,
-      variant: oneOf(
-        value.variant,
-        ["body", "caption", "eyebrow", "heading"] as const,
-        "body",
-        `${context}.variant`,
-      ),
-      tone: oneOf(
-        value.tone,
-        ["default", "muted", "subtle"] as const,
-        "default",
-        `${context}.tone`,
-      ),
+      variant: oneOf(value.variant, ["body", "caption", "eyebrow", "heading"] as const, "body", `${context}.variant`),
+      tone: oneOf(value.tone, ["default", "muted", "subtle"] as const, "default", `${context}.tone`),
     };
   }
   if (kind === "heading") {
@@ -743,12 +738,7 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
           value: string(entry.value, `${context}.rows[${index}].value`)!,
         };
       }),
-      layout: oneOf(
-        value.layout,
-        ["stacked", "inline"] as const,
-        "inline",
-        `${context}.layout`,
-      ),
+      layout: oneOf(value.layout, ["stacked", "inline"] as const, "inline", `${context}.layout`),
       columns: oneOf(value.columns, [1, 2, 3] as const, 1, `${context}.columns`),
     };
   }
@@ -777,11 +767,13 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
   if (kind === "progress") {
     const progress = value.value === null ? null : finiteNumber(value.value, `${context}.value`);
     const max = value.max == null ? 100 : finiteNumber(value.max, `${context}.max`);
-    if (max <= 0 || progress !== null && (progress < 0 || progress > max)) throw new PluginViewError(`${context} progress must be within a positive maximum`);
+    if (max <= 0 || (progress !== null && (progress < 0 || progress > max)))
+      throw new PluginViewError(`${context} progress must be within a positive maximum`);
     const label = string(value.label, `${context}.label`, true);
     if (label !== undefined && label.length > 512) throw new PluginViewError(`${context}.label exceeds 512 characters`);
     const action = value.cancel == null ? undefined : normalizeAction(value.cancel, `${context}.cancel`);
-    if (action && (!action.id || action.id.length > 256 || !action.label.trim() || action.label.length > 160)) throw new PluginViewError(`${context}.cancel needs a bounded id and label`);
+    if (action && (!action.id || action.id.length > 256 || !action.label.trim() || action.label.length > 160))
+      throw new PluginViewError(`${context}.cancel needs a bounded id and label`);
     return {
       kind,
       value: progress,
@@ -795,14 +787,15 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
     return {
       kind,
       label: string(value.label, `${context}.label`, true),
-      values: array(value.values, `${context}.values`, 40).map((tag, index) =>
-        string(tag, `${context}.values[${index}]`)!,
+      values: array(value.values, `${context}.values`, 40).map(
+        (tag, index) => string(tag, `${context}.values[${index}]`)!,
       ),
     };
   }
   if (kind === "error") {
     const code = string(value.code, `${context}.code`)!;
-    if (code.length > 128 || !/^[a-z0-9][a-z0-9/-]*$/.test(code)) throw new Error(`${context}.code must be a stable error code`);
+    if (code.length > 128 || !/^[a-z0-9][a-z0-9/-]*$/.test(code))
+      throw new Error(`${context}.code must be a stable error code`);
     return { kind, code };
   }
   if (kind === "alert") {
@@ -810,23 +803,13 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
       kind,
       title: string(value.title, `${context}.title`, true),
       message: string(value.message, `${context}.message`)!,
-      variant: oneOf(
-        value.variant,
-        ["default", "destructive", "success"] as const,
-        "default",
-        `${context}.variant`,
-      ),
+      variant: oneOf(value.variant, ["default", "destructive", "success"] as const, "default", `${context}.variant`),
     };
   }
   if (kind === "divider") return { kind };
   if (kind === "section" || kind === "group") {
     const blocks = normalizeBlocks(value.blocks, `${context}.blocks`, depth + 1);
-    const gap = oneOf(
-      value.gap,
-      ["tight", "normal", "relaxed"] as const,
-      "normal",
-      `${context}.gap`,
-    );
+    const gap = oneOf(value.gap, ["tight", "normal", "relaxed"] as const, "normal", `${context}.gap`);
     return kind === "section"
       ? {
           kind,
@@ -842,21 +825,9 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
     if (cells.length < 2) throw new PluginViewError(`${context}.cells needs 2–4 entries`);
     return {
       kind,
-      cells: cells.map((cell, index) =>
-        normalizeColumnCell(cell, `${context}.cells[${index}]`, depth),
-      ),
-      gap: oneOf(
-        value.gap,
-        ["tight", "normal", "relaxed"] as const,
-        "normal",
-        `${context}.gap`,
-      ),
-      align: oneOf(
-        value.align,
-        ["start", "center", "baseline", "stretch"] as const,
-        "start",
-        `${context}.align`,
-      ),
+      cells: cells.map((cell, index) => normalizeColumnCell(cell, `${context}.cells[${index}]`, depth)),
+      gap: oneOf(value.gap, ["tight", "normal", "relaxed"] as const, "normal", `${context}.gap`),
+      align: oneOf(value.align, ["start", "center", "baseline", "stretch"] as const, "start", `${context}.align`),
     };
   }
   if (kind === "row") {
@@ -866,20 +837,14 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
       kind,
       cells: cells.map((cell, index) => {
         const entry = record(cell, `${context}.cells[${index}]`);
-        const weight = entry.weight == null
-          ? undefined
-          : finiteNumber(entry.weight, `${context}.cells[${index}].weight`);
+        const weight =
+          entry.weight == null ? undefined : finiteNumber(entry.weight, `${context}.cells[${index}].weight`);
         return {
           weight: weight == null ? undefined : Math.min(4, Math.max(0.25, weight)),
           block: normalizeBlock(entry.block, `${context}.cells[${index}].block`, depth + 1),
         };
       }),
-      align: oneOf(
-        value.align,
-        ["start", "center", "baseline"] as const,
-        "start",
-        `${context}.align`,
-      ),
+      align: oneOf(value.align, ["start", "center", "baseline"] as const, "start", `${context}.align`),
     };
   }
   if (kind === "list") return normalizeListView(value, context);
@@ -902,12 +867,8 @@ function normalizeDetailView(input: Record<string, unknown>, context: string): P
         : array(input.metadata, `${context}.metadata`, 60).map((item, index) =>
             normalizeMetadataItem(item, `${context}.metadata[${index}]`),
           ),
-    controls:
-      input.controls == null
-        ? undefined
-        : normalizeDetailControls(input.controls, `${context}.controls`),
-    actions:
-      input.actions == null ? undefined : normalizeActions(input.actions, `${context}.actions`),
+    controls: input.controls == null ? undefined : normalizeDetailControls(input.controls, `${context}.controls`),
+    actions: input.actions == null ? undefined : normalizeActions(input.actions, `${context}.actions`),
   };
 }
 
@@ -916,12 +877,21 @@ export function normalizePluginView(input: unknown): PluginView {
   const view = normalizeViewContent(value);
   if (value.fileDrop != null) {
     const drop = record(value.fileDrop, "view.fileDrop");
-    if (typeof drop.onDrop !== "function" || drop.multiple !== undefined && typeof drop.multiple !== "boolean") throw new PluginViewError("Invalid file drop declaration");
-    const extensions = drop.extensions === undefined ? undefined : array(drop.extensions, "view.fileDrop.extensions", 32).map(value => {
-      if (typeof value !== "string" || !/^[a-zA-Z0-9]{1,16}$/.test(value)) throw new PluginViewError("Invalid file drop extension");
-      return value.toLowerCase();
-    });
-    view.fileDrop = { multiple: drop.multiple === true, extensions, onDrop: drop.onDrop as NonNullable<PluginView["fileDrop"]>["onDrop"] };
+    if (typeof drop.onDrop !== "function" || (drop.multiple !== undefined && typeof drop.multiple !== "boolean"))
+      throw new PluginViewError("Invalid file drop declaration");
+    const extensions =
+      drop.extensions === undefined
+        ? undefined
+        : array(drop.extensions, "view.fileDrop.extensions", 32).map((value) => {
+            if (typeof value !== "string" || !/^[a-zA-Z0-9]{1,16}$/.test(value))
+              throw new PluginViewError("Invalid file drop extension");
+            return value.toLowerCase();
+          });
+    view.fileDrop = {
+      multiple: drop.multiple === true,
+      extensions,
+      onDrop: drop.onDrop as NonNullable<PluginView["fileDrop"]>["onDrop"],
+    };
   }
   if (value.onClose !== undefined) {
     if (typeof value.onClose !== "function") throw new PluginViewError("view.onClose must be a function");

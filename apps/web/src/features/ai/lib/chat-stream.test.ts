@@ -16,11 +16,26 @@ const question: ChatInteractionRequest = {
 
 describe("chat interaction stream assembly", () => {
   test("structured answers survive timeline assembly and JSON persistence", () => {
-    let parts = appendStreamChunk([], { type: "interaction", phase: "request", request: { id: "f", threadKey: "global:t", kind: "form", title: "Plan",
-      fields: [{ id: "minutes", kind: "number", label: "Minutes" }] } });
-    parts = appendStreamChunk(parts, { type: "interaction", phase: "response", id: "f", answer: { values: { minutes: 20 } } });
-    expect(JSON.parse(JSON.stringify(finalizeParts(parts))))
-      .toMatchObject([{ type: "interaction", state: "answered", request: { kind: "form" }, answer: { values: { minutes: 20 } } }]);
+    let parts = appendStreamChunk([], {
+      type: "interaction",
+      phase: "request",
+      request: {
+        id: "f",
+        threadKey: "global:t",
+        kind: "form",
+        title: "Plan",
+        fields: [{ id: "minutes", kind: "number", label: "Minutes" }],
+      },
+    });
+    parts = appendStreamChunk(parts, {
+      type: "interaction",
+      phase: "response",
+      id: "f",
+      answer: { values: { minutes: 20 } },
+    });
+    expect(JSON.parse(JSON.stringify(finalizeParts(parts)))).toMatchObject([
+      { type: "interaction", state: "answered", request: { kind: "form" }, answer: { values: { minutes: 20 } } },
+    ]);
   });
   test("pairs request and response into one persistent timeline part", () => {
     let parts: ChatAssistantPart[] = [];
@@ -136,16 +151,26 @@ describe("thinking stream assembly", () => {
 
     const settled = finalizeParts(parts);
     const thought = settled.find((part) => part.type === "thinking");
-    expect(thought?.type === "thinking" ? thought.text : "").toBe(
-      "I should inspect the chapter.",
-    );
+    expect(thought?.type === "thinking" ? thought.text : "").toBe("I should inspect the chapter.");
   });
 });
 
 test("image references keep caption and source across streaming and persisted history without duplicate cards", () => {
-  const reference = { kind: "web-images" as const, images: [{ url: "https://images.example.org/roof.png", sourceUrl: "https://museum.example.org/roof", title: "Roof", caption: "Roof cross-section" }] };
+  const reference = {
+    kind: "web-images" as const,
+    images: [
+      {
+        url: "https://images.example.org/roof.png",
+        sourceUrl: "https://museum.example.org/roof",
+        title: "Roof",
+        caption: "Roof cross-section",
+      },
+    ],
+  };
   let parts = appendStreamChunk([], { type: "reference", id: "image-ref", reference });
   parts = appendStreamChunk(parts, { type: "reference", id: "image-ref", reference });
-  expect(JSON.parse(JSON.stringify(finalizeParts(parts)))).toMatchObject([{ type: "reference", id: "image-ref", reference }]);
+  expect(JSON.parse(JSON.stringify(finalizeParts(parts)))).toMatchObject([
+    { type: "reference", id: "image-ref", reference },
+  ]);
   expect(parts).toHaveLength(1);
 });

@@ -58,12 +58,15 @@ export async function* hostTurn(
     throw error;
   } finally {
     if (!failed && (text || structured)) {
-      transcripts.set(target.key, [...withUser, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: text,
-        createdAt: new Date().toISOString(),
-      }]);
+      transcripts.set(target.key, [
+        ...withUser,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: text,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
     }
   }
 }

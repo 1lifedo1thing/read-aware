@@ -28,12 +28,7 @@ import {
   saveHumanReview,
   saveManualSession,
 } from "./server/review-store";
-import type {
-  CreateManualSessionInput,
-  HumanReviewInput,
-  ManualReviewSession,
-  ManualReviewTurn,
-} from "./src/reviews";
+import type { CreateManualSessionInput, HumanReviewInput, ManualReviewSession, ManualReviewTurn } from "./src/reviews";
 
 const REPO_ROOT = resolve(__dirname, "../../..");
 const EVAL_ROOTS = [join(REPO_ROOT, ".eval"), join(REPO_ROOT, "packages/agent/.eval")];
@@ -81,9 +76,7 @@ function liveProgress(directory: string): { runs: number; passed: number; failed
 function livenessOf(directory: string): "running" | "stale" {
   try {
     const candidates = [join(directory, "runs.jsonl"), directory];
-    const newest = Math.max(
-      ...candidates.filter((path) => existsSync(path)).map((path) => statSync(path).mtimeMs),
-    );
+    const newest = Math.max(...candidates.filter((path) => existsSync(path)).map((path) => statSync(path).mtimeMs));
     return Date.now() - newest > STALE_AFTER_MS ? "stale" : "running";
   } catch {
     return "stale";
@@ -110,8 +103,19 @@ function readReviewableRuns(directory: string): ReviewableRun[] {
   const records: ReviewableRun[] = [];
   for (const line of readFileSync(path, "utf8").split("\n")) {
     if (!line) continue;
-    try { const record = JSON.parse(line) as ReviewableRun; records.push({ id: record.id, status: record.status, error: record.error, hasCompletedOutput: record.output !== undefined, input: record.input, assessment: record.assessment }); }
-    catch { /* Live writer may be between chunks of the last row. */ }
+    try {
+      const record = JSON.parse(line) as ReviewableRun;
+      records.push({
+        id: record.id,
+        status: record.status,
+        error: record.error,
+        hasCompletedOutput: record.output !== undefined,
+        input: record.input,
+        assessment: record.assessment,
+      });
+    } catch {
+      /* Live writer may be between chunks of the last row. */
+    }
   }
   reviewRecordCache.set(path, { stamp, records });
   return records;
@@ -198,20 +202,10 @@ async function readRequestJson(req: import("node:http").IncomingMessage): Promis
   return JSON.parse(body);
 }
 
-const THINKING_LEVELS = new Set<ThinkingLevel>([
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-]);
+const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 
 function thinkingLevel(value: unknown): ThinkingLevel {
-  return typeof value === "string" && THINKING_LEVELS.has(value as ThinkingLevel)
-    ? (value as ThinkingLevel)
-    : "medium";
+  return typeof value === "string" && THINKING_LEVELS.has(value as ThinkingLevel) ? (value as ThinkingLevel) : "medium";
 }
 
 function evalDataPlugin(): Plugin {
@@ -249,14 +243,17 @@ function evalDataPlugin(): Plugin {
         for (const client of sseClients) client.write(`: ping\n\n`);
       }, 25_000);
       heartbeat.unref?.();
-      const sessionCleanup = setInterval(() => {
-        const cutoff = Date.now() - 30 * 60 * 1000;
-        for (const [id, session] of manualSessionHandles) {
-          if (session.touchedAt >= cutoff) continue;
-          session.handle.dispose();
-          manualSessionHandles.delete(id);
-        }
-      }, 5 * 60 * 1000);
+      const sessionCleanup = setInterval(
+        () => {
+          const cutoff = Date.now() - 30 * 60 * 1000;
+          for (const [id, session] of manualSessionHandles) {
+            if (session.touchedAt >= cutoff) continue;
+            session.handle.dispose();
+            manualSessionHandles.delete(id);
+          }
+        },
+        5 * 60 * 1000,
+      );
       sessionCleanup.unref?.();
       server.httpServer?.once("close", () => {
         clearInterval(heartbeat);
@@ -291,10 +288,7 @@ function evalDataPlugin(): Plugin {
                       }>;
                     }
                   >;
-                  evalSuiteGroups: Record<
-                    string,
-                    { id: string; description: string; suiteIds: string[] }
-                  >;
+                  evalSuiteGroups: Record<string, { id: string; description: string; suiteIds: string[] }>;
                 };
                 catalogCache = Object.entries(agent.evalSuiteGroups)
                   .flatMap(([, definition]) =>
@@ -346,9 +340,7 @@ function evalDataPlugin(): Plugin {
                   const manifest = readJson(join(directory, "manifest.json")) as
                     | { runId?: string; plan?: { suiteId?: string } }
                     | undefined;
-                  const summary = readJson(join(directory, "summary.json")) as
-                    | { generatedAt?: string }
-                    | undefined;
+                  const summary = readJson(join(directory, "summary.json")) as { generatedAt?: string } | undefined;
                   if (!manifest?.plan?.suiteId || !summary?.generatedAt) continue;
                   const known = latest.get(manifest.plan.suiteId);
                   if (!known || (known.generatedAt ?? "") < summary.generatedAt) {
@@ -384,7 +376,10 @@ function evalDataPlugin(): Plugin {
                     scenarioId: record.scenarioId,
                     status: verdict === "pending" ? "diagnostic" : verdict,
                     failedChecks:
-                      (reviews[`run:${record.id}`]?.notes ? [{ id: "primary-review", message: reviews[`run:${record.id}`]!.notes }] : undefined) ?? record.assessment?.checks
+                      (reviews[`run:${record.id}`]?.notes
+                        ? [{ id: "primary-review", message: reviews[`run:${record.id}`]!.notes }]
+                        : undefined) ??
+                      record.assessment?.checks
                         ?.filter((check) => !check.passed)
                         .map(({ id, message }) => ({ id, message })) ??
                       (record.error ? [{ id: "error", message: record.error.message }] : []),
@@ -438,9 +433,7 @@ function evalDataPlugin(): Plugin {
                   inheritSelection: boolean;
                 }) => Promise<ManualEvalSession>;
               };
-              const scenario = agent.evalSuites[suiteId]?.scenarios.find(
-                (entry) => entry.id === body.scenarioId,
-              );
+              const scenario = agent.evalSuites[suiteId]?.scenarios.find((entry) => entry.id === body.scenarioId);
               if (!scenario) return sendJson(res, { error: "scenario not found" }, 404);
               const metadata = variant.metadata ?? {};
               if (typeof metadata.provider !== "string") {
@@ -483,11 +476,7 @@ function evalDataPlugin(): Plugin {
             if (askSessionMatch && req.method === "POST") {
               const session = manualSessionHandles.get(askSessionMatch[1]!);
               if (!session) {
-                return sendJson(
-                  res,
-                  { error: "manual session expired; start a new session from this scenario" },
-                  410,
-                );
+                return sendJson(res, { error: "manual session expired; start a new session from this scenario" }, 410);
               }
               const body = (await readRequestJson(req)) as { question?: unknown };
               if (typeof body.question !== "string" || !body.question.trim()) {
@@ -548,9 +537,7 @@ function evalDataPlugin(): Plugin {
               const selectedRescore = rescores.some((entry) => entry.id === requestedRescore)
                 ? requestedRescore
                 : undefined;
-              const dataDirectory = selectedRescore
-                ? join(rescoreRoot, selectedRescore)
-                : directory;
+              const dataDirectory = selectedRescore ? join(rescoreRoot, selectedRescore) : directory;
               const summary = readJson(join(dataDirectory, "summary.json"));
               const rawRecords = existsSync(join(dataDirectory, "runs.jsonl"))
                 ? readFileSync(join(dataDirectory, "runs.jsonl"), "utf8")
@@ -575,7 +562,10 @@ function evalDataPlugin(): Plugin {
               }));
               return sendJson(res, {
                 manifest,
-                summary: summary && typeof summary === "object" ? { ...summary, quality: summarizeQuality(records as EvalRunRecord[], humanReviews) } : summary,
+                summary:
+                  summary && typeof summary === "object"
+                    ? { ...summary, quality: summarizeQuality(records as EvalRunRecord[], humanReviews) }
+                    : summary,
                 records,
                 status,
                 rescores,

@@ -9,10 +9,7 @@ import type { ComponentProps } from "react";
 import { useBookMarks } from "../hooks/useBookMarks";
 import { ReaderCompletionScreenView } from "./ReaderCompletionScreenView";
 
-type ReaderCompletionScreenProps = Omit<
-  ComponentProps<typeof ReaderCompletionScreenView>,
-  "marks" | "marksFailed"
->;
+type ReaderCompletionScreenProps = Omit<ComponentProps<typeof ReaderCompletionScreenView>, "marks" | "marksFailed">;
 
 export function ReaderCompletionScreen(props: ReaderCompletionScreenProps) {
   const { marks, failed } = useBookMarks(props.book.id);

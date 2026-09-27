@@ -4,21 +4,8 @@
  */
 
 import { useState, type ReactNode } from "react";
-import {
-  DEFAULT_CUSTOM_OPENAI_API,
-  type CustomOpenAIApi,
-} from "@read-aware/agent";
-import {
-  Accordion,
-  Button,
-  Caption,
-  Divider,
-  IconButton,
-  Select,
-  Stack,
-  TextField,
-  Toggle,
-} from "@read-aware/ui";
+import { DEFAULT_CUSTOM_OPENAI_API, type CustomOpenAIApi } from "@read-aware/agent";
+import { Accordion, Button, Caption, Divider, IconButton, Select, Stack, TextField, Toggle } from "@read-aware/ui";
 import { Eye, EyeSlash } from "@phosphor-icons/react";
 import { cn } from "@read-aware/ui/cn";
 import { Trans, useTranslation } from "../../../i18n";
@@ -79,39 +66,23 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
   const [apiKey, setApiKey] = useState(initialConfig?.apiKey ?? "");
   const [model, setModel] = useState(initialModel);
   const [fastModel, setFastModel] = useState(initialFastModel);
-  const [useSeparateFastModel, setUseSeparateFastModel] = useState(
-    initialUsesSeparateFastModel,
+  const [useSeparateFastModel, setUseSeparateFastModel] = useState(initialUsesSeparateFastModel);
+  const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel>(
+    initialConfig?.thinkingLevel ?? DEFAULT_THINKING_LEVEL,
   );
-  const [thinkingLevel, setThinkingLevel] =
-    useState<ThinkingLevel>(
-      initialConfig?.thinkingLevel ?? DEFAULT_THINKING_LEVEL,
-    );
-  const [fastThinkingLevel, setFastThinkingLevel] =
-    useState<ThinkingLevel>(
-      initialUsesSeparateFastModel
-        ? initialConfig?.fastThinkingLevel ?? DEFAULT_THINKING_LEVEL
-        : initialConfig?.thinkingLevel ?? DEFAULT_THINKING_LEVEL,
-    );
-  const [customBaseUrl, setCustomBaseUrl] = useState(
-    initialConfig?.customBaseUrl ?? "",
+  const [fastThinkingLevel, setFastThinkingLevel] = useState<ThinkingLevel>(
+    initialUsesSeparateFastModel
+      ? (initialConfig?.fastThinkingLevel ?? DEFAULT_THINKING_LEVEL)
+      : (initialConfig?.thinkingLevel ?? DEFAULT_THINKING_LEVEL),
   );
-  const [customApi, setCustomApi] = useState<CustomOpenAIApi>(
-    initialConfig?.customApi ?? DEFAULT_CUSTOM_OPENAI_API,
-  );
-  const [customSupportsThinking, setCustomSupportsThinking] = useState(
-    Boolean(initialConfig?.customSupportsThinking),
-  );
+  const [customBaseUrl, setCustomBaseUrl] = useState(initialConfig?.customBaseUrl ?? "");
+  const [customApi, setCustomApi] = useState<CustomOpenAIApi>(initialConfig?.customApi ?? DEFAULT_CUSTOM_OPENAI_API);
+  const [customSupportsThinking, setCustomSupportsThinking] = useState(Boolean(initialConfig?.customSupportsThinking));
   const [customMaxOutputTokens, setCustomMaxOutputTokens] = useState(
-    initialConfig?.customMaxOutputTokens
-      ? String(initialConfig.customMaxOutputTokens)
-      : "",
+    initialConfig?.customMaxOutputTokens ? String(initialConfig.customMaxOutputTokens) : "",
   );
-  const [openRouterSort, setOpenRouterSort] = useState<string>(
-    initialConfig?.openRouterRouting?.sort ?? "",
-  );
-  const [openRouterOrder, setOpenRouterOrder] = useState(
-    (initialConfig?.openRouterRouting?.order ?? []).join(", "),
-  );
+  const [openRouterSort, setOpenRouterSort] = useState<string>(initialConfig?.openRouterRouting?.sort ?? "");
+  const [openRouterOrder, setOpenRouterOrder] = useState((initialConfig?.openRouterRouting?.order ?? []).join(", "));
   const [openRouterAllowFallbacks, setOpenRouterAllowFallbacks] = useState(
     initialConfig?.openRouterRouting?.allowFallbacks !== false,
   );
@@ -126,39 +97,28 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
   const sync = useSyncConnection();
   const subscriptionInfo = useSyncAccountInfo(sync.connected && provider === "readaware");
   const subscriptionCredits = subscriptionInfo?.limits?.aiMonthlyCredits;
-  const subscriptionReady =
-    sync.connected && (subscriptionInfo === null || subscriptionCredits !== 0);
+  const subscriptionReady = sync.connected && (subscriptionInfo === null || subscriptionCredits !== 0);
 
   const parsedCustomMaxOutputTokens = parsePositiveInteger(customMaxOutputTokens);
   const hasInvalidCustomMaxOutputTokens =
-    provider === "custom" &&
-    Boolean(customMaxOutputTokens.trim()) &&
-    parsedCustomMaxOutputTokens === undefined;
-  const hasInvalidSeparateFastModel =
-    useSeparateFastModel &&
-    (!fastModel.trim() || fastModel.trim() === model.trim());
+    provider === "custom" && Boolean(customMaxOutputTokens.trim()) && parsedCustomMaxOutputTokens === undefined;
+  const hasInvalidSeparateFastModel = useSeparateFastModel && (!fastModel.trim() || fastModel.trim() === model.trim());
   const reactiveConfig: AIConfig = {
     provider,
     apiKey: apiKey.trim(),
     model: model.trim(),
     fastModel: useSeparateFastModel ? fastModel.trim() || undefined : undefined,
     thinkingLevel,
-    fastThinkingLevel: useSeparateFastModel
-      ? fastThinkingLevel
-      : thinkingLevel,
+    fastThinkingLevel: useSeparateFastModel ? fastThinkingLevel : thinkingLevel,
     customBaseUrl: provider === "custom" ? customBaseUrl.trim() : undefined,
     customApi: provider === "custom" ? customApi : undefined,
-    customSupportsThinking:
-      provider === "custom" ? customSupportsThinking : undefined,
-    customMaxOutputTokens:
-      provider === "custom" ? parsedCustomMaxOutputTokens : undefined,
+    customSupportsThinking: provider === "custom" ? customSupportsThinking : undefined,
+    customMaxOutputTokens: provider === "custom" ? parsedCustomMaxOutputTokens : undefined,
     openRouterRouting:
       provider === "openrouter"
         ? {
             sort:
-              openRouterSort === "price" ||
-              openRouterSort === "throughput" ||
-              openRouterSort === "latency"
+              openRouterSort === "price" || openRouterSort === "throughput" || openRouterSort === "latency"
                 ? openRouterSort
                 : undefined,
             order: openRouterOrder
@@ -173,8 +133,7 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
     value: reactiveConfig,
     revision: saveRevision,
     persist: saveAIConfig,
-    enabled:
-      !hasInvalidCustomMaxOutputTokens && !hasInvalidSeparateFastModel,
+    enabled: !hasInvalidCustomMaxOutputTokens && !hasInvalidSeparateFastModel,
   });
 
   const markConfigChanged = () => {
@@ -199,19 +158,11 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
     setFastModel(remembered.fastModel);
     setUseSeparateFastModel(usesSeparateFastModel);
     setThinkingLevel(remembered.thinkingLevel);
-    setFastThinkingLevel(
-      usesSeparateFastModel
-        ? remembered.fastThinkingLevel
-        : remembered.thinkingLevel,
-    );
+    setFastThinkingLevel(usesSeparateFastModel ? remembered.fastThinkingLevel : remembered.thinkingLevel);
     setCustomBaseUrl(remembered.customBaseUrl);
     setCustomApi(remembered.customApi);
     setCustomSupportsThinking(remembered.customSupportsThinking);
-    setCustomMaxOutputTokens(
-      remembered.customMaxOutputTokens
-        ? String(remembered.customMaxOutputTokens)
-        : "",
-    );
+    setCustomMaxOutputTokens(remembered.customMaxOutputTokens ? String(remembered.customMaxOutputTokens) : "");
     setOpenRouterSort(remembered.openRouterRouting?.sort ?? "");
     setOpenRouterOrder((remembered.openRouterRouting?.order ?? []).join(", "));
     setOpenRouterAllowFallbacks(remembered.openRouterRouting?.allowFallbacks !== false);
@@ -245,8 +196,10 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
   }));
 
   const catalog = useModelCatalog(provider);
-  const modelOptions = provider === "readaware" ? SUBSCRIPTION_MODELS :
-    catalog.models.map((entry) => ({ label: entry.name, value: entry.id }));
+  const modelOptions =
+    provider === "readaware"
+      ? SUBSCRIPTION_MODELS
+      : catalog.models.map((entry) => ({ label: entry.name, value: entry.id }));
   const hasModelCatalog = provider === "readaware" || isCatalogProvider(provider);
   const primaryModelOptions = includeSelectedModel(modelOptions, model);
   const fastModelOptions = includeSelectedModel(modelOptions, fastModel);
@@ -271,7 +224,11 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
     (provider === "custom" && !customBaseUrl.trim()) ||
     hasInvalidCustomMaxOutputTokens ||
     hasInvalidSeparateFastModel;
-  const { isTesting, testResult, handleTest, resetTest } = useAIConnectionTest(reactiveConfig, !isIncomplete, flushConfig);
+  const { isTesting, testResult, handleTest, resetTest } = useAIConnectionTest(
+    reactiveConfig,
+    !isIncomplete,
+    flushConfig,
+  );
 
   const handleModelChange = (value: string) => {
     setModel(value);
@@ -281,10 +238,9 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
 
   const handleSeparateFastModelChange = (enabled: boolean) => {
     setUseSeparateFastModel(enabled);
-    const distinctFastModel = [
-      fastModel,
-      ...modelOptions.map((option) => option.value),
-    ].find((candidate) => candidate && candidate !== model);
+    const distinctFastModel = [fastModel, ...modelOptions.map((option) => option.value)].find(
+      (candidate) => candidate && candidate !== model,
+    );
     setFastModel(enabled ? distinctFastModel || "" : model);
     if (!enabled) setFastThinkingLevel(thinkingLevel);
     markConfigChanged();
@@ -340,9 +296,7 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
               {t("aiConfig.readaware.description")}
             </Caption>
             {!sync.connected ? (
-              <p className="text-xs leading-relaxed text-fg-muted">
-                {t("aiConfig.readaware.notConnected")}
-              </p>
+              <p className="text-xs leading-relaxed text-fg-muted">{t("aiConfig.readaware.notConnected")}</p>
             ) : subscriptionInfo ? (
               <p className="text-xs leading-relaxed text-fg-muted">
                 {t("dataSync.connected.plan", {
@@ -441,11 +395,7 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
 
       <Stack gap="sm">
         <div className="flex gap-3">
-          <Button
-            ref={connectionTestRef}
-            onClick={() => void handleTest()}
-            disabled={isIncomplete || isTesting}
-          >
+          <Button ref={connectionTestRef} onClick={() => void handleTest()} disabled={isIncomplete || isTesting}>
             {isTesting ? t("aiConfig.testing") : t("aiConfig.test")}
           </Button>
           {isConfigured && (
@@ -495,15 +445,9 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
                         markConfigChanged();
                       }}
                       onBlur={flushConfig}
-                      placeholder={t(
-                        "aiConfig.customMaxOutputTokens.placeholder",
-                      )}
+                      placeholder={t("aiConfig.customMaxOutputTokens.placeholder")}
                       helperText={t("aiConfig.customMaxOutputTokens.helper")}
-                      error={
-                        hasInvalidCustomMaxOutputTokens
-                          ? t("aiConfig.customMaxOutputTokens.error")
-                          : undefined
-                      }
+                      error={hasInvalidCustomMaxOutputTokens ? t("aiConfig.customMaxOutputTokens.error") : undefined}
                     />
                   </>
                 )}

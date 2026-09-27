@@ -25,7 +25,10 @@ export function captureReviewEvidence(
   const scopeBook = scenario.scope.kind === "book" ? scenario.scope.bookId : undefined;
   const visit = (value: unknown, bookId = scopeBook): void => {
     if (!value || typeof value !== "object") return;
-    if (Array.isArray(value)) { for (const child of value) visit(child, bookId); return; }
+    if (Array.isArray(value)) {
+      for (const child of value) visit(child, bookId);
+      return;
+    }
     const entry = value as Record<string, unknown>;
     const id = typeof entry.bookId === "string" ? entry.bookId : bookId;
     add(id, entry.chapterIndex);
@@ -36,23 +39,39 @@ export function captureReviewEvidence(
     if (tool.name === "get_toc") continue; // TOC indexes do not mean every chapter was read.
     visit(tool.args);
     if (tool.output) {
-      try { visit(JSON.parse(tool.output)); } catch { /* Plain-text receipts are retained in tools. */ }
+      try {
+        visit(JSON.parse(tool.output));
+      } catch {
+        /* Plain-text receipts are retained in tools. */
+      }
     }
   }
   let remaining = 180_000;
   return toJsonValue({
     scope: scenario.scope,
     books: stores.books,
-    coordinatePolicy: "chapterIndex is a zero-based fixture retrieval coordinate, not a printed chapter number. Legacy EPUB fixtures group by spine file; use original titles/hrefs and source headings, never infer printed numbers from indexes.",
+    coordinatePolicy:
+      "chapterIndex is a zero-based fixture retrieval coordinate, not a printed chapter number. Legacy EPUB fixtures group by spine file; use original titles/hrefs and source headings, never infer printed numbers from indexes.",
     sources: [...stores.chapters].map(([bookId, chapters]) => ({
       bookId,
       chapters: chapters.map((chapter, chapterIndex) => {
         const included = touched.get(bookId)?.has(chapterIndex) ?? false;
         const text = included ? chapter.text.slice(0, Math.max(0, remaining)) : undefined;
         if (text) remaining -= text.length;
-        return { chapterIndex, title: chapter.title, hrefs: chapter.hrefs, totalChars: chapter.text.length,
-          ...(text === undefined ? { textOmitted: "Not touched; available in the local fixture" }
-            : { text, ...(text.length < chapter.text.length ? { textOmitted: `Source continues after offset ${text.length}; consult the local fixture` } : {}) }) };
+        return {
+          chapterIndex,
+          title: chapter.title,
+          hrefs: chapter.hrefs,
+          totalChars: chapter.text.length,
+          ...(text === undefined
+            ? { textOmitted: "Not touched; available in the local fixture" }
+            : {
+                text,
+                ...(text.length < chapter.text.length
+                  ? { textOmitted: `Source continues after offset ${text.length}; consult the local fixture` }
+                  : {}),
+              }),
+        };
       }),
     })),
     ...(initialState === undefined ? {} : { initialState }),

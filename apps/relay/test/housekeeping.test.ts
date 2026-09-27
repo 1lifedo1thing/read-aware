@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  cleanupRelayStorage,
-  RATE_WINDOW_RETENTION_MS,
-} from "../src/housekeeping";
+import { cleanupRelayStorage, RATE_WINDOW_RETENTION_MS } from "../src/housekeeping";
 
 describe("relay housekeeping", () => {
   test("expires auth artifacts and rate windows from the scheduled instant", async () => {

@@ -11,9 +11,11 @@ export function useExternalLink(onOpened?: () => void) {
   const { toast } = useToast();
   return (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    void openExternalUrl(event.currentTarget.href).then(onOpened).catch(error => {
-      log.error("Could not open link", error);
-      toast({ variant: "destructive", description: describeError(error).body });
-    });
+    void openExternalUrl(event.currentTarget.href)
+      .then(onOpened)
+      .catch((error) => {
+        log.error("Could not open link", error);
+        toast({ variant: "destructive", description: describeError(error).body });
+      });
   };
 }

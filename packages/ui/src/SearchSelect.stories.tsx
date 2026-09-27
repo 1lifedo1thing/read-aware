@@ -17,7 +17,13 @@ const meta = {
     searchLabel: "Search options",
     emptyText: "No matches",
   },
-  decorators: [(Story) => <div className="max-w-sm"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="max-w-sm">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof SearchSelect>;
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  buildSpeechRequest,
-  buildVoiceListRequests,
-  normalizeSettings,
-  parseVoiceList,
-} from "../src/vendors";
+import { buildSpeechRequest, buildVoiceListRequests, normalizeSettings, parseVoiceList } from "../src/vendors";
 
 describe("normalizeSettings", () => {
   test("defends unknown vendors and non-string fields", () => {
@@ -59,9 +54,7 @@ describe("normalizeSettings", () => {
     });
     // A written per-vendor key wins even when empty — the first edit through
     // the new form persists every declared field and retires the legacy keys.
-    expect(
-      normalizeSettings({ ...legacy, customVoice: "", customModel: "" }).voiceId,
-    ).toBe("");
+    expect(normalizeSettings({ ...legacy, customVoice: "", customModel: "" }).voiceId).toBe("");
   });
 });
 
@@ -90,11 +83,7 @@ describe("buildSpeechRequest", () => {
 
   test("openai: standard speech shape with defaults", () => {
     const body = JSON.parse(
-      buildSpeechRequest(
-        { vendor: "openai", voiceId: "", model: "", endpoint: "" },
-        "KEY",
-        "Hi.",
-      ).body,
+      buildSpeechRequest({ vendor: "openai", voiceId: "", model: "", endpoint: "" }, "KEY", "Hi.").body,
     );
     expect(body).toEqual({
       model: "tts-1",
@@ -105,13 +94,9 @@ describe("buildSpeechRequest", () => {
   });
 
   test("custom: requires an endpoint, bearer only when a key exists", () => {
-    expect(() =>
-      buildSpeechRequest(
-        { vendor: "custom", voiceId: "", model: "", endpoint: "" },
-        null,
-        "Hi.",
-      ),
-    ).toThrow(/endpoint/);
+    expect(() => buildSpeechRequest({ vendor: "custom", voiceId: "", model: "", endpoint: "" }, null, "Hi.")).toThrow(
+      /endpoint/,
+    );
     const request = buildSpeechRequest(
       { vendor: "custom", voiceId: "v", model: "kokoro", endpoint: "http://127.0.0.1:8880/v1/audio/speech" },
       null,
@@ -137,9 +122,7 @@ describe("buildVoiceListRequests", () => {
         headers: { "xi-api-key": "KEY" },
       },
     ]);
-    expect(
-      buildVoiceListRequests("fishaudio", {}, "KEY")[0]?.headers.authorization,
-    ).toBe("Bearer KEY");
+    expect(buildVoiceListRequests("fishaudio", {}, "KEY")[0]?.headers.authorization).toBe("Bearer KEY");
   });
 
   test("openai has no listing — its voices are declared statically", () => {
@@ -147,30 +130,16 @@ describe("buildVoiceListRequests", () => {
   });
 
   test("custom probes both voices routes around an …/audio/speech URL", () => {
-    expect(
-      buildVoiceListRequests(
-        "custom",
-        { endpoint: "http://127.0.0.1:5050/v1/audio/speech" },
-        null,
-      ),
-    ).toEqual([
+    expect(buildVoiceListRequests("custom", { endpoint: "http://127.0.0.1:5050/v1/audio/speech" }, null)).toEqual([
       { url: "http://127.0.0.1:5050/v1/audio/voices", headers: {} },
       { url: "http://127.0.0.1:5050/v1/voices", headers: {} },
     ]);
-    expect(
-      buildVoiceListRequests(
-        "custom",
-        { endpoint: "https://tts.local/v1/audio/speech?fmt=mp3" },
-        "KEY",
-      ),
-    ).toEqual([
+    expect(buildVoiceListRequests("custom", { endpoint: "https://tts.local/v1/audio/speech?fmt=mp3" }, "KEY")).toEqual([
       { url: "https://tts.local/v1/audio/voices", headers: { authorization: "Bearer KEY" } },
       { url: "https://tts.local/v1/voices", headers: { authorization: "Bearer KEY" } },
     ]);
     // Off-convention endpoints cannot be probed — no requests, text fallback.
-    expect(
-      buildVoiceListRequests("custom", { endpoint: "https://tts.local/speak" }, null),
-    ).toEqual([]);
+    expect(buildVoiceListRequests("custom", { endpoint: "https://tts.local/speak" }, null)).toEqual([]);
     expect(buildVoiceListRequests("custom", {}, null)).toEqual([]);
   });
 });
@@ -198,9 +167,9 @@ describe("parseVoiceList", () => {
   });
 
   test("fishaudio model pages use _id and title", () => {
-    expect(
-      parseVoiceList({ total: 1, items: [{ _id: "m-1", title: "My Voice" }] }),
-    ).toEqual([{ value: "m-1", label: "My Voice" }]);
+    expect(parseVoiceList({ total: 1, items: [{ _id: "m-1", title: "My Voice" }] })).toEqual([
+      { value: "m-1", label: "My Voice" },
+    ]);
   });
 
   test("edge-tts full catalog entries carry only a name", () => {

@@ -170,9 +170,7 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
       observeState: observeSaved,
       evaluate: (observation) => {
         const saved =
-          observation.state &&
-          typeof observation.state === "object" &&
-          !Array.isArray(observation.state)
+          observation.state && typeof observation.state === "object" && !Array.isArray(observation.state)
             ? ((observation.state as { saved?: unknown[] }).saved ?? [])
             : [];
         return combineAssessments(
@@ -198,8 +196,7 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "note-request-routes-to-annotation",
-      description:
-        "读者要求“记个笔记”时走 create_annotation（读者可见的笔记），而非 remember（不可见记忆）。",
+      description: "读者要求“记个笔记”时走 create_annotation（读者可见的笔记），而非 remember（不可见记忆）。",
       tags: ["state", "book"],
       scope: { kind: "book", bookId: MEMORY_BOOK_ID },
       seed: {
@@ -222,8 +219,7 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
         tools: { required: ["create_annotation"], forbidden: ["remember"], noErrors: true },
       },
       criteria: {
-        routing:
-          "a requested note must land in the book's annotation list (reader-visible); memory is invisible",
+        routing: "a requested note must land in the book's annotation list (reader-visible); memory is invisible",
       },
       observeState: ({ stores }) => ({ notes: stores.annotations.filter((a) => a.kind === "note") }),
       evaluate: (observation) => {
@@ -234,9 +230,7 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
         const notes = Array.isArray(state.notes) ? state.notes : [];
         const captured = notes.some(
           (note) =>
-            typeof note.body === "string" &&
-            /灯塔|lighthouse/i.test(note.body) &&
-            /选择|choice/i.test(note.body),
+            typeof note.body === "string" && /灯塔|lighthouse/i.test(note.body) && /选择|choice/i.test(note.body),
         );
         return combineAssessments(
           evaluateAgentTrace(observation, {
@@ -258,8 +252,7 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "book-scope-memory-isolation",
-      description:
-        "对照：A 书的记忆不串味到 B 书线程——回答不得复述 A 书的洞察，也不得凭空宣称记得。",
+      description: "对照：A 书的记忆不串味到 B 书线程——回答不得复述 A 书的洞察，也不得凭空宣称记得。",
       tags: ["memory", "control", "book"],
       scope: { kind: "book", bookId: OTHER_BOOK_ID },
       seed: {
@@ -304,8 +297,7 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "global-thread-book-memory-search",
-      description:
-        "全局线程用 search_memory 的 bookId 参数取回指定书的低重要性记忆，而非靠开场白注入。",
+      description: "全局线程用 search_memory 的 bookId 参数取回指定书的低重要性记忆，而非靠开场白注入。",
       tags: ["memory", "retrieval", "global"],
       scope: { kind: "global", threadId: "memory-global-book-search" },
       seed: {
@@ -338,31 +330,50 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
       expectation: {
         tools: { required: ["search_memory"], noErrors: true },
       },
-      evaluate: observation => combineAssessments(
-        evaluateAgentTrace(observation, { tools: { required: ["search_memory"], noErrors: true } }),
-        assessmentFromChecks([{
-          id: "memory.scoped-insight", category: "tool",
-          passed: observation.tools.some(tool => {
-            if (tool.name !== "search_memory" || tool.isError || !tool.args || typeof tool.args !== "object"
-              || Array.isArray(tool.args) || tool.args.bookId !== MEMORY_BOOK_ID) return false;
-            try {
-              const result = JSON.parse(tool.output ?? "null");
-              return Array.isArray(result?.items) && result.items.some((item: { id?: string; scope?: string }) =>
-                item.id === "memory-book-lighthouse" && item.scope === `book:${MEMORY_BOOK_ID}`);
-            } catch { return false; }
-          }),
-          message: "the requested book's stored insight was retrieved through its scoped memory query",
-        }, {
-          id: "answer.translated-insight", category: "answer",
-          passed: /lighthouse|灯塔/iu.test(observation.answer) && /attention|注意|专注/iu.test(observation.answer),
-          message: "the answer conveys the lighthouse/attention insight in the reader's language",
-        }]),
-      ),
+      evaluate: (observation) =>
+        combineAssessments(
+          evaluateAgentTrace(observation, { tools: { required: ["search_memory"], noErrors: true } }),
+          assessmentFromChecks([
+            {
+              id: "memory.scoped-insight",
+              category: "tool",
+              passed: observation.tools.some((tool) => {
+                if (
+                  tool.name !== "search_memory" ||
+                  tool.isError ||
+                  !tool.args ||
+                  typeof tool.args !== "object" ||
+                  Array.isArray(tool.args) ||
+                  tool.args.bookId !== MEMORY_BOOK_ID
+                )
+                  return false;
+                try {
+                  const result = JSON.parse(tool.output ?? "null");
+                  return (
+                    Array.isArray(result?.items) &&
+                    result.items.some(
+                      (item: { id?: string; scope?: string }) =>
+                        item.id === "memory-book-lighthouse" && item.scope === `book:${MEMORY_BOOK_ID}`,
+                    )
+                  );
+                } catch {
+                  return false;
+                }
+              }),
+              message: "the requested book's stored insight was retrieved through its scoped memory query",
+            },
+            {
+              id: "answer.translated-insight",
+              category: "answer",
+              passed: /lighthouse|灯塔/iu.test(observation.answer) && /attention|注意|专注/iu.test(observation.answer),
+              message: "the answer conveys the lighthouse/attention insight in the reader's language",
+            },
+          ]),
+        ),
     }),
     defineAgentEvalScenario({
       id: "first-session-onboarding-questions",
-      description:
-        "全局线程首次会话且画像为空：通过宿主访谈表单了解读者，而不是长篇独白。",
+      description: "全局线程首次会话且画像为空：通过宿主访谈表单了解读者，而不是长篇独白。",
       tags: ["interaction", "memory", "global"],
       scope: { kind: "global", threadId: "memory-onboarding" },
       // 刻意不 seed profile：空画像 + 首条消息 = 系统提示的访谈模式

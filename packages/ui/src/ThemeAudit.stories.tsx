@@ -65,8 +65,8 @@ export const AllControls: Story = {
       <header className="space-y-2">
         <Display size="5xl">Theme Audit</Display>
         <Body>
-          Every control rendered on the token-driven canvas. Toggle the theme in the toolbar to
-          confirm nothing disappears against the background.
+          Every control rendered on the token-driven canvas. Toggle the theme in the toolbar to confirm nothing
+          disappears against the background.
         </Body>
         <Caption>Caption text — the quietest readable tier.</Caption>
       </header>
@@ -145,8 +145,12 @@ export const AllControls: Story = {
       <Section title="Feedback">
         <div className="w-full space-y-3">
           <Alert title="Default">Neutral informational message.</Alert>
-          <Alert variant="success" title="Success">It worked.</Alert>
-          <Alert variant="destructive" title="Error">Something went wrong.</Alert>
+          <Alert variant="success" title="Success">
+            It worked.
+          </Alert>
+          <Alert variant="destructive" title="Error">
+            Something went wrong.
+          </Alert>
         </div>
       </Section>
 

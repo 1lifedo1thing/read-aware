@@ -24,8 +24,7 @@ const note: Note = {
   type: "note",
   cfiRange: "epubcfi(/6/8!/4/2/22,/1:12,/1:70)",
   text: "Habits are the compound interest of self-improvement.",
-  content:
-    "Compare with Ericsson's deliberate-practice framing — compounding needs feedback, not just repetition.",
+  content: "Compare with Ericsson's deliberate-practice framing — compounding needs feedback, not just repetition.",
 };
 
 // ask = a question trace: `text` is the question itself, rendered unquoted.

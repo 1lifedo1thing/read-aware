@@ -15,18 +15,30 @@ export function useChatImages() {
   useEffect(() => () => active.current?.abort(), []);
   async function add(files: File[]) {
     if (active.current) return;
-    const controller = new AbortController(); active.current = controller; setLoading(true);
+    const controller = new AbortController();
+    active.current = controller;
+    setLoading(true);
     try {
-      if (images.length + files.length > MODEL_IMAGES_MAX_COUNT) throw new AppError("ai/image-budget-exceeded", "At most four images per message");
+      if (images.length + files.length > MODEL_IMAGES_MAX_COUNT)
+        throw new AppError("ai/image-budget-exceeded", "At most four images per message");
       const prepared: ChatImageAttachment[] = [];
       for (const file of files) prepared.push(await storeChatImage(file, controller.signal));
-      if (!controller.signal.aborted) setImages(current => [...current, ...prepared]);
+      if (!controller.signal.aborted) setImages((current) => [...current, ...prepared]);
     } catch (error) {
-      if (!controller.signal.aborted) { log.warn("Image attachment failed", error); toast({ variant: "destructive", description: describeError(error).body }); }
+      if (!controller.signal.aborted) {
+        log.warn("Image attachment failed", error);
+        toast({ variant: "destructive", description: describeError(error).body });
+      }
     } finally {
       active.current = null;
       if (!controller.signal.aborted) setLoading(false);
     }
   }
-  return { images, loading, add, remove: (index: number) => setImages(images => images.filter((_, i) => i !== index)), clear: () => setImages([]) };
+  return {
+    images,
+    loading,
+    add,
+    remove: (index: number) => setImages((images) => images.filter((_, i) => i !== index)),
+    clear: () => setImages([]),
+  };
 }

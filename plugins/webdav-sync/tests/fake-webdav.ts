@@ -61,11 +61,7 @@ export function fakeWebdavServer(): FakeWebdav {
       }
 
       if (method === "PUT") {
-        if (
-          headers.get("if-none-match") === "*" &&
-          !server.ignoreIfNoneMatch &&
-          files.has(path)
-        ) {
+        if (headers.get("if-none-match") === "*" && !server.ignoreIfNoneMatch && files.has(path)) {
           return new Response(null, { status: 412 });
         }
         files.set(path, await bodyBytes(init.body));
@@ -92,9 +88,7 @@ export function fakeWebdavServer(): FakeWebdav {
           path === "" ||
           [...files.keys(), ...collections].some((entry) => entry.startsWith(`${path}/`));
         if (!exists) return new Response(null, { status: 404 });
-        const entries: Array<{ path: string; collection: boolean }> = [
-          { path, collection: true },
-        ];
+        const entries: Array<{ path: string; collection: boolean }> = [{ path, collection: true }];
         if (depth === "1") {
           const seen = new Set<string>();
           const childOf = (candidate: string): string | null => {

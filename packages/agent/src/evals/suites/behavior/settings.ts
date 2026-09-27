@@ -5,11 +5,7 @@ import type { AgentEvalObservation, EvalAssessment, EvalSuite } from "../../type
 
 const SETTINGS_BOOK_ID = "eval-settings-book" as Id;
 
-function stateCheck(
-  observation: AgentEvalObservation,
-  path: string,
-  expected: string | boolean,
-): EvalAssessment {
+function stateCheck(observation: AgentEvalObservation, path: string, expected: string | boolean): EvalAssessment {
   const state =
     observation.state && typeof observation.state === "object" && !Array.isArray(observation.state)
       ? observation.state
@@ -20,10 +16,7 @@ function stateCheck(
       id: `state.${path}`,
       category: "state",
       passed: actual === expected,
-      message:
-        actual === expected
-          ? `${path} persisted as requested`
-          : `${path} did not persist the requested value`,
+      message: actual === expected ? `${path} persisted as requested` : `${path} did not persist the requested value`,
       expected,
       actual,
     },
@@ -33,9 +26,7 @@ function stateCheck(
 function settingValue(path: string) {
   return ({ stores }: Parameters<NonNullable<AgentEvalScenario["observeState"]>>[0]) =>
     Object.fromEntries(
-      stores.settings.settings
-        .filter((setting) => setting.path === path)
-        .map((setting) => [path, setting.value]),
+      stores.settings.settings.filter((setting) => setting.path === path).map((setting) => [path, setting.value]),
     );
 }
 
@@ -94,9 +85,12 @@ export const settingsEvalSuite: EvalSuite<AgentEvalScenario> = {
       criteria: { setting: "reading.theme", target: "book", expected: "dark" },
       observeState: async ({ deps }) => {
         const read = async (target: { kind: "global" } | { kind: "book"; bookId: string }) =>
-          (await deps.settings.getSettings({ target })).settings.find(s => s.path === "reading.theme")?.value;
-        return { "reading.theme": await read({ kind: "book", bookId: SETTINGS_BOOK_ID }),
-          "global.theme": await read({ kind: "global" }), "otherBook.theme": await read({ kind: "book", bookId: "other-book" }) };
+          (await deps.settings.getSettings({ target })).settings.find((s) => s.path === "reading.theme")?.value;
+        return {
+          "reading.theme": await read({ kind: "book", bookId: SETTINGS_BOOK_ID }),
+          "global.theme": await read({ kind: "global" }),
+          "otherBook.theme": await read({ kind: "book", bookId: "other-book" }),
+        };
       },
       evaluate: (observation) =>
         combineAssessments(

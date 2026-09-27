@@ -65,8 +65,7 @@ const CONTENT_LINE_HEIGHT: Record<ReaderLineSpacing, string> = {
  * default (`medium`, 0.875rem) — following changes nothing until you move the
  * reading size, which is what "follow" should feel like on first run.
  */
-const FOLLOW_RATIO =
-  CONTENT_FONT_SIZE_REM.medium / readerFontSizeRem(DEFAULT_READER_SETTINGS.fontSize);
+const FOLLOW_RATIO = CONTENT_FONT_SIZE_REM.medium / readerFontSizeRem(DEFAULT_READER_SETTINGS.fontSize);
 
 /** Clamp for the followed size, so an extreme book size stays usable in chrome. */
 const FOLLOW_MIN_REM = CONTENT_FONT_SIZE_REM["x-small"];
@@ -109,9 +108,7 @@ function normalizeLineSpacing(value: unknown): ReaderLineSpacing {
 
 function normalizeFontFamily(value: unknown): ReaderFontFamily | null {
   return typeof value === "string" &&
-    (value.startsWith("curated:") ||
-      value.startsWith("system:") ||
-      value.startsWith("plugin:"))
+    (value.startsWith("curated:") || value.startsWith("system:") || value.startsWith("plugin:"))
     ? (value as ReaderFontFamily)
     : null;
 }
@@ -191,10 +188,7 @@ export const CONTENT_TYPOGRAPHY_VARS = {
  * A null family removes the property rather than writing a fallback, so the
  * `:root` default in `index.css` — the app's own sans — takes over.
  */
-export function applyContentTypography(
-  root: HTMLElement,
-  resolved: ResolvedContentTypography,
-): void {
+export function applyContentTypography(root: HTMLElement, resolved: ResolvedContentTypography): void {
   if (resolved.fontFamily) {
     root.style.setProperty(CONTENT_TYPOGRAPHY_VARS.fontFamily, resolved.fontFamily);
   } else {

@@ -4,21 +4,24 @@ import { getMetadata } from "../foliate-js/src/epub-metadata.js";
 import { makeEPUBFixture } from "./fixtures/foliate-epub.js";
 import { withDom } from "./helpers/foliate-dom.js";
 
-const packageDocument = (metadata: string) => new DOMParser().parseFromString(`
+const packageDocument = (metadata: string) =>
+  new DOMParser().parseFromString(
+    `
   <package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/"
     xml:lang="en" unique-identifier="uid"><metadata>${metadata}</metadata></package>
-`, "application/xml");
+`,
+    "application/xml",
+  );
 
-test.each(["Object.groupBy", "Map.groupBy", "both"] as const)(
-  "EPUB metadata and chapters load without %s",
-  missing => withDom(async () => {
-    const targets = missing === "both" ? [Object, Map]
-      : missing === "Object.groupBy" ? [Object] : [Map];
-    const descriptors = targets.map(target => [target, Object.getOwnPropertyDescriptor(target, "groupBy")] as const);
+test.each(["Object.groupBy", "Map.groupBy", "both"] as const)("EPUB metadata and chapters load without %s", (missing) =>
+  withDom(async () => {
+    const targets = missing === "both" ? [Object, Map] : missing === "Object.groupBy" ? [Object] : [Map];
+    const descriptors = targets.map((target) => [target, Object.getOwnPropertyDescriptor(target, "groupBy")] as const);
     try {
       for (const target of targets) Object.defineProperty(target, "groupBy", { value: undefined, configurable: true });
 
-      const { metadata, rendition } = getMetadata(packageDocument(`
+      const { metadata, rendition } = getMetadata(
+        packageDocument(`
         <dc:identifier id="uid">compatibility-id</dc:identifier>
         <dc:title id="subtitle">Subtitle</dc:title>
         <dc:title id="title">Main Title</dc:title>
@@ -37,23 +40,29 @@ test.each(["Object.groupBy", "Map.groupBy", "both"] as const)(
         <meta property="dcterms:modified">2026-09-07T00:00:00Z</meta>
         <meta property="rendition:layout">reflowable</meta>
         <meta name="calibre:series" content="Legacy Series"/>
-      `));
+      `),
+      );
       expect(metadata.identifier).toBe("compatibility-id");
       expect(metadata.title).toBe("Main Title");
       expect(metadata.subtitle).toBe("Subtitle");
       expect(metadata.author).toEqual(["Ada Writer", "Second Writer"]);
       expect(metadata.translator).toEqual({ name: "Translator", role: "trl" });
       expect(metadata.belongsTo).toEqual({
-        series: [{ name: "First Series", position: "2.2.1" }, { name: "Second Series", position: undefined }],
+        series: [
+          { name: "First Series", position: "2.2.1" },
+          { name: "Second Series", position: undefined },
+        ],
         collection: { name: "Collection", position: "4" },
       });
       expect(metadata.modified).toBe("2026-09-07T00:00:00Z");
       expect(rendition.layout).toBe("reflowable");
 
-      const legacy = getMetadata(packageDocument(`
+      const legacy = getMetadata(
+        packageDocument(`
         <meta name="calibre:series" content="Legacy Series"/>
         <meta name="calibre:series_index" content="1.5"/>
-      `));
+      `),
+      );
       expect(legacy.metadata.belongsTo?.series).toEqual({ name: "Legacy Series", position: 1.5 });
       const empty = getMetadata(packageDocument(""));
       expect(empty.metadata.title).toBeUndefined();

@@ -10,23 +10,24 @@ import { modelReadingPrompt, validateModelReadingContext } from "./model-reading
 import { readingContextCall, type ReadingContextPolicy } from "./reading-context-policy";
 import { inferenceReceipt } from "./inference-receipt";
 
-export type OneShotInput = InferenceSourceTracking & InferenceBudgetOptions & {
-  prompt: string;
-  /** Host-decoded bounded image inputs; never raw plugin URLs. */
-  images?: import("@read-aware/core").ModelImageInput[];
-  system?: string;
-  model?: ModelRole;
-  readingContext?: ModelReadingContext;
-  schema?: Record<string, unknown>;
-  /** A returned promise paces the stream: the next delta waits for it. */
-  onText?: (delta: string) => unknown;
-  signal?: AbortSignal;
-  /** Requested output cap for each attempt, not a total cost/token budget. */
-  maxOutputTokens?: number;
-  /** Host-only terminal attempt metadata, including late provider settlement after cancellation.
-   * Never carries generated text. The callback must not throw. */
-  onAttempt?: (receipt: InferenceAttemptReceipt) => void;
-};
+export type OneShotInput = InferenceSourceTracking &
+  InferenceBudgetOptions & {
+    prompt: string;
+    /** Host-decoded bounded image inputs; never raw plugin URLs. */
+    images?: import("@read-aware/core").ModelImageInput[];
+    system?: string;
+    model?: ModelRole;
+    readingContext?: ModelReadingContext;
+    schema?: Record<string, unknown>;
+    /** A returned promise paces the stream: the next delta waits for it. */
+    onText?: (delta: string) => unknown;
+    signal?: AbortSignal;
+    /** Requested output cap for each attempt, not a total cost/token budget. */
+    maxOutputTokens?: number;
+    /** Host-only terminal attempt metadata, including late provider settlement after cancellation.
+     * Never carries generated text. The callback must not throw. */
+    onAttempt?: (receipt: InferenceAttemptReceipt) => void;
+  };
 
 type OneShotDeps = {
   resolveModel: (role: ModelRole) => Model<Api>;
@@ -41,7 +42,10 @@ export async function askOneShot(input: OneShotInput, deps: OneShotDeps): Promis
 
 export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps): Promise<InferenceResult> {
   if (input.schema && input.onText) throw new Error("ask: schema and onText are mutually exclusive");
-  if (input.maxOutputTokens !== undefined && (!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1)) {
+  if (
+    input.maxOutputTokens !== undefined &&
+    (!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1)
+  ) {
     throw new Error("ask: maxOutputTokens must be a positive safe integer");
   }
   const budget = new InferenceBudget(input);
@@ -58,11 +62,26 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
       call?.assertAllowed();
       const role = input.model ?? "fast";
       const model = deps.resolveModel(role);
-      if (images.length && !model.input?.includes("image")) throw new AppError("ai/image-unsupported", "Selected model does not support images");
+      if (images.length && !model.input?.includes("image"))
+        throw new AppError("ai/image-unsupported", "Selected model does not support images");
       budget.input(system, prompt);
       const reservation = budget.reserve(input.maxOutputTokens, model.maxTokens);
       const maxTokens = reservation.maxTokens;
-      const context = { systemPrompt: system, messages: [{ role: "user" as const, content: images.length ? [{ type: "text" as const, text: prompt }, ...images.map(image => ({ type: "image" as const, ...image }))] : prompt, timestamp: Date.now() }] };
+      const context = {
+        systemPrompt: system,
+        messages: [
+          {
+            role: "user" as const,
+            content: images.length
+              ? [
+                  { type: "text" as const, text: prompt },
+                  ...images.map((image) => ({ type: "image" as const, ...image })),
+                ]
+              : prompt,
+            timestamp: Date.now(),
+          },
+        ],
+      };
       let recorded = false;
       const record = (message?: AssistantMessage) => {
         if (recorded) return;
@@ -74,9 +93,12 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
       };
       const trackSource = (source: Promise<unknown>) => {
         // Observe the SDK's terminal result, not a policy wrapper's early abort.
-        const receiptSource = source.then(message => {
-          if (message && typeof message === "object" && "stopReason" in message) record(message as AssistantMessage);
-        }, () => record());
+        const receiptSource = source.then(
+          (message) => {
+            if (message && typeof message === "object" && "stopReason" in message) record(message as AssistantMessage);
+          },
+          () => record(),
+        );
         input.trackSource?.(source);
         input.trackSource?.(receiptSource);
       };
@@ -86,7 +108,10 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
           const stream = deps.streamFns[role](model, context, { signal: call.signal, trackSource, maxTokens });
           for await (const event of stream) {
             call?.assertAllowed();
-            if (event.type === "text_delta") { budget.output(event.delta); await call.wait(Promise.resolve(input.onText!(event.delta))); }
+            if (event.type === "text_delta") {
+              budget.output(event.delta);
+              await call.wait(Promise.resolve(input.onText!(event.delta)));
+            }
           }
           message = await stream.result();
         } else {
@@ -97,8 +122,10 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
         if (message.stopReason === "error") throw classifyModelFailure(message.errorMessage ?? "ask failed");
         if (message.stopReason === "aborted") throw new Error(message.errorMessage ?? "ask aborted");
         reservation.assertWithinBudget();
-        const text = message.content.filter((block): block is { type: "text"; text: string } => block.type === "text")
-          .map(block => block.text).join("");
+        const text = message.content
+          .filter((block): block is { type: "text"; text: string } => block.type === "text")
+          .map((block) => block.text)
+          .join("");
         if (!input.onText) budget.output(text);
         return text;
       };
@@ -106,24 +133,31 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
     };
     if (!input.schema) return { value: await complete(input.system, originalPrompt), attempts };
 
-    const instruction = "Return ONLY a single JSON object — no prose, no markdown, no code fences. " +
+    const instruction =
+      "Return ONLY a single JSON object — no prose, no markdown, no code fences. " +
       `It must validate against this JSON Schema:\n${JSON.stringify(input.schema)}`;
     const system = input.system ? `${input.system}\n\n${instruction}` : instruction;
     let feedback = "";
     for (let attempt = 0; attempt < 2; attempt++) {
-      const prompt = attempt === 0 ? originalPrompt
-        : `${originalPrompt}\n\nYour previous reply was invalid (${feedback}). Reply again with ONLY the corrected JSON object.`;
+      const prompt =
+        attempt === 0
+          ? originalPrompt
+          : `${originalPrompt}\n\nYour previous reply was invalid (${feedback}). Reply again with ONLY the corrected JSON object.`;
       const text = await complete(system, prompt);
       try {
         const value: unknown = JSON.parse(extractJsonObject(text));
         const problems = schemaViolations(value, input.schema);
         if (problems.length === 0) return { value, attempts };
         feedback = problems.slice(0, 5).join("; ");
-      } catch (error) { feedback = error instanceof Error ? error.message : String(error); }
+      } catch (error) {
+        feedback = error instanceof Error ? error.message : String(error);
+      }
     }
     throw new Error(`structured ask failed schema validation: ${feedback}`);
   } catch (error) {
     failed.abort(error);
     throw error;
-  } finally { call.dispose(); }
+  } finally {
+    call.dispose();
+  }
 }

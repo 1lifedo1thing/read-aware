@@ -26,22 +26,19 @@ export type DomainPermission = {
     : never;
 }[DomainId];
 
-export const DOMAIN_PERMISSIONS = Object.entries(DOMAIN_CATALOG).flatMap(
-  ([domain, definition]) =>
-    definition.pluginAccess.map((access) => `${domain}:${access}` as DomainPermission),
+export const DOMAIN_PERMISSIONS = Object.entries(DOMAIN_CATALOG).flatMap(([domain, definition]) =>
+  definition.pluginAccess.map((access) => `${domain}:${access}` as DomainPermission),
 );
 
 export type DomainGrants = Partial<Record<DomainId, DomainAccess>>;
 
 /** The host's own surface; product UI and the Agent act with every grant. */
-export const FULL_DOMAIN_GRANTS: Readonly<DomainGrants> = Object.freeze(Object.fromEntries(
-  Object.keys(DOMAIN_CATALOG).map(id => [id, "write"]),
-) as DomainGrants);
+export const FULL_DOMAIN_GRANTS: Readonly<DomainGrants> = Object.freeze(
+  Object.fromEntries(Object.keys(DOMAIN_CATALOG).map((id) => [id, "write"])) as DomainGrants,
+);
 
 /** Write implies read; duplicate declarations collapse to the stronger grant. */
-export function domainGrantsFromPermissions(
-  permissions: readonly string[],
-): DomainGrants {
+export function domainGrantsFromPermissions(permissions: readonly string[]): DomainGrants {
   const grants: DomainGrants = {};
   const known = new Set<string>(DOMAIN_PERMISSIONS);
   for (const permission of permissions) {

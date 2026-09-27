@@ -100,7 +100,7 @@ function piano(midi: number, velocity: number, length = 3.2) {
   // A breath of felt on the hammer.
   let lp = 0;
   for (let i = 0; i < Math.min(out.length, SR * 0.012); i++) {
-    lp += 0.2 * ((rand() * 2 - 1) - lp);
+    lp += 0.2 * (rand() * 2 - 1 - lp);
     out[i] += lp * 0.05 * velocity * (1 - i / (SR * 0.012));
   }
   return out;
@@ -134,7 +134,7 @@ function pluck(midi: number, length = 1.1) {
   const ring = new Float32Array(period);
   let lp = 0;
   for (let i = 0; i < period; i++) {
-    lp += 0.5 * ((rand() * 2 - 1) - lp);
+    lp += 0.5 * (rand() * 2 - 1 - lp);
     ring[i] = lp;
   }
   const out = new Float32Array(Math.ceil(length * SR));
@@ -172,7 +172,7 @@ function bass(midi: number, length: number) {
 }
 
 function kick(weight = 1, tail = 0.32) {
-  const out = new Float32Array(Math.ceil((tail * 3) * SR));
+  const out = new Float32Array(Math.ceil(tail * 3 * SR));
   let phase = 0;
   for (let i = 0; i < out.length; i++) {
     const s = i / SR;
@@ -204,7 +204,7 @@ function tick() {
   addSine(out, 820, 0.22, (i) => Math.exp(-i / SR / 0.03));
   let lp = 0;
   for (let i = 0; i < out.length; i++) {
-    lp += 0.4 * ((rand() * 2 - 1) - lp);
+    lp += 0.4 * (rand() * 2 - 1 - lp);
     out[i] += lp * 0.18 * Math.exp(-i / SR / 0.012);
   }
   return out;
@@ -238,7 +238,7 @@ function riser(length: number) {
     const p = i / out.length;
     const cutoff = 300 + 9000 * p * p;
     const a = 1 - Math.exp((-2 * Math.PI * cutoff) / SR);
-    lp += a * ((rand() * 2 - 1) - lp);
+    lp += a * (rand() * 2 - 1 - lp);
     out[i] = lp * p ** 2.2 * 0.4;
   }
   return out;
@@ -255,10 +255,28 @@ const PROGRESSION = [D, Bm, G, A, D, Bm, G, A, D, Bm, G];
 
 // Melody: [beat offset, midi, velocity]. One four-bar phrase, played three ways.
 const PHRASE: [number, number, number][][] = [
-  [[0, 69, 0.7], [1.5, 66, 0.45], [2, 64, 0.5], [3, 66, 0.55]],
-  [[0, 62, 0.6], [1.5, 61, 0.4], [2, 66, 0.55]],
-  [[0, 71, 0.7], [1.5, 69, 0.45], [2, 66, 0.5], [3, 69, 0.55]],
-  [[0, 64, 0.6], [2, 61, 0.45], [3, 64, 0.5]],
+  [
+    [0, 69, 0.7],
+    [1.5, 66, 0.45],
+    [2, 64, 0.5],
+    [3, 66, 0.55],
+  ],
+  [
+    [0, 62, 0.6],
+    [1.5, 61, 0.4],
+    [2, 66, 0.55],
+  ],
+  [
+    [0, 71, 0.7],
+    [1.5, 69, 0.45],
+    [2, 66, 0.5],
+    [3, 69, 0.55],
+  ],
+  [
+    [0, 64, 0.6],
+    [2, 61, 0.45],
+    [3, 64, 0.5],
+  ],
 ];
 
 // --------------------------------------------------------- arrangement --
@@ -304,10 +322,7 @@ for (let bar = 1; bar <= 11; bar++) {
 
   // Air: off-beat hats from the memory scene, sixteenths in the final push.
   if (bar >= 7) {
-    const hats =
-      bar === 11
-        ? Array.from({ length: 16 }, (_, k) => k / 4)
-        : [0.5, 1.5, 2.5, 3.5];
+    const hats = bar === 11 ? Array.from({ length: 16 }, (_, k) => k / 4) : [0.5, 1.5, 2.5, 3.5];
     for (const beat of hats) mix(t(bar, beat), hat(), bar === 11 ? 0.32 : 0.4, 0.3, 0.1);
   }
   if (bar >= 9) {
@@ -341,9 +356,7 @@ mix(FINAL, kick(1, 0.6), 0.9, 0, 0.15);
 
 function freeverb(input: Float32Array, spread: number) {
   const scale = SR / 44_100;
-  const combs = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617].map((d) =>
-    Math.round((d + spread) * scale),
-  );
+  const combs = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617].map((d) => Math.round((d + spread) * scale));
   const allpasses = [556, 441, 341, 225].map((d) => Math.round((d + spread) * scale));
   const feedback = 0.28 * 0.86 + 0.7;
   const damp = 0.3;

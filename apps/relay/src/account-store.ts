@@ -87,19 +87,13 @@ export class SqlAccountStore implements AccountStore {
       )
       .bind(crypto.randomUUID(), email, now)
       .run();
-    const row = await this.db
-      .prepare(`SELECT * FROM accounts WHERE email = ?1`)
-      .bind(email)
-      .first<AccountRow>();
+    const row = await this.db.prepare(`SELECT * FROM accounts WHERE email = ?1`).bind(email).first<AccountRow>();
     if (!row) throw new Error("relay: account row vanished after upsert");
     return rowToAccount(row);
   }
 
   async get(id: string): Promise<Account | null> {
-    const row = await this.db
-      .prepare(`SELECT * FROM accounts WHERE id = ?1`)
-      .bind(id)
-      .first<AccountRow>();
+    const row = await this.db.prepare(`SELECT * FROM accounts WHERE id = ?1`).bind(id).first<AccountRow>();
     return row ? rowToAccount(row) : null;
   }
 
@@ -115,12 +109,7 @@ export class SqlAccountStore implements AccountStore {
     return updated ? "set" : "already-set";
   }
 
-  async putMagicToken(
-    tokenHash: string,
-    email: string,
-    expiresAtMs: number,
-    now: string,
-  ): Promise<void> {
+  async putMagicToken(tokenHash: string, email: string, expiresAtMs: number, now: string): Promise<void> {
     await this.db
       .prepare(
         `INSERT OR REPLACE INTO magic_tokens (token_hash, email, expires_at_ms, created_at)
@@ -214,9 +203,7 @@ export class SqlAccountStore implements AccountStore {
 
   async putSession(tokenHash: string, accountId: string, now: string): Promise<void> {
     await this.db
-      .prepare(
-        `INSERT INTO sessions (token_hash, account_id, created_at) VALUES (?1, ?2, ?3)`,
-      )
+      .prepare(`INSERT INTO sessions (token_hash, account_id, created_at) VALUES (?1, ?2, ?3)`)
       .bind(tokenHash, accountId, now)
       .run();
   }
@@ -233,11 +220,7 @@ export class SqlAccountStore implements AccountStore {
     await this.db.prepare(`DELETE FROM sessions WHERE token_hash = ?1`).bind(tokenHash).run();
   }
 
-  async setTierByEmail(
-    email: string,
-    tier: SyncTier,
-    tierExpiresAtMs: number | null,
-  ): Promise<Account | null> {
+  async setTierByEmail(email: string, tier: SyncTier, tierExpiresAtMs: number | null): Promise<Account | null> {
     const row = await this.db
       .prepare(
         `UPDATE accounts SET tier = ?2, tier_expires_at_ms = ?3
@@ -256,10 +239,7 @@ export class SqlAccountStore implements AccountStore {
   }
 
   async setStripeCustomer(id: string, customerId: string): Promise<void> {
-    await this.db
-      .prepare(`UPDATE accounts SET stripe_customer_id = ?2 WHERE id = ?1`)
-      .bind(id, customerId)
-      .run();
+    await this.db.prepare(`UPDATE accounts SET stripe_customer_id = ?2 WHERE id = ?1`).bind(id, customerId).run();
   }
 
   async findByStripeCustomer(customerId: string): Promise<Account | null> {
@@ -313,28 +293,14 @@ export class SqlAccountStore implements AccountStore {
             device_id = excluded.device_id,
             created_at = excluded.created_at`,
       )
-      .bind(
-        accountId,
-        meta.schemaVersion,
-        meta.blobKey,
-        meta.frontierSeq,
-        meta.byteSize,
-        meta.deviceId,
-        meta.createdAt,
-      )
+      .bind(accountId, meta.schemaVersion, meta.blobKey, meta.frontierSeq, meta.byteSize, meta.deviceId, meta.createdAt)
       .run();
     return previous;
   }
 
   async cleanupExpired(nowMs: number): Promise<void> {
     await this.db.prepare(`DELETE FROM magic_tokens WHERE expires_at_ms <= ?1`).bind(nowMs).run();
-    await this.db
-      .prepare(`DELETE FROM oauth_states WHERE expires_at_ms <= ?1`)
-      .bind(nowMs)
-      .run();
-    await this.db
-      .prepare(`DELETE FROM watch_tickets WHERE expires_at_ms <= ?1`)
-      .bind(nowMs)
-      .run();
+    await this.db.prepare(`DELETE FROM oauth_states WHERE expires_at_ms <= ?1`).bind(nowMs).run();
+    await this.db.prepare(`DELETE FROM watch_tickets WHERE expires_at_ms <= ?1`).bind(nowMs).run();
   }
 }

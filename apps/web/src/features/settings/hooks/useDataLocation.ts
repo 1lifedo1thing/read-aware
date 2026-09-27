@@ -5,8 +5,11 @@ import { useTranslation } from "../../../i18n";
 import { nativeDataLocation } from "../../../platform/data-location";
 import { createLogger } from "../../../platform/logger";
 
-type LocationState = { status: "loading" } | { status: "ready"; path: string }
-  | { status: "failed"; error: unknown } | { status: "unsupported" };
+type LocationState =
+  | { status: "loading" }
+  | { status: "ready"; path: string }
+  | { status: "failed"; error: unknown }
+  | { status: "unsupported" };
 const log = createLogger("data-location");
 
 export function useDataLocation() {
@@ -25,15 +28,20 @@ export function useDataLocation() {
       setState({ status: "unsupported" });
     } else {
       setState({ status: "loading" });
-      void nativeDataLocation.read(controller.signal).then(path => {
-        if (!controller.signal.aborted) setState({ status: "ready", path });
-      }, error => {
-        if (controller.signal.aborted) return;
-        log.error("Reading the data directory failed", error);
-        setState({ status: "failed", error });
-      });
+      void nativeDataLocation.read(controller.signal).then(
+        (path) => {
+          if (!controller.signal.aborted) setState({ status: "ready", path });
+        },
+        (error) => {
+          if (controller.signal.aborted) return;
+          log.error("Reading the data directory failed", error);
+          setState({ status: "failed", error });
+        },
+      );
     }
-    return () => { controller.abort(); };
+    return () => {
+      controller.abort();
+    };
   }, [revision]);
 
   const reveal = async () => {
@@ -45,12 +53,16 @@ export function useDataLocation() {
       await nativeDataLocation.reveal(owner.signal);
     } catch (error) {
       log.error("Revealing the data directory failed", error);
-      if (!owner.signal.aborted) toast({ variant: "destructive", title: t("dataSync.noticeError"),
-        description: describeError(error, { fallback: t("dataSync.dataLocation.revealFailed") }).body });
+      if (!owner.signal.aborted)
+        toast({
+          variant: "destructive",
+          title: t("dataSync.noticeError"),
+          description: describeError(error, { fallback: t("dataSync.dataLocation.revealFailed") }).body,
+        });
     } finally {
       active.current = false;
       if (!owner.signal.aborted) setRevealing(false);
     }
   };
-  return { state, revealing, reveal, retry: () => setRevision(value => value + 1) };
+  return { state, revealing, reveal, retry: () => setRevision((value) => value + 1) };
 }

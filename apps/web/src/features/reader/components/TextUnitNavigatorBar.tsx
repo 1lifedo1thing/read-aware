@@ -191,16 +191,36 @@ export function TextUnitNavigatorBar({
 
           {compact && (
             <>
-              <BarButton label={t("menu.highlight")} disabled={!canAnnotate} onClick={onHighlight}
-                className={actionButtonClass} icon={<Highlighter size={14} aria-hidden="true" />} />
-              <BarButton label={t("menu.underline")} disabled={!canAnnotate} onClick={onUnderline}
-                className={actionButtonClass} icon={<TextUnderline size={14} aria-hidden="true" />} />
-              <BarButton label={t("menu.addNote")} disabled={!canAnnotate} onClick={onAddNote}
-                className={actionButtonClass} icon={<NotePencil size={14} aria-hidden="true" />} />
+              <BarButton
+                label={t("menu.highlight")}
+                disabled={!canAnnotate}
+                onClick={onHighlight}
+                className={actionButtonClass}
+                icon={<Highlighter size={14} aria-hidden="true" />}
+              />
+              <BarButton
+                label={t("menu.underline")}
+                disabled={!canAnnotate}
+                onClick={onUnderline}
+                className={actionButtonClass}
+                icon={<TextUnderline size={14} aria-hidden="true" />}
+              />
+              <BarButton
+                label={t("menu.addNote")}
+                disabled={!canAnnotate}
+                onClick={onAddNote}
+                className={actionButtonClass}
+                icon={<NotePencil size={14} aria-hidden="true" />}
+              />
               {returnPending && (
-                <BarButton label={resolvePluginText(mode.copy.returnToCurrent, locale)} disabled={!canReturn} pressed
-                  onClick={onReturnToCurrent} className={actionButtonClass}
-                  icon={<Crosshair size={14} weight="regular" aria-hidden="true" />} />
+                <BarButton
+                  label={resolvePluginText(mode.copy.returnToCurrent, locale)}
+                  disabled={!canReturn}
+                  pressed
+                  onClick={onReturnToCurrent}
+                  className={actionButtonClass}
+                  icon={<Crosshair size={14} weight="regular" aria-hidden="true" />}
+                />
               )}
             </>
           )}
@@ -309,34 +329,56 @@ export function TextUnitNavigatorBar({
                 triggerLabel={resolvePluginText(mode.copy.moreActions, locale)}
                 side={float.position && float.position.y < 0.5 ? "bottom" : "top"}
                 align="right"
-                trigger={<span className={cn(actionButtonClass, "inline-flex h-7 w-7 items-center justify-center")}>
-                  <DotsThree size={16} weight="bold" aria-hidden="true" />
-                </span>}
+                trigger={
+                  <span className={cn(actionButtonClass, "inline-flex h-7 w-7 items-center justify-center")}>
+                    <DotsThree size={16} weight="bold" aria-hidden="true" />
+                  </span>
+                }
                 items={[
                   { label: prevStepLabel, disabled: !canStep, onClick: onPrev, icon: <CaretLeft size={16} /> },
-                  ...(showNextStep ? [{ label: nextStepLabel, disabled: !canStep, onClick: onNext, icon: <CaretRight size={16} /> }] : []),
-                  { label: resolvePluginText(mode.copy.returnToCurrent, locale), disabled: !canReturn, checked: returnPending || undefined, onClick: onReturnToCurrent, icon: <Crosshair size={14} /> },
-                  ...quickUnits.map(unit => ({
+                  ...(showNextStep
+                    ? [{ label: nextStepLabel, disabled: !canStep, onClick: onNext, icon: <CaretRight size={16} /> }]
+                    : []),
+                  {
+                    label: resolvePluginText(mode.copy.returnToCurrent, locale),
+                    disabled: !canReturn,
+                    checked: returnPending || undefined,
+                    onClick: onReturnToCurrent,
+                    icon: <Crosshair size={14} />,
+                  },
+                  ...quickUnits.map((unit) => ({
                     label: resolvePluginText(unit.toggleLabel ?? unit.label, locale),
                     checked: unit.id === activeUnit.id,
                     onClick: () => onUnitChange(unit.id === activeUnit.id ? mode.defaultUnitId : unit.id),
                     icon: renderPluginIcon(unit.icon, 14),
                   })),
-                  ...(readAloudAvailable ? [{
-                    label: readAloudPlaying ? t("readAloud.stop") : t("readAloud.start"),
-                    checked: readAloudPlaying,
-                    disabled: !readAloudPlaying && !readAloudCanStart,
-                    onClick: onToggleReadAloud,
-                    icon: readAloudPlaying ? <SpeakerSlash size={15} /> : <SpeakerHigh size={15} />,
-                  }] : []),
+                  ...(readAloudAvailable
+                    ? [
+                        {
+                          label: readAloudPlaying ? t("readAloud.stop") : t("readAloud.start"),
+                          checked: readAloudPlaying,
+                          disabled: !readAloudPlaying && !readAloudCanStart,
+                          onClick: onToggleReadAloud,
+                          icon: readAloudPlaying ? <SpeakerSlash size={15} /> : <SpeakerHigh size={15} />,
+                        },
+                      ]
+                    : []),
                   { label: t("tableOfContents"), onClick: () => onOpenPanel("toc"), icon: <ListBullets size={14} /> },
                   { label: t("notes"), onClick: () => onOpenPanel("annotations"), icon: <Notebook size={14} /> },
-                  { label: t("readingAppearance"), onClick: () => onOpenPanel("appearance"), icon: <TextAa size={14} /> },
+                  {
+                    label: t("readingAppearance"),
+                    onClick: () => onOpenPanel("appearance"),
+                    icon: <TextAa size={14} />,
+                  },
                   { label: t("chat"), onClick: () => onOpenPanel("chat"), icon: <ChatCircle size={14} /> },
                 ]}
               />
-              <BarButton label={resolvePluginText(mode.copy.exit, locale)} onClick={onExit}
-                className={actionButtonClass} icon={<X size={14} aria-hidden="true" />} />
+              <BarButton
+                label={resolvePluginText(mode.copy.exit, locale)}
+                onClick={onExit}
+                className={actionButtonClass}
+                icon={<X size={14} aria-hidden="true" />}
+              />
             </>
           )}
         </div>

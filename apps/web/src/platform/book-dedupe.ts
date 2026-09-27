@@ -20,10 +20,12 @@ const log = createLogger("book-dedupe");
 export async function reconcileDuplicateBooks(): Promise<number> {
   if (!isTauri()) return 0;
   try {
-    const ids: string[] = []; let offset: number | null = 0;
+    const ids: string[] = [];
+    let offset: number | null = 0;
     do {
       const page = await listDuplicateBooks({ offset, limit: 50 });
-      ids.push(...page.groups.map(group => group.bookId)); offset = page.nextOffset;
+      ids.push(...page.groups.map((group) => group.bookId));
+      offset = page.nextOffset;
     } while (offset !== null);
     let count = 0;
     for (const bookId of ids) {
@@ -32,7 +34,9 @@ export async function reconcileDuplicateBooks(): Promise<number> {
         if (!preview) continue;
         const receipt = await mergeDuplicateBooks({ bookId, expectedRevision: preview.revision }, "system");
         count += receipt.redirects.length;
-      } catch (error) { log.warn("Duplicate group changed or failed; retry after the next pull", error); }
+      } catch (error) {
+        log.warn("Duplicate group changed or failed; retry after the next pull", error);
+      }
     }
     if (count) log.info(`merged ${count} duplicate book record(s)`);
     return count;

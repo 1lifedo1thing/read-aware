@@ -7,8 +7,9 @@ import { fb2Fixture } from "../fixtures/foliate-books";
 const directory = resolve(process.argv[2] ?? ".eval/validation-20260913-formats");
 await mkdir(directory, { recursive: true });
 const epub: Record<string, string> = {};
-for (const [name, content] of makeEPUBFixture().files) epub[name] = typeof content === "string" ? content : await content.text();
-const input = JSON.stringify({directory,epub,fb2:fb2Fixture});
+for (const [name, content] of makeEPUBFixture().files)
+  epub[name] = typeof content === "string" ? content : await content.text();
+const input = JSON.stringify({ directory, epub, fb2: fb2Fixture });
 const python = String.raw`
 import json, sys, zipfile, pathlib, struct, zlib
 x=json.load(sys.stdin); root=pathlib.Path(x['directory'])
@@ -26,20 +27,52 @@ pages=root/'cbr-pages'/'pages'; pages.mkdir(parents=True,exist_ok=True)
 for name,color in [('page10.png',(240,150,30)),('page2.PNG',(30,100,220)),('page1.png',(40,180,70))]:
  (pages/name).write_bytes(png(color))
 `;
-const proc = Bun.spawn(["python3","-c",python], {stdin:new Blob([input]),stdout:"inherit",stderr:"inherit"});
-if (await proc.exited !== 0) throw Error("Archive fixture creation failed");
-await Bun.write(resolve(directory,"fixture.mobi"),makeMOBI6Fixture({compression:2}).file);
-await Bun.write(resolve(directory,"fixture.azw3"),makeKF8Fixture().file);
-await Bun.write(resolve(directory,"encrypted.mobi"),makeMOBI6Fixture({encrypted:true}).file);
-await Bun.write(resolve(directory,"fixture.txt"),"Plain text fixture 中文.\n\n" + "This paragraph verifies native text import and extraction. ".repeat(4));
-await Bun.write(resolve(directory,"fixture.html"),'<html><head><meta charset="utf-8"><title>HTML Format Fixture</title></head><body><h1>HTML chapter</h1><p>HTML fixture 中文. This paragraph verifies native HTML import and extraction.</p></body></html>');
+const proc = Bun.spawn(["python3", "-c", python], { stdin: new Blob([input]), stdout: "inherit", stderr: "inherit" });
+if ((await proc.exited) !== 0) throw Error("Archive fixture creation failed");
+await Bun.write(resolve(directory, "fixture.mobi"), makeMOBI6Fixture({ compression: 2 }).file);
+await Bun.write(resolve(directory, "fixture.azw3"), makeKF8Fixture().file);
+await Bun.write(resolve(directory, "encrypted.mobi"), makeMOBI6Fixture({ encrypted: true }).file);
+await Bun.write(
+  resolve(directory, "fixture.txt"),
+  "Plain text fixture 中文.\n\n" + "This paragraph verifies native text import and extraction. ".repeat(4),
+);
+await Bun.write(
+  resolve(directory, "fixture.html"),
+  '<html><head><meta charset="utf-8"><title>HTML Format Fixture</title></head><body><h1>HTML chapter</h1><p>HTML fixture 中文. This paragraph verifies native HTML import and extraction.</p></body></html>',
+);
 // Optional official RAR CLI in a temporary directory; no system installation.
 if (process.env.READAWARE_RAR_BINARY) {
-  const rar = Bun.spawn([process.env.READAWARE_RAR_BINARY,"a","-idq","-ma5","-m5",resolve(directory,"fixture.cbr"),
-    "pages/page10.png","pages/page2.PNG","pages/page1.png"], {cwd:resolve(directory,"cbr-pages"),stdout:"inherit",stderr:"inherit"});
-  if (await rar.exited !== 0) throw Error("RAR fixture creation failed");
-  const archive = new Uint8Array(await Bun.file(resolve(directory,"fixture.cbr")).arrayBuffer());
-  await Bun.write(resolve(directory,"truncated.cbr"),archive.slice(0,Math.floor(archive.length/2)));
+  const rar = Bun.spawn(
+    [
+      process.env.READAWARE_RAR_BINARY,
+      "a",
+      "-idq",
+      "-ma5",
+      "-m5",
+      resolve(directory, "fixture.cbr"),
+      "pages/page10.png",
+      "pages/page2.PNG",
+      "pages/page1.png",
+    ],
+    { cwd: resolve(directory, "cbr-pages"), stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await rar.exited) !== 0) throw Error("RAR fixture creation failed");
+  const archive = new Uint8Array(await Bun.file(resolve(directory, "fixture.cbr")).arrayBuffer());
+  await Bun.write(resolve(directory, "truncated.cbr"), archive.slice(0, Math.floor(archive.length / 2)));
 }
-console.log(JSON.stringify({directory,files:["fixture.epub","fixture.mobi","fixture.azw3","fixture.fb2.zip","fixture.cbz","fixture.txt","fixture.html","encrypted.mobi",
-  ...(process.env.READAWARE_RAR_BINARY ? ["fixture.cbr","truncated.cbr"] : [])]}));
+console.log(
+  JSON.stringify({
+    directory,
+    files: [
+      "fixture.epub",
+      "fixture.mobi",
+      "fixture.azw3",
+      "fixture.fb2.zip",
+      "fixture.cbz",
+      "fixture.txt",
+      "fixture.html",
+      "encrypted.mobi",
+      ...(process.env.READAWARE_RAR_BINARY ? ["fixture.cbr", "truncated.cbr"] : []),
+    ],
+  }),
+);

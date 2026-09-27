@@ -13,9 +13,24 @@ import { buildAgentTools } from "./registry";
 import type { RuntimeDeps } from "../ports";
 
 function enableFixtureWeb(deps: RuntimeDeps) {
-  deps.web = { configured: () => true,
-    search: async input => ({ provider: "fixture", query: input.query, sources: [{ title: "Example", url: "https://example.com/", snippet: "Example Domain" }], retrievedAt: "2026-09-19T00:00:00Z" }),
-    fetch: async input => ({ provider: "fixture", url: input.url, finalUrl: input.url, title: "Example", text: "Example Domain", offset: 0, nextOffset: null, retrievedAt: "2026-09-19T00:00:00Z" }),
+  deps.web = {
+    configured: () => true,
+    search: async (input) => ({
+      provider: "fixture",
+      query: input.query,
+      sources: [{ title: "Example", url: "https://example.com/", snippet: "Example Domain" }],
+      retrievedAt: "2026-09-19T00:00:00Z",
+    }),
+    fetch: async (input) => ({
+      provider: "fixture",
+      url: input.url,
+      finalUrl: input.url,
+      title: "Example",
+      text: "Example Domain",
+      offset: 0,
+      nextOffset: null,
+      retrievedAt: "2026-09-19T00:00:00Z",
+    }),
   };
 }
 
@@ -65,9 +80,7 @@ function seed(): InMemorySeed {
       },
     ],
     chapters: {
-      [BOOK_ID]: [
-        { title: "Wet Footprints", text: "Victor is found dead in a locked study." },
-      ],
+      [BOOK_ID]: [{ title: "Wet Footprints", text: "Victor is found dead in a locked study." }],
     },
   };
 }
@@ -78,8 +91,12 @@ function seed(): InMemorySeed {
  */
 const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   present_web_images: { images: [{ id: "unavailable-image", caption: "Source image" }] },
-  web_search: { query: "example" }, web_fetch: { url: "https://example.com/" },
-  explain_selection: {}, define_term: {}, translate_selection: {}, summarize_chapter: {},
+  web_search: { query: "example" },
+  web_fetch: { url: "https://example.com/" },
+  explain_selection: {},
+  define_term: {},
+  translate_selection: {},
+  summarize_chapter: {},
   get_conversation_state: {},
   get_sync_status: {},
   get_software_update: {},
@@ -197,13 +214,19 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   configure_reading_mode: { active: false },
   set_reader_controls: { visible: true },
   manage_reading_emphasis: { action: "list" },
-  set_reading_selection: { action: "select", range: { bookId: BOOK_ID, contentVersion: "fixture", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:6)" } },
+  set_reading_selection: {
+    action: "select",
+    range: { bookId: BOOK_ID, contentVersion: "fixture", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:6)" },
+  },
   get_reader_panels: {},
   set_reader_panel: { panel: "toc", open: true },
   set_reader_panel_width: { panel: "toc", width: 320 },
   focus_reader: { target: "content" },
   ask_user_form: { title: "Reading plan", fields: [{ id: "pace", kind: "text", label: "Pages per day" }] },
-  onboard_reader: { title: "Reading profile", labels: { goals: "Goals", background: "Background", explanationDepth: "Depth", language: "Language" } },
+  onboard_reader: {
+    title: "Reading profile",
+    labels: { goals: "Goals", background: "Background", explanationDepth: "Depth", language: "Language" },
+  },
   capture_context_bundle: { kind: "user_profile_context" },
   list_context_bundles: { kind: "user_profile_context" },
   read_context_bundle: { kind: "user_profile_context", version: `cb1:${"0".repeat(64)}` },
@@ -263,7 +286,9 @@ describe("tool surface contract", () => {
 
   test("every registered tool has a surface case", () => {
     const registered = new Set([...toolNames(globalScope), ...toolNames(bookScope)]);
-    const missing = [...registered].filter((name) => !Object.keys(SURFACE_CASES).some(operation => operationCall(operation).name === name));
+    const missing = [...registered].filter(
+      (name) => !Object.keys(SURFACE_CASES).some((operation) => operationCall(operation).name === name),
+    );
     const stale = Object.keys(SURFACE_CASES).filter((name) => !registered.has(operationCall(name).name));
     expect(missing).toEqual([]);
     expect(stale).toEqual([]);
@@ -272,8 +297,21 @@ describe("tool surface contract", () => {
   for (const scope of [globalScope, bookScope]) {
     test(`${scope.kind} scope tools emit legible, bounded text`, async () => {
       const names = toolNames(scope);
-      for (const name of Object.keys(SURFACE_CASES).filter(operation => names.includes(operationCall(operation).name))) {
-        if (scope.kind === "book" && ["explain_selection", "define_term", "translate_selection", "summarize_chapter", "get_conversation_insights", "download_resource"].includes(name)) continue;
+      for (const name of Object.keys(SURFACE_CASES).filter((operation) =>
+        names.includes(operationCall(operation).name),
+      )) {
+        if (
+          scope.kind === "book" &&
+          [
+            "explain_selection",
+            "define_term",
+            "translate_selection",
+            "summarize_chapter",
+            "get_conversation_insights",
+            "download_resource",
+          ].includes(name)
+        )
+          continue;
         const params = structuredClone(SURFACE_CASES[name]);
         if (!params) continue; // 完备性由上面的用例把守
         // 每个工具独立的 fixture：破坏性工具（fixture 自动批准权限）不得污染后续用例
@@ -282,77 +320,266 @@ describe("tool surface contract", () => {
         const contentVersion = (await deps.reader.getSession()).location?.contentVersion;
         if (!contentVersion) throw new Error("expected the fixture reader to expose a content version");
         bindFixtureContentVersion(params, contentVersion);
-        deps.bookText.listReferences = async input => ({ bookId: input.bookId, contentVersion: input.contentVersion, sectionIndex: input.sectionIndex,
-          status: "available", items: [], total: 0, nextOffset: null });
-        deps.bookText.readReference = async input => ({ reference: input.reference, status: "resolved", label: "Note", text: "Reference preview",
-          offset: 0, totalLength: 17, nextOffset: null });
-        deps.reader.previewReference = async (_owner, input) => ({ status: "opened", id: "preview", sessionId: "fixture", preview: await deps.bookText.readReference(input) });
+        deps.bookText.listReferences = async (input) => ({
+          bookId: input.bookId,
+          contentVersion: input.contentVersion,
+          sectionIndex: input.sectionIndex,
+          status: "available",
+          items: [],
+          total: 0,
+          nextOffset: null,
+        });
+        deps.bookText.readReference = async (input) => ({
+          reference: input.reference,
+          status: "resolved",
+          label: "Note",
+          text: "Reference preview",
+          offset: 0,
+          totalLength: 17,
+          nextOffset: null,
+        });
+        deps.reader.previewReference = async (_owner, input) => ({
+          status: "opened",
+          id: "preview",
+          sessionId: "fixture",
+          preview: await deps.bookText.readReference(input),
+        });
         deps.hostIO.writeClipboard = async () => {};
-        deps.bookText.listNavigationTargets = async input => ({ ...input, status: "absent", items: [], total: 0, nextOffset: null });
-        deps.bookText.listImages = async input => ({ bookId: input.bookId, contentVersion: input.contentVersion,
-          sectionIndex: input.sectionIndex, status: "available", items: [], total: 0, nextOffset: null });
-        deps.bookText.openImageResource = async (_owner, input) => ({ status: "missing", image: { image: input.image, alt: "" } });
+        deps.bookText.listNavigationTargets = async (input) => ({
+          ...input,
+          status: "absent",
+          items: [],
+          total: 0,
+          nextOffset: null,
+        });
+        deps.bookText.listImages = async (input) => ({
+          bookId: input.bookId,
+          contentVersion: input.contentVersion,
+          sectionIndex: input.sectionIndex,
+          status: "available",
+          items: [],
+          total: 0,
+          nextOffset: null,
+        });
+        deps.bookText.openImageResource = async (_owner, input) => ({
+          status: "missing",
+          image: { image: input.image, alt: "" },
+        });
         deps.reader.openImage = async () => ({ status: "not-opened", reason: "missing" });
-        deps.reader.getImage = async () => ({ id: "image", sessionId: "fixture", bookId: BOOK_ID,
-          revision: 1, scale: 1, rotation: 0, panX: 0, panY: 0 });
-        deps.reader.controlImage = async () => ({ status: "updated", snapshot: {
-          id: "image", sessionId: "fixture", bookId: BOOK_ID, revision: 2, scale: 1.5, rotation: 0, panX: 0, panY: 0 } });
-        deps.window.control = async () => ({ status: "requested", snapshot: { supported: true, revision: 1,
-          minimized: false, maximized: true, fullscreen: false, focused: true } });
-        deps.library.previewMerge = async () => ({ revision: `bmg1:${"a".repeat(64)}`, keep: { id: BOOK_ID, title: "Keeper", author: "Author", createdAt: "2026-09-01" },
-          merged: [{ id: "duplicate", title: "Duplicate", author: "Author", createdAt: "2026-09-02" }] });
-        deps.library.mergeDuplicates = async () => ({ committed: true, keepId: BOOK_ID, redirects: [{ from: "duplicate", to: BOOK_ID }] });
-        deps.library.getEnrichment = async bookId => ({ bookId, cover: { status: "none", local: false }, metadataPending: false,
-          sourceLocal: true, supported: true, job: { phase: "idle", startedAt: null, finishedAt: null, errorCode: null, reason: null } });
-        deps.library.retryEnrichment = async bookId => ({ status: "not-needed", snapshot: await deps.library.getEnrichment(bookId) });
+        deps.reader.getImage = async () => ({
+          id: "image",
+          sessionId: "fixture",
+          bookId: BOOK_ID,
+          revision: 1,
+          scale: 1,
+          rotation: 0,
+          panX: 0,
+          panY: 0,
+        });
+        deps.reader.controlImage = async () => ({
+          status: "updated",
+          snapshot: {
+            id: "image",
+            sessionId: "fixture",
+            bookId: BOOK_ID,
+            revision: 2,
+            scale: 1.5,
+            rotation: 0,
+            panX: 0,
+            panY: 0,
+          },
+        });
+        deps.window.control = async () => ({
+          status: "requested",
+          snapshot: {
+            supported: true,
+            revision: 1,
+            minimized: false,
+            maximized: true,
+            fullscreen: false,
+            focused: true,
+          },
+        });
+        deps.library.previewMerge = async () => ({
+          revision: `bmg1:${"a".repeat(64)}`,
+          keep: { id: BOOK_ID, title: "Keeper", author: "Author", createdAt: "2026-09-01" },
+          merged: [{ id: "duplicate", title: "Duplicate", author: "Author", createdAt: "2026-09-02" }],
+        });
+        deps.library.mergeDuplicates = async () => ({
+          committed: true,
+          keepId: BOOK_ID,
+          redirects: [{ from: "duplicate", to: BOOK_ID }],
+        });
+        deps.library.getEnrichment = async (bookId) => ({
+          bookId,
+          cover: { status: "none", local: false },
+          metadataPending: false,
+          sourceLocal: true,
+          supported: true,
+          job: { phase: "idle", startedAt: null, finishedAt: null, errorCode: null, reason: null },
+        });
+        deps.library.retryEnrichment = async (bookId) => ({
+          status: "not-needed",
+          snapshot: await deps.library.getEnrichment(bookId),
+        });
         const resources = deps.resources("surface");
-        deps.downloadResource = async () => ({ status: "downloaded", resource: { id: "downloaded", name: "book.txt", mimeType: "text/plain",
-          size: 10, state: "ready", source: "created", expiresAt: Date.parse("2026-09-10T12:00:00Z") } });
-        deps.bookText.readImageInput = async (_owner, input) => ({ status: "missing", image: { image: input.image, alt: "Missing illustration" } });
-        deps.resources = () => ({ ...resources,
-          pickDirectory: async () => ({ cancelled: false, directory: { id: "surface-directory", name: "Reading", expiresAt: Date.parse("2026-09-13T12:00:00Z") } }),
-          listDirectory: async () => ({ entries: [{ name: "book.txt", relativePath: "book.txt", kind: "file", size: 10 }], nextCursor: null, omittedCount: 0 }),
-          openDirectoryFile: async () => ({ id: "surface-file", name: "book.txt", mimeType: "text/plain", size: 10, source: "picked", state: "ready", expiresAt: Date.parse("2026-09-13T12:00:00Z") }),
-          releaseDirectory: async () => {}, openAssociated: async () => ({ opened: true }), copyImage: async () => ({ copied: true, width: 2, height: 3 }) });
-        deps.library.inspectResource = async () => ({ status: "parsed", coverage: "initialization", formatHint: "epub", sectionCount: 3, errorCode: null });
-        deps.settings.resetReading = async () => ({ changed: [], settings: await deps.settings.getSettings({ section: "reading" }) });
-        const importTask: import("@read-aware/core").BookImportTaskSnapshot = { taskId: "import-task", sourceName: "book.epub", phase: "completed", revision: 3,
-          createdAt: "2026-09-12", updatedAt: "2026-09-12", cancellable: false, cancelRequested: false, errorCode: null,
-          receipt: { status: "duplicate", book: { id: BOOK_ID, title: "The Locked Room", format: "epub", starred: false,
-            collectionId: null, addedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" } } };
+        deps.downloadResource = async () => ({
+          status: "downloaded",
+          resource: {
+            id: "downloaded",
+            name: "book.txt",
+            mimeType: "text/plain",
+            size: 10,
+            state: "ready",
+            source: "created",
+            expiresAt: Date.parse("2026-09-10T12:00:00Z"),
+          },
+        });
+        deps.bookText.readImageInput = async (_owner, input) => ({
+          status: "missing",
+          image: { image: input.image, alt: "Missing illustration" },
+        });
+        deps.resources = () => ({
+          ...resources,
+          pickDirectory: async () => ({
+            cancelled: false,
+            directory: { id: "surface-directory", name: "Reading", expiresAt: Date.parse("2026-09-13T12:00:00Z") },
+          }),
+          listDirectory: async () => ({
+            entries: [{ name: "book.txt", relativePath: "book.txt", kind: "file", size: 10 }],
+            nextCursor: null,
+            omittedCount: 0,
+          }),
+          openDirectoryFile: async () => ({
+            id: "surface-file",
+            name: "book.txt",
+            mimeType: "text/plain",
+            size: 10,
+            source: "picked",
+            state: "ready",
+            expiresAt: Date.parse("2026-09-13T12:00:00Z"),
+          }),
+          releaseDirectory: async () => {},
+          openAssociated: async () => ({ opened: true }),
+          copyImage: async () => ({ copied: true, width: 2, height: 3 }),
+        });
+        deps.library.inspectResource = async () => ({
+          status: "parsed",
+          coverage: "initialization",
+          formatHint: "epub",
+          sectionCount: 3,
+          errorCode: null,
+        });
+        deps.settings.resetReading = async () => ({
+          changed: [],
+          settings: await deps.settings.getSettings({ section: "reading" }),
+        });
+        const importTask: import("@read-aware/core").BookImportTaskSnapshot = {
+          taskId: "import-task",
+          sourceName: "book.epub",
+          phase: "completed",
+          revision: 3,
+          createdAt: "2026-09-12",
+          updatedAt: "2026-09-12",
+          cancellable: false,
+          cancelRequested: false,
+          errorCode: null,
+          receipt: {
+            status: "duplicate",
+            book: {
+              id: BOOK_ID,
+              title: "The Locked Room",
+              format: "epub",
+              starred: false,
+              collectionId: null,
+              addedAt: "2026-09-01T00:00:00Z",
+              updatedAt: "2026-09-01T00:00:00Z",
+            },
+          },
+        };
         deps.library.startImportResource = async () => importTask;
         deps.library.getImportTask = async () => importTask;
         deps.library.listImportTasks = async () => [importTask];
         deps.library.cancelImportTask = async () => importTask;
         deps.hostIO.openExternal = async () => {};
         deps.diagnostics.requestProjectionRepair = async () => ({ action: "repair", status: "cancelled" });
-        deps.diagnostics.requestReport = async action => ({ action, status: "cancelled" });
-        deps.diagnostics.verifyProjections = async () => ({ scope: "event-projections", checkedAt: "2026-09-11T00:00:00Z",
-          consistent: false, eventsReplayed: 20, driftedTables: 1, onlyLiveRows: 2, onlyReplayedRows: 0 });
+        deps.diagnostics.requestReport = async (action) => ({ action, status: "cancelled" });
+        deps.diagnostics.verifyProjections = async () => ({
+          scope: "event-projections",
+          checkedAt: "2026-09-11T00:00:00Z",
+          consistent: false,
+          eventsReplayed: 20,
+          driftedTables: 1,
+          onlyLiveRows: 2,
+          onlyReplayedRows: 0,
+        });
         if (name === "manage_plugin_schedule") {
-          const schedule = { pluginId: "fixture", id: "refresh", label: "Refresh", everyMinutes: 60, paused: false, running: false,
-            lastStartedAt: null, lastFinishedAt: null, lastSuccessAt: null, lastOutcome: null, lastErrorCode: null };
+          const schedule = {
+            pluginId: "fixture",
+            id: "refresh",
+            label: "Refresh",
+            everyMinutes: 60,
+            paused: false,
+            running: false,
+            lastStartedAt: null,
+            lastFinishedAt: null,
+            lastSuccessAt: null,
+            lastOutcome: null,
+            lastErrorCode: null,
+          };
           deps.schedules.list = async () => ({ schedules: [schedule], total: 1, nextOffset: null });
           deps.schedules.control = async () => ({ status: "completed", schedule: { ...schedule, paused: true } });
         }
-        if (name === "read_book_range") params.range = (await deps.bookText.searchLocations({ bookId: BOOK_ID, query: "Victor" })).hits[0].range;
-        if (name === "manage_memory") params.memoryId = (await deps.memory.saveMemory({ content: "The reader enjoys mysteries.", scope: "user", kind: "preference", origin: "agent", sourceThreadKey: "surface" })).id;
+        if (name === "read_book_range")
+          params.range = (await deps.bookText.searchLocations({ bookId: BOOK_ID, query: "Victor" })).hits[0].range;
+        if (name === "manage_memory")
+          params.memoryId = (
+            await deps.memory.saveMemory({
+              content: "The reader enjoys mysteries.",
+              scope: "user",
+              kind: "preference",
+              origin: "agent",
+              sourceThreadKey: "surface",
+            })
+          ).id;
         // The generic fixture has no attached host command runtime. These receipts
         // exercise output formatting only; shared-service tests prove execution.
-        deps.hostCommands.list = async () => ({ version: 1, workspaceRevision: 1, commands: HOST_COMMAND_IDS.map(id => ({
-          id, title: id, enabled: true, parameters: { type: "object", properties: {}, additionalProperties: false },
-        })) });
-        deps.hostCommands.execute = async request => ({ commandId: request.id, status: "completed", completed: ["workspace"] });
-        if (["cancel_book_text_task", "pause_book_text_task", "resume_book_text_task", "set_book_text_task_priority"].includes(name)) params.taskId = (await deps.bookText.preparation!.start(BOOK_ID)).taskId;
-        if (name === "edit_annotation") params.expectedRevision = (await deps.annotations.inspectAnnotation(String(params.annotationId)))!.revision;
+        deps.hostCommands.list = async () => ({
+          version: 1,
+          workspaceRevision: 1,
+          commands: HOST_COMMAND_IDS.map((id) => ({
+            id,
+            title: id,
+            enabled: true,
+            parameters: { type: "object", properties: {}, additionalProperties: false },
+          })),
+        });
+        deps.hostCommands.execute = async (request) => ({
+          commandId: request.id,
+          status: "completed",
+          completed: ["workspace"],
+        });
+        if (
+          [
+            "cancel_book_text_task",
+            "pause_book_text_task",
+            "resume_book_text_task",
+            "set_book_text_task_priority",
+          ].includes(name)
+        )
+          params.taskId = (await deps.bookText.preparation!.start(BOOK_ID)).taskId;
+        if (name === "edit_annotation")
+          params.expectedRevision = (await deps.annotations.inspectAnnotation(String(params.annotationId)))!.revision;
         if (name === "apply_annotation_changes") {
-          for (const change of params.changes as Record<string, unknown>[]) change.expectedRevision = (await deps.annotations.inspectAnnotation(String(change.annotationId)))!.revision;
+          for (const change of params.changes as Record<string, unknown>[])
+            change.expectedRevision = (await deps.annotations.inspectAnnotation(String(change.annotationId)))!.revision;
         }
         if (name === "update_user_profile") params.expectedRevision = (await deps.profile.readProfile()).revision;
         if (name === "manage_entity") params.expectedRevision = (await deps.entityRegistry.query()).revision;
         if (name === "export_context_bundle" || name === "read_context_bundle") {
           const selector = { kind: "user_profile_context" as const, scope: { kind: "user" as const } };
-          params.kind = selector.kind; params.version = (await deps.contextBundles.capture(selector)).bundle.version;
+          params.kind = selector.kind;
+          params.version = (await deps.contextBundles.capture(selector)).bundle.version;
         }
         const tool = buildAgentTools(scope, deps).find(
           (candidate: AgentTool) => candidate.name === operationCall(name).name,
@@ -366,9 +593,7 @@ describe("tool surface contract", () => {
 
   test("get_reading_stats presents durations, not milliseconds", async () => {
     const { deps } = createInMemoryDeps(seed());
-    const tool = buildAgentTools(globalScope, deps).find(
-      (candidate) => candidate.name === "query_reading_stats",
-    );
+    const tool = buildAgentTools(globalScope, deps).find((candidate) => candidate.name === "query_reading_stats");
     if (!tool) throw new Error("get_reading_stats was not registered");
     const text = resultText(await tool.execute("surface-stats", { request: { operation: "overview" } }));
     expect(text).toContain("1h 30m");

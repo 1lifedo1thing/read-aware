@@ -71,10 +71,7 @@ export function resolveReaderFontStack(
 }
 
 /** Download the actual body face plus regular and the publisher's bold face. */
-export function readerFontWeightsNeeded(
-  fontWeight: ReaderFontWeight,
-  fontFamily?: ReaderFontFamily,
-): number[] {
+export function readerFontWeightsNeeded(fontWeight: ReaderFontWeight, fontFamily?: ReaderFontFamily): number[] {
   const weight = READER_FONT_WEIGHTS[resolveReaderFontWeight(fontWeight, fontFamily)];
   return [...new Set([weight, 400, 700])].sort((a, b) => a - b);
 }
@@ -160,9 +157,7 @@ export function readerLayoutSpacing(margins: ReaderPageMargins, mode: ReadingMod
   return {
     gap: preset.gap,
     margin: spread ? "20px" : "48px",
-    bodyPadding: spread
-      ? `1rem ${preset.horizontalPadding} 1.5rem`
-      : `2rem ${preset.horizontalPadding} 4rem`,
+    bodyPadding: spread ? `1rem ${preset.horizontalPadding} 1.5rem` : `2rem ${preset.horizontalPadding} 4rem`,
   };
 }
 
@@ -183,13 +178,8 @@ export function computeReaderMaxInlineSize(
 ): number {
   const { measureFraction } = READER_MARGIN_PRESETS[margins];
   const preferred =
-    measureFraction === "fill"
-      ? containerWidthPx / Math.max(1, columnCount)
-      : measureFraction * containerWidthPx;
-  const clamped = Math.max(
-    MEASURE_MIN_REM * REM_PX,
-    Math.min(preferred, MEASURE_MAX_REM * REM_PX),
-  );
+    measureFraction === "fill" ? containerWidthPx / Math.max(1, columnCount) : measureFraction * containerWidthPx;
+  const clamped = Math.max(MEASURE_MIN_REM * REM_PX, Math.min(preferred, MEASURE_MAX_REM * REM_PX));
   return Math.round(Math.min(clamped, containerWidthPx));
 }
 
@@ -244,10 +234,7 @@ export type ReaderContentAssets = {
  * folder URLs) so the book renders in it; it's empty for system fonts, which
  * need no @font-face. See `curated-font-loader` / `plugin-theme`.
  */
-export function buildReaderContentCss(
-  settings: ReaderSettings,
-  assets: ReaderContentAssets,
-): string {
+export function buildReaderContentCss(settings: ReaderSettings, assets: ReaderContentAssets): string {
   const fontFaceCss = assets.fontFaceCss ?? "";
   const fontFamily = resolveReaderFontStack(settings.fontFamily, assets.pluginFont);
   const fontSize = FONT_SIZE_MAP[settings.fontSize];
@@ -279,12 +266,16 @@ export function buildReaderContentCss(
       line-height: ${lineHeight} !important;
     }
 ${textAlignCss(settings.textAlign)}
-    ${fontWeight > 700 ? `
+    ${
+      fontWeight > 700
+        ? `
     /* Heavy body presets must not make semantic emphasis lighter than prose. */
     body :where(b, strong, h1, h2, h3, h4, h5, h6) {
       font-weight: ${fontWeight} !important;
     }
-    ` : ""}
+    `
+        : ""
+    }
     /* Publisher stylesheets routinely declare font-family directly on p / h1 /
        div / classes (often naming an embedded font), which beats inheritance
        from body — so the picked font must be forced onto every element, not
@@ -366,9 +357,11 @@ ${textAlignCss(settings.textAlign)}
     }
 
     body [data-ra-chapter-start="next"] {
-      ${settings.readingMode === "scroll"
-        ? "margin-block-start: 4rem !important; padding-block-start: 2rem !important;"
-        : "break-before: column !important;"}
+      ${
+        settings.readingMode === "scroll"
+          ? "margin-block-start: 4rem !important; padding-block-start: 2rem !important;"
+          : "break-before: column !important;"
+      }
     }
 
     ::selection {
@@ -635,8 +628,7 @@ export function getReaderPreviewStyle(
 ): CSSProperties & { "--ra-reader-preview-paragraph-spacing": string } {
   const theme = assets.palette;
   return {
-    "--ra-reader-preview-paragraph-spacing":
-      PARAGRAPH_SPACING_MAP[settings.paragraphSpacing],
+    "--ra-reader-preview-paragraph-spacing": PARAGRAPH_SPACING_MAP[settings.paragraphSpacing],
     backgroundColor: theme.bg,
     color: theme.text,
     fontFamily: resolveReaderFontStack(settings.fontFamily, assets.pluginFont),

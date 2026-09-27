@@ -15,10 +15,7 @@ type LongPressOptions = {
  * After a press fires, the release still emits a click — `onClickCapture`
  * swallows exactly that one so the element's tap action doesn't also run.
  */
-export function useLongPress(
-  onLongPress: () => void,
-  { delayMs = 450, moveTolerancePx = 10 }: LongPressOptions = {},
-) {
+export function useLongPress(onLongPress: () => void, { delayMs = 450, moveTolerancePx = 10 }: LongPressOptions = {}) {
   const timerRef = useRef<number | null>(null);
   const originRef = useRef<{ x: number; y: number } | null>(null);
   const firedRef = useRef(false);

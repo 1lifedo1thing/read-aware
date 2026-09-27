@@ -21,9 +21,7 @@ function isBookFile(file: File): boolean {
  * Returns whether a file drag is currently hovering the window (drives the
  * drop overlay).
  */
-export function useDropBookImport(
-  importSources: (sources: BookImportSource[]) => Promise<unknown>,
-): boolean {
+export function useDropBookImport(importSources: (sources: BookImportSource[]) => Promise<unknown>): boolean {
   const importRef = useRef(importSources);
   importRef.current = importSources;
   const [dragActive, setDragActive] = useState(false);
@@ -33,8 +31,7 @@ export function useDropBookImport(
     // overlay survives moving across children and clears on leaving the window.
     let depth = 0;
     const hasFiles = (event: DragEvent) =>
-      (event.dataTransfer?.types.includes("Files") ?? false) &&
-      !dragCarriesBooks(event.dataTransfer);
+      (event.dataTransfer?.types.includes("Files") ?? false) && !dragCarriesBooks(event.dataTransfer);
 
     function onDragEnter(event: DragEvent) {
       if (!hasFiles(event)) return;
@@ -65,7 +62,10 @@ export function useDropBookImport(
 
     // A plugin target stops bubbling so it cannot also import into the shelf.
     // The window overlay must still clear, including a drop rejected by that target.
-    function clearDropOverlay() { depth = 0; setDragActive(false); }
+    function clearDropOverlay() {
+      depth = 0;
+      setDragActive(false);
+    }
     function onTargetDrag(event: DragEvent) {
       if (event.target instanceof Element && event.target.closest("[data-plugin-file-drop]")) clearDropOverlay();
     }

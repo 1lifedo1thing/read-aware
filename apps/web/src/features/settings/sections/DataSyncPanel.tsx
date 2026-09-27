@@ -63,33 +63,42 @@ export function DataSyncPanel() {
   };
 
   return (
-    <SettingsPage
-      title={t("dataSync.title")}
-      description={t("dataSync.description")}
-    >
+    <SettingsPage title={t("dataSync.title")} description={t("dataSync.description")}>
       <SyncAccountGroup />
 
       <DataLocationGroup />
 
-      <SettingsGroup
-        title={t("dataSync.backup.title")}
-        description={t("dataSync.backup.description")}
-      >
+      <SettingsGroup title={t("dataSync.backup.title")} description={t("dataSync.backup.description")}>
         <SettingsRow
           borderless
           title={t("dataSync.exportDialog.title")}
           description={t("dataSync.exportDialog.fullDescription")}
           control={
-            <Button ref={exportControlRef} size="sm" disabled={busy || deleteOpen || deleting || requested === "import"} onClick={() => void run("export")}>
+            <Button
+              ref={exportControlRef}
+              size="sm"
+              disabled={busy || deleteOpen || deleting || requested === "import"}
+              onClick={() => void run("export")}
+            >
               {busy ? t("dataSync.working") : t("dataSync.export")}
             </Button>
           }
         />
-        <SettingsRow title={t("dataSync.importDialog.title")} description={t("dataSync.importDialog.description")}
-          control={<Button ref={importControlRef} variant="outline" size="sm"
-            disabled={busy || deleteOpen || deleting || requested === "export"} onClick={() => void run("import")}>
-            {t("dataSync.import")}
-          </Button>} />
+        <SettingsRow
+          title={t("dataSync.importDialog.title")}
+          description={t("dataSync.importDialog.description")}
+          control={
+            <Button
+              ref={importControlRef}
+              variant="outline"
+              size="sm"
+              disabled={busy || deleteOpen || deleting || requested === "export"}
+              onClick={() => void run("import")}
+            >
+              {t("dataSync.import")}
+            </Button>
+          }
+        />
       </SettingsGroup>
 
       <BackupExportDialog flow={exportDialog} />
@@ -103,7 +112,13 @@ export function DataSyncPanel() {
           title={t("dataSync.deleteAll.title")}
           description={t("dataSync.deleteAll.description")}
           control={
-            <Button ref={deleteControlRef} variant="danger" size="sm" disabled={busy || requested !== null || wipe !== null} onClick={() => setDeleteOpen(true)}>
+            <Button
+              ref={deleteControlRef}
+              variant="danger"
+              size="sm"
+              disabled={busy || requested !== null || wipe !== null}
+              onClick={() => setDeleteOpen(true)}
+            >
               {t("dataSync.deleteAll.button")}
             </Button>
           }
@@ -116,33 +131,37 @@ export function DataSyncPanel() {
         title={t("dataSync.deleteAll.dialogTitle")}
       >
         <div className="space-y-4">
-          {reloadRequired ? <>
-            {wipe.error && <InlineError>{describeError(wipe.error).body}</InlineError>}
-            <Button onClick={() => window.location.reload()}>{t("about.diagnostics.repair.reload")}</Button>
-          </> : <>
-          <p>{t("dataSync.deleteAll.dialogBody")}</p>
-          <TextField
-            label={t("dataSync.deleteAll.confirmLabel", { phrase: DELETE_CONFIRM_PHRASE })}
-            value={deleteConfirmText}
-            onChange={(event) => setDeleteConfirmText(event.target.value)}
-            placeholder={DELETE_CONFIRM_PHRASE}
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" disabled={deleting} onClick={closeDeleteDialog}>
-              {t("dataSync.deleteAll.cancel")}
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={!deleteArmed || deleting}
-              onClick={() => void confirmDelete()}
-            >
-              {deleting ? t("dataSync.deleteAll.deleting") : t("dataSync.deleteAll.button")}
-            </Button>
-          </div>
-          </>}
+          {reloadRequired ? (
+            <>
+              {wipe.error && <InlineError>{describeError(wipe.error).body}</InlineError>}
+              <Button onClick={() => window.location.reload()}>{t("about.diagnostics.repair.reload")}</Button>
+            </>
+          ) : (
+            <>
+              <p>{t("dataSync.deleteAll.dialogBody")}</p>
+              <TextField
+                label={t("dataSync.deleteAll.confirmLabel", { phrase: DELETE_CONFIRM_PHRASE })}
+                value={deleteConfirmText}
+                onChange={(event) => setDeleteConfirmText(event.target.value)}
+                placeholder={DELETE_CONFIRM_PHRASE}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" disabled={deleting} onClick={closeDeleteDialog}>
+                  {t("dataSync.deleteAll.cancel")}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={!deleteArmed || deleting}
+                  onClick={() => void confirmDelete()}
+                >
+                  {deleting ? t("dataSync.deleteAll.deleting") : t("dataSync.deleteAll.button")}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Dialog>
     </SettingsPage>

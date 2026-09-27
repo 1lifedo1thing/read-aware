@@ -25,49 +25,80 @@ export type QueryObservationSources = {
  * scheduler: a burst of announcements costs one read per tick, never a read
  * per announcement. The scheduler also paces the periodic re-read that catches
  * changes no source announces. */
-export function observeQuery<T>(read: () => Promise<T>, handler: (event: QueryObservation<T>) => unknown,
+export function observeQuery<T>(
+  read: () => Promise<T>,
+  handler: (event: QueryObservation<T>) => unknown,
   deps: { schedule(work: () => void): () => void; report(error: unknown): void; failureCode: string; release(): void },
-  lifetime?: AbortSignal, sources?: QueryObservationSources): () => void {
-  const controller = new AbortController(), causes = new ObservationCauses(sources?.origin);
-  let disposed = false, polling = false, revision = 0, delivered: string | undefined;
+  lifetime?: AbortSignal,
+  sources?: QueryObservationSources,
+): () => void {
+  const controller = new AbortController(),
+    causes = new ObservationCauses(sources?.origin);
+  let disposed = false,
+    polling = false,
+    revision = 0,
+    delivered: string | undefined;
   let cancelTimer: (() => void) | undefined, unsubscribe: (() => void) | undefined;
   let retry: { identity: string; source: object } | undefined, unread: object | undefined;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
     controller.abort();
-    cancelTimer?.(); cancelTimer = undefined;
+    cancelTimer?.();
+    cancelTimer = undefined;
     lifetime?.removeEventListener("abort", dispose);
-    try { unsubscribe?.(); } finally { deps.release(); }
+    try {
+      unsubscribe?.();
+    } finally {
+      deps.release();
+    }
   };
   const schedule = () => {
-    if (!disposed) cancelTimer = deps.schedule(() => { cancelTimer = undefined; void poll(); });
+    if (!disposed)
+      cancelTimer = deps.schedule(() => {
+        cancelTimer = undefined;
+        void poll();
+      });
   };
   // A change announced while a poll is running is caught by that poll's
   // revision check and read at the next tick; otherwise read it now.
   const pollNow = () => {
     if (disposed || polling) return;
-    cancelTimer?.(); cancelTimer = undefined;
+    cancelTimer?.();
+    cancelTimer = undefined;
     void poll();
   };
   const poll = async () => {
     if (polling) return;
     polling = true;
-    try { await pollOnce(); } finally { polling = false; }
+    try {
+      await pollOnce();
+    } finally {
+      polling = false;
+    }
   };
   const pollOnce = async () => {
     // Native writes can be visible before their completion broadcast. Await
     // short durable work only, never model tasks or observation callbacks.
     if (sources) {
-      try { await sources.settle(controller.signal); }
-      catch (error) { if (!disposed) { deps.report(error); schedule(); } return; }
+      try {
+        await sources.settle(controller.signal);
+      } catch (error) {
+        if (!disposed) {
+          deps.report(error);
+          schedule();
+        }
+        return;
+      }
     }
     if (disposed) return;
     const sourceRevision = causes.revision;
-    let sample: Omit<Extract<QueryObservation<T>, { status: "ready" }>, "revision"> |
-      Omit<Extract<QueryObservation<T>, { status: "error" }>, "revision">;
-    try { sample = { status: "ready", result: await read() }; }
-    catch (error) {
+    let sample:
+      | Omit<Extract<QueryObservation<T>, { status: "ready" }>, "revision">
+      | Omit<Extract<QueryObservation<T>, { status: "error" }>, "revision">;
+    try {
+      sample = { status: "ready", result: await read() };
+    } catch (error) {
       if (disposed) return;
       deps.report(error);
       sample = { status: "error", errorCode: errorCode(error) ?? deps.failureCode };
@@ -75,26 +106,45 @@ export function observeQuery<T>(read: () => Promise<T>, handler: (event: QueryOb
     if (disposed) return;
     // Retain pending causes until a sample spans no tracked changes. A write
     // during the read can invalidate even a successful or failed query result.
-    if (sourceRevision !== causes.revision || sources?.hasPending()) { schedule(); return; }
+    if (sourceRevision !== causes.revision || sources?.hasPending()) {
+      schedule();
+      return;
+    }
     const identity = JSON.stringify(sample);
-    const retained = [unread, retry?.identity === identity ? retry.source : undefined]
-      .filter((source): source is object => !!source);
-    const event = causes.take({ ...structuredClone(sample), revision: revision + 1 },
-      retained.length ? mergeEventCauses(retained, {}) : undefined);
+    const retained = [unread, retry?.identity === identity ? retry.source : undefined].filter(
+      (source): source is object => !!source,
+    );
+    const event = causes.take(
+      { ...structuredClone(sample), revision: revision + 1 },
+      retained.length ? mergeEventCauses(retained, {}) : undefined,
+    );
     unread = sample.status === "error" ? copyEventCause(event, {}) : undefined;
     if (identity !== delivered) {
       revision++;
       retry = { identity, source: copyEventCause(event, {}) };
-      try { await handler(event); delivered = identity; retry = undefined; }
-      catch (error) { deps.report(error); }
+      try {
+        await handler(event);
+        delivered = identity;
+        retry = undefined;
+      } catch (error) {
+        deps.report(error);
+      }
     } else retry = undefined;
     schedule();
   };
   try {
-    unsubscribe = sources?.subscribe(source => { if (!disposed) { causes.add(source); pollNow(); } });
+    unsubscribe = sources?.subscribe((source) => {
+      if (!disposed) {
+        causes.add(source);
+        pollNow();
+      }
+    });
     lifetime?.addEventListener("abort", dispose, { once: true });
     if (lifetime?.aborted) dispose();
     else void poll();
-  } catch (error) { dispose(); throw error; }
+  } catch (error) {
+    dispose();
+    throw error;
+  }
   return dispose;
 }

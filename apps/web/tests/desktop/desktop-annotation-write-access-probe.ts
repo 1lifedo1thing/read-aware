@@ -1,10 +1,5 @@
 import { getDefaultStore } from "jotai";
-import type {
-  AnnotationSnapshot,
-  PluginBookAccess,
-  PluginDisposable,
-  PluginManifest,
-} from "@read-aware/plugin-types";
+import type { AnnotationSnapshot, PluginBookAccess, PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { createAnnotationsDomain } from "../../src/domain/annotations";
 import { createLibraryDomain } from "../../src/domain/library";
 import { createReadingDomain } from "../../src/domain/reading";
@@ -44,15 +39,19 @@ async function markerNoteIds(
   bookIds: readonly string[],
   marker: string,
 ): Promise<string[]> {
-  const pages = await Promise.all(bookIds.map(bookId => domain.queries.page({
-    bookId,
-    kind: "note",
-    query: marker,
-    limit: 100,
-  })));
-  return pages.flatMap(page => page.items
-    .filter(item => item.kind === "note" && item.body.includes(marker))
-    .map(item => item.id));
+  const pages = await Promise.all(
+    bookIds.map((bookId) =>
+      domain.queries.page({
+        bookId,
+        kind: "note",
+        query: marker,
+        limit: 100,
+      }),
+    ),
+  );
+  return pages.flatMap((page) =>
+    page.items.filter((item) => item.kind === "note" && item.body.includes(marker)).map((item) => item.id),
+  );
 }
 
 async function removeOwnedAnnotations(
@@ -72,27 +71,31 @@ async function removeOwnedAnnotations(
     try {
       const snapshot = await domain.queries.inspect(id);
       if (!snapshot) continue;
-      await domain.commands.applyChanges([{
-        op: "remove",
-        kind: snapshot.annotation.kind,
-        annotationId: id,
-        expectedRevision: snapshot.revision,
-      }]);
+      await domain.commands.applyChanges([
+        {
+          op: "remove",
+          kind: snapshot.annotation.kind,
+          annotationId: id,
+          expectedRevision: snapshot.revision,
+        },
+      ]);
       removed.push(id);
     } catch (error) {
       failures.push(error);
     }
   }
-  const remaining = (await markerNoteIds(domain, bookIds, marker))
-    .filter(id => !beforeMarkerIds.has(id));
+  const remaining = (await markerNoteIds(domain, bookIds, marker)).filter((id) => !beforeMarkerIds.has(id));
   if (remaining.length) failures.push(new Error(`Probe annotations remain: ${remaining.join(", ")}`));
   if (failures.length) throw new AggregateError(failures, "Annotation write probe cleanup failed");
   return removed;
 }
 
 function assertGrant(received: PluginBookAccess | undefined, expected: PluginBookAccess): void {
-  if (!received || received.mode !== expected.mode
-    || received.mode === "book" && (expected.mode !== "book" || received.bookId !== expected.bookId)) {
+  if (
+    !received ||
+    received.mode !== expected.mode ||
+    (received.mode === "book" && (expected.mode !== "book" || received.bookId !== expected.bookId))
+  ) {
     throw new Error("Worker received a different book grant");
   }
 }
@@ -140,104 +143,132 @@ export async function runDesktopAnnotationWriteAccessProbe(
   const cleanupIds = new Set<string>();
   let markerBeforeWorker = new Set<string>();
 
-  return withProbeCleanup(async () => {
-    const baseline = await annotations.commands.createNote({
-      bookId: otherBookId,
-      body: `${marker} baseline note`,
-    });
-    cleanupIds.add(baseline.id);
-    const baselineBefore = await annotations.queries.inspect(baseline.id);
-    if (!baselineBefore || baselineBefore.annotation.kind !== "note" || baselineBefore.annotation.bookId !== otherBookId) {
-      throw new Error("Probe baseline note was not persisted");
-    }
-    markerBeforeWorker = new Set(await markerNoteIds(annotations, bookIds, marker));
-    await localKV.setItemAsync(inputKey, JSON.stringify({
-      targetBookId,
-      otherBookId,
-      otherNoteId: baseline.id,
-      otherNoteRevision: baselineBefore.revision,
-      marker,
-    }));
-    worker = await startPluginWorker(manifest, "0.5.4", disposables, {
-      moduleUrl: new URL("./annotation-write-access-probe.ts", import.meta.url).href,
-      bookAccess: grant,
-    });
-    await worker.checkHealth();
-    worker.promote();
-    const command = getDefaultStore().get(pluginCommandsAtom)
-      .find(item => item.pluginId === id && item.id === "write");
-    if (!command) throw new Error("Annotation write Worker command did not register");
-    const result = await command.run();
-    if (typeof result?.toast !== "string") throw new Error("Worker produced no annotation write receipt");
-    workerResult = parseProbeToast(result.toast) as WorkerWriteResult;
-    for (const createdId of workerResult.createdIds ?? []) if (typeof createdId === "string") cleanupIds.add(createdId);
-    if (workerResult.status !== "ok") throw new Error(`Worker write failed: ${workerResult.code ?? "unknown"}`);
-    assertGrant(workerResult.grant, grant);
-
-    const target = workerResult.target;
-    if (!target || target.created.kind !== "note" || target.created.bookId !== targetBookId
-      || !target.created.body.startsWith(`${marker} `)
-      || target.before.annotation.kind !== "note" || target.before.annotation.bookId !== targetBookId
-      || target.edit.atomic !== true || target.edit.changes.length !== 1
-      || target.edit.changes[0]?.annotationId !== target.created.id
-      || target.edit.changes[0]?.revision !== target.after.revision
-      || target.after.annotation.kind !== "note" || target.after.annotation.bookId !== targetBookId
-      || target.after.annotation.body !== `${marker} target edited`) {
-      throw new Error("Authorized note create/edit did not produce a matching CAS receipt");
-    }
-
-    const restricted = grant.mode !== "all";
-    const expectedCross = restricted ? "rejected" : "allowed";
-    if (workerResult.crossCreate?.status !== expectedCross || workerResult.crossEdit?.status !== expectedCross) {
-      throw new Error("Cross-book annotation writes had the wrong access result");
-    }
-    const crossCreateCode = workerResult.crossCreate?.status === "rejected" ? workerResult.crossCreate.code : undefined;
-    const crossEditCode = workerResult.crossEdit?.status === "rejected" ? workerResult.crossEdit.code : undefined;
-    if (restricted && (crossCreateCode !== DENIED || crossEditCode !== DENIED)) {
-      throw new Error("Cross-book annotation writes were not rejected by object access");
-    }
-    if (!restricted && (workerResult.crossCreate?.status !== "allowed" || workerResult.crossEdit?.status !== "allowed")) {
-      throw new Error("Unrestricted annotation control did not allow both fixture books");
-    }
-    const otherAfter = await annotations.queries.inspect(baseline.id);
-    if (!otherAfter) throw new Error("Baseline note disappeared during access probe");
-    if (restricted) {
-      if (JSON.stringify(otherAfter) !== JSON.stringify(baselineBefore)) {
-        throw new Error("Rejected cross-book writes changed the baseline note");
+  return withProbeCleanup(
+    async () => {
+      const baseline = await annotations.commands.createNote({
+        bookId: otherBookId,
+        body: `${marker} baseline note`,
+      });
+      cleanupIds.add(baseline.id);
+      const baselineBefore = await annotations.queries.inspect(baseline.id);
+      if (
+        !baselineBefore ||
+        baselineBefore.annotation.kind !== "note" ||
+        baselineBefore.annotation.bookId !== otherBookId
+      ) {
+        throw new Error("Probe baseline note was not persisted");
       }
-      const markerAfter = await markerNoteIds(annotations, [otherBookId], marker);
-      const unexpected = markerAfter.filter(annotationId => !markerBeforeWorker.has(annotationId));
-      if (unexpected.length) throw new Error(`Rejected cross-book create left annotations: ${unexpected.join(", ")}`);
-    } else {
-      if (otherAfter.annotation.kind !== "note" || otherAfter.annotation.body !== `${marker} cross edited`
-        || otherAfter.revision === baselineBefore.revision) {
-        throw new Error("Unrestricted cross-book edit did not persist");
-      }
-      const crossId = workerResult.crossCreate?.status === "allowed" ? workerResult.crossCreate.annotationId : undefined;
-      if (!crossId || !(await annotations.queries.inspect(crossId))) throw new Error("Unrestricted cross-book create did not persist");
-    }
+      markerBeforeWorker = new Set(await markerNoteIds(annotations, bookIds, marker));
+      await localKV.setItemAsync(
+        inputKey,
+        JSON.stringify({
+          targetBookId,
+          otherBookId,
+          otherNoteId: baseline.id,
+          otherNoteRevision: baselineBefore.revision,
+          marker,
+        }),
+      );
+      worker = await startPluginWorker(manifest, "0.5.4", disposables, {
+        moduleUrl: new URL("./annotation-write-access-probe.ts", import.meta.url).href,
+        bookAccess: grant,
+      });
+      await worker.checkHealth();
+      worker.promote();
+      const command = getDefaultStore()
+        .get(pluginCommandsAtom)
+        .find((item) => item.pluginId === id && item.id === "write");
+      if (!command) throw new Error("Annotation write Worker command did not register");
+      const result = await command.run();
+      if (typeof result?.toast !== "string") throw new Error("Worker produced no annotation write receipt");
+      workerResult = parseProbeToast(result.toast) as WorkerWriteResult;
+      for (const createdId of workerResult.createdIds ?? [])
+        if (typeof createdId === "string") cleanupIds.add(createdId);
+      if (workerResult.status !== "ok") throw new Error(`Worker write failed: ${workerResult.code ?? "unknown"}`);
+      assertGrant(workerResult.grant, grant);
 
-    return {
-      dataDir,
-      marker,
-      grant,
-      targetBookId,
-      otherBookId,
-      baseline: { before: baselineBefore, after: otherAfter },
-      worker: workerResult,
-      verification: "Actual compiled Worker, public annotations domain, SQLite and Full2 Tauri bridge.",
-    };
-  }, async () => {
-    try {
-      await worker?.terminate();
-    } finally {
-      for (const disposable of disposables.reverse()) disposable.dispose();
+      const target = workerResult.target;
+      if (
+        !target ||
+        target.created.kind !== "note" ||
+        target.created.bookId !== targetBookId ||
+        !target.created.body.startsWith(`${marker} `) ||
+        target.before.annotation.kind !== "note" ||
+        target.before.annotation.bookId !== targetBookId ||
+        target.edit.atomic !== true ||
+        target.edit.changes.length !== 1 ||
+        target.edit.changes[0]?.annotationId !== target.created.id ||
+        target.edit.changes[0]?.revision !== target.after.revision ||
+        target.after.annotation.kind !== "note" ||
+        target.after.annotation.bookId !== targetBookId ||
+        target.after.annotation.body !== `${marker} target edited`
+      ) {
+        throw new Error("Authorized note create/edit did not produce a matching CAS receipt");
+      }
+
+      const restricted = grant.mode !== "all";
+      const expectedCross = restricted ? "rejected" : "allowed";
+      if (workerResult.crossCreate?.status !== expectedCross || workerResult.crossEdit?.status !== expectedCross) {
+        throw new Error("Cross-book annotation writes had the wrong access result");
+      }
+      const crossCreateCode =
+        workerResult.crossCreate?.status === "rejected" ? workerResult.crossCreate.code : undefined;
+      const crossEditCode = workerResult.crossEdit?.status === "rejected" ? workerResult.crossEdit.code : undefined;
+      if (restricted && (crossCreateCode !== DENIED || crossEditCode !== DENIED)) {
+        throw new Error("Cross-book annotation writes were not rejected by object access");
+      }
+      if (
+        !restricted &&
+        (workerResult.crossCreate?.status !== "allowed" || workerResult.crossEdit?.status !== "allowed")
+      ) {
+        throw new Error("Unrestricted annotation control did not allow both fixture books");
+      }
+      const otherAfter = await annotations.queries.inspect(baseline.id);
+      if (!otherAfter) throw new Error("Baseline note disappeared during access probe");
+      if (restricted) {
+        if (JSON.stringify(otherAfter) !== JSON.stringify(baselineBefore)) {
+          throw new Error("Rejected cross-book writes changed the baseline note");
+        }
+        const markerAfter = await markerNoteIds(annotations, [otherBookId], marker);
+        const unexpected = markerAfter.filter((annotationId) => !markerBeforeWorker.has(annotationId));
+        if (unexpected.length) throw new Error(`Rejected cross-book create left annotations: ${unexpected.join(", ")}`);
+      } else {
+        if (
+          otherAfter.annotation.kind !== "note" ||
+          otherAfter.annotation.body !== `${marker} cross edited` ||
+          otherAfter.revision === baselineBefore.revision
+        ) {
+          throw new Error("Unrestricted cross-book edit did not persist");
+        }
+        const crossId =
+          workerResult.crossCreate?.status === "allowed" ? workerResult.crossCreate.annotationId : undefined;
+        if (!crossId || !(await annotations.queries.inspect(crossId)))
+          throw new Error("Unrestricted cross-book create did not persist");
+      }
+
+      return {
+        dataDir,
+        marker,
+        grant,
+        targetBookId,
+        otherBookId,
+        baseline: { before: baselineBefore, after: otherAfter },
+        worker: workerResult,
+        verification: "Actual compiled Worker, public annotations domain, SQLite and Full2 Tauri bridge.",
+      };
+    },
+    async () => {
       try {
-        await localKV.removeItemAsync(inputKey);
+        await worker?.terminate();
       } finally {
-        await removeOwnedAnnotations(annotations, [...cleanupIds], bookIds, marker, beforeMarkerIds);
+        for (const disposable of disposables.reverse()) disposable.dispose();
+        try {
+          await localKV.removeItemAsync(inputKey);
+        } finally {
+          await removeOwnedAnnotations(annotations, [...cleanupIds], bookIds, marker, beforeMarkerIds);
+        }
       }
-    }
-    if (inspectContributions(id).length) throw new Error("Annotation write probe left contributions");
-  });
+      if (inspectContributions(id).length) throw new Error("Annotation write probe left contributions");
+    },
+  );
 }

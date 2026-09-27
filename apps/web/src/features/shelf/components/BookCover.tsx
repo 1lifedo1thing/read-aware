@@ -97,19 +97,12 @@ export function BookCover({
               className="h-full w-full object-cover"
             />
           ) : (
-            <BookCoverPlaceholder
-              title={book.title}
-              author={book.author}
-              format={book.format}
-            />
+            <BookCoverPlaceholder title={book.title} author={book.author} format={book.format} />
           )}
           {/* Dim unselected covers in selection mode so the chosen ones stand out. */}
           {selecting && (
             <div
-              className={cn(
-                "absolute inset-0 transition-colors",
-                selected ? "bg-transparent" : "bg-stone-950/35",
-              )}
+              className={cn("absolute inset-0 transition-colors", selected ? "bg-transparent" : "bg-stone-950/35")}
               aria-hidden="true"
             />
           )}
@@ -135,9 +128,7 @@ export function BookCover({
             <span className="block text-left font-serif text-sm leading-tight font-medium break-words text-white/95">
               {book.title}
             </span>
-            <span className="mt-1 block truncate text-left font-sans text-[11px] text-white/70">
-              {book.author}
-            </span>
+            <span className="mt-1 block truncate text-left font-sans text-[11px] text-white/70">{book.author}</span>
           </div>
 
           <div className="space-y-2">
@@ -160,9 +151,18 @@ export function BookCover({
               <IconButton
                 label={pluginItems.length ? tp("menu.actions") : t("book.remove", { title: book.title })}
                 size="sm"
-                onClick={() => pluginItems.length ? setMenuOpen(true) : setRemoveOpen(true)}
-                className={cn("rounded-sm text-white/70 focus-visible:ring-white", pluginItems.length ? "hover:text-white" : "hover:text-red-400")}
-                icon={pluginItems.length ? <DotsThreeVertical size={16} aria-hidden="true" /> : <Trash size={14} weight="regular" aria-hidden="true" />}
+                onClick={() => (pluginItems.length ? setMenuOpen(true) : setRemoveOpen(true))}
+                className={cn(
+                  "rounded-sm text-white/70 focus-visible:ring-white",
+                  pluginItems.length ? "hover:text-white" : "hover:text-red-400",
+                )}
+                icon={
+                  pluginItems.length ? (
+                    <DotsThreeVertical size={16} aria-hidden="true" />
+                  ) : (
+                    <Trash size={14} weight="regular" aria-hidden="true" />
+                  )
+                }
               />
             </div>
 
@@ -194,13 +194,7 @@ export function BookCover({
             items={[
               {
                 label: book.starred ? t("book.menu.unstar") : t("book.menu.star"),
-                icon: (
-                  <Star
-                    size={14}
-                    weight={book.starred ? "fill" : "regular"}
-                    aria-hidden="true"
-                  />
-                ),
+                icon: <Star size={14} weight={book.starred ? "fill" : "regular"} aria-hidden="true" />,
                 onClick: () => onToggleStar?.(),
               },
               {
@@ -225,9 +219,7 @@ export function BookCover({
         <div
           className={cn(
             "pointer-events-none absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full transition-colors",
-            selected
-              ? "bg-fg text-inverse-fg shadow-sm"
-              : "border border-white/90 bg-stone-950/30 text-transparent",
+            selected ? "bg-fg text-inverse-fg shadow-sm" : "border border-white/90 bg-stone-950/30 text-transparent",
           )}
           aria-hidden="true"
         >

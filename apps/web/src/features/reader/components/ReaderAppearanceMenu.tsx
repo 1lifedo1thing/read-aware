@@ -18,10 +18,7 @@ import { resolveReaderFontWeight } from "../../settings/lib/reader-settings";
 import { usePluginReaderThemeOptions } from "../../settings/hooks/usePluginReaderThemeOptions";
 import { pluginThemesAtom } from "../../plugins/state/plugin-store";
 import { FontField } from "../../settings/components/FontField";
-import {
-  useReaderAppearance,
-  type ReaderAppearanceScope,
-} from "../hooks/useReaderAppearance";
+import { useReaderAppearance, type ReaderAppearanceScope } from "../hooks/useReaderAppearance";
 
 type ReaderAppearanceMenuProps = {
   bookId: string;
@@ -40,12 +37,7 @@ type ReaderAppearanceMenuProps = {
  * change the shared global settings or just this book; the controls below read
  * and write whichever scope is active.
  */
-export function ReaderAppearanceMenu({
-  bookId,
-  fixedLayout = false,
-  open,
-  onOpenChange,
-}: ReaderAppearanceMenuProps) {
+export function ReaderAppearanceMenu({ bookId, fixedLayout = false, open, onOpenChange }: ReaderAppearanceMenuProps) {
   const { t } = useTranslation("reader");
   return (
     <Popover
@@ -65,7 +57,10 @@ export function ReaderAppearanceMenu({
 }
 
 /** Shared content for the inline popover and menu-independent host dialog. */
-export function ReaderAppearanceFields({ bookId, fixedLayout = false }: Pick<ReaderAppearanceMenuProps, "bookId" | "fixedLayout">) {
+export function ReaderAppearanceFields({
+  bookId,
+  fixedLayout = false,
+}: Pick<ReaderAppearanceMenuProps, "bookId" | "fixedLayout">) {
   const { t } = useTranslation("reader");
   const { scope, prefs, setScope, updatePrefs } = useReaderAppearance(bookId);
   const pluginThemes = useAtomValue(pluginThemesAtom);
@@ -77,118 +72,107 @@ export function ReaderAppearanceFields({ bookId, fixedLayout = false }: Pick<Rea
   ];
 
   return (
-      <div className="flex w-full flex-col gap-5">
-        <div>
-          <ChoiceGroup
-            label={t("applyTo")}
-            value={scope}
-            options={scopeOptions}
-            onChange={setScope}
-          />
-          <Caption className="mt-1.5 block text-fg-subtle">
-            {scope === "book" ? t("scopeHintBook") : t(fixedLayout ? "scopeHintGlobal" : "scopeHintGlobalFonts")}
-          </Caption>
-        </div>
+    <div className="flex w-full flex-col gap-5">
+      <div>
+        <ChoiceGroup label={t("applyTo")} value={scope} options={scopeOptions} onChange={setScope} />
+        <Caption className="mt-1.5 block text-fg-subtle">
+          {scope === "book" ? t("scopeHintBook") : t(fixedLayout ? "scopeHintGlobal" : "scopeHintGlobalFonts")}
+        </Caption>
+      </div>
 
-        <Divider />
+      <Divider />
 
-        <ChoiceGroup
-          label={t("pageColor")}
-          value={prefs.theme}
-          options={[...pageColorOptions(t), ...pluginThemeOptions]}
-          onChange={(theme) =>
-            updatePrefs(applyReaderThemeSelection(prefs, theme, pluginThemes))
-          }
-        />
-        {/* Typography — reflowable books only. A fixed-layout book is a
+      <ChoiceGroup
+        label={t("pageColor")}
+        value={prefs.theme}
+        options={[...pageColorOptions(t), ...pluginThemeOptions]}
+        onChange={(theme) => updatePrefs(applyReaderThemeSelection(prefs, theme, pluginThemes))}
+      />
+      {/* Typography — reflowable books only. A fixed-layout book is a
             sequence of pages the publisher already typeset: the engine has no
             text to re-flow, so every control here would move a switch that
             changes nothing. Offering them reads as "this book just ignores my
             settings" rather than "this book has none", so they are gone, with a
             line saying why. Page Color and Reading Mode stay: both still do
             visible work on a fixed-layout page. */}
-        {fixedLayout ? (
-          <>
-            <div>
-              <ChoiceGroup
-                label={t("fixedLayoutColor")}
-                value={prefs.fixedLayoutColor}
-                options={fixedLayoutColorOptions(t)}
-                onChange={(fixedLayoutColor) => updatePrefs({ ...prefs, fixedLayoutColor })}
-              />
-              <Caption className="mt-1.5 block text-fg-subtle">
-                {t("fixedLayoutColorHint")}
-              </Caption>
-            </div>
-            <Caption className="block text-fg-subtle">{t("fixedLayoutHint")}</Caption>
-          </>
-        ) : (
-          <>
-            <FontField
-              value={prefs.fontFamily}
-              fontWeight={prefs.fontWeight}
-              onChange={(fontFamily) => updatePrefs({ ...prefs, fontFamily })}
-            />
+      {fixedLayout ? (
+        <>
+          <div>
             <ChoiceGroup
-              label={t("fontSize")}
-              value={prefs.fontSize}
-              options={fontSizeOptions(t)}
-              onChange={(fontSize) => updatePrefs({ ...prefs, fontSize })}
+              label={t("fixedLayoutColor")}
+              value={prefs.fixedLayoutColor}
+              options={fixedLayoutColorOptions(t)}
+              onChange={(fixedLayoutColor) => updatePrefs({ ...prefs, fixedLayoutColor })}
             />
-            <ChoiceGroup
-              label={t("fontWeight")}
-              value={resolveReaderFontWeight(prefs.fontWeight, prefs.fontFamily)}
-              options={fontWeightOptions(t, prefs.fontFamily)}
-              onChange={(fontWeight) => updatePrefs({ ...prefs, fontWeight })}
-            />
-            <ChoiceGroup
-              label={t("lineSpacing")}
-              value={prefs.lineSpacing}
-              options={lineSpacingOptions(t)}
-              onChange={(lineSpacing) => updatePrefs({ ...prefs, lineSpacing })}
-            />
-            <ChoiceGroup
-              label={t("paragraphSpacing")}
-              value={prefs.paragraphSpacing}
-              options={paragraphSpacingOptions(t)}
-              onChange={(paragraphSpacing) => updatePrefs({ ...prefs, paragraphSpacing })}
-            />
-            <ChoiceGroup
-              label={t("textAlign")}
-              value={prefs.textAlign}
-              options={textAlignOptions(t)}
-              onChange={(textAlign) => updatePrefs({ ...prefs, textAlign })}
-            />
-            <ChoiceGroup
-              label={t("pageMargins")}
-              value={prefs.pageMargins}
-              options={pageMarginsOptions(t)}
-              onChange={(pageMargins) => updatePrefs({ ...prefs, pageMargins })}
-            />
-          </>
-        )}
+            <Caption className="mt-1.5 block text-fg-subtle">{t("fixedLayoutColorHint")}</Caption>
+          </div>
+          <Caption className="block text-fg-subtle">{t("fixedLayoutHint")}</Caption>
+        </>
+      ) : (
+        <>
+          <FontField
+            value={prefs.fontFamily}
+            fontWeight={prefs.fontWeight}
+            onChange={(fontFamily) => updatePrefs({ ...prefs, fontFamily })}
+          />
+          <ChoiceGroup
+            label={t("fontSize")}
+            value={prefs.fontSize}
+            options={fontSizeOptions(t)}
+            onChange={(fontSize) => updatePrefs({ ...prefs, fontSize })}
+          />
+          <ChoiceGroup
+            label={t("fontWeight")}
+            value={resolveReaderFontWeight(prefs.fontWeight, prefs.fontFamily)}
+            options={fontWeightOptions(t, prefs.fontFamily)}
+            onChange={(fontWeight) => updatePrefs({ ...prefs, fontWeight })}
+          />
+          <ChoiceGroup
+            label={t("lineSpacing")}
+            value={prefs.lineSpacing}
+            options={lineSpacingOptions(t)}
+            onChange={(lineSpacing) => updatePrefs({ ...prefs, lineSpacing })}
+          />
+          <ChoiceGroup
+            label={t("paragraphSpacing")}
+            value={prefs.paragraphSpacing}
+            options={paragraphSpacingOptions(t)}
+            onChange={(paragraphSpacing) => updatePrefs({ ...prefs, paragraphSpacing })}
+          />
+          <ChoiceGroup
+            label={t("textAlign")}
+            value={prefs.textAlign}
+            options={textAlignOptions(t)}
+            onChange={(textAlign) => updatePrefs({ ...prefs, textAlign })}
+          />
+          <ChoiceGroup
+            label={t("pageMargins")}
+            value={prefs.pageMargins}
+            options={pageMarginsOptions(t)}
+            onChange={(pageMargins) => updatePrefs({ ...prefs, pageMargins })}
+          />
+        </>
+      )}
 
-        <Divider />
+      <Divider />
 
-        {/* Fixed-layout books (PDF, comics) read on their own mode axis, so a
+      {/* Fixed-layout books (PDF, comics) read on their own mode axis, so a
             layout chosen here never drags novels along — and vice versa. */}
-        {fixedLayout ? (
-          <ChoiceGroup
-            label={t("readingMode")}
-            value={prefs.fixedLayoutReadingMode}
-            options={readingModeOptions(t)}
-            onChange={(fixedLayoutReadingMode) =>
-              updatePrefs({ ...prefs, fixedLayoutReadingMode })
-            }
-          />
-        ) : (
-          <ChoiceGroup
-            label={t("readingMode")}
-            value={prefs.readingMode}
-            options={readingModeOptions(t)}
-            onChange={(readingMode) => updatePrefs({ ...prefs, readingMode })}
-          />
-        )}
-      </div>
+      {fixedLayout ? (
+        <ChoiceGroup
+          label={t("readingMode")}
+          value={prefs.fixedLayoutReadingMode}
+          options={readingModeOptions(t)}
+          onChange={(fixedLayoutReadingMode) => updatePrefs({ ...prefs, fixedLayoutReadingMode })}
+        />
+      ) : (
+        <ChoiceGroup
+          label={t("readingMode")}
+          value={prefs.readingMode}
+          options={readingModeOptions(t)}
+          onChange={(readingMode) => updatePrefs({ ...prefs, readingMode })}
+        />
+      )}
+    </div>
   );
 }

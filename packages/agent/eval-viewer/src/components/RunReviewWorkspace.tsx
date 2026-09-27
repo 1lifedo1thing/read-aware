@@ -1,18 +1,7 @@
 import { ChoiceGroup } from "@read-aware/ui";
 import { Fragment, useMemo, useState } from "react";
-import {
-  ms,
-  saveHumanReview,
-  usd,
-  type CatalogScenario,
-  type RunRecord,
-} from "../api";
-import {
-  reviewMean,
-  qualityVerdict,
-  type HumanReview,
-  type ManualReviewSession,
-} from "../reviews";
+import { ms, saveHumanReview, usd, type CatalogScenario, type RunRecord } from "../api";
+import { reviewMean, qualityVerdict, type HumanReview, type ManualReviewSession } from "../reviews";
 import { HumanReviewForm } from "./HumanReviewForm";
 import { ManualSessionPanel } from "./ManualSessionPanel";
 import { TranscriptView } from "./TranscriptView";
@@ -42,21 +31,15 @@ function isConcern(review: HumanReview | undefined): boolean {
   return review?.verdict === "partial" || review?.verdict === "fail";
 }
 
-function matchesFilter(
-  review: HumanReview | undefined,
-  filter: ReviewFilter,
-): boolean {
-  if (filter === "unreviewed")
-    return !review?.verdict || !review.notes.trim();
+function matchesFilter(review: HumanReview | undefined, filter: ReviewFilter): boolean {
+  if (filter === "unreviewed") return !review?.verdict || !review.notes.trim();
   if (filter === "concerns") return isConcern(review);
   return true;
 }
 
 function humanScore(review: HumanReview | undefined): string {
   const score = reviewMean(review);
-  return score === undefined
-    ? "待审"
-    : `${score.toFixed(score % 1 ? 1 : 0)} / 5`;
+  return score === undefined ? "待审" : `${score.toFixed(score % 1 ? 1 : 0)} / 5`;
 }
 
 function recordTurns(record: RunRecord) {
@@ -65,30 +48,22 @@ function recordTurns(record: RunRecord) {
     answer: turn.answer ?? "",
     selection: turn.input?.attachments?.[0]?.text,
     cursor: turn.input?.readingCursor,
-    tools: (record.output?.tools ?? []).filter(
-      (tool) => tool.turn === undefined || tool.turn === index + 1,
-    ),
+    tools: (record.output?.tools ?? []).filter((tool) => tool.turn === undefined || tool.turn === index + 1),
   }));
 }
 
 function ReviewEvidence({ value }: { value: unknown }) {
   const [open, setOpen] = useState(false);
-  return <details className="my-3 text-xs text-[var(--muted)]" onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary className="cursor-pointer">原文、阅读边界与实际状态</summary>
-    {open && <pre className="max-h-96 overflow-auto whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>}
-  </details>;
+  return (
+    <details className="my-3 text-xs text-[var(--muted)]" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="cursor-pointer">原文、阅读边界与实际状态</summary>
+      {open && <pre className="max-h-96 overflow-auto whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>}
+    </details>
+  );
 }
 
-function ReviewDiagnostics({
-  record,
-  scenario,
-}: {
-  record: RunRecord;
-  scenario?: CatalogScenario;
-}) {
-  const checks = [...(record.assessment?.checks ?? [])].sort(
-    (a, b) => Number(a.passed) - Number(b.passed),
-  );
+function ReviewDiagnostics({ record, scenario }: { record: RunRecord; scenario?: CatalogScenario }) {
+  const checks = [...(record.assessment?.checks ?? [])].sort((a, b) => Number(a.passed) - Number(b.passed));
   const failed = checks.filter((check) => !check.passed).length;
   if (!scenario && checks.length === 0) return null;
   return (
@@ -118,18 +93,14 @@ function ReviewDiagnostics({
           {checks.map((check) => (
             <li
               key={`${check.id}-${check.message}`}
-              className={`flex flex-wrap items-baseline gap-2 text-xs ${
-                check.passed ? "" : "text-[var(--fail)]"
-              }`}
+              className={`flex flex-wrap items-baseline gap-2 text-xs ${check.passed ? "" : "text-[var(--fail)]"}`}
             >
               <span
                 className={`h-[7px] w-[7px] shrink-0 self-center rounded-full ${
                   check.passed ? "bg-[var(--ok)]" : "bg-[var(--fail)]"
                 }`}
               />
-              <span className="font-mono text-xs text-[var(--muted)]">
-                {check.id}
-              </span>
+              <span className="font-mono text-xs text-[var(--muted)]">{check.id}</span>
               <span>{check.message}</span>
             </li>
           ))}
@@ -171,22 +142,13 @@ export function RunReviewWorkspace({
     [records, refOf],
   );
   const [filter, setFilter] = useState<ReviewFilter>("all");
-  const fixedReviews = records.map(
-    (record) => humanReviews[runTargetId(record)],
-  );
+  const fixedReviews = records.map((record) => humanReviews[runTargetId(record)]);
   const manualTurns = manualSessions.flatMap((session) => session.turns);
-  const allReviews = [
-    ...fixedReviews,
-    ...manualTurns.map((turn) => humanReviews[manualTargetId(turn.id)]),
-  ];
-  const reviewed = allReviews.filter(
-    (review) => review?.verdict && review.notes.trim(),
-  );
+  const allReviews = [...fixedReviews, ...manualTurns.map((turn) => humanReviews[manualTargetId(turn.id)])];
+  const reviewed = allReviews.filter((review) => review?.verdict && review.notes.trim());
   const concerns = reviewed.filter(isConcern);
 
-  const persistReview = async (
-    input: Parameters<typeof saveHumanReview>[1],
-  ) => {
+  const persistReview = async (input: Parameters<typeof saveHumanReview>[1]) => {
     const review = await saveHumanReview(runId, input);
     onReviewChange(review);
   };
@@ -199,11 +161,7 @@ export function RunReviewWorkspace({
             {reviewed.length}/{records.length + manualTurns.length}
           </strong>
           <span>已评</span>
-          {concerns.length > 0 && (
-            <span className="text-[var(--fail)]">
-              {concerns.length} 个有问题
-            </span>
-          )}
+          {concerns.length > 0 && <span className="text-[var(--fail)]">{concerns.length} 个有问题</span>}
         </div>
         <ChoiceGroup
           ariaLabel="人工评测筛选"
@@ -223,78 +181,89 @@ export function RunReviewWorkspace({
           const review = humanReviews[targetId];
           const verdict = qualityVerdict(record, humanReviews);
           const sessions = manualSessions.filter(
-            (session) =>
-              session.scenarioId === record.scenarioId &&
-              session.variantId === record.variantId,
+            (session) => session.scenarioId === record.scenarioId && session.variantId === record.variantId,
           );
-          const showRecord = filter === "all" || (filter === "unreviewed" ? verdict === "pending"
-            : verdict === "partial" || verdict === "fail" || verdict === "error");
+          const showRecord =
+            filter === "all" ||
+            (filter === "unreviewed"
+              ? verdict === "pending"
+              : verdict === "partial" || verdict === "fail" || verdict === "error");
           const visibleManualTurns = sessions.flatMap((session) =>
             session.turns
               .map((turn, index) => ({ session, turn, index }))
-              .filter(({ turn }) =>
-                matchesFilter(humanReviews[manualTargetId(turn.id)], filter),
-              ),
+              .filter(({ turn }) => matchesFilter(humanReviews[manualTargetId(turn.id)], filter)),
           );
           if (!showRecord && visibleManualTurns.length === 0) return null;
           return (
             <Fragment key={record.id}>
               {showRecord && (
-                <article
-                  className="min-w-0 border-b border-[var(--border)] pb-8"
-                  id={record.id}
-                >
+                <article className="min-w-0 border-b border-[var(--border)] pb-8" id={record.id}>
                   <header className="flex items-start justify-between gap-5 pt-5.5 pb-2.5 max-sm:gap-2.5">
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-2.5 max-sm:items-start">
-                        <span className={refChipClass}>
-                          {refOf(record.scenarioId)}
-                        </span>
+                        <span className={refChipClass}>{refOf(record.scenarioId)}</span>
                         <h2 className="m-0 min-w-0 truncate font-mono text-sm leading-6 font-semibold tracking-normal max-sm:whitespace-normal max-sm:wrap-anywhere">
                           {record.scenarioId}
                         </h2>
                       </div>
                       <p className="mt-1 mb-0 text-[11px] text-[var(--subtle)]">
-                        {record.variantId} · #{record.repetition} ·{" "}
-                        {ms(record.telemetry.wallTimeMs)} ·{" "}
+                        {record.variantId} · #{record.repetition} · {ms(record.telemetry.wallTimeMs)} ·{" "}
                         {usd(record.telemetry.costUsd)}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3 text-[11px] max-sm:grid max-sm:justify-items-end max-sm:gap-0.5">
-                      <span className={`font-semibold ${verdict === "pass" ? "text-[var(--ok)]" : humanScoreClass(review)}`}>
-                        {{ pass: "通过", partial: "部分达标", fail: "未通过", pending: "待语义审阅", error: "运行错误" }[verdict]}
-                      </span>
-                      <span className="text-[var(--subtle)]">辅助检查{record.status === "passed" ? "通过" : record.status === "failed" ? "有疑点" : "错误"}</span>
                       <span
-                        className={`tabular-nums ${humanScoreClass(review)}`}
+                        className={`font-semibold ${verdict === "pass" ? "text-[var(--ok)]" : humanScoreClass(review)}`}
                       >
+                        {
+                          {
+                            pass: "通过",
+                            partial: "部分达标",
+                            fail: "未通过",
+                            pending: "待语义审阅",
+                            error: "运行错误",
+                          }[verdict]
+                        }
+                      </span>
+                      <span className="text-[var(--subtle)]">
+                        辅助检查{record.status === "passed" ? "通过" : record.status === "failed" ? "有疑点" : "错误"}
+                      </span>
+                      <span className={`tabular-nums ${humanScoreClass(review)}`}>
                         {review ? humanScore(review) : verdict === "pass" || verdict === "fail" ? "状态验证" : "—"}
                       </span>
                     </div>
                   </header>
                   {record.error && (
                     <div className="bg-[var(--fail-bg)] px-3 py-2.5 text-xs text-[var(--fail)]">
-                      {record.error.stage} · {record.error.name}:{" "}
-                      {record.error.message}
+                      {record.error.stage} · {record.error.name}: {record.error.message}
                     </div>
                   )}
                   <div className="min-w-0">
                     <TranscriptView turns={recordTurns(record)} />
-                    <ReviewEvidence value={{ scenario: record.input, evidence: record.output?.reviewEvidence ?? "旧工件未记录原文快照，请对照本地 fixture", state: record.output?.state, interactions: record.output?.interactions }} />
-                    {record.assessment?.modelReview && <details className="my-3 text-xs text-[var(--muted)]">
-                      <summary className="cursor-pointer">自动初评 · {record.assessment.modelReview.verdict}（待主 Agent / 人工复核）</summary>
-                      <ul className="list-disc pl-5">{record.assessment.modelReview.criteria.map((entry, index) => <li key={index}>{entry.criterion} — {entry.rationale} ({entry.score})</li>)}</ul>
-                    </details>}
-                    <HumanReviewForm
-                      key={targetId}
-                      targetId={targetId}
-                      review={review}
-                      onSave={persistReview}
+                    <ReviewEvidence
+                      value={{
+                        scenario: record.input,
+                        evidence: record.output?.reviewEvidence ?? "旧工件未记录原文快照，请对照本地 fixture",
+                        state: record.output?.state,
+                        interactions: record.output?.interactions,
+                      }}
                     />
-                    <ReviewDiagnostics
-                      record={record}
-                      scenario={scenarioOf?.(record.scenarioId)}
-                    />
+                    {record.assessment?.modelReview && (
+                      <details className="my-3 text-xs text-[var(--muted)]">
+                        <summary className="cursor-pointer">
+                          自动初评 · {record.assessment.modelReview.verdict}（待主 Agent / 人工复核）
+                        </summary>
+                        <ul className="list-disc pl-5">
+                          {record.assessment.modelReview.criteria.map((entry, index) => (
+                            <li key={index}>
+                              {entry.criterion} — {entry.rationale} ({entry.score})
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                    <HumanReviewForm key={targetId} targetId={targetId} review={review} onSave={persistReview} />
+                    <ReviewDiagnostics record={record} scenario={scenarioOf?.(record.scenarioId)} />
                     <ManualSessionPanel
                       runId={runId}
                       record={record}
@@ -316,9 +285,7 @@ export function RunReviewWorkspace({
                     <header className="flex items-start justify-between gap-5 pt-5.5 pb-2.5 max-sm:gap-2.5">
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <span className={refChipClass}>
-                            {refOf(record.scenarioId)}
-                          </span>
+                          <span className={refChipClass}>{refOf(record.scenarioId)}</span>
                           <h2 className="m-0 min-w-0 text-sm leading-6 font-semibold tracking-normal">
                             自由问题 · 第 {index + 1} 轮
                           </h2>
@@ -327,9 +294,7 @@ export function RunReviewWorkspace({
                           {session.model.provider}:{session.model.id}
                         </p>
                       </div>
-                      <span
-                        className={`shrink-0 text-[11px] tabular-nums ${humanScoreClass(manualReview)}`}
-                      >
+                      <span className={`shrink-0 text-[11px] tabular-nums ${humanScoreClass(manualReview)}`}>
                         {humanScore(manualReview)}
                       </span>
                     </header>
@@ -343,7 +308,14 @@ export function RunReviewWorkspace({
                           },
                         ]}
                       />
-                      <ReviewEvidence value={{ input: turn.input, evidence: turn.reviewEvidence, state: turn.state, interactions: turn.interactions }} />
+                      <ReviewEvidence
+                        value={{
+                          input: turn.input,
+                          evidence: turn.reviewEvidence,
+                          state: turn.state,
+                          interactions: turn.interactions,
+                        }}
+                      />
                       <HumanReviewForm
                         key={manualTarget}
                         targetId={manualTarget}

@@ -11,11 +11,7 @@ export type ResolvedFieldOption = { value: string; label: string };
 
 function labelText(label: unknown, fallback: string): string {
   if (typeof label === "string" && label.trim()) return label;
-  if (
-    typeof label === "object" &&
-    label !== null &&
-    typeof (label as { default?: unknown }).default === "string"
-  ) {
+  if (typeof label === "object" && label !== null && typeof (label as { default?: unknown }).default === "string") {
     return contributionText(label as PluginText);
   }
   return fallback;

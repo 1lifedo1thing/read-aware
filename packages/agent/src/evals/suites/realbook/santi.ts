@@ -74,9 +74,7 @@ function cursorAt(chapterIndex: number) {
   const epub = santi.epub();
   const chapter = epub.chapters[chapterIndex];
   if (!chapter) throw new Error(`santi fixture has no chapter ${chapterIndex}`);
-  const charsBefore = epub.chapters
-    .slice(0, chapterIndex)
-    .reduce((sum, entry) => sum + entry.text.length, 0);
+  const charsBefore = epub.chapters.slice(0, chapterIndex).reduce((sum, entry) => sum + entry.text.length, 0);
   const totalChars = epub.chapters.reduce((sum, entry) => sum + entry.text.length, 0);
   return {
     chapterIndex,
@@ -94,13 +92,11 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
   id: "santi",
   displayName: "《三体》三部曲",
   code: "S15",
-  description:
-    "基于完整中文《三体》三部曲合集的真实场景（预训练知名，多卷本）。",
+  description: "基于完整中文《三体》三部曲合集的真实场景（预训练知名，多卷本）。",
   scenarios: [
     defineAgentEvalScenario({
       id: "famous-book-early-cursor-no-leak",
-      description:
-        "当读者在卷I中部，模型完全通过预训练了解该书时，回答停留在光标之后。",
+      description: "当读者在卷I中部，模型完全通过预训练了解该书时，回答停留在光标之后。",
       tags: ["spoiler", "cursor", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -130,8 +126,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "quote-locates-chapter-omnibus",
-      description:
-        "在合集规模（61节、三本书）中定位逐字引用并命名正确章节。",
+      description: "在合集规模（61节、三本书）中定位逐字引用并命名正确章节。",
       tags: ["retrieval", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -149,9 +144,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
         answer: { mustContain: [santi.chapterTitleKey(QUOTE_CHAPTER)] },
         tools: { required: ["search_book_text"], noErrors: true },
       },
-      rubric: [
-        "Names the correct chapter and retells only its context, staying behind the reading cursor",
-      ],
+      rubric: ["Names the correct chapter and retells only its context, staying behind the reading cursor"],
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
@@ -164,8 +157,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "omnibus-toc-navigation",
-      description:
-        "卷名是读者可见的TOC事实：回答几卷及读者位置，不重述未读卷。",
+      description: "卷名是读者可见的TOC事实：回答几卷及读者位置，不重述未读卷。",
       tags: ["toc", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -203,8 +195,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "explicit-spoiler-crosses-fence",
-      description:
-        "关于可见章节标题的显式剧透请求通过 confirmSpoiler 跨越栅栏并从实际文本回答。",
+      description: "关于可见章节标题的显式剧透请求通过 confirmSpoiler 跨越栅栏并从实际文本回答。",
       tags: ["spoiler", "grant", "retrieval", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -240,8 +231,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "finished-trilogy-free-discussion",
-      description:
-        "已完成的读者获得无栅栏的整个三部曲讨论，通过跨卷检索支撑。",
+      description: "已完成的读者获得无栅栏的整个三部曲讨论，通过跨卷检索支撑。",
       tags: ["spoiler", "finished", "retrieval", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -272,8 +262,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "famous-quotes-no-recital",
-      description:
-        "金句请求是泄漏最爱走的门：读者在卷I中部索要全书面世名言，未授权不逐字背诵预训练里的引文。",
+      description: "金句请求是泄漏最爱走的门：读者在卷I中部索要全书面世名言，未授权不逐字背诵预训练里的引文。",
       tags: ["spoiler", "cursor", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -315,8 +304,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "volume-boundary-fence",
-      description:
-        "卷I刚读完的读者问结局：卷I内容自由讨论，第二部起仍被围栏挡住——多卷本的围栏粒度。",
+      description: "卷I刚读完的读者问结局：卷I内容自由讨论，第二部起仍被围栏挡住——多卷本的围栏粒度。",
       tags: ["spoiler", "cursor", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {
@@ -346,12 +334,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
           evaluateAgentTrace(observation, {
             answer: { mustContain: ["叶文洁"] },
           }),
-          coverageAssessment(
-            observation,
-            "answer.vol1-ending-grounded",
-            ["雷达峰", "落日", "日落", "遗址", "红岸"],
-            1,
-          ),
+          coverageAssessment(observation, "answer.vol1-ending-grounded", ["雷达峰", "落日", "日落", "遗址", "红岸"], 1),
           leakAgainst(observation, LEAK_WORDS_VOL2),
           fenceDisciplineAssessment(observation, VOL1_DONE_CHAPTER),
           cjkAnswerAssessment(observation),
@@ -359,8 +342,7 @@ export const santiEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "omnibus-structure-fidelity",
-      description:
-        "问第二部的章数：按本合集的真实结构答（序章+上/中/下三部），而非背诵原版单行本的章目。",
+      description: "问第二部的章数：按本合集的真实结构答（序章+上/中/下三部），而非背诵原版单行本的章目。",
       tags: ["toc", "santi", "book"],
       scope: { kind: "book", bookId: santi.bookId },
       seed: {

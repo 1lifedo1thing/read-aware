@@ -5,14 +5,7 @@
 import type { Id } from "@read-aware/core";
 import type { ThreadScope } from "../thread-scope";
 
-const CURRENT_BOOK_ALIASES = new Set([
-  "current",
-  "current-book",
-  "current_book",
-  "this",
-  "this-book",
-  "this_book",
-]);
+const CURRENT_BOOK_ALIASES = new Set(["current", "current-book", "current_book", "this", "this-book", "this_book"]);
 
 /** "current" 等占位值归一为 undefined（走默认书）；其余原样返回。 */
 export function normalizeBookIdParam(raw?: string): string | undefined {
@@ -23,8 +16,7 @@ export function normalizeBookIdParam(raw?: string): string | undefined {
 
 /** 书线程默认当前书；全局线程必须显式给出真实 bookId。 */
 export function resolveBookId(scope: ThreadScope, raw?: string): Id {
-  const target = (normalizeBookIdParam(raw) ??
-    (scope.kind === "book" ? scope.bookId : undefined)) as Id | undefined;
+  const target = (normalizeBookIdParam(raw) ?? (scope.kind === "book" ? scope.bookId : undefined)) as Id | undefined;
   if (!target) throw new Error("bookId is required in the global thread");
   return target;
 }

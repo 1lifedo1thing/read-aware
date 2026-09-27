@@ -21,7 +21,10 @@ describe("hrefMatches", () => {
 
 describe("findChapterByHref", () => {
   test("exact anchors separate chapters in the same file; ambiguous positions stay unknown", () => {
-    const toc = [{ index: 0, hrefs: ["s.html", "s.html#a"] }, { index: 1, hrefs: ["s.html#b", "tail.html"] }];
+    const toc = [
+      { index: 0, hrefs: ["s.html", "s.html#a"] },
+      { index: 1, hrefs: ["s.html#b", "tail.html"] },
+    ];
     expect(findChapterByHref(toc, "s.html#a")?.index).toBe(0);
     expect(findChapterByHref(toc, "s.html#b")?.index).toBe(1);
     expect(findChapterByHref(toc, "s.html#unknown")).toBeUndefined();

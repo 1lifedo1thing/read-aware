@@ -13,8 +13,7 @@ const request = (view: PluginDialogRequest["view"]): PluginDialogRequest => ({
 });
 
 /** Seeds one pending dialog request. */
-const pending = (view: PluginDialogRequest["view"]) =>
-  withAtoms(seed(pluginDialogAtom, request(view)));
+const pending = (view: PluginDialogRequest["view"]) => withAtoms(seed(pluginDialogAtom, request(view)));
 
 /**
  * The single modal container for plugin views raised by selection actions and
@@ -45,8 +44,7 @@ export const DetailView: Story = {
             senses: [
               {
                 partOfSpeech: "noun",
-                definition:
-                  "A crested passerine bird with waxy red tips on its wing feathers.",
+                definition: "A crested passerine bird with waxy red tips on its wing feathers.",
                 examples: ["I was the shadow of the waxwing slain."],
               },
             ],

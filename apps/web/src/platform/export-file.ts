@@ -46,8 +46,13 @@ export async function exportTextFile(file: FileExport, signal?: AbortSignal): Pr
   const binary = typeof file.content !== "string";
 
   if (isTauri() && !isMobileOS()) {
-    return exportResourceBytes(nativeResourceFiles, filename, file.content,
-      error => log.warn("Temporary export cleanup failed", error), signal);
+    return exportResourceBytes(
+      nativeResourceFiles,
+      filename,
+      file.content,
+      (error) => log.warn("Temporary export cleanup failed", error),
+      signal,
+    );
   }
 
   if (isTauri()) {

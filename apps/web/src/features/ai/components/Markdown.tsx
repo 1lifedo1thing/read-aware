@@ -2,7 +2,7 @@ import { Streamdown, type LinkSafetyConfig } from "streamdown";
 import { cn } from "@read-aware/ui/cn";
 import { MarkdownLinkDialog } from "./MarkdownLinkDialog";
 
-const components = { img: ({ alt }: { alt?: string }) => alt ? <span>{alt}</span> : null };
+const components = { img: ({ alt }: { alt?: string }) => (alt ? <span>{alt}</span> : null) };
 const linkSafety: LinkSafetyConfig = {
   enabled: true,
   renderModal: (props) => <MarkdownLinkDialog {...props} />,

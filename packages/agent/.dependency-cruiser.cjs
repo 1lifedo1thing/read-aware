@@ -13,7 +13,8 @@ module.exports = {
     {
       name: "no-circular",
       severity: "error",
-      comment: "Import cycles make module initialization order-dependent. Port contracts belong below the runtime: move the shared type into ports (or a leaf module) instead of importing the runtime back.",
+      comment:
+        "Import cycles make module initialization order-dependent. Port contracts belong below the runtime: move the shared type into ports (or a leaf module) instead of importing the runtime back.",
       from: {},
       to: { circular: true },
     },

@@ -30,7 +30,8 @@ test("refresh adopts unchanged fields, preserves edits and removes stale fields 
 });
 
 test("secret adapter fields are excluded and password drafts are cleared on hide", () => {
-  const draft = new PluginFormDraft([...fields(),
+  const draft = new PluginFormDraft([
+    ...fields(),
     { kind: "secret", id: "key", label: "Key" },
     { kind: "text", inputMode: "password", id: "password", label: "Password" },
   ]);
@@ -39,7 +40,9 @@ test("secret adapter fields are excluded and password drafts are cleared on hide
   draft.update("query", "Public draft");
   draft.hide();
   expect(draft.getSnapshot()).toEqual({ query: "Public draft", limit: 10, password: "" });
-  draft.dispose(); draft.update("query", "late"); draft.reconcile(fields());
+  draft.dispose();
+  draft.update("query", "late");
+  draft.reconcile(fields());
   expect(draft.getSnapshot()).toEqual({});
 });
 
@@ -55,43 +58,58 @@ test("snapshot identity is stable for no-op reconciliation and safe for arbitrar
   expect(Object.hasOwn(draft.getSnapshot(), "__proto__")).toBe(true);
   expect(draft.getSnapshot()["__proto__"]).toBe("edited");
   expect(calls).toBe(1);
-  stop(); draft.dispose();
+  stop();
+  draft.dispose();
   expect(calls).toBe(1);
 });
 
 test("nested forms get independent drafts across every layout and structural replacement", () => {
   const build = () => {
     const forms = Array.from({ length: 5 }, () => form());
-    const view: PluginView = { kind: "detail", content: [
-      forms[0],
-      { kind: "section", blocks: [{ kind: "group", blocks: [forms[1]] }] },
-      { kind: "columns", cells: [{ blocks: [forms[2]] }] },
-      { kind: "row", cells: [{ block: forms[3] }] },
-      forms[4],
-    ] };
+    const view: PluginView = {
+      kind: "detail",
+      content: [
+        forms[0],
+        { kind: "section", blocks: [{ kind: "group", blocks: [forms[1]] }] },
+        { kind: "columns", cells: [{ blocks: [forms[2]] }] },
+        { kind: "row", cells: [{ block: forms[3] }] },
+        forms[4],
+      ],
+    };
     return { forms, view };
   };
-  const first = build(), owner = new PluginFormDrafts(first.view);
+  const first = build(),
+    owner = new PluginFormDrafts(first.view);
   first.forms.forEach((view, i) => owner.get(view)!.update("query", `Draft ${i}`));
-  const refreshed = build(); owner.reconcile(refreshed.view);
+  const refreshed = build();
+  owner.reconcile(refreshed.view);
   refreshed.forms.forEach((view, i) => expect(owner.get(view)!.getSnapshot().query).toBe(`Draft ${i}`));
   const retired = owner.get(refreshed.forms[0])!;
   owner.reconcile({ kind: "markdown", markdown: "No form" });
   expect(retired.getSnapshot()).toEqual({});
   owner.reconcile(first.view);
   expect(owner.get(first.forms[0])!.getSnapshot().query).toBe("Stored");
-  owner.dispose(); owner.reconcile(first.view);
+  owner.dispose();
+  owner.reconcile(first.view);
   expect(owner.get(first.forms[0])).toBeUndefined();
 });
 
 test("navigation frames retain drafts on back but replacement, reset and disposal erase them", async () => {
-  const session = new PluginViewSession(); session.setRoot(form());
-  const parent = currentDraft(session); parent.update("query", "Parent draft");
+  const session = new PluginViewSession();
+  session.setRoot(form());
+  const parent = currentDraft(session);
+  parent.update("query", "Parent draft");
   const parentKey = session.getSnapshot().renderKey;
   await session.run(() => ({ view: form("Child") }));
-  const child = currentDraft(session); child.update("query", "Child draft");
+  const child = currentDraft(session);
+  child.update("query", "Child draft");
   let staleCalls = 0;
-  expect(await session.runFrom(parentKey, () => { staleCalls++; return null; })).toBeNull();
+  expect(
+    await session.runFrom(parentKey, () => {
+      staleCalls++;
+      return null;
+    }),
+  ).toBeNull();
   expect(staleCalls).toBe(0);
   session.back();
   expect(currentDraft(session)).toBe(parent);
@@ -106,26 +124,39 @@ test("navigation frames retain drafts on back but replacement, reset and disposa
   const replacement = currentDraft(session);
   await session.run(() => ({ view: form("Reset"), navigation: "reset" }));
   expect(replacement.getSnapshot()).toEqual({});
-  const reset = currentDraft(session); session.dispose();
+  const reset = currentDraft(session);
+  session.dispose();
   expect(reset.getSnapshot()).toEqual({});
   expect(session.getSnapshot().forms).toBeNull();
 });
 
 test("modal uses a separate owner, clears underlying passwords and denies hidden page callbacks", async () => {
   const session = new PluginViewSession();
-  session.setRoot({ ...form(), fields: [...fields(), { kind: "text", id: "password", label: "Password", inputMode: "password" }] });
-  const parent = currentDraft(session), key = session.getSnapshot().renderKey;
-  parent.update("password", "private"); parent.update("query", "Keep");
+  session.setRoot({
+    ...form(),
+    fields: [...fields(), { kind: "text", id: "password", label: "Password", inputMode: "password" }],
+  });
+  const parent = currentDraft(session),
+    key = session.getSnapshot().renderKey;
+  parent.update("password", "private");
+  parent.update("query", "Keep");
   await session.runFrom(key, () => ({ view: form("Modal") }), { presentation: "dialog" });
   const modal = session.getSnapshot().dialog!.session;
   expect(currentDraft(modal).getSnapshot().query).toBe("Modal");
   expect(parent.getSnapshot()).toEqual({ query: "Keep", limit: 10, password: "" });
   let calls = 0;
-  await session.runFrom(key, () => { calls++; return null; });
+  await session.runFrom(key, () => {
+    calls++;
+    return null;
+  });
   expect(calls).toBe(0);
-  const modalDraft = currentDraft(modal); session.closeDialog();
+  const modalDraft = currentDraft(modal);
+  session.closeDialog();
   expect(modalDraft.getSnapshot()).toEqual({});
-  await session.runFrom(key, () => { calls++; return null; });
+  await session.runFrom(key, () => {
+    calls++;
+    return null;
+  });
   expect(calls).toBe(1);
   expect(currentDraft(session)).toBe(parent);
   session.dispose();

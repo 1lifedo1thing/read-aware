@@ -9,11 +9,7 @@ import { combineAssessments, evaluateAgentTrace } from "../../assertions";
 import { defineAgentEvalScenario, type AgentEvalScenario } from "../../agent-harness";
 import { realBook } from "../../book-fixtures";
 import type { EvalSuite } from "../../types";
-import {
-  cjkAnswerAssessment,
-  coverageAssessment,
-  noFenceAssessment,
-} from "./real-book-helpers";
+import { cjkAnswerAssessment, coverageAssessment, noFenceAssessment } from "./real-book-helpers";
 import { bergerQuestionScenarios } from "./berger-questions";
 import { commonRealBookScenarios } from "./real-book-common";
 
@@ -26,9 +22,7 @@ const LEADER_CHAPTER = 7;
 
 function readerCursor() {
   const epub = berger.epub();
-  const charsBefore = epub.chapters
-    .slice(0, READER_CHAPTER)
-    .reduce((sum, chapter) => sum + chapter.text.length, 0);
+  const charsBefore = epub.chapters.slice(0, READER_CHAPTER).reduce((sum, chapter) => sum + chapter.text.length, 0);
   const totalChars = epub.chapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
   return {
     chapterIndex: READER_CHAPTER,
@@ -43,13 +37,11 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
   id: "berger",
   displayName: "《如何用提问解决问题》",
   code: "S02",
-  description:
-    "基于中文《贝格尔》全书的真实“怎么做”场景（将书的方法应用于读者情境）。",
+  description: "基于中文《贝格尔》全书的真实“怎么做”场景（将书的方法应用于读者情境）。",
   scenarios: [
     defineAgentEvalScenario({
       id: "apply-method-to-situation",
-      description:
-        "读者带来真实决策，回答应用已读决策章节的提问方法，提供可操作建议。",
+      description: "读者带来真实决策，回答应用已读决策章节的提问方法，提供可操作建议。",
       tags: ["retrieval", "digest", "berger", "book"],
       scope: { kind: "book", bookId: berger.bookId },
       seed: {
@@ -86,8 +78,7 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "forward-peek-for-new-manager",
-      description:
-        "指导类书籍的后续章节可自由访问：新任经理询问该书是否涵盖以提问领导。",
+      description: "指导类书籍的后续章节可自由访问：新任经理询问该书是否涵盖以提问领导。",
       tags: ["retrieval", "forward", "berger", "book"],
       scope: { kind: "book", bookId: berger.bookId },
       seed: {
@@ -131,8 +122,7 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "coach-questions-from-methods",
-      description:
-        "把已读决策章的提问方法变成读者当下处境的具体问题——教练式应用，而非章节复述。",
+      description: "把已读决策章的提问方法变成读者当下处境的具体问题——教练式应用，而非章节复述。",
       tags: ["digest", "berger", "book"],
       scope: { kind: "book", bookId: berger.bookId },
       seed: {
@@ -150,7 +140,8 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
         interactions: { forbiddenKinds: ["permission"] },
       },
       criteria: {
-        sourceChapter: "index 4 (做决策时，我为什么应该问问题) — vocabulary 开放式/如果/假设/选项 verified in that chapter's text",
+        sourceChapter:
+          "index 4 (做决策时，我为什么应该问问题) — vocabulary 开放式/如果/假设/选项 verified in that chapter's text",
       },
       rubric: [
         "Each question is actually usable before the talk (about THIS reader's stakes and options), visibly built on the book's question methods — not three generic self-help prompts",
@@ -173,8 +164,7 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "finish-recommendation-honest",
-      description:
-        "读者自陈背景并要求明确判断：基于已读部分给出值不值得读完的诚实推荐，不客套。",
+      description: "读者自陈背景并要求明确判断：基于已读部分给出值不值得读完的诚实推荐，不客套。",
       tags: ["digest", "berger", "book"],
       scope: { kind: "book", bookId: berger.bookId },
       seed: {
@@ -192,7 +182,8 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
         tools: { maxCalls: 3 },
       },
       criteria: {
-        honesty: "a real verdict (worth it / not / skim which chapters) grounded in the digested content and the stated background",
+        honesty:
+          "a real verdict (worth it / not / skim which chapters) grounded in the digested content and the stated background",
       },
       rubric: [
         "Gives a real verdict with reasons drawn from the book's actual content and the reader's stated background — no flattering hedging in both directions",
@@ -200,12 +191,7 @@ export const bergerEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, { tools: { maxCalls: 3 } }),
-          coverageAssessment(
-            observation,
-            "answer.grounded-in-book",
-            ["决策", "提问", "创造", "连接"],
-            1,
-          ),
+          coverageAssessment(observation, "answer.grounded-in-book", ["决策", "提问", "创造", "连接"], 1),
           noFenceAssessment(observation),
           cjkAnswerAssessment(observation),
         ),

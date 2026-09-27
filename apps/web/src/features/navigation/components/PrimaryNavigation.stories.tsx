@@ -41,10 +41,7 @@ export const Compact: Story = {
 
 export const StatsPromoted: Story = {
   args: {
-    destinations: [
-      ...defaultDestinations,
-      { id: "core:stats", topNav: "stats", label: "Reading stats" },
-    ],
+    destinations: [...defaultDestinations, { id: "core:stats", topNav: "stats", label: "Reading stats" }],
     activeTopNav: "stats",
   },
 };

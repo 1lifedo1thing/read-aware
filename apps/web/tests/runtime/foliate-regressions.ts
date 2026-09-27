@@ -25,10 +25,11 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
   const equal = (actual: unknown, expected: unknown) => {
     if (actual !== expected) throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
   };
-  const xhtml = (body: string) => new DOMParser().parseFromString(
-    `<html xmlns="http://www.w3.org/1999/xhtml"><head/><body>${body}</body></html>`,
-    "application/xhtml+xml",
-  );
+  const xhtml = (body: string) =>
+    new DOMParser().parseFromString(
+      `<html xmlns="http://www.w3.org/1999/xhtml"><head/><body>${body}</body></html>`,
+      "application/xhtml+xml",
+    );
 
   await check("CFI restores exact selections", () => {
     const doc = xhtml("<p>Hello world, test selection.</p>");
@@ -41,7 +42,9 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
   });
 
   await check("CFI preserves logical offsets across CDATA and comments", () => {
-    const doc = xhtml("<p>xxx<em>yyy</em><![CDATA[]]><!--one--><![CDATA[0123]]>4<!--two-->5<![CDATA[67]]>&#56;&#57;</p>");
+    const doc = xhtml(
+      "<p>xxx<em>yyy</em><![CDATA[]]><!--one--><![CDATA[0123]]>4<!--two-->5<![CDATA[67]]>&#56;&#57;</p>",
+    );
     for (let index = 0; index < 10; index++) {
       const range = cfi.toRange(doc, cfi.parse(`/4/2,/3:${index},/3:${index + 1}`));
       equal(range.toString(), String(index));
@@ -52,19 +55,23 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
   if (foundation) {
     await check("search and TTS preserve ranges across native CDATA and inline elements", () => {
       const doc = xhtml('<p lang="en">Hello <![CDATA[wo]]><em>rld</em>. Next sentence.</p>');
-      const match = [...foundation.search.searchMatcher(foundation.walker.textWalker,
-        { matchWholeWords: true })(doc, "world")];
+      const match = [
+        ...foundation.search.searchMatcher(foundation.walker.textWalker, { matchWholeWords: true })(doc, "world"),
+      ];
       equal(match.length, 1);
       equal(match[0].range.toString(), "world");
       let highlighted = "";
-      const tts = new foundation.tts.TTS(doc, foundation.walker.textWalker,
-        range => { highlighted = range.toString(); });
+      const tts = new foundation.tts.TTS(doc, foundation.walker.textWalker, (range) => {
+        highlighted = range.toString();
+      });
       const speech = new DOMParser().parseFromString(tts.start() ?? "", "application/xml");
       equal(speech.documentElement.textContent, "Hello world. Next sentence.");
       tts.setMark("1");
       equal(highlighted, "world");
-      equal(new DOMParser().parseFromString(tts.resume() ?? "", "application/xml")
-        .documentElement.textContent, "world. Next sentence.");
+      equal(
+        new DOMParser().parseFromString(tts.resume() ?? "", "application/xml").documentElement.textContent,
+        "world. Next sentence.",
+      );
     });
 
     await check("quote export produces a nonblank PNG in the desktop webview", async () => {
@@ -87,7 +94,8 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
         if (!context) throw new Error("Missing canvas context");
         context.drawImage(img, 0, 0);
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-        let light = 0, dark = 0;
+        let light = 0,
+          dark = 0;
         for (let i = 0; i < pixels.length; i += 4) {
           if (pixels[i + 3] < 128) continue;
           if (pixels[i] > 240) light++;
@@ -103,19 +111,29 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
 
   await check("default scrolled next/prev move a viewport; explicit distances stay pixels", async () => {
     const view = document.createElement("foliate-view") as View;
-    view.style.cssText = "display:block;position:fixed;left:0;top:0;width:640px;height:480px;opacity:0;pointer-events:none;z-index:-1";
-    const html = "<!doctype html><html><head><style>p {margin:16px 0;line-height:24px}</style></head><body>"
-      + Array.from({ length: 120 }, (_, index) => `<p>Engine regression paragraph ${index}. Continuous scrolling.</p>`).join("")
-      + "</body></html>";
+    view.style.cssText =
+      "display:block;position:fixed;left:0;top:0;width:640px;height:480px;opacity:0;pointer-events:none;z-index:-1";
+    const html =
+      "<!doctype html><html><head><style>p {margin:16px 0;line-height:24px}</style></head><body>" +
+      Array.from(
+        { length: 120 },
+        (_, index) => `<p>Engine regression paragraph ${index}. Continuous scrolling.</p>`,
+      ).join("") +
+      "</body></html>";
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     document.body.append(view);
     try {
       await view.open({
         metadata: { language: "en" },
-        sections: [{
-          id: "regression", size: html.length, load: () => url, unload: () => {},
-          createDocument: () => new DOMParser().parseFromString(html, "text/html"),
-        }],
+        sections: [
+          {
+            id: "regression",
+            size: html.length,
+            load: () => url,
+            unload: () => {},
+            createDocument: () => new DOMParser().parseFromString(html, "text/html"),
+          },
+        ],
       });
       rendererOf(view).setAttribute("flow", "scrolled");
       await view.goTo(0);

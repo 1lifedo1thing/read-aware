@@ -22,9 +22,13 @@ export function visiblePluginTreeRows(nodes: PluginTreeNode[], expanded: Readonl
 
 export function pluginTreeBranches(nodes: PluginTreeNode[]): Set<string> {
   const ids = new Set<string>();
-  const visit = (nodes: PluginTreeNode[]) => nodes.forEach(node => {
-    if (node.children?.length) { ids.add(node.id); visit(node.children); }
-  });
+  const visit = (nodes: PluginTreeNode[]) =>
+    nodes.forEach((node) => {
+      if (node.children?.length) {
+        ids.add(node.id);
+        visit(node.children);
+      }
+    });
   visit(nodes);
   return ids;
 }

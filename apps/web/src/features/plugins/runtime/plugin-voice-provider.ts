@@ -24,26 +24,38 @@ export function registerPluginVoiceProvider(
   const signal = lifecycle.signal;
   const key = contributionKey(brand.pluginId, provider.id);
   const releaseResult = (value: unknown) => {
-    try { releasePluginCallbacks(value); }
-    catch (error) { lifecycle.trackCleanup(Promise.reject(error)); }
+    try {
+      releasePluginCallbacks(value);
+    } catch (error) {
+      lifecycle.trackCleanup(Promise.reject(error));
+    }
   };
   let registered: RegisteredVoiceProvider = {
-    ...provider, ...brand, key, voices: [],
+    ...provider,
+    ...brand,
+    key,
+    voices: [],
     async synthesize(input) {
       if (!committed || !current()) throw new AppError("plugin/unavailable", "Voice provider is not active");
       const revision = requested;
       const bytes = await provider.synthesize(input);
       try {
-        if (!current() || revision !== requested) throw new AppError("plugin/unavailable", "Voice provider changed during synthesis");
+        if (!current() || revision !== requested)
+          throw new AppError("plugin/unavailable", "Voice provider changed during synthesis");
         if (!(bytes instanceof ArrayBuffer) && !(bytes instanceof Uint8Array)) {
           throw new AppError("plugin/invalid-input", "Voice provider did not return encoded audio bytes");
         }
         return bytes;
-      } finally { releaseResult(bytes); }
+      } finally {
+        releaseResult(bytes);
+      }
     },
   };
-  let disposed = false, committed = false, running = false;
-  let requested = 0, completed = -1;
+  let disposed = false,
+    committed = false,
+    running = false;
+  let requested = 0,
+    completed = -1;
   const registration = registerVoiceProviderContribution(registered, origin);
   const current = () => !disposed && !signal.aborted && registration.isCurrent();
 
@@ -52,7 +64,8 @@ export function registerPluginVoiceProvider(
     running = true;
     try {
       while (current() && completed !== requested) {
-        const revision = requested, source = actorFromEvent(requestedCauses.take({}));
+        const revision = requested,
+          source = actorFromEvent(requestedCauses.take({}));
         try {
           const voices = await provider.listVoices();
           try {
@@ -60,16 +73,20 @@ export function registerPluginVoiceProvider(
               const replacement = updateVoiceProviderVoices(key, normalizePluginVoices(voices), registered, source);
               if (replacement) registered = replacement;
             }
-          } finally { releaseResult(voices); }
+          } finally {
+            releaseResult(voices);
+          }
         } catch (error) {
           // Keep the last valid voices on read failure; a later settings change retries.
           if (current()) log.warn(`listVoices from "${brand.pluginId}" failed`, error);
         }
         completed = revision;
       }
-    } finally { running = false; }
+    } finally {
+      running = false;
+    }
   };
-  const offStorage = onAppEvent("plugin-storage-changed", event => {
+  const offStorage = onAppEvent("plugin-storage-changed", (event) => {
     const { pluginId } = event;
     if (pluginId !== brand.pluginId || !current()) return;
     requestedCauses.add(event);
@@ -84,14 +101,20 @@ export function registerPluginVoiceProvider(
     registration.dispose(source);
   };
   const cancel = () => {
-    try { dispose(); } catch (error) { lifecycle.trackCleanup(Promise.reject(error)); }
+    try {
+      dispose();
+    } catch (error) {
+      lifecycle.trackCleanup(Promise.reject(error));
+    }
   };
   signal.addEventListener("abort", cancel, { once: true });
   if (signal.aborted) cancel();
   commitContributionReplacement(() => {
     committed = true;
     // The factory batch must finish publishing before a provider can run code.
-    queueMicrotask(() => { void refresh(); });
+    queueMicrotask(() => {
+      void refresh();
+    });
   });
   return { dispose };
 }

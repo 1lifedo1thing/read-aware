@@ -26,10 +26,14 @@ function readStoredThreadId(): string {
 }
 
 const baseAtom = atom(stampEventCause({ id: readStoredThreadId() }, "system"));
-export const activeGlobalThreadSourceAtom = atom(get => get(baseAtom));
+export const activeGlobalThreadSourceAtom = atom((get) => get(baseAtom));
 const log = createLogger("global-thread");
 
-export function selectGlobalThread(threadId: string, origin: DomainActor = "user", signal?: AbortSignal): Promise<void> {
+export function selectGlobalThread(
+  threadId: string,
+  origin: DomainActor = "user",
+  signal?: AbortSignal,
+): Promise<void> {
   const source = causalActor(origin);
   const target = normalizeConversationTarget({ kind: "global", id: threadId });
   return afterLocalKVWrites(async () => {
@@ -48,13 +52,13 @@ export function selectGlobalThread(threadId: string, origin: DomainActor = "user
 export const activeGlobalThreadAtom = atom(
   (get) => get(baseAtom).id,
   (_get, _set, threadId: string) => {
-    void selectGlobalThread(threadId).catch(error => log.warn("Could not select conversation", error));
+    void selectGlobalThread(threadId).catch((error) => log.warn("Could not select conversation", error));
   },
 );
 
 // A pull moved the roamed selection: re-seed from the freshly-overlaid KV.
 // Lifetime listener — the Context page may not be mounted when it lands.
-onAppEvent("roaming-preferences-changed", event => {
+onAppEvent("roaming-preferences-changed", (event) => {
   if (!event.keys.includes(ACTIVE_THREAD_KEY)) return;
   getDefaultStore().set(baseAtom, stampEventCause({ id: readStoredThreadId() }, actorFromEvent(event)));
 });

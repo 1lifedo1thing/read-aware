@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from "react";
-import {
-  readFloatPosition,
-  writeFloatPosition,
-  type FloatPosition,
-} from "../lib/text-unit-mode-state";
+import { readFloatPosition, writeFloatPosition, type FloatPosition } from "../lib/text-unit-mode-state";
 
 // A pointer that travels this far is a drag; anything shorter stays a tap, so
 // buttons inside the floating control keep their click behaviour.
@@ -61,9 +57,7 @@ export function useDraggableFloat({
   controlId,
   defaultPosition = null,
 }: UseDraggableFloatOptions): DraggableFloat {
-  const [position, setPosition] = useState<FloatPosition | null>(
-    () => readFloatPosition(controlId) ?? defaultPosition,
-  );
+  const [position, setPosition] = useState<FloatPosition | null>(() => readFloatPosition(controlId) ?? defaultPosition);
   const [dragging, setDragging] = useState(false);
   const dragClickRef = useRef(false);
   const positionRef = useRef(position);
@@ -106,9 +100,7 @@ export function useDraggableFloat({
       const startY = event.clientY;
       // Where the control's center sits right now, so the grab keeps its offset
       // (dragging by a corner shouldn't snap the center under the finger).
-      const controlRect = (
-        handle.closest("[data-ra-float]") ?? handle
-      ).getBoundingClientRect();
+      const controlRect = (handle.closest("[data-ra-float]") ?? handle).getBoundingClientRect();
       const grabOffsetX = startX - (controlRect.left + controlRect.width / 2);
       const grabOffsetY = startY - (controlRect.top + controlRect.height / 2);
       halfSizeRef.current = { x: controlRect.width / 2, y: controlRect.height / 2 };
@@ -187,9 +179,7 @@ export function useDraggableFloat({
 
   return {
     position,
-    style: position
-      ? { left: `${position.x * 100}%`, top: `${position.y * 100}%` }
-      : null,
+    style: position ? { left: `${position.x * 100}%`, top: `${position.y * 100}%` } : null,
     handleProps: { onPointerDown },
     dragging,
     consumeDragClick,

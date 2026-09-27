@@ -69,11 +69,7 @@ function looksLikeMojibake(value: string): boolean {
   let suspicious = 0;
   for (const char of sample) {
     const code = char.codePointAt(0)!;
-    if (
-      code === 0xfffd ||
-      (code >= 0xe000 && code <= 0xf8ff) ||
-      (code >= 0x0080 && code <= 0x00a0)
-    ) {
+    if (code === 0xfffd || (code >= 0xe000 && code <= 0xf8ff) || (code >= 0x0080 && code <= 0x00a0)) {
       suspicious++;
     }
   }

@@ -57,7 +57,8 @@ mod tests {
 
     fn shared() -> Arc<SharedConnection> {
         let conn = Connection::open_in_memory().unwrap();
-        conn.execute_batch("CREATE TABLE notes(text TEXT NOT NULL)").unwrap();
+        conn.execute_batch("CREATE TABLE notes(text TEXT NOT NULL)")
+            .unwrap();
         Arc::new(SharedConnection::new(conn))
     }
 
@@ -86,7 +87,8 @@ mod tests {
         let shared = shared();
         panic_under_lock(&shared, |conn| {
             let tx = conn.transaction().unwrap();
-            tx.execute("INSERT INTO notes VALUES ('half-written')", []).unwrap();
+            tx.execute("INSERT INTO notes VALUES ('half-written')", [])
+                .unwrap();
             // Unwinding drops the live `tx` before the guard: a rollback.
             panic!("injected failure inside the transaction");
         });
@@ -122,7 +124,8 @@ mod tests {
     fn an_unpoisoned_lock_is_handed_out_untouched() {
         let shared = shared();
         let conn = shared.lock().unwrap();
-        conn.execute_batch("BEGIN; INSERT INTO notes VALUES ('mine');").unwrap();
+        conn.execute_batch("BEGIN; INSERT INTO notes VALUES ('mine');")
+            .unwrap();
         assert!(!conn.is_autocommit());
         conn.execute_batch("COMMIT").unwrap();
         drop(conn);

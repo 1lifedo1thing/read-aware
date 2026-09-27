@@ -31,7 +31,8 @@ export async function parseBookFile(file: BookFileSource): Promise<FoliateBook> 
     // The RAR decoder is a ~1 MB WASM asset; load it only for a comic that
     // actually needs it.
     const { buildComicArchiveBook } = await import("./comic-archive");
-    const source = file instanceof File ? file : new File([await file.arrayBuffer()], file.name ?? "comic.cbr", { type: file.type });
+    const source =
+      file instanceof File ? file : new File([await file.arrayBuffer()], file.name ?? "comic.cbr", { type: file.type });
     return buildComicArchiveBook(source);
   }
   return makeFoliateBook(file);

@@ -60,9 +60,7 @@ export function trendFromSummary(
       passRate: entry.passRate,
       meanScore: entry.meanScore,
       runs: entry.runs,
-      ...(tagsOf(entry.scenarioId!).length
-        ? { tags: [...tagsOf(entry.scenarioId!)] }
-        : {}),
+      ...(tagsOf(entry.scenarioId!).length ? { tags: [...tagsOf(entry.scenarioId!)] } : {}),
     })),
     byTag: summary.byTag
       .filter((entry) => entry.variantId === summary.baselineVariantId && entry.tag)

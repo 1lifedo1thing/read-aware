@@ -119,9 +119,12 @@ describe("conversation flow", () => {
     const model = makeFaux();
     let toolResultPayload = "";
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("query_conversation", { request: { operation: "search", queries: ["利贝特"] } })], {
-        stopReason: "toolUse",
-      }),
+      fauxAssistantMessage(
+        [fauxToolCall("query_conversation", { request: { operation: "search", queries: ["利贝特"] } })],
+        {
+          stopReason: "toolUse",
+        },
+      ),
       (context) => {
         toolResultPayload = JSON.stringify(context.messages[context.messages.length - 1]);
         return fauxAssistantMessage("找到了");

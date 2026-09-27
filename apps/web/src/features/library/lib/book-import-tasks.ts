@@ -1,8 +1,27 @@
-import { actorFromEvent, causalActor, copyEventCause, mergeEventCauses, ObservationCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
-import { AppError, errorCode, type BookImportPhase, type BookImportReceipt, type BookImportTaskSnapshot } from "@read-aware/core";
+import {
+  actorFromEvent,
+  causalActor,
+  copyEventCause,
+  mergeEventCauses,
+  ObservationCauses,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
+import {
+  AppError,
+  errorCode,
+  type BookImportPhase,
+  type BookImportReceipt,
+  type BookImportTaskSnapshot,
+} from "@read-aware/core";
 
 type Observer = { send(snapshot: BookImportTaskSnapshot): void; stop(): void };
-type Task = { origin: DomainActor; snapshot: BookImportTaskSnapshot; controller: AbortController; observers: Set<Observer> };
+type Task = {
+  origin: DomainActor;
+  snapshot: BookImportTaskSnapshot;
+  controller: AbortController;
+  observers: Set<Observer>;
+};
 type Execute = (signal: AbortSignal, progress: (phase: BookImportPhase) => void) => Promise<BookImportReceipt>;
 const active = (task: Task) => !["completed", "cancelled", "failed"].includes(task.snapshot.phase);
 const cancelled = () => new AppError("ui/superseded", "Import task cancelled");
@@ -14,11 +33,16 @@ export class BookImportTaskOwner {
   private readonly executions = new Set<Promise<void>>();
   private readonly retirement = new AbortController();
   private stopped = false;
-  constructor(private readonly report: (error: unknown) => void, lifetime?: AbortSignal) {
+  constructor(
+    private readonly report: (error: unknown) => void,
+    lifetime?: AbortSignal,
+  ) {
     if (lifetime?.aborted) this.stopped = true;
     else lifetime?.addEventListener("abort", () => this.dispose(), { once: true });
   }
-  private assertLive() { if (this.stopped) throw cancelled(); }
+  private assertLive() {
+    if (this.stopped) throw cancelled();
+  }
   private lookup(id: string) {
     this.assertLive();
     const task = this.tasks.get(id);
@@ -26,74 +50,131 @@ export class BookImportTaskOwner {
     return task;
   }
   start(sourceName: string, execute: Execute, origin: DomainActor = "system"): BookImportTaskSnapshot {
-    this.assertLive(); origin = causalActor(origin);
-    if (typeof sourceName !== "string" || !sourceName || sourceName.length > 256) throw new AppError("ui/invalid-target", "Invalid import filename");
-    if (this.executions.size >= 2 || activeImports >= 4) throw new AppError("ui/unavailable", "Import execution capacity is occupied");
+    this.assertLive();
+    origin = causalActor(origin);
+    if (typeof sourceName !== "string" || !sourceName || sourceName.length > 256)
+      throw new AppError("ui/invalid-target", "Invalid import filename");
+    if (this.executions.size >= 2 || activeImports >= 4)
+      throw new AppError("ui/unavailable", "Import execution capacity is occupied");
     for (const [id, task] of this.tasks) {
       if (this.tasks.size < 64) break;
-      if (!active(task)) { for (const observer of task.observers) observer.stop(); this.tasks.delete(id); }
+      if (!active(task)) {
+        for (const observer of task.observers) observer.stop();
+        this.tasks.delete(id);
+      }
     }
     const now = new Date().toISOString();
-    const task: Task = { origin, controller: new AbortController(), observers: new Set(), snapshot: stampEventCause({
-      taskId: crypto.randomUUID(), sourceName, phase: "queued", revision: 0, createdAt: now, updatedAt: now,
-      cancellable: true, cancelRequested: false, receipt: null, errorCode: null,
-    }, origin) };
+    const task: Task = {
+      origin,
+      controller: new AbortController(),
+      observers: new Set(),
+      snapshot: stampEventCause(
+        {
+          taskId: crypto.randomUUID(),
+          sourceName,
+          phase: "queued",
+          revision: 0,
+          createdAt: now,
+          updatedAt: now,
+          cancellable: true,
+          cancelRequested: false,
+          receipt: null,
+          errorCode: null,
+        },
+        origin,
+      ),
+    };
     this.tasks.set(task.snapshot.taskId, task);
     // Reserve before any callback can reenter start/dispose.
     activeImports++;
     const work = Promise.resolve().then(() => this.run(task, execute));
     this.executions.add(work);
-    const release = () => { activeImports--; this.executions.delete(work); };
-    void work.then(release, error => { release(); this.report(error); });
+    const release = () => {
+      activeImports--;
+      this.executions.delete(work);
+    };
+    void work.then(release, (error) => {
+      release();
+      this.report(error);
+    });
     return copyEventCause(task.snapshot, structuredClone(task.snapshot));
   }
   private publish(task: Task, change: Partial<BookImportTaskSnapshot>) {
     if (!active(task)) return;
-    task.snapshot = stampEventCause({ ...task.snapshot, ...change, revision: task.snapshot.revision + 1, updatedAt: new Date().toISOString() }, task.origin);
+    task.snapshot = stampEventCause(
+      { ...task.snapshot, ...change, revision: task.snapshot.revision + 1, updatedAt: new Date().toISOString() },
+      task.origin,
+    );
     const snapshot = task.snapshot;
     for (const observer of task.observers) observer.send(snapshot);
   }
   private async run(task: Task, execute: Execute) {
     try {
       task.controller.signal.throwIfAborted();
-      const receipt = await execute(task.controller.signal, phase => {
+      const receipt = await execute(task.controller.signal, (phase) => {
         const order = { queued: 0, preparing: 1, staging: 2, committing: 3, completed: 4, cancelled: 4, failed: 4 };
-        if (order[phase] > order[task.snapshot.phase]) this.publish(task, { phase, cancellable: phase === "preparing" });
+        if (order[phase] > order[task.snapshot.phase])
+          this.publish(task, { phase, cancellable: phase === "preparing" });
       });
       this.publish(task, { phase: "completed", cancellable: false, receipt: structuredClone(receipt) });
     } catch (error) {
-      const wasCancelled = task.snapshot.cancellable && task.controller.signal.aborted && error === task.controller.signal.reason;
+      const wasCancelled =
+        task.snapshot.cancellable && task.controller.signal.aborted && error === task.controller.signal.reason;
       if (!wasCancelled) this.report(error);
-      this.publish(task, { phase: wasCancelled ? "cancelled" : "failed", cancellable: false,
-        errorCode: wasCancelled ? "ui/superseded" : errorCode(error) ?? "internal" });
+      this.publish(task, {
+        phase: wasCancelled ? "cancelled" : "failed",
+        cancellable: false,
+        errorCode: wasCancelled ? "ui/superseded" : (errorCode(error) ?? "internal"),
+      });
     }
   }
-  get(id: string): BookImportTaskSnapshot { const snapshot = this.lookup(id).snapshot; return copyEventCause(snapshot, structuredClone(snapshot)); }
+  get(id: string): BookImportTaskSnapshot {
+    const snapshot = this.lookup(id).snapshot;
+    return copyEventCause(snapshot, structuredClone(snapshot));
+  }
   /** Bounded terminal wait. Cancelling observation never cancels the import. */
   wait(id: string, waitMs = 0, signal?: AbortSignal): Promise<BookImportTaskSnapshot> {
-    if (!Number.isInteger(waitMs) || waitMs < 0 || waitMs > 30_000) throw new AppError("ui/invalid-target", "Invalid import wait duration");
+    if (!Number.isInteger(waitMs) || waitMs < 0 || waitMs > 30_000)
+      throw new AppError("ui/invalid-target", "Invalid import wait duration");
     signal?.throwIfAborted();
     const task = this.lookup(id);
     if (!waitMs || !active(task)) return Promise.resolve(this.get(id));
     const lifetime = signal ? AbortSignal.any([signal, this.retirement.signal]) : this.retirement.signal;
     return new Promise((resolve, reject) => {
-      let settled = false, off = () => {};
+      let settled = false,
+        off = () => {};
       const finish = (value?: BookImportTaskSnapshot, error?: unknown) => {
         if (settled) return;
-        settled = true; clearTimeout(timer); off(); lifetime.removeEventListener("abort", abort);
-        if (value) resolve(value); else reject(error);
+        settled = true;
+        clearTimeout(timer);
+        off();
+        lifetime.removeEventListener("abort", abort);
+        if (value) resolve(value);
+        else reject(error);
       };
       const timer = setTimeout(() => {
-        try { finish(this.get(id)); } catch (error) { finish(undefined, error); }
+        try {
+          finish(this.get(id));
+        } catch (error) {
+          finish(undefined, error);
+        }
       }, waitMs);
       const abort = () => finish(undefined, lifetime.reason);
       lifetime.addEventListener("abort", abort, { once: true });
-      try { off = this.observe(id, snapshot => { if (!active(task)) finish(snapshot); }); }
-      catch (error) { finish(undefined, error); }
+      try {
+        off = this.observe(id, (snapshot) => {
+          if (!active(task)) finish(snapshot);
+        });
+      } catch (error) {
+        finish(undefined, error);
+      }
       if (settled) off();
     });
   }
-  list(): BookImportTaskSnapshot[] { this.assertLive(); return [...this.tasks.values()].map(task => copyEventCause(task.snapshot, structuredClone(task.snapshot))); }
+  list(): BookImportTaskSnapshot[] {
+    this.assertLive();
+    return [...this.tasks.values()].map((task) => copyEventCause(task.snapshot, structuredClone(task.snapshot)));
+  }
   cancel(id: string, origin: DomainActor = "system"): BookImportTaskSnapshot {
     const task = this.lookup(id);
     this.requestCancel(task, origin);
@@ -101,7 +182,9 @@ export class BookImportTaskOwner {
   }
   private requestCancel(task: Task, origin: DomainActor = "system"): void {
     if (active(task) && !task.controller.signal.aborted) {
-      task.origin = actorFromEvent(mergeEventCauses([stampEventCause({}, task.origin), stampEventCause({}, causalActor(origin))], {}));
+      task.origin = actorFromEvent(
+        mergeEventCauses([stampEventCause({}, task.origin), stampEventCause({}, causalActor(origin))], {}),
+      );
       task.controller.abort(cancelled());
       this.publish(task, { cancelRequested: true });
     }
@@ -112,22 +195,44 @@ export class BookImportTaskOwner {
     if (task.observers.size >= 16) throw new AppError("ui/observer-limit", "Too many import observers");
     const causes = new ObservationCauses();
     let retry: object | undefined;
-    let stopped = false, running = false, latest: BookImportTaskSnapshot | undefined;
+    let stopped = false,
+      running = false,
+      latest: BookImportTaskSnapshot | undefined;
     const observer: Observer = {
-      send: snapshot => { if (!stopped) { causes.add(snapshot); latest = structuredClone(snapshot); if (!running) void publish(); } },
-      stop: () => { stopped = true; latest = undefined; task.observers.delete(observer); },
+      send: (snapshot) => {
+        if (!stopped) {
+          causes.add(snapshot);
+          latest = structuredClone(snapshot);
+          if (!running) void publish();
+        }
+      },
+      stop: () => {
+        stopped = true;
+        latest = undefined;
+        task.observers.delete(observer);
+      },
     };
     const publish = async () => {
       running = true;
       try {
         while (!stopped && latest) {
-          const value = causes.take(latest, retry); latest = undefined;
+          const value = causes.take(latest, retry);
+          latest = undefined;
           retry = copyEventCause(value, {});
-          try { await handler(value); retry = undefined; } catch (error) { this.report(error); }
+          try {
+            await handler(value);
+            retry = undefined;
+          } catch (error) {
+            this.report(error);
+          }
         }
-      } finally { running = false; }
+      } finally {
+        running = false;
+      }
     };
-    task.observers.add(observer); observer.send(origin ? stampEventCause(structuredClone(task.snapshot), origin) : task.snapshot); return observer.stop;
+    task.observers.add(observer);
+    observer.send(origin ? stampEventCause(structuredClone(task.snapshot), origin) : task.snapshot);
+    return observer.stop;
   }
   dispose(): void {
     if (this.stopped) return;
@@ -139,5 +244,7 @@ export class BookImportTaskOwner {
     }
     this.tasks.clear();
   }
-  async drain(): Promise<void> { while (this.executions.size) await Promise.all([...this.executions]); }
+  async drain(): Promise<void> {
+    while (this.executions.size) await Promise.all([...this.executions]);
+  }
 }

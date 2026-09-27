@@ -53,9 +53,14 @@ describe("editorial-themes manifest", () => {
         expect(fontIds.has(family.slice("plugin:".length))).toBe(true);
       }
       // The six-color palette is complete.
-      expect(Object.keys(theme.reader?.palette ?? {}).sort()).toEqual(
-        ["bg", "faint", "muted", "rule", "selection", "text"],
-      );
+      expect(Object.keys(theme.reader?.palette ?? {}).sort()).toEqual([
+        "bg",
+        "faint",
+        "muted",
+        "rule",
+        "selection",
+        "text",
+      ]);
     }
   });
 });

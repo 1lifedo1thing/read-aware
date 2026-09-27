@@ -104,7 +104,10 @@ export function ReaderAppearanceCompact({ bookId, fixedLayout = false }: ReaderA
   }
 
   const sizes = fontSizeOptions(t);
-  const sizeIndex = Math.max(0, sizes.findIndex((option) => option.value === prefs.fontSize));
+  const sizeIndex = Math.max(
+    0,
+    sizes.findIndex((option) => option.value === prefs.fontSize),
+  );
   const stepSize = (by: number) => {
     const next = sizes[sizeIndex + by];
     if (next) updatePrefs({ ...prefs, fontSize: next.value });
@@ -127,8 +130,16 @@ export function ReaderAppearanceCompact({ bookId, fixedLayout = false }: ReaderA
             onIncrement={() => stepSize(1)}
             decrementLabel={t("fontSizeSmaller")}
             incrementLabel={t("fontSizeLarger")}
-            decrementIcon={<span aria-hidden="true" className="font-serif text-[15px] leading-none">A</span>}
-            incrementIcon={<span aria-hidden="true" className="font-serif text-[22px] leading-none">A</span>}
+            decrementIcon={
+              <span aria-hidden="true" className="font-serif text-[15px] leading-none">
+                A
+              </span>
+            }
+            incrementIcon={
+              <span aria-hidden="true" className="font-serif text-[22px] leading-none">
+                A
+              </span>
+            }
           />
         )}
         <SwatchGroup
@@ -151,9 +162,9 @@ export function ReaderAppearanceCompact({ bookId, fixedLayout = false }: ReaderA
               ariaLabel={t("readingMode")}
               value={fixedLayout ? prefs.fixedLayoutReadingMode : prefs.readingMode}
               options={readingModeOptions(t)}
-              onChange={(mode) => updatePrefs(fixedLayout
-                ? { ...prefs, fixedLayoutReadingMode: mode }
-                : { ...prefs, readingMode: mode })}
+              onChange={(mode) =>
+                updatePrefs(fixedLayout ? { ...prefs, fixedLayoutReadingMode: mode } : { ...prefs, readingMode: mode })
+              }
               className="pt-1.5 [&>div]:gap-x-4"
             />
           }
@@ -176,7 +187,11 @@ export function ReaderAppearanceCompact({ bookId, fixedLayout = false }: ReaderA
           <>
             <ItemList.Item
               title={t("settings:font.label")}
-              accessories={<span className="max-w-[10rem] truncate font-sans text-sm text-fg-subtle">{readerFontLabel(prefs.fontFamily, pluginFonts)}</span>}
+              accessories={
+                <span className="max-w-[10rem] truncate font-sans text-sm text-fg-subtle">
+                  {readerFontLabel(prefs.fontFamily, pluginFonts)}
+                </span>
+              }
               onClick={() => setPage("font")}
             />
             <ItemList.Item title={t("appearanceMoreLayout")} onClick={() => setPage("layout")} />
@@ -195,15 +210,18 @@ export function ReaderAppearanceCompact({ bookId, fixedLayout = false }: ReaderA
           }
         />
       </ItemList>
-      {fixedLayout && (
-        <Caption className="block px-4 pt-2 text-fg-subtle">{t("fixedLayoutHint")}</Caption>
-      )}
+      {fixedLayout && <Caption className="block px-4 pt-2 text-fg-subtle">{t("fixedLayoutHint")}</Caption>}
     </div>
   );
 }
 
 /** A page opened from a line of the main list, with its way back. */
-function Subpage({ title, backLabel, onBack, children }: {
+function Subpage({
+  title,
+  backLabel,
+  onBack,
+  children,
+}: {
   title: string;
   backLabel: string;
   onBack: () => void;

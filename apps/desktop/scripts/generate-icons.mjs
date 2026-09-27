@@ -57,12 +57,7 @@ function makePng(size, [r, g, b, a] = COLOR) {
     }
   }
   const idat = deflateSync(raw, { level: 9 });
-  return Buffer.concat([
-    sig,
-    chunk("IHDR", ihdr),
-    chunk("IDAT", idat),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
+  return Buffer.concat([sig, chunk("IHDR", ihdr), chunk("IDAT", idat), chunk("IEND", Buffer.alloc(0))]);
 }
 
 function makeIco(entries) {

@@ -4,5 +4,5 @@ import type { Message } from "@earendil-works/pi-ai";
 export function messageText(message: Message | undefined): string {
   if (!message) return "";
   if (typeof message.content === "string") return message.content;
-  return message.content.map(block => (block.type === "text" ? block.text : "")).join("");
+  return message.content.map((block) => (block.type === "text" ? block.text : "")).join("");
 }

@@ -12,8 +12,7 @@ const base: SoftwareUpdateState = {
   errorStage: null,
 };
 
-const updateState = (patch: Partial<SoftwareUpdateState>) =>
-  withAtoms(seed(softwareUpdateAtom, { ...base, ...patch }));
+const updateState = (patch: Partial<SoftwareUpdateState>) => withAtoms(seed(softwareUpdateAtom, { ...base, ...patch }));
 
 /**
  * Settings → About: version and build, the update channel, the check/install
@@ -54,9 +53,7 @@ export const UpdateAvailable: Story = {
 
 /** Downloading, with progress. */
 export const Downloading: Story = {
-  decorators: [
-    updateState({ phase: "downloading", availableVersion: "0.6.1", progress: 63 }),
-  ],
+  decorators: [updateState({ phase: "downloading", availableVersion: "0.6.1", progress: 63 })],
 };
 
 /** Installing. */
@@ -66,9 +63,7 @@ export const Installing: Story = {
 
 /** A failed check, which surfaces here even though the header stays silent. */
 export const CheckFailed: Story = {
-  decorators: [
-    updateState({ phase: "error", errorStage: "check" }),
-  ],
+  decorators: [updateState({ phase: "error", errorStage: "check" })],
 };
 
 /** A version with no codename in the registry — the number stands alone. */

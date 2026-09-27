@@ -17,7 +17,9 @@ pub const FALLBACK: Duration = Duration::from_secs(10);
 /// Returns whether the exit may proceed now. `code` is `Some` only for programmatic `app.exit`,
 /// which is how the confirmed (or timed-out) coordination re-enters this hook.
 pub fn on_exit_requested(app: &AppHandle, code: Option<i32>) -> bool {
-    let Some(state) = app.try_state::<ExitCoordination>() else { return true };
+    let Some(state) = app.try_state::<ExitCoordination>() else {
+        return true;
+    };
     if code.is_some() || state.confirmed.load(Ordering::SeqCst) {
         return true;
     }
@@ -38,7 +40,9 @@ pub fn on_exit_requested(app: &AppHandle, code: Option<i32>) -> bool {
         std::thread::sleep(FALLBACK);
         if let Some(state) = handle.try_state::<ExitCoordination>() {
             if !state.confirmed.swap(true, Ordering::SeqCst) {
-                log::warn!("exit coordination timed out; exiting without the webview's confirmation");
+                log::warn!(
+                    "exit coordination timed out; exiting without the webview's confirmation"
+                );
                 handle.exit(0);
             }
         }
@@ -50,7 +54,10 @@ pub fn on_exit_requested(app: &AppHandle, code: Option<i32>) -> bool {
 pub fn app_exit_confirm(app: AppHandle) -> Result<(), CommandError> {
     let state = app.state::<ExitCoordination>();
     if !state.requested.load(Ordering::SeqCst) {
-        return Err(CommandError::new("ui/invalid-target", "No exit is being coordinated"));
+        return Err(CommandError::new(
+            "ui/invalid-target",
+            "No exit is being coordinated",
+        ));
     }
     if !state.confirmed.swap(true, Ordering::SeqCst) {
         app.exit(0);

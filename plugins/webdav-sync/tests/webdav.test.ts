@@ -44,22 +44,27 @@ const bytes = (text: string) => new TextEncoder().encode(text);
 test("closing a session aborts concurrent requests and rejects new work without network", async () => {
   const signals: AbortSignal[] = [];
   const client = createWebdavClient({
-    baseUrl: BASE, username: "reader", password: "secret",
+    baseUrl: BASE,
+    username: "reader",
+    password: "secret",
     fetchFn: async (_, init) => {
       const signal = init!.signal!;
       signals.push(signal);
-      return new Promise<Response>((_, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true }));
+      return new Promise<Response>((_, reject) =>
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true }),
+      );
     },
   });
   const session = createWebdavTransportSession({ client, endpointId: "test" });
-  const first = session.getMeta("one"), second = session.getMeta("two");
-  const failures = Promise.all([first, second].map(pending => pending.catch(error => error.code)));
+  const first = session.getMeta("one"),
+    second = session.getMeta("two");
+  const failures = Promise.all([first, second].map((pending) => pending.catch((error) => error.code)));
   await session.close();
   await session.close();
   expect(await failures).toEqual(["plugin/unavailable", "plugin/unavailable"]);
   expect(signals).toHaveLength(2);
-  expect(signals.every(signal => signal.aborted)).toBe(true);
-  expect(signals.every(signal => signal.reason.code === "plugin/cancelled")).toBe(true);
+  expect(signals.every((signal) => signal.aborted)).toBe(true);
+  expect(signals.every((signal) => signal.reason.code === "plugin/cancelled")).toBe(true);
   await expect(session.probe()).rejects.toMatchObject({ code: "plugin/unavailable" });
   await expect(session.putMetaIfAbsent("new", bytes("data"))).rejects.toMatchObject({ code: "plugin/unavailable" });
   expect(signals).toHaveLength(2);
@@ -68,12 +73,19 @@ test("closing a session aborts concurrent requests and rejects new work without 
 test("close drains an abort-ignoring request and rejects its late response", async () => {
   let finish!: (response: Response) => void;
   const client = createWebdavClient({
-    baseUrl: BASE, username: "reader", password: "secret",
-    fetchFn: () => new Promise<Response>(resolve => { finish = resolve; }),
+    baseUrl: BASE,
+    username: "reader",
+    password: "secret",
+    fetchFn: () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
   });
-  const result = client.get(["one"]).catch(error => error.code);
+  const result = client.get(["one"]).catch((error) => error.code);
   let drained = false;
-  const closing = client.close().then(() => { drained = true; });
+  const closing = client.close().then(() => {
+    drained = true;
+  });
   await Promise.resolve();
   expect(drained).toBe(false);
   finish(new Response("late"));
@@ -84,7 +96,14 @@ test("close drains an abort-ignoring request and rejects its late response", asy
 
 test("host revocation remains cancellation before the provider receives close", async () => {
   const cancelled = Object.assign(new Error("Host stopped"), { code: "plugin/cancelled" });
-  const client = createWebdavClient({ baseUrl: BASE, username: "reader", password: "secret", fetchFn: async () => { throw cancelled; } });
+  const client = createWebdavClient({
+    baseUrl: BASE,
+    username: "reader",
+    password: "secret",
+    fetchFn: async () => {
+      throw cancelled;
+    },
+  });
   await expect(client.get(["one"])).rejects.toBe(cancelled);
   await client.close();
 });
@@ -96,24 +115,16 @@ describe("settings", () => {
       username: "anna",
       basePath: " books/ReadAware ",
     });
-    expect(webdavRootUrl(settings)).toBe(
-      "https://dav.example.com:8443/remote.php/dav/files/anna/books/ReadAware",
-    );
-    expect(webdavEndpointId(settings)).toBe(
-      "anna@dav.example.com:8443/remote.php/dav/files/anna/books/ReadAware",
-    );
+    expect(webdavRootUrl(settings)).toBe("https://dav.example.com:8443/remote.php/dav/files/anna/books/ReadAware");
+    expect(webdavEndpointId(settings)).toBe("anna@dav.example.com:8443/remote.php/dav/files/anna/books/ReadAware");
   });
 
   test("falls back to the default folder and requires a valid url", () => {
     const settings = readWebdavSettings({ serverUrl: "https://dav.test", username: "u" });
     expect(settings.basePath).toBe(DEFAULT_BASE_PATH);
     expect(() => readWebdavSettings(null)).toThrow(WebdavNotConfiguredError);
-    expect(() => readWebdavSettings({ serverUrl: "not a url" })).toThrow(
-      WebdavNotConfiguredError,
-    );
-    expect(() => readWebdavSettings({ serverUrl: "ftp://dav.test" })).toThrow(
-      WebdavNotConfiguredError,
-    );
+    expect(() => readWebdavSettings({ serverUrl: "not a url" })).toThrow(WebdavNotConfiguredError);
+    expect(() => readWebdavSettings({ serverUrl: "ftp://dav.test" })).toThrow(WebdavNotConfiguredError);
   });
 
   test("password rotation and scheme upgrades keep the same mailbox identity", () => {
@@ -208,19 +219,14 @@ describe("transport session", () => {
         { deviceId: "dev-b", count: 1 },
       ]),
     );
-    expect((await session.getEventBatch("dev-a", 0)).map((event) => event.id)).toEqual([
-      "e1",
-      "e2",
-    ]);
+    expect((await session.getEventBatch("dev-a", 0)).map((event) => event.id)).toEqual(["e1", "e2"]);
   });
 
   test("a stale push index fails instead of overwriting a batch", async () => {
     const server = fakeWebdavServer();
     const session = sessionFor(server);
     await session.putEventBatch("dev-a", 0, [sealed("e1")]);
-    await expect(session.putEventBatch("dev-a", 0, [sealed("e2")])).rejects.toThrow(
-      /stale push index/,
-    );
+    await expect(session.putEventBatch("dev-a", 0, [sealed("e2")])).rejects.toThrow(/stale push index/);
     expect((await session.getEventBatch("dev-a", 0)).map((event) => event.id)).toEqual(["e1"]);
   });
 
@@ -239,9 +245,7 @@ describe("transport session", () => {
     const server = fakeWebdavServer();
     const session = sessionFor(server);
     await session.putBlob("bookfile:whole", bytes("sealed-whole"));
-    expect(new TextDecoder().decode((await session.getBlob("bookfile:whole"))!)).toBe(
-      "sealed-whole",
-    );
+    expect(new TextDecoder().decode((await session.getBlob("bookfile:whole"))!)).toBe("sealed-whole");
     expect(await session.getBlob("bookfile:absent")).toBeNull();
 
     await session.putBlobPart("bookfile:big", 0, 2, bytes("part-0"));
@@ -250,9 +254,7 @@ describe("transport session", () => {
     await session.commitBlob("bookfile:big", 2);
     const head = (await session.getBlob("bookfile:big"))!;
     expect([...head]).toEqual([2, 0, 0, 0, 2]);
-    expect(new TextDecoder().decode(await session.getBlobPart("bookfile:big", 1))).toBe(
-      "part-1",
-    );
+    expect(new TextDecoder().decode(await session.getBlobPart("bookfile:big", 1))).toBe("part-1");
   });
 
   test("commit clears leftover parts beyond the committed count", async () => {

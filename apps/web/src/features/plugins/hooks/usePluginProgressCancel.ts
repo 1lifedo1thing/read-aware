@@ -8,9 +8,14 @@ export function usePluginProgressCancel(action: Pick<PluginAction, "run">, onRes
   const [pending, setPending] = useState(false);
   const cancel = useCallback(async () => {
     if (flight.current) return;
-    flight.current = true; setPending(true);
-    try { await onResult(action.run, { background: true }); }
-    finally { flight.current = false; setPending(false); }
+    flight.current = true;
+    setPending(true);
+    try {
+      await onResult(action.run, { background: true });
+    } finally {
+      flight.current = false;
+      setPending(false);
+    }
   }, [action.run, onResult]);
   return { pending, cancel };
 }

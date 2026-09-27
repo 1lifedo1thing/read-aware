@@ -65,10 +65,14 @@ fn validate_manifest(manifest: &AndroidUpdateManifest) -> Result<(), CommandErro
     let version = semver::Version::parse(&manifest.version)
         .map_err(|err| invalid_release(format!("Invalid Android update version: {err}")))?;
     if manifest.version_code == 0 {
-        return Err(invalid_release("Android update versionCode must be positive"));
+        return Err(invalid_release(
+            "Android update versionCode must be positive",
+        ));
     }
     if manifest.size == 0 || manifest.size > MAX_APK_BYTES {
-        return Err(invalid_release("Android update APK size is outside the allowed range"));
+        return Err(invalid_release(
+            "Android update APK size is outside the allowed range",
+        ));
     }
     if manifest.sha256.len() != 64
         || !manifest
@@ -119,7 +123,9 @@ fn client(
     ))
     .with_safe_default_protocol_versions()
     .map_err(|err| {
-        CommandError::internal(format!("Failed to configure TLS for Android updates: {err}"))
+        CommandError::internal(format!(
+            "Failed to configure TLS for Android updates: {err}"
+        ))
     })?
     .with_root_certificates(roots)
     .with_no_client_auth();
@@ -128,7 +134,9 @@ fn client(
         .user_agent(format!("ReadAware/{current_version}"))
         .timeout(timeout)
         .build()
-        .map_err(|err| CommandError::internal(format!("Failed to create Android update client: {err}")))
+        .map_err(|err| {
+            CommandError::internal(format!("Failed to create Android update client: {err}"))
+        })
 }
 
 /// Only manifests under our own repo's release assets may override the
@@ -142,8 +150,13 @@ fn validate_manifest_source(raw: &str) -> Result<(), CommandError> {
         .path()
         .strip_prefix("/ahpxex/read-aware/releases/download/")
         .and_then(|rest| rest.split_once('/'))
-        .is_some_and(|(tag, name)| name == "latest-android.json"
-            && (tag == "beta" || tag.strip_prefix('v').is_some_and(|v| v.starts_with(|c: char| c.is_ascii_digit()))));
+        .is_some_and(|(tag, name)| {
+            name == "latest-android.json"
+                && (tag == "beta"
+                    || tag
+                        .strip_prefix('v')
+                        .is_some_and(|v| v.starts_with(|c: char| c.is_ascii_digit())))
+        });
     if url.scheme() != "https"
         || url.host_str() != Some("github.com")
         || !path_ok
@@ -294,7 +307,9 @@ async fn download_apk(
     let digest = format!("{:x}", digest.finalize());
     if digest != manifest.sha256 {
         discard_partial(&partial_path);
-        return Err(invalid_release("Android update APK failed SHA-256 verification"));
+        return Err(invalid_release(
+            "Android update APK failed SHA-256 verification",
+        ));
     }
     std::fs::rename(&partial_path, &apk_path)
         .map_err(|err| CommandError::context("Failed to finalize the Android update APK", err))?;
@@ -325,7 +340,8 @@ async fn launch_installer(
     on_activity(app, "Android package installer", move || {
         use tao::platform::android::prelude::main_android_context;
 
-        let ctx = main_android_context().ok_or_else(|| installer("Android activity is not ready"))?;
+        let ctx =
+            main_android_context().ok_or_else(|| installer("Android activity is not ready"))?;
         let vm = unsafe { jni::JavaVM::from_raw(ctx.java_vm.cast()) }
             .map_err(|err| installer(format!("Failed to access the Android VM: {err}")))?;
         let mut env = vm
@@ -345,7 +361,9 @@ async fn launch_installer(
             )
             .map_err(|err| {
                 let _ = env.exception_clear();
-                installer(format!("Failed to open the Android package installer: {err}"))
+                installer(format!(
+                    "Failed to open the Android package installer: {err}"
+                ))
             })?;
         let object = value
             .l()
@@ -361,7 +379,9 @@ async fn launch_installer(
             "installer-started" => Ok(AndroidInstallDisposition::InstallerStarted),
             "permission-required" => Ok(AndroidInstallDisposition::PermissionRequired),
             value if value.starts_with("error:") => Err(installer(&value[6..])),
-            _ => Err(installer(format!("Unknown Android installer response: {response}"))),
+            _ => Err(installer(format!(
+                "Unknown Android installer response: {response}"
+            ))),
         }
     })
     .await
@@ -372,7 +392,8 @@ async fn installed_version_code(app: &tauri::AppHandle) -> Result<u64, CommandEr
     on_activity(app, "Installed Android versionCode", || {
         use tao::platform::android::prelude::main_android_context;
 
-        let ctx = main_android_context().ok_or_else(|| installer("Android activity is not ready"))?;
+        let ctx =
+            main_android_context().ok_or_else(|| installer("Android activity is not ready"))?;
         let vm = unsafe { jni::JavaVM::from_raw(ctx.java_vm.cast()) }
             .map_err(|err| installer(format!("Failed to access the Android VM: {err}")))?;
         let mut env = vm
@@ -383,7 +404,9 @@ async fn installed_version_code(app: &tauri::AppHandle) -> Result<u64, CommandEr
             .call_method(&activity, "installedVersionCode", "()J", &[])
             .map_err(|err| {
                 let _ = env.exception_clear();
-                installer(format!("Failed to read the installed Android versionCode: {err}"))
+                installer(format!(
+                    "Failed to read the installed Android versionCode: {err}"
+                ))
             })?
             .j()
             .map_err(|err| installer(format!("Invalid installed Android versionCode: {err}")))?;
@@ -441,7 +464,10 @@ pub async fn android_update_install(
     state: tauri::State<'_, AndroidUpdateState>,
 ) -> Result<AndroidInstallDisposition, CommandError> {
     let manifest = state.0.lock().await.clone().ok_or_else(|| {
-        CommandError::new(CODE_UPDATE_NOT_READY, "No Android update is ready to install")
+        CommandError::new(
+            CODE_UPDATE_NOT_READY,
+            "No Android update is ready to install",
+        )
     })?;
     let apk_path = download_apk(&app, &manifest).await?;
     launch_installer(&app, apk_path).await

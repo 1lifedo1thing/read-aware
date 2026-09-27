@@ -12,7 +12,11 @@ type Story = StoryObj<typeof meta>;
 
 function ControlledSwatchGroup(args: ComponentProps<typeof SwatchGroup>) {
   const [value, setValue] = useState(args.value);
-  return <div className="w-80"><SwatchGroup {...args} value={value} onChange={setValue} /></div>;
+  return (
+    <div className="w-80">
+      <SwatchGroup {...args} value={value} onChange={setValue} />
+    </div>
+  );
 }
 
 const LIGHT = { background: "#ffffff", foreground: "#1c1917" };

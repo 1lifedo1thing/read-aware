@@ -35,10 +35,7 @@ const siteLoaders = {
   es: () => import("./resources/es.site.json"),
 } satisfies Record<TranslatedLocale, () => Promise<{ default: unknown }>>;
 
-function initializeLandingI18n(
-  locale: Locale,
-  site: SiteResource,
-) {
+function initializeLandingI18n(locale: Locale, site: SiteResource) {
   const instance = createInstance();
   const resources =
     locale === "en"
@@ -76,7 +73,7 @@ export function createEnglishLandingI18n() {
 
 /** Docs are a route-scoped namespace, loaded before its layout and metadata. */
 export async function ensureDocsResources(i18n: I18nInstance, locale: Locale) {
-  const needed = locale === "en" ? ["en"] as const : ["en", locale] as const;
+  const needed = locale === "en" ? (["en"] as const) : (["en", locale] as const);
   await Promise.all(
     needed.map(async (language) => {
       if (i18n.hasResourceBundle(language, "docs")) return;
@@ -98,10 +95,7 @@ export function docsPageMeta(i18n: I18nInstance, page: DocsPageKey) {
   };
 }
 
-export function sitePageMeta(
-  i18n: I18nInstance,
-  page: "home" | "pricing" | "changelog",
-) {
+export function sitePageMeta(i18n: I18nInstance, page: "home" | "pricing" | "changelog") {
   return {
     meta: [
       { title: i18n.t(`${page}.metaTitle`, { ns: "site" }) },

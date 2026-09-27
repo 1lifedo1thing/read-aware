@@ -46,11 +46,7 @@ export function AddToCollectionDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={t("collectionDialog.title", { count })}
-    >
+    <Dialog open={open} onClose={onClose} title={t("collectionDialog.title", { count })}>
       <div className="space-y-4">
         <div className="flex items-end gap-2">
           <div className="flex-1">

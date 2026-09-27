@@ -22,11 +22,27 @@ export async function prepareResponsesConfig() {
   await assertIsolated();
   if (await invoke("secret_get", { key: responsesBackupKey })) throw Error("Restore previous Responses probe first");
   const settings = createSettingsDomain("user");
-  const backup: ResponsesBackup = { config: localKV.getItem(AI_CONFIG_KEY), customKey: getSecret("ai-api-key.custom"), buildMemory: (await settings.queries.read("ai.preferences.buildMemory")).value as boolean };
+  const backup: ResponsesBackup = {
+    config: localKV.getItem(AI_CONFIG_KEY),
+    customKey: getSecret("ai-api-key.custom"),
+    buildMemory: (await settings.queries.read("ai.preferences.buildMemory")).value as boolean,
+  };
   await invoke("secret_set", { key: responsesBackupKey, value: JSON.stringify(backup) });
   await settings.commands.update([{ path: "ai.preferences.buildMemory", value: false }]);
   await setSecretAsync("ai-api-key.custom", "controlled-responses-probe");
-  await localKV.setItemAsync(AI_CONFIG_KEY, encodeAIConfig({ provider: "custom", apiKey: "controlled-responses-probe", model: "privacy-probe", thinkingLevel: "medium", customBaseUrl: "http://127.0.0.1:19843/v1", customApi: "openai-responses", customSupportsThinking: true, customMaxOutputTokens: 2048 }));
+  await localKV.setItemAsync(
+    AI_CONFIG_KEY,
+    encodeAIConfig({
+      provider: "custom",
+      apiKey: "controlled-responses-probe",
+      model: "privacy-probe",
+      thinkingLevel: "medium",
+      customBaseUrl: "http://127.0.0.1:19843/v1",
+      customApi: "openai-responses",
+      customSupportsThinking: true,
+      customMaxOutputTokens: 2048,
+    }),
+  );
   return { configured: true, api: getAIConfig()?.customApi };
 }
 
@@ -39,15 +55,24 @@ export async function restoreResponsesConfig() {
   else await localKV.setItemAsync(AI_CONFIG_KEY, backup.config);
   if (backup.customKey) await setSecretAsync("ai-api-key.custom", backup.customKey);
   else await deleteSecretAsync("ai-api-key.custom");
-  await createSettingsDomain("user").commands.update([{ path: "ai.preferences.buildMemory", value: backup.buildMemory }]);
-  const restored = localKV.getItem(AI_CONFIG_KEY) === backup.config && getSecret("ai-api-key.custom") === backup.customKey;
+  await createSettingsDomain("user").commands.update([
+    { path: "ai.preferences.buildMemory", value: backup.buildMemory },
+  ]);
+  const restored =
+    localKV.getItem(AI_CONFIG_KEY) === backup.config && getSecret("ai-api-key.custom") === backup.customKey;
   if (!restored) throw Error("Responses configuration restore mismatch");
   await invoke("secret_delete", { key: responsesBackupKey });
-  return { configRestored: true, credentialRestored: true, buildMemoryRestored: (await createSettingsDomain("user").queries.read("ai.preferences.buildMemory")).value === backup.buildMemory };
+  return {
+    configRestored: true,
+    credentialRestored: true,
+    buildMemoryRestored:
+      (await createSettingsDomain("user").queries.read("ai.preferences.buildMemory")).value === backup.buildMemory,
+  };
 }
 async function assertIsolated() {
   const path = await appDataDir();
-  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw new Error("Use isolated capability-e2e data");
+  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e"))
+    throw new Error("Use isolated capability-e2e data");
 }
 function bookId(): Id {
   const id = localKV.getItem(bookKey);
@@ -58,7 +83,10 @@ export async function prepareReadingContextProbe() {
   await assertIsolated();
   if (localKV.getItem(bookKey)) throw new Error("Clean up previous reading context probe first");
   const source = `<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>science</genre><author><nickname>ReadAware Tests</nickname></author><book-title>Reading Context Policy Probe</book-title><lang>en</lang></title-info><document-info><author><nickname>ReadAware</nickname></author><date>2026-09-09</date><id>context-policy-${crypto.randomUUID()}</id><version>1</version></document-info></description><body><section id="one"><title><p>Privacy sample</p></title><p>BEFORE_MARKER_512. ${selection}. VIEWPORT_MARKER_628. This is synthetic test text, not a user book.</p></section></body></FictionBook>`;
-  const book = await createLibraryDomain("user").commands.books.importBook({ fileName: "reading-context-probe.fb2", data: new TextEncoder().encode(source) });
+  const book = await createLibraryDomain("user").commands.books.importBook({
+    fileName: "reading-context-probe.fb2",
+    data: new TextEncoder().encode(source),
+  });
   await localKV.setItemAsync(bookKey, book.id);
   await createReadingDomain("agent").commands.openBook(book.id);
   return { bookId: book.id };
@@ -66,7 +94,11 @@ export async function prepareReadingContextProbe() {
 export async function readingContextProbeTurn(text = "Explain the selected passage", withSelection = true) {
   await assertIsolated();
   const config = getAIConfig();
-  if (config?.provider !== "custom" || config.customBaseUrl !== "http://127.0.0.1:19843/v1" || config.model !== "privacy-probe") {
+  if (
+    config?.provider !== "custom" ||
+    config.customBaseUrl !== "http://127.0.0.1:19843/v1" ||
+    config.model !== "privacy-probe"
+  ) {
     throw new Error("Configure the controlled loopback inference probe first");
   }
   const runtime = getAgentRuntime();
@@ -77,14 +109,27 @@ export async function readingContextProbeTurn(text = "Explain the selected passa
     throw new Error("The synthetic book must be rendered in the reader");
   }
   const toc = await deps.bookText.getToc(bookId());
-  const chapter = toc.find(entry => entry.hrefs?.length);
+  const chapter = toc.find((entry) => entry.hrefs?.length);
   if (!chapter) throw new Error("Synthetic book TOC is unavailable");
   const chapterHref = chapter.hrefs![0];
   try {
-    for await (const _ of runtime.sendTurn({ kind: "book", bookId: bookId() }, {
-      text, attachments: withSelection ? [{ text: selection, chapter: chapterHref, anchor: snapshot.location?.cfi }] : undefined,
-      readingCursor: { chapter: chapterHref, chapterIndex: chapter.index, visibleText: snapshot.visibleText, anchor: snapshot.location?.cfi },
-    })) { /* Drain the product runtime; request bytes are captured by the loopback server. */ }
+    for await (const _ of runtime.sendTurn(
+      { kind: "book", bookId: bookId() },
+      {
+        text,
+        attachments: withSelection
+          ? [{ text: selection, chapter: chapterHref, anchor: snapshot.location?.cfi }]
+          : undefined,
+        readingCursor: {
+          chapter: chapterHref,
+          chapterIndex: chapter.index,
+          visibleText: snapshot.visibleText,
+          anchor: snapshot.location?.cfi,
+        },
+      },
+    )) {
+      /* Drain the product runtime; request bytes are captured by the loopback server. */
+    }
     await runtime.flushBackgroundWork();
     return { status: "completed", visible: true };
   } catch (error) {
@@ -94,9 +139,19 @@ export async function readingContextProbeTurn(text = "Explain the selected passa
 export async function seedReadingContextHistory() {
   await assertIsolated();
   await saveConversation(bookId(), [
-    { id: crypto.randomUUID(), role: "user", content: "Prior typed question", createdAt: new Date().toISOString(),
-      attachments: [{ kind: "selection", text: selection, cfiRange: null, chapterHref: null }] },
-    { id: crypto.randomUUID(), role: "assistant", content: "Prior controlled answer", createdAt: new Date().toISOString() },
+    {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: "Prior typed question",
+      createdAt: new Date().toISOString(),
+      attachments: [{ kind: "selection", text: selection, cfiRange: null, chapterHref: null }],
+    },
+    {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "Prior controlled answer",
+      createdAt: new Date().toISOString(),
+    },
   ]);
   return readingContextHistorySnapshot();
 }
@@ -105,7 +160,7 @@ export async function readingContextHistorySnapshot() {
   const deps = buildRuntimeDeps();
   const scope = { kind: "book", bookId: bookId() } as const;
   const tools = [...buildConversationTools(scope, deps), ...buildReaderTools(scope, deps)];
-  const run = (name: string, args = {}) => tools.find(tool => tool.name === name)!.execute("context-probe", args);
+  const run = (name: string, args = {}) => tools.find((tool) => tool.name === name)!.execute("context-probe", args);
   return {
     localSelected: JSON.stringify(await loadConversation(bookId())).includes(selection),
     recentSelected: JSON.stringify(await run("get_recent_turns")).includes(selection),

@@ -1,18 +1,10 @@
 import type { DomainActor } from "../platform/domain-actor";
 import type { DomainActorOwners } from "./actor-owners";
 /** Single runtime registry for every active product domain. */
-import type {
-  DomainGrants,
-  DomainId,
-  } from "@read-aware/core";
+import type { DomainGrants, DomainId } from "@read-aware/core";
 import { createAnnotationsDomain } from "./annotations";
 import { createConversationsDomain } from "./conversations";
-import {
-  ANNOTATION_EVENTS,
-  CONVERSATION_EVENTS,
-  LIBRARY_EVENTS,
-  READING_EVENTS,
-} from "./events";
+import { ANNOTATION_EVENTS, CONVERSATION_EVENTS, LIBRARY_EVENTS, READING_EVENTS } from "./events";
 import { createLibraryDomain } from "./library";
 import { createReadingDomain } from "./reading";
 import { createSettingsDomain } from "./settings/domain";
@@ -26,17 +18,35 @@ type DomainSurface = {
 
 type DomainDefinition<TSurface extends DomainSurface = DomainSurface> = {
   events: readonly string[];
-  create(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants, owners?: DomainActorOwners): TSurface;
+  create(
+    origin: DomainActor,
+    lifetime?: AbortSignal,
+    trackCleanup?: (work: Promise<void>) => void,
+    grants?: DomainGrants,
+    owners?: DomainActorOwners,
+  ): TSurface;
 };
 
 export const DOMAIN_REGISTRY = {
   library: {
     events: LIBRARY_EVENTS,
-    create: (origin: DomainActor, lifetime?: AbortSignal, cleanup?: (work: Promise<void>) => void, _grants?: DomainGrants, owners?: DomainActorOwners) => createLibraryDomain(origin, lifetime, cleanup, owners),
+    create: (
+      origin: DomainActor,
+      lifetime?: AbortSignal,
+      cleanup?: (work: Promise<void>) => void,
+      _grants?: DomainGrants,
+      owners?: DomainActorOwners,
+    ) => createLibraryDomain(origin, lifetime, cleanup, owners),
   },
   reading: {
     events: READING_EVENTS,
-    create: (origin: DomainActor, lifetime?: AbortSignal, cleanup?: (work: Promise<void>) => void, _grants?: DomainGrants, owners?: DomainActorOwners) => createReadingDomain(origin, lifetime, cleanup, owners),
+    create: (
+      origin: DomainActor,
+      lifetime?: AbortSignal,
+      cleanup?: (work: Promise<void>) => void,
+      _grants?: DomainGrants,
+      owners?: DomainActorOwners,
+    ) => createReadingDomain(origin, lifetime, cleanup, owners),
   },
   annotations: {
     events: ANNOTATION_EVENTS,
@@ -68,7 +78,13 @@ export type ActorDomainView = Partial<{
 }>;
 
 /** Without explicit grants a caller is the host itself and acts with every domain. */
-export function createDomainApi(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants, owners?: DomainActorOwners): DomainApi {
+export function createDomainApi(
+  origin: DomainActor,
+  lifetime?: AbortSignal,
+  trackCleanup?: (work: Promise<void>) => void,
+  grants?: DomainGrants,
+  owners?: DomainActorOwners,
+): DomainApi {
   return Object.fromEntries(
     Object.entries(DOMAIN_REGISTRY).map(([id, definition]) => [
       id,

@@ -26,7 +26,11 @@ export function withContributionActivation<T>(activate: () => T): T {
   } catch (cause) {
     const errors: unknown[] = [];
     for (const undo of scope.undo.reverse()) {
-      try { undo(); } catch (error) { errors.push(error); }
+      try {
+        undo();
+      } catch (error) {
+        errors.push(error);
+      }
     }
     if (errors.length) throw new AggregateError([cause, ...errors], "Contribution rollback failed");
     throw cause;
@@ -53,7 +57,11 @@ export function commitContributionReplacement(commit: () => void): void {
 /** Consumers see only the settled registry, including after nested rollback. */
 export function publishContributionChange(registry: object, publish: () => void): void {
   const notify = () => {
-    try { publish(); } catch (error) { log.warn("Contribution publication observer failed", error); }
+    try {
+      publish();
+    } catch (error) {
+      log.warn("Contribution publication observer failed", error);
+    }
   };
   if (current) current.publications.set(registry, notify);
   // Outside activation preserve the caller's existing cleanup/error contract.

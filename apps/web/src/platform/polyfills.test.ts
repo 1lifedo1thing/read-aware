@@ -1,7 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
-  arrayToReversed, arrayToSorted, arrayToSpliced, arrayWith, installEcmaScriptPolyfills, mapGroupBy,
-  objectGroupBy, promiseWithResolvers, stringIsWellFormed, stringToWellFormed, type PolyfillGlobals,
+  arrayToReversed,
+  arrayToSorted,
+  arrayToSpliced,
+  arrayWith,
+  installEcmaScriptPolyfills,
+  mapGroupBy,
+  objectGroupBy,
+  promiseWithResolvers,
+  stringIsWellFormed,
+  stringToWellFormed,
+  type PolyfillGlobals,
 } from "./polyfills";
 
 /** A realm that predates every ES2023/ES2024 built-in the app relies on. */
@@ -44,7 +53,7 @@ describe("Promise.withResolvers", () => {
 
 describe("Object.groupBy", () => {
   test("groups by the callback's key with a null-prototype result", () => {
-    const groups = objectGroupBy([1, 2, 3, 4], n => (n % 2 ? "odd" : "even"));
+    const groups = objectGroupBy([1, 2, 3, 4], (n) => (n % 2 ? "odd" : "even"));
     expect(Object.getPrototypeOf(groups)).toBeNull();
     expect(groups).toEqual({ odd: [1, 3], even: [2, 4] });
   });
@@ -52,7 +61,10 @@ describe("Object.groupBy", () => {
   test("coerces keys to property keys, keeps symbols and passes the index", () => {
     const sym = Symbol("s");
     const seen: number[] = [];
-    const groups = objectGroupBy(["a", "b", "c"], (_item, index) => { seen.push(index); return index === 2 ? sym : index; });
+    const groups = objectGroupBy(["a", "b", "c"], (_item, index) => {
+      seen.push(index);
+      return index === 2 ? sym : index;
+    });
     expect(seen).toEqual([0, 1, 2]);
     const record = groups as Record<PropertyKey, string[]>;
     expect(record[0]).toEqual(["a"]);
@@ -70,11 +82,12 @@ describe("Object.groupBy", () => {
 
 describe("Map.groupBy", () => {
   test("keeps key identity and folds -0 into +0", () => {
-    const a = {}, b = {};
-    const byObject = mapGroupBy([1, 2, 3], n => (n < 3 ? a : b));
+    const a = {},
+      b = {};
+    const byObject = mapGroupBy([1, 2, 3], (n) => (n < 3 ? a : b));
     expect(byObject.get(a)).toEqual([1, 2]);
     expect(byObject.get(b)).toEqual([3]);
-    const byZero = mapGroupBy([-1, 1], n => (n < 0 ? -0 : 0));
+    const byZero = mapGroupBy([-1, 1], (n) => (n < 0 ? -0 : 0));
     expect(byZero.size).toBe(1);
     expect(Object.is([...byZero.keys()][0], 0)).toBe(true);
     expect(byZero.get(0)).toEqual([-1, 1]);
@@ -141,17 +154,32 @@ describe("installEcmaScriptPolyfills", () => {
     const globals = bareGlobals();
     const installed = installEcmaScriptPolyfills(globals);
     expect(installed).toEqual([
-      "Promise.withResolvers", "Object.groupBy", "Map.groupBy",
-      "Array.prototype.toSorted", "Array.prototype.toReversed", "Array.prototype.toSpliced", "Array.prototype.with",
-      "String.prototype.isWellFormed", "String.prototype.toWellFormed",
+      "Promise.withResolvers",
+      "Object.groupBy",
+      "Map.groupBy",
+      "Array.prototype.toSorted",
+      "Array.prototype.toReversed",
+      "Array.prototype.toSpliced",
+      "Array.prototype.with",
+      "String.prototype.isWellFormed",
+      "String.prototype.toWellFormed",
     ]);
     expect(typeof globals.Promise.withResolvers).toBe("function");
     expect(Object.getOwnPropertyDescriptor(globals.Array.prototype, "toSorted")).toMatchObject({
-      enumerable: false, writable: true, configurable: true,
+      enumerable: false,
+      writable: true,
+      configurable: true,
     });
-    expect(globals.Array.prototype[Symbol.unscopables]).toMatchObject({ toSorted: true, toReversed: true, toSpliced: true, with: true });
+    expect(globals.Array.prototype[Symbol.unscopables]).toMatchObject({
+      toSorted: true,
+      toReversed: true,
+      toSpliced: true,
+      with: true,
+    });
     // The filled `Promise.withResolvers` uses its receiver, like the native.
-    const { promise } = (globals.Promise.withResolvers as typeof promiseWithResolvers).call(globals.Promise as unknown as PromiseConstructor);
+    const { promise } = (globals.Promise.withResolvers as typeof promiseWithResolvers).call(
+      globals.Promise as unknown as PromiseConstructor,
+    );
     expect(promise).toBeInstanceOf(globals.Promise as unknown as PromiseConstructor);
   });
 

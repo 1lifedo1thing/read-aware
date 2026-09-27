@@ -4,13 +4,7 @@
  * tests bind the SAME sql-backed cores to bun:sqlite — so what the suite
  * exercises is the real storage logic, not a parallel in-memory fiction.
  */
-import type {
-  SealedEventWire,
-  SnapshotMeta,
-  SyncKeyMaterial,
-  SyncTier,
-  SyncTierLimits,
-} from "@read-aware/core";
+import type { SealedEventWire, SnapshotMeta, SyncKeyMaterial, SyncTier, SyncTierLimits } from "@read-aware/core";
 import type { AiModel } from "./ai-proxy";
 import type { RelayLang } from "./i18n";
 import type { RateLimitStore } from "./rate-limit-store";
@@ -38,10 +32,7 @@ export type Account = {
  * is write-time only: an over-quota downgraded account keeps pulling and
  * reading forever — data is never deleted, new pushes are refused.
  */
-export function resolveTier(
-  account: Pick<Account, "tier" | "tierExpiresAtMs">,
-  nowMs: number,
-): SyncTier {
+export function resolveTier(account: Pick<Account, "tier" | "tierExpiresAtMs">, nowMs: number): SyncTier {
   if (account.tier === "free") return "free";
   if (account.tierExpiresAtMs !== null && account.tierExpiresAtMs <= nowMs) return "free";
   return account.tier;
@@ -154,11 +145,7 @@ export interface AccountStore {
    * operator identifies an account. Returns the updated account, or null
    * when no account has that email.
    */
-  setTierByEmail(
-    email: string,
-    tier: SyncTier,
-    tierExpiresAtMs: number | null,
-  ): Promise<Account | null>;
+  setTierByEmail(email: string, tier: SyncTier, tierExpiresAtMs: number | null): Promise<Account | null>;
   /** The same seam, webhook flavor — the billing handler already holds the id. */
   setTierById(id: string, tier: SyncTier, tierExpiresAtMs: number | null): Promise<void>;
   setStripeCustomer(id: string, customerId: string): Promise<void>;
@@ -185,10 +172,7 @@ export interface Mailbox {
   /** Stored events — the usage half of the quota (`/v1/account` reporting). */
   count(): Promise<number>;
   /** A page in seq order; `seqs[i]` is `events[i]`'s server_seq. */
-  listAfter(
-    after: number,
-    limit: number,
-  ): Promise<{ events: SealedEventWire[]; next: number; seqs: number[] }>;
+  listAfter(after: number, limit: number): Promise<{ events: SealedEventWire[]; next: number; seqs: number[] }>;
   /** Which of these ids the mailbox holds, with their seqs (unknown ids are
    *  simply absent from the answer). */
   lookup(ids: string[]): Promise<Record<string, number>>;

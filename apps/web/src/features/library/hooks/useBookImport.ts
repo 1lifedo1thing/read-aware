@@ -20,11 +20,7 @@ type BookImportOptions = {
   reportError: (error: unknown) => void;
 };
 
-function formatImportNotice(
-  imported: number,
-  duplicates: string[],
-  t: TFunction<"shelf">,
-): string {
+function formatImportNotice(imported: number, duplicates: string[], t: TFunction<"shelf">): string {
   const skipped = t("importNotice.duplicate", {
     count: duplicates.length,
     title: duplicates[0],

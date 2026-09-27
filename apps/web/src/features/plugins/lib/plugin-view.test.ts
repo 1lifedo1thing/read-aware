@@ -1,43 +1,68 @@
 import { describe, expect, test } from "bun:test";
-import {
-  navigatePluginViewStack,
-  normalizePluginView,
-  PluginViewError,
-} from "./plugin-view";
+import { navigatePluginViewStack, normalizePluginView, PluginViewError } from "./plugin-view";
 
 const noOp = () => undefined;
 
 describe("normalizePluginView", () => {
   test("file drops freeze bounded filters, preserve the owning callback and reject malformed declarations", () => {
     const extensions = ["EPUB"];
-    const view = normalizePluginView({ kind: "markdown", markdown: "x", fileDrop: { extensions, onDrop: noOp, hiddenPath: "/private" } });
+    const view = normalizePluginView({
+      kind: "markdown",
+      markdown: "x",
+      fileDrop: { extensions, onDrop: noOp, hiddenPath: "/private" },
+    });
     extensions[0] = "TXT";
     expect(view.fileDrop).toEqual({ multiple: false, extensions: ["epub"], onDrop: noOp });
-    for (const fileDrop of [[], false, {}, { onDrop: "fn" }, { onDrop: noOp, multiple: 1 }, { onDrop: noOp, extensions: ["../a"] }, { onDrop: noOp, extensions: Array(33).fill("txt") }]) {
+    for (const fileDrop of [
+      [],
+      false,
+      {},
+      { onDrop: "fn" },
+      { onDrop: noOp, multiple: 1 },
+      { onDrop: noOp, extensions: ["../a"] },
+      { onDrop: noOp, extensions: Array(33).fill("txt") },
+    ]) {
       expect(() => normalizePluginView({ kind: "markdown", markdown: "x", fileDrop })).toThrow();
     }
   });
   test("progress accepts explicit indeterminate state and bounded cancel actions, never invalid ranges", () => {
-    const progress = (block: object) => normalizePluginView({ kind: "blocks", blocks: [{ kind: "progress", ...block }] });
-    expect(progress({ value: null, cancel: { id: "job", label: "Cancel", run: noOp } })).toMatchObject({ blocks: [{ value: null, cancel: { id: "job", run: noOp } }] });
+    const progress = (block: object) =>
+      normalizePluginView({ kind: "blocks", blocks: [{ kind: "progress", ...block }] });
+    expect(progress({ value: null, cancel: { id: "job", label: "Cancel", run: noOp } })).toMatchObject({
+      blocks: [{ value: null, cancel: { id: "job", run: noOp } }],
+    });
     expect(progress({ value: 0, max: 1 })).toMatchObject({ blocks: [{ value: 0, max: 1 }] });
-    for (const block of [{ value: -1 }, { value: 101 }, { value: Infinity }, { value: NaN }, { value: 1, max: 0 },
-      { value: null, max: -1 }, { value: 1, max: Infinity }, {}, { value: null, label: "x".repeat(513) },
-      { value: null, cancel: { id: "", label: "Cancel", run: noOp } }, { value: null, cancel: { id: "job", label: "Cancel", run: "not a callback" } }]) {
+    for (const block of [
+      { value: -1 },
+      { value: 101 },
+      { value: Infinity },
+      { value: NaN },
+      { value: 1, max: 0 },
+      { value: null, max: -1 },
+      { value: 1, max: Infinity },
+      {},
+      { value: null, label: "x".repeat(513) },
+      { value: null, cancel: { id: "", label: "Cancel", run: noOp } },
+      { value: null, cancel: { id: "job", label: "Cancel", run: "not a callback" } },
+    ]) {
       expect(() => progress(block)).toThrow(PluginViewError);
     }
   });
   test("persistent errors accept only stable codes and discard raw messages", () => {
-    expect(normalizePluginView({ kind: "blocks", blocks: [{ kind: "error", code: "db/locked", message: "PRIVATE" }] }))
-      .toEqual({ kind: "blocks", blocks: [{ kind: "error", code: "db/locked" }] });
+    expect(
+      normalizePluginView({ kind: "blocks", blocks: [{ kind: "error", code: "db/locked", message: "PRIVATE" }] }),
+    ).toEqual({ kind: "blocks", blocks: [{ kind: "error", code: "db/locked" }] });
     for (const code of ["", "raw error details", "x".repeat(129), "<script>"]) {
       expect(() => normalizePluginView({ kind: "blocks", blocks: [{ kind: "error", code }] })).toThrow();
     }
   });
   test("accepts only a callable live source and discards undeclared source fields", () => {
     const subscribe = () => ({ dispose() {} });
-    expect(normalizePluginView({ kind: "markdown", markdown: "Current", live: { subscribe, ignored: noOp } }))
-      .toEqual({ kind: "markdown", markdown: "Current", live: { subscribe } });
+    expect(normalizePluginView({ kind: "markdown", markdown: "Current", live: { subscribe, ignored: noOp } })).toEqual({
+      kind: "markdown",
+      markdown: "Current",
+      live: { subscribe },
+    });
     for (const live of [true, [], "source", {}, { subscribe: 1 }]) {
       expect(() => normalizePluginView({ kind: "markdown", markdown: "Current", live })).toThrow(PluginViewError);
     }
@@ -86,7 +111,11 @@ describe("normalizePluginView", () => {
     if (view.kind !== "list") throw new Error("unexpected view");
     expect(view.actions?.map((action) => action.priority)).toEqual(["primary", "secondary", undefined]);
     expect(() =>
-      normalizePluginView({ kind: "list", items: [], actions: [{ id: "x", label: "X", priority: "tertiary", run: noOp }] }),
+      normalizePluginView({
+        kind: "list",
+        items: [],
+        actions: [{ id: "x", label: "X", priority: "tertiary", run: noOp }],
+      }),
     ).toThrow(PluginViewError);
   });
 
@@ -145,9 +174,7 @@ describe("normalizePluginView", () => {
       block = { kind: "group", blocks: [block] };
     }
 
-    expect(() => normalizePluginView({ kind: "blocks", blocks: [block] })).toThrow(
-      /6-level limit/,
-    );
+    expect(() => normalizePluginView({ kind: "blocks", blocks: [block] })).toThrow(/6-level limit/);
   });
 
   test("validates dictionary snapshots before they reach the canonical renderer", () => {
@@ -264,7 +291,17 @@ describe("normalizePluginView", () => {
     const onCancel = () => ({ close: true });
     const view = normalizePluginView({
       kind: "blocks",
-      blocks: [{ kind: "editor", label: "Note text", value: "Draft", revision: "opaque:r1", maxLength: 100_000, onSave, onCancel }],
+      blocks: [
+        {
+          kind: "editor",
+          label: "Note text",
+          value: "Draft",
+          revision: "opaque:r1",
+          maxLength: 100_000,
+          onSave,
+          onCancel,
+        },
+      ],
     });
     if (view.kind !== "blocks" || view.blocks[0].kind !== "editor") throw new Error("unexpected editor view");
     expect(view.blocks[0]).toMatchObject({ kind: "editor", value: "Draft", revision: "opaque:r1", maxLength: 100_000 });
@@ -328,9 +365,7 @@ describe("normalizePluginView", () => {
     expect(() =>
       normalizePluginView({
         kind: "form",
-        fields: [
-          { kind: "text", id: "a", label: "A", visibleWhen: { field: "b", equals: [] } },
-        ],
+        fields: [{ kind: "text", id: "a", label: "A", visibleWhen: { field: "b", equals: [] } }],
         onSubmit: noOp,
       }),
     ).toThrow(/equals/);
@@ -351,37 +386,59 @@ describe("navigatePluginViewStack", () => {
 
   test("pushes, replaces, and resets host view stacks", () => {
     expect(navigatePluginViewStack([root], detail, "push")).toEqual([root, detail]);
-    expect(navigatePluginViewStack([root, detail], refreshedRoot, "replace")).toEqual([
-      root,
-      refreshedRoot,
-    ]);
-    expect(navigatePluginViewStack([root, detail], refreshedRoot, "reset")).toEqual([
-      refreshedRoot,
-    ]);
+    expect(navigatePluginViewStack([root, detail], refreshedRoot, "replace")).toEqual([root, refreshedRoot]);
+    expect(navigatePluginViewStack([root, detail], refreshedRoot, "reset")).toEqual([refreshedRoot]);
   });
 
   test("rejects unknown navigation modes", () => {
-    expect(() => navigatePluginViewStack([root], detail, "teleport")).toThrow(
-      /unknown plugin navigation mode/,
-    );
+    expect(() => navigatePluginViewStack([root], detail, "teleport")).toThrow(/unknown plugin navigation mode/);
   });
 });
 
 describe("plugin-computed list search (views 1.12)", () => {
   test("keeps the query callback, rejects malformed declarations and the local-filter combination", () => {
     const onQuery = () => null;
-    const view = normalizePluginView({ kind: "list", items: [], search: { placeholder: "Go to", autoFocus: true, onQuery, extra: 1 } });
+    const view = normalizePluginView({
+      kind: "list",
+      items: [],
+      search: { placeholder: "Go to", autoFocus: true, onQuery, extra: 1 },
+    });
     expect(view).toMatchObject({ kind: "list", search: { placeholder: "Go to", autoFocus: true, onQuery } });
-    expect(normalizePluginView({ kind: "list", items: [], search: { onQuery } })).toMatchObject({ search: { onQuery, placeholder: undefined, autoFocus: undefined } });
-    for (const search of [true, [], {}, { onQuery: "fn" }, { onQuery, autoFocus: "yes" }, { onQuery, placeholder: 3 }]) {
+    expect(normalizePluginView({ kind: "list", items: [], search: { onQuery } })).toMatchObject({
+      search: { onQuery, placeholder: undefined, autoFocus: undefined },
+    });
+    for (const search of [
+      true,
+      [],
+      {},
+      { onQuery: "fn" },
+      { onQuery, autoFocus: "yes" },
+      { onQuery, placeholder: 3 },
+    ]) {
       expect(() => normalizePluginView({ kind: "list", items: [], search })).toThrow(PluginViewError);
     }
-    expect(() => normalizePluginView({ kind: "list", items: [], searchable: true, search: { onQuery } })).toThrow(/cannot be combined/);
+    expect(() => normalizePluginView({ kind: "list", items: [], searchable: true, search: { onQuery } })).toThrow(
+      /cannot be combined/,
+    );
   });
   test("actions carry an explicit disabled flag and reject other shapes", () => {
     const run = () => null;
-    const view = normalizePluginView({ kind: "list", items: [], actions: [{ id: "back", label: "Back", disabled: true, run }, { id: "forward", label: "Forward", run }] });
-    expect(view).toMatchObject({ actions: [{ id: "back", disabled: true }, { id: "forward", disabled: undefined }] });
-    expect(() => normalizePluginView({ kind: "list", items: [], actions: [{ id: "back", label: "Back", disabled: "no", run }] })).toThrow(PluginViewError);
+    const view = normalizePluginView({
+      kind: "list",
+      items: [],
+      actions: [
+        { id: "back", label: "Back", disabled: true, run },
+        { id: "forward", label: "Forward", run },
+      ],
+    });
+    expect(view).toMatchObject({
+      actions: [
+        { id: "back", disabled: true },
+        { id: "forward", disabled: undefined },
+      ],
+    });
+    expect(() =>
+      normalizePluginView({ kind: "list", items: [], actions: [{ id: "back", label: "Back", disabled: "no", run }] }),
+    ).toThrow(PluginViewError);
   });
 });

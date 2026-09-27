@@ -8,10 +8,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
-import {
-  getSyncStatusSnapshot,
-  subscribeSyncStatus,
-} from "../../../platform/sync/sync-scheduler";
+import { getSyncStatusSnapshot, subscribeSyncStatus } from "../../../platform/sync/sync-scheduler";
 
 const log = createLogger("sync");
 
@@ -45,7 +42,10 @@ export function useSyncBacklog(active: boolean): SyncBacklog | null {
       }
     };
     void load();
-    if (!syncing) return () => { cancelled = true; };
+    if (!syncing)
+      return () => {
+        cancelled = true;
+      };
     const timer = window.setInterval(() => void load(), BACKLOG_POLL_MS);
     return () => {
       cancelled = true;
@@ -90,7 +90,10 @@ export function useSyncBookBacklog(active: boolean): SyncBookBacklogRow[] | null
       }
     };
     void load();
-    if (!syncing) return () => { cancelled = true; };
+    if (!syncing)
+      return () => {
+        cancelled = true;
+      };
     const timer = window.setInterval(() => void load(), BACKLOG_POLL_MS);
     return () => {
       cancelled = true;

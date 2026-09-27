@@ -17,11 +17,19 @@ export type BackupProgramStageQuery =
 export type BackupProgramStageReceipt = { token: string; storage: Record<string, string> };
 export type BackupProgramStageCall = <T>(query: BackupProgramStageQuery) => Promise<T>;
 
-export function createBackupProgramStorage(pluginId: string, initial: Record<string, string>, call: BackupProgramStageCall): PluginRestoreStorage {
+export function createBackupProgramStorage(
+  pluginId: string,
+  initial: Record<string, string>,
+  call: BackupProgramStageCall,
+): PluginRestoreStorage {
   const mirror = new Map(Object.entries(initial));
   const parse = <T>(raw: string | null | undefined): T | null => {
     if (raw == null) return null;
-    try { return JSON.parse(raw) as T; } catch { return null; }
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
   };
   const writable = (key: string) => {
     if (typeof key !== "string" || key === "schedule-state" || key === "schedule-runs") {
@@ -30,7 +38,8 @@ export function createBackupProgramStorage(pluginId: string, initial: Record<str
   };
   const backend: PluginDocumentsBackend = {
     pluginDocsGet: (_owner, collection, id) => call({ kind: "docsGet", collection, id }),
-    pluginDocsPut: (_owner, collection, id, json, options) => call({ kind: "docsPut", collection, id, json, ...options }),
+    pluginDocsPut: (_owner, collection, id, json, options) =>
+      call({ kind: "docsPut", collection, id, json, ...options }),
     pluginDocsDelete: (_owner, collection, id) => call({ kind: "docsDelete", collection, id }),
     pluginDocsList: (_owner, collection, filter) => call({ kind: "docsList", collection, ...filter }),
     pluginDocsPage: (_owner, collection, query) => call({ kind: "docsPage", collection, query }),
@@ -40,9 +49,14 @@ export function createBackupProgramStorage(pluginId: string, initial: Record<str
     snapshot: () => Object.fromEntries(mirror),
     create(lifecycle): PluginStorage {
       return {
-        policy: async () => { throw new AppError("plugin/not-supported", "Live storage policy is unavailable in backup migration"); },
-        get: key => parse(mirror.get(key)),
-        getDurable: key => lifecycle.read("services.storage.getDurable", async () => parse(await call<string | null>({ kind: "get", key }))),
+        policy: async () => {
+          throw new AppError("plugin/not-supported", "Live storage policy is unavailable in backup migration");
+        },
+        get: (key) => parse(mirror.get(key)),
+        getDurable: (key) =>
+          lifecycle.read("services.storage.getDurable", async () =>
+            parse(await call<string | null>({ kind: "get", key })),
+          ),
         set(key, value) {
           writable(key);
           return lifecycle.storageWrite("services.storage.set", async () => {

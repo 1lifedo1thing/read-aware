@@ -2,11 +2,7 @@ import { useState } from "react";
 import { CaretDown } from "@phosphor-icons/react";
 import { Popover, buttonClassName } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
-import {
-  RELEASES_URL,
-  type PlatformDownload,
-  type PlatformId,
-} from "../lib/releases";
+import { RELEASES_URL, type PlatformDownload, type PlatformId } from "../lib/releases";
 
 export type DownloadStrings = {
   comingSoon: string;
@@ -34,27 +30,16 @@ type DownloadMenuProps = {
  * full platform list inline. It never scrolls the page — a download button
  * should download.
  */
-export function DownloadMenu({
-  downloads,
-  platform,
-  strings = DEFAULT_STRINGS,
-}: DownloadMenuProps) {
+export function DownloadMenu({ downloads, platform, strings = DEFAULT_STRINGS }: DownloadMenuProps) {
   const [open, setOpen] = useState(false);
-  const detected = platform
-    ? downloads.find((download) => download.id === platform)
-    : undefined;
+  const detected = platform ? downloads.find((download) => download.id === platform) : undefined;
   const direct =
-    detected && detected.primary && !detected.comingSoon
-      ? { name: detected.name, url: detected.primary.url }
-      : null;
+    detected && detected.primary && !detected.comingSoon ? { name: detected.name, url: detected.primary.url } : null;
 
   return (
     <div className="inline-flex items-stretch">
       {direct && (
-        <a
-          href={direct.url}
-          className={buttonClassName({ size: "lg", className: "rounded-l-md" })}
-        >
+        <a href={direct.url} className={buttonClassName({ size: "lg", className: "rounded-l-md" })}>
           {strings.downloadFor(direct.name)}
         </a>
       )}
@@ -65,9 +50,7 @@ export function DownloadMenu({
         triggerLabel={direct ? strings.choosePlatform : strings.download}
         triggerClassName={buttonClassName({
           size: "lg",
-          className: direct
-            ? "rounded-r-md border-l border-inverse-fg/20 px-2.5"
-            : "rounded-md",
+          className: direct ? "rounded-r-md border-l border-inverse-fg/20 px-2.5" : "rounded-md",
         })}
         panelClassName="w-64 p-1"
         trigger={
@@ -87,14 +70,9 @@ export function DownloadMenu({
 
           if (download.comingSoon) {
             return (
-              <div
-                key={download.id}
-                className="flex items-baseline justify-between px-3 py-2 text-fg-subtle"
-              >
+              <div key={download.id} className="flex items-baseline justify-between px-3 py-2 text-fg-subtle">
                 <span className="text-[0.9375rem]">{download.name}</span>
-                <span className="text-[0.8125rem] italic">
-                  {strings.comingSoon}
-                </span>
+                <span className="text-[0.8125rem] italic">{strings.comingSoon}</span>
               </div>
             );
           }
@@ -108,9 +86,7 @@ export function DownloadMenu({
             >
               <span className="text-[0.9375rem]">{download.name}</span>
               <span className="text-[0.8125rem] text-fg-subtle">
-                {download.primary
-                  ? download.primary.url.split(".").pop()
-                  : "web"}
+                {download.primary ? download.primary.url.split(".").pop() : "web"}
               </span>
             </a>
           );

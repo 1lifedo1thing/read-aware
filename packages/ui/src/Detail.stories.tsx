@@ -39,12 +39,7 @@ export const Default: Story = {
     ),
     actions: (
       <Tooltip content="Delete word" align="end">
-        <IconButton
-          label="Delete word"
-          tone="danger"
-          size="sm"
-          icon={<Trash size={16} aria-hidden="true" />}
-        />
+        <IconButton label="Delete word" tone="danger" size="sm" icon={<Trash size={16} aria-hidden="true" />} />
       </Tooltip>
     ),
   },

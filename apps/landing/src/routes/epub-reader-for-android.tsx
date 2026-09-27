@@ -23,32 +23,27 @@ export const Route = createFileRoute("/epub-reader-for-android")({
     >
       <h2>A real reader, not a storefront</h2>
       <p>
-        Most EPUB apps on Android are bookstores with a reader attached.
-        ReadAware is only the reader: import your own DRM-free files and read
-        them on a calm, paper-toned page, with highlights and notes that stay
-        attached to the original text. There is no account to create, no ads,
-        and no catalog pushing you anywhere — your library is the books you
-        put in it.
+        Most EPUB apps on Android are bookstores with a reader attached. ReadAware is only the reader: import your own
+        DRM-free files and read them on a calm, paper-toned page, with highlights and notes that stay attached to the
+        original text. There is no account to create, no ads, and no catalog pushing you anywhere — your library is the
+        books you put in it.
       </p>
 
       <AndroidReaderPlate />
 
       <h2>Every format in your pocket</h2>
       <p>
-        EPUB, MOBI, AZW3, FB2, CBZ, CBR, TXT, HTML, and PDF all open in the
-        same reader with the same selection, highlights, and progress —
-        including comic archives, so your manga and comics live beside your
-        novels. Nothing is converted; the original file is what you keep.
+        EPUB, MOBI, AZW3, FB2, CBZ, CBR, TXT, HTML, and PDF all open in the same reader with the same selection,
+        highlights, and progress — including comic archives, so your manga and comics live beside your novels. Nothing
+        is converted; the original file is what you keep.
       </p>
 
       <h2>Pick up on your phone where your desktop left off</h2>
       <p>
-        With optional sync, the book you were reading at your desk is
-        open at the same paragraph on your phone — books, highlights, notes,
-        reading position, and the memory the assistant builds from all of it.
-        Sync is end-to-end encrypted: the relay only stores ciphertext, so
-        nobody in the middle can read what you read. ReadAware also runs on{" "}
-        <Link to="/epub-reader-for-windows">Windows</Link>, macOS, and Linux.
+        With optional sync, the book you were reading at your desk is open at the same paragraph on your phone — books,
+        highlights, notes, reading position, and the memory the assistant builds from all of it. Sync is end-to-end
+        encrypted: the relay only stores ciphertext, so nobody in the middle can read what you read. ReadAware also runs
+        on <Link to="/epub-reader-for-windows">Windows</Link>, macOS, and Linux.
       </p>
 
       <h2>Installing the APK</h2>
@@ -57,17 +52,15 @@ export const Route = createFileRoute("/epub-reader-for-android")({
         <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
           GitHub releases page
         </a>{" "}
-        — download it on your phone, open it, and confirm the install when
-        Android asks about apps from outside the Play Store. Because the
-        source is open (AGPL-3.0), you can inspect the code and the public
-        release workflow. Download the signed APK from the official release.
+        — download it on your phone, open it, and confirm the install when Android asks about apps from outside the Play
+        Store. Because the source is open (AGPL-3.0), you can inspect the code and the public release workflow. Download
+        the signed APK from the official release.
       </p>
       <p>
-        See the <Link to="/docs/install">installation guide</Link> for setup
-        details and <Link to="/pricing">plans and pricing</Link> for optional
-        sync and built-in AI. Offline reading does not require a subscription.
-        AI requests need an internet connection and send the relevant context
-        to your selected provider; see the <Link to="/privacy">privacy policy</Link>.
+        See the <Link to="/docs/install">installation guide</Link> for setup details and{" "}
+        <Link to="/pricing">plans and pricing</Link> for optional sync and built-in AI. Offline reading does not require
+        a subscription. AI requests need an internet connection and send the relevant context to your selected provider;
+        see the <Link to="/privacy">privacy policy</Link>.
       </p>
     </TopicPage>
   ),

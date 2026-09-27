@@ -11,13 +11,7 @@ import { useTranslation } from "../../../i18n";
  * spinner. Once the run settles it collapses behind the quiet "Thought
  * process" disclosure: available, never imposed.
  */
-export function ChatThinking({
-  text,
-  streaming = false,
-}: {
-  text: string;
-  streaming?: boolean;
-}) {
+export function ChatThinking({ text, streaming = false }: { text: string; streaming?: boolean }) {
   const { t } = useTranslation("ai");
   const tailRef = useRef<HTMLDivElement | null>(null);
   const [clipped, setClipped] = useState(false);
@@ -44,13 +38,10 @@ export function ChatThinking({
             ref={tailRef}
             className={cn(
               "mt-1.5 flex max-h-24 flex-col justify-end overflow-hidden pl-4",
-              clipped &&
-                "[mask-image:linear-gradient(to_bottom,transparent,black_2.5rem)]",
+              clipped && "[mask-image:linear-gradient(to_bottom,transparent,black_2.5rem)]",
             )}
           >
-            <p className="whitespace-pre-wrap text-caption leading-relaxed text-fg-subtle">
-              {text}
-            </p>
+            <p className="whitespace-pre-wrap text-caption leading-relaxed text-fg-subtle">{text}</p>
           </div>
         )}
       </div>
@@ -69,10 +60,7 @@ export function ChatThinking({
       >
         <CaretRight
           size={12}
-          className={cn(
-            "shrink-0 text-fg-subtle transition-transform",
-            expanded && "rotate-90",
-          )}
+          className={cn("shrink-0 text-fg-subtle transition-transform", expanded && "rotate-90")}
           aria-hidden="true"
         />
         <Caption className="text-fg-subtle">{t("chat.thought")}</Caption>

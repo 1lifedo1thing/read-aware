@@ -10,7 +10,9 @@ export function getReaderBookLanguages(): ReaderBookLanguages {
   try {
     const parsed: unknown = JSON.parse(localKV.getItem(READER_LANGUAGES_KEY) ?? "{}");
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.fromEntries(Object.entries(parsed).map(([id, language]) => [id, normalizeBookLanguage(language) ?? "und"]));
+    return Object.fromEntries(
+      Object.entries(parsed).map(([id, language]) => [id, normalizeBookLanguage(language) ?? "und"]),
+    );
   } catch {
     return {}; // This derived cache can always be rebuilt from the book file.
   }

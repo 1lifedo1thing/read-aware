@@ -1,12 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PluginDetailViewBody } from "./PluginDetailViewBody";
-import {
-  everyBlockKind,
-  noopRunner,
-  sampleActions,
-  sampleControls,
-  sampleMetadata,
-} from "./plugin.fixtures";
+import { everyBlockKind, noopRunner, sampleActions, sampleControls, sampleMetadata } from "./plugin.fixtures";
 
 /**
  * A plugin's detail view: content blocks with optional controls, actions and

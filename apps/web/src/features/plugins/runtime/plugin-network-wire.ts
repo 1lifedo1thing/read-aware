@@ -40,13 +40,18 @@ async function readBody(
       if (done) break;
       size += value.byteLength;
       if (size > limit) {
-        throw Object.assign(new Error("Plugin network body exceeds the transfer limit"), { code: "plugin/payload-too-large" });
+        throw Object.assign(new Error("Plugin network body exceeds the transfer limit"), {
+          code: "plugin/payload-too-large",
+        });
       }
       chunks.push(value);
     }
     const bytes = new Uint8Array(size);
     let offset = 0;
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
     return bytes.buffer;
   } catch (error) {
     void reader.cancel(error).catch(() => {
@@ -86,7 +91,11 @@ export async function flattenPluginRequest(input: RequestInfo | URL, init?: Requ
   };
 }
 
-export async function flattenPluginResponse(response: Response, signal?: AbortSignal, limit?: number): Promise<PluginNetworkResponse> {
+export async function flattenPluginResponse(
+  response: Response,
+  signal?: AbortSignal,
+  limit?: number,
+): Promise<PluginNetworkResponse> {
   return {
     status: response.status,
     statusText: response.statusText,

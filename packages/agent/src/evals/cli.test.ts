@@ -51,9 +51,7 @@ describe("eval CLI", () => {
 
   test("rejects unknown suites and malformed candidates", () => {
     expect(() => parseEvalCliArgs(["unknown"])).toThrow("unknown eval suite");
-    expect(() => parseEvalCliArgs(["reading", "--candidate", "deepseek"])).toThrow(
-      "expected name=provider:model",
-    );
+    expect(() => parseEvalCliArgs(["reading", "--candidate", "deepseek"])).toThrow("expected name=provider:model");
   });
 
   test("accepts group selectors and expands them per suite", () => {
@@ -63,11 +61,7 @@ describe("eval CLI", () => {
     // 只剩带 honesty 标签的套件；每套件内只保留匹配场景
     for (const target of targets) {
       expect(target.scenarios.length).toBeGreaterThan(0);
-      expect(
-        target.scenarios.every((scenario) =>
-          scenario.tags?.includes("honesty"),
-        ),
-      ).toBe(true);
+      expect(target.scenarios.every((scenario) => scenario.tags?.includes("honesty"))).toBe(true);
     }
     expect(targets.some((target) => target.suiteId === "grounding")).toBe(true);
     expect(targets.some((target) => target.suiteId === "tools")).toBe(true);

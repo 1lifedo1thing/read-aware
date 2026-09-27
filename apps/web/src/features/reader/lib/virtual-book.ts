@@ -7,7 +7,7 @@
 import { AppError } from "@read-aware/core";
 import { digestContent, virtualContentVersion } from "../../library/lib/content-version";
 import { wrapSectionHtml } from "./section-document";
-import type { FoliateBook } from './foliate-engine';
+import type { FoliateBook } from "./foliate-engine";
 
 export type VirtualBookContent = {
   title?: string;
@@ -19,9 +19,7 @@ export type VirtualBookContent = {
 export async function buildVirtualFoliateBook(content: VirtualBookContent): Promise<FoliateBook> {
   const language = content.language ?? "und";
   const ids = content.sections.map((section, index) => section.id || `sec-${index}`);
-  const docs = content.sections.map((section) =>
-    wrapSectionHtml(section.html, section.title, language),
-  );
+  const docs = content.sections.map((section) => wrapSectionHtml(section.html, section.title, language));
 
   if (ids.length > 10000 || new Set(ids).size !== ids.length) {
     throw new AppError("library/content-unavailable", "Virtual section identities must be unique and bounded");
@@ -43,16 +41,14 @@ export async function buildVirtualFoliateBook(content: VirtualBookContent): Prom
       cfi: cfis[index],
       linear: "yes",
       size: docs[index].length,
-      load: async () =>
-        (url ??= URL.createObjectURL(new Blob([docs[index]], { type: "text/html" }))),
+      load: async () => (url ??= URL.createObjectURL(new Blob([docs[index]], { type: "text/html" }))),
       unload: () => {
         if (url) {
           URL.revokeObjectURL(url);
           url = null;
         }
       },
-      createDocument: async () =>
-        new DOMParser().parseFromString(docs[index], "text/html"),
+      createDocument: async () => new DOMParser().parseFromString(docs[index], "text/html"),
     };
   });
 
@@ -72,7 +68,7 @@ export async function buildVirtualFoliateBook(content: VirtualBookContent): Prom
       const index = ids.indexOf(id);
       if (index < 0) return undefined;
       const fragment = href.split("#")[1];
-      return { index, anchor: (doc: Document) => fragment ? doc.getElementById(decodeURIComponent(fragment)) : null };
+      return { index, anchor: (doc: Document) => (fragment ? doc.getElementById(decodeURIComponent(fragment)) : null) };
     },
     splitTOCHref: (href: string) => [href.split("#")[0], null],
     getTOCFragment: (doc: Document) => doc.documentElement,

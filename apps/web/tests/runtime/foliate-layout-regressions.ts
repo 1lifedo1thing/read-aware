@@ -15,8 +15,12 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
   if (!("__TAURI_INTERNALS__" in window)) throw new Error("Run this suite inside Tauri");
   const results: Result[] = [];
   const check = async (name: string, run: () => Promise<void>) => {
-    try { await run(); results.push({ name, passed: true }); }
-    catch (error) { results.push({ name, passed: false, details: String(error) }); }
+    try {
+      await run();
+      results.push({ name, passed: true });
+    } catch (error) {
+      results.push({ name, passed: false, details: String(error) });
+    }
   };
   const equal = (actual: unknown, expected: unknown) => {
     if (actual !== expected) throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
@@ -25,61 +29,112 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
     const deadline = Date.now() + 5000;
     while (!condition()) {
       if (Date.now() > deadline) throw new Error("Timed out waiting for page layout");
-      await new Promise(resolve => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 30));
     }
   };
   const mount = () => {
     const view = new modules.view.View();
-    view.style.cssText = "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
+    view.style.cssText =
+      "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
     document.body.append(view);
     return view;
   };
-  const dispose = async (view: View) => { await view.close(); view.remove(); };
-  const page = (index: number) => URL.createObjectURL(new Blob([
-    `<!doctype html><html><head></head><body><p>Fixed page ${index}</p></body></html>`,
-  ], { type: "text/html" }));
+  const dispose = async (view: View) => {
+    await view.close();
+    view.remove();
+  };
+  const page = (index: number) =>
+    URL.createObjectURL(
+      new Blob([`<!doctype html><html><head></head><body><p>Fixed page ${index}</p></body></html>`], {
+        type: "text/html",
+      }),
+    );
 
   await check("same-page overlapping loads publish only the latest navigation context", async () => {
-    const urls = [page(0), page(1)], view = mount(), gate = Promise.withResolvers<string>();
+    const urls = [page(0), page(1)],
+      view = mount(),
+      gate = Promise.withResolvers<string>();
     let reads = 0;
-    const book: Book = { rendition: { layout: "pre-paginated", spread: "none", viewport: "width=600,height=800" },
-      sections: [{ id: 0, size: 1000, load: () => { reads++; return gate.promise; } }, { id: 1, size: 1000, load: () => urls[1] }] };
+    const book: Book = {
+      rendition: { layout: "pre-paginated", spread: "none", viewport: "width=600,height=800" },
+      sections: [
+        {
+          id: 0,
+          size: 1000,
+          load: () => {
+            reads++;
+            return gate.promise;
+          },
+        },
+        { id: 1, size: 1000, load: () => urls[1] },
+      ],
+    };
     try {
       await view.open(book);
       const renderer = view.renderer;
       if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
-      const old = {}, current = {}, loads: LoadDetail[] = [], relocations: RelocateDetail[] = [];
-      renderer.addEventListener("load", event => loads.push((event as CustomEvent<LoadDetail>).detail));
-      renderer.addEventListener("relocate", event => relocations.push((event as CustomEvent<RelocateDetail>).detail));
+      const old = {},
+        current = {},
+        loads: LoadDetail[] = [],
+        relocations: RelocateDetail[] = [];
+      renderer.addEventListener("load", (event) => loads.push((event as CustomEvent<LoadDetail>).detail));
+      renderer.addEventListener("relocate", (event) => relocations.push((event as CustomEvent<RelocateDetail>).detail));
       const first = renderer.goTo({ index: 0, context: old });
       await waitFor(() => reads === 1);
       const next = renderer.goTo({ index: 0, context: current });
-      gate.resolve(urls[0]); await Promise.all([first, next]);
-      equal(reads, 1); equal(renderer.index, 0);
-      equal(loads.some(event => event.context === old), false);
-      equal(relocations.some(event => event.context === old), false);
-      equal(loads.at(-1)?.context, current); equal(relocations.at(-1)?.context, current);
+      gate.resolve(urls[0]);
+      await Promise.all([first, next]);
+      equal(reads, 1);
+      equal(renderer.index, 0);
+      equal(
+        loads.some((event) => event.context === old),
+        false,
+      );
+      equal(
+        relocations.some((event) => event.context === old),
+        false,
+      );
+      equal(loads.at(-1)?.context, current);
+      equal(relocations.at(-1)?.context, current);
       const slow = Promise.withResolvers<{ index: number; context: object }>();
       const pending = renderer.goTo(slow.promise);
       await renderer.goTo({ index: 1, context: current });
-      slow.resolve({ index: 0, context: old }); await pending;
-      equal(renderer.index, 1); equal(relocations.at(-1)?.context, current);
-    } finally { gate.resolve(urls[0]); await dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+      slow.resolve({ index: 0, context: old });
+      await pending;
+      equal(renderer.index, 1);
+      equal(relocations.at(-1)?.context, current);
+    } finally {
+      gate.resolve(urls[0]);
+      await dispose(view);
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    }
   });
 
   await check("same-spread navigation reports the selected side and its context", async () => {
-    const urls = [0, 1, 2].map(page), view = mount(); view.style.width = "400px";
+    const urls = [0, 1, 2].map(page),
+      view = mount();
+    view.style.width = "400px";
     try {
-      await view.open({ rendition: { layout: "pre-paginated", viewport: "width=600,height=800" },
-        sections: urls.map((url, id) => ({ id, size: 1000, load: () => url })) });
+      await view.open({
+        rendition: { layout: "pre-paginated", viewport: "width=600,height=800" },
+        sections: urls.map((url, id) => ({ id, size: 1000, load: () => url })),
+      });
       const renderer = view.renderer;
       if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
       renderer.setLayout("paginated", 2);
-      const first = {}, next = {}, events: RelocateDetail[] = [];
-      renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
-      await view.goTo(1, first); await view.goTo(2, next);
-      equal(renderer.index, 2); equal(events.at(-1)?.index, 2); equal(events.at(-1)?.context, next);
-    } finally { await dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+      const first = {},
+        next = {},
+        events: RelocateDetail[] = [];
+      renderer.addEventListener("relocate", (event) => events.push((event as CustomEvent<RelocateDetail>).detail));
+      await view.goTo(1, first);
+      await view.goTo(2, next);
+      equal(renderer.index, 2);
+      equal(events.at(-1)?.index, 2);
+      equal(events.at(-1)?.context, next);
+    } finally {
+      await dispose(view);
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    }
   });
 
   await check("FB2 loads native XHTML and preserves notes and CFI selections", async () => {
@@ -100,13 +155,17 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       equal(anchorRangeOf(restored, doc).toString(), "world");
       await view.goTo("#note-one");
       equal(rendererOf(view).getContents()[0]?.index, 2);
-    } finally { await dispose(view); book.destroy(); }
+    } finally {
+      await dispose(view);
+      book.destroy();
+    }
   });
 
   await check("fixed pages keep book viewport, spreads, direction and continuous scrolling", async () => {
     const urls = [0, 1, 2, 3].map(page);
     const book: Book = {
-      metadata: { language: "en" }, rendition: { layout: "pre-paginated", viewport: "width=600,height=800" },
+      metadata: { language: "en" },
+      rendition: { layout: "pre-paginated", viewport: "width=600,height=800" },
       sections: urls.map((url, index) => ({ id: index, size: 1000, load: () => url })),
     };
     const view = mount();
@@ -130,19 +189,27 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       equal(renderer.getSpreadOf(book.sections[2])?.side, "right");
       renderer.setLayout("scrolled", 1);
       await view.goTo(2);
-      await waitFor(() => renderer.getContents().some(content => content.index === 2));
+      await waitFor(() => renderer.getContents().some((content) => content.index === 2));
       equal(renderer.scrolled, true);
-      if (renderer.start <= 0 || renderer.viewSize <= renderer.clientHeight) throw new Error("Stack has no scroll geometry");
+      if (renderer.start <= 0 || renderer.viewSize <= renderer.clientHeight)
+        throw new Error("Stack has no scroll geometry");
       await view.prev();
       equal(renderer.index, 1);
       await view.next();
       equal(renderer.index, 2);
-    } finally { await dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+    } finally {
+      await dispose(view);
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    }
 
     const rtlView = mount();
     const rtlUrls = [0, 1, 2].map(page);
     try {
-      const rtlBook: Book = { ...book, dir: "rtl", sections: rtlUrls.map((url, index) => ({ id: index, size: 1000, load: () => url })) };
+      const rtlBook: Book = {
+        ...book,
+        dir: "rtl",
+        sections: rtlUrls.map((url, index) => ({ id: index, size: 1000, load: () => url })),
+      };
       await rtlView.open(rtlBook);
       const renderer = rtlView.renderer;
       if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
@@ -151,7 +218,10 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       await rtlView.goTo(0);
       await rtlView.goLeft();
       equal(renderer.index, 1);
-    } finally { await dispose(rtlView); rtlUrls.forEach(url => URL.revokeObjectURL(url)); }
+    } finally {
+      await dispose(rtlView);
+      rtlUrls.forEach((url) => URL.revokeObjectURL(url));
+    }
   });
 
   await check("fixed lazy render redraws after palette changes", async () => {
@@ -161,12 +231,21 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
     try {
       const book: Book = {
         rendition: { layout: "pre-paginated", spread: "none", viewport: { width: 600, height: 800 } },
-        sections: [{ id: 0, size: 1000, load: () => ({ src: url, onZoom: async ({ doc, scale, pageColors, signal }) => {
-          if (signal?.aborted) throw new DOMException("Cancelled", "RenderCancelledError");
-          calls.push(pageColors?.background ?? "authored");
-          doc.body.style.background = pageColors?.background ?? "white";
-          doc.body.style.width = `${600 * scale}px`;
-        } }) }],
+        sections: [
+          {
+            id: 0,
+            size: 1000,
+            load: () => ({
+              src: url,
+              onZoom: async ({ doc, scale, pageColors, signal }) => {
+                if (signal?.aborted) throw new DOMException("Cancelled", "RenderCancelledError");
+                calls.push(pageColors?.background ?? "authored");
+                doc.body.style.background = pageColors?.background ?? "white";
+                doc.body.style.width = `${600 * scale}px`;
+              },
+            }),
+          },
+        ],
       };
       await view.open(book);
       const renderer = view.renderer;
@@ -177,17 +256,26 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       await waitFor(() => calls.includes("#101010"));
       const doc = renderer.getContents()[0]?.doc;
       equal(doc?.defaultView?.getComputedStyle(doc.body).backgroundColor, "rgb(16, 16, 16)");
-    } finally { await dispose(view); URL.revokeObjectURL(url); }
+    } finally {
+      await dispose(view);
+      URL.revokeObjectURL(url);
+    }
   });
 
   await check("destroyed fixed renderers cannot resurrect a late-loading spread", async () => {
     const url = page(0);
     const renderer = new modules.fixed.FixedLayout();
-    renderer.style.cssText = "display:block;position:fixed;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
+    renderer.style.cssText =
+      "display:block;position:fixed;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
     document.body.append(renderer);
-    let complete: (url: string) => void = () => { throw new Error("Load not started"); };
-    const loading = new Promise<string>(resolve => { complete = resolve; });
-    renderer.open({ rendition: { spread: "none", viewport: "width=600,height=800" },
+    let complete: (url: string) => void = () => {
+      throw new Error("Load not started");
+    };
+    const loading = new Promise<string>((resolve) => {
+      complete = resolve;
+    });
+    renderer.open({
+      rendition: { spread: "none", viewport: "width=600,height=800" },
       sections: [{ id: 0, size: 1000, load: () => loading }],
     });
     const pending = renderer.goTo({ index: 0 }).catch((error: unknown) => {
@@ -199,7 +287,11 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       complete(url);
       await pending;
       equal(renderer.getContents().length, 0);
-    } finally { renderer.destroy(); renderer.remove(); URL.revokeObjectURL(url); }
+    } finally {
+      renderer.destroy();
+      renderer.remove();
+      URL.revokeObjectURL(url);
+    }
   });
   return results;
 }

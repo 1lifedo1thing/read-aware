@@ -6,11 +6,7 @@
  * language is a plugin preference ("auto" follows `ctx.locale`).
  */
 import type { PluginDictionaryEntry } from "@read-aware/plugin-types";
-import {
-  LANGUAGE_NAME_BY_VALUE,
-  isTargetLanguage,
-  type TargetLanguage,
-} from "./languages";
+import { LANGUAGE_NAME_BY_VALUE, isTargetLanguage, type TargetLanguage } from "./languages";
 import type { DictionaryContext } from "./types";
 
 const LANGUAGE_KEY = "language";
@@ -27,8 +23,7 @@ export function saveTargetLanguage(ctx: DictionaryContext, language: TargetLangu
 
 /** Resolve a preference (possibly "auto") to a model-ready language name. */
 export function resolveLanguageName(ctx: DictionaryContext, language: TargetLanguage): string {
-  const concrete =
-    language === "auto" ? (isTargetLanguage(ctx.locale) ? ctx.locale : "en") : language;
+  const concrete = language === "auto" ? (isTargetLanguage(ctx.locale) ? ctx.locale : "en") : language;
   return concrete === "auto" ? "English" : LANGUAGE_NAME_BY_VALUE[concrete];
 }
 
@@ -81,20 +76,21 @@ function normalizeEntry(parsed: Partial<PluginDictionaryEntry>, term: string): P
         }))
     : [];
   return {
-    headword:
-      typeof parsed.headword === "string" && parsed.headword.trim()
-        ? parsed.headword.trim()
-        : term,
+    headword: typeof parsed.headword === "string" && parsed.headword.trim() ? parsed.headword.trim() : term,
     pronunciation: typeof parsed.pronunciation === "string" ? parsed.pronunciation : undefined,
     senses,
     etymology: typeof parsed.etymology === "string" ? parsed.etymology : undefined,
-    contextualMeaning:
-      typeof parsed.contextualMeaning === "string" ? parsed.contextualMeaning : undefined,
+    contextualMeaning: typeof parsed.contextualMeaning === "string" ? parsed.contextualMeaning : undefined,
   };
 }
 
 /** Stable cache id over the inputs that shape an entry (djb2, base36). */
-export function lookupCacheId(term: string, languageName: string, context: string | undefined, bookTitle: string | undefined): string {
+export function lookupCacheId(
+  term: string,
+  languageName: string,
+  context: string | undefined,
+  bookTitle: string | undefined,
+): string {
   const text = JSON.stringify([languageName, term.trim().toLowerCase(), context?.trim() ?? "", bookTitle ?? ""]);
   let hash = 5381;
   for (let i = 0; i < text.length; i += 1) {
@@ -139,7 +135,8 @@ export async function lookUpTerm(
     ? await Promise.all([
         ctx.domains.settings.queries.read("ai.preferences.sendHighlightedText"),
         ctx.domains.settings.queries.read("ai.preferences.sendSurroundingContext"),
-      ]) : [];
+      ])
+    : [];
   const context = selectionSetting?.value === true && surroundingSetting?.value === true ? input.context : undefined;
   const id = lookupCacheId(term, languageName, context, input.bookTitle);
   if (id !== originalId) {
@@ -150,7 +147,9 @@ export async function lookUpTerm(
   }
   const selected = input.source === "selection";
   const prompt = [
-    selected ? "Define the term supplied in the host reading context's selection field." : `Term to define: ${JSON.stringify(term)}.`,
+    selected
+      ? "Define the term supplied in the host reading context's selection field."
+      : `Term to define: ${JSON.stringify(term)}.`,
     context ? "Use the host reading context's surrounding field to identify its meaning in the passage." : "",
     input.bookTitle ? `The book is ${JSON.stringify(input.bookTitle)}.` : "",
     "Write every human-readable field (definitions, part-of-speech labels, examples, " +
@@ -164,12 +163,15 @@ export async function lookUpTerm(
     prompt,
     system: SYSTEM_PROMPT,
     schema: ENTRY_SCHEMA,
-    readingContext: selected || context ? {
-      selection: selected ? term : undefined,
-      surrounding: context,
-      // Required fragments make a settings race fail instead of caching a different request.
-      required: [...(selected ? ["selection" as const] : []), ...(context ? ["surrounding" as const] : [])],
-    } : undefined,
+    readingContext:
+      selected || context
+        ? {
+            selection: selected ? term : undefined,
+            surrounding: context,
+            // Required fragments make a settings race fail instead of caching a different request.
+            required: [...(selected ? ["selection" as const] : []), ...(context ? ["surrounding" as const] : [])],
+          }
+        : undefined,
   })) as Partial<PluginDictionaryEntry>;
   const entry = normalizeEntry(raw, term);
 

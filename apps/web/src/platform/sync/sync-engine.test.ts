@@ -1,27 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { deriveMasterKey } from "../sync-envelope";
-import {
-  establishEncryption,
-  InvalidSignInResponseError,
-  verifySignInToken,
-  WrongPassphraseError,
-} from "./connect";
+import { establishEncryption, InvalidSignInResponseError, verifySignInToken, WrongPassphraseError } from "./connect";
 import { RelayError } from "./relay-client";
-import {
-  createSyncEngine,
-  nextSyncDelayMs,
-  type SyncCycleProgress,
-  type SyncRelayApi,
-} from "./sync-engine";
+import { createSyncEngine, nextSyncDelayMs, type SyncCycleProgress, type SyncRelayApi } from "./sync-engine";
 
-import {
-  engineFor,
-  fakeDevice,
-  fakeRelay,
-  plain,
-  TEST_KDF,
-  testMasterKey as key,
-} from "./sync-test-kit";
+import { engineFor, fakeDevice, fakeRelay, plain, TEST_KDF, testMasterKey as key } from "./sync-test-kit";
 
 describe("push", () => {
   test("drains the outbox in batches and acknowledges assigned seqs", async () => {
@@ -344,10 +327,7 @@ describe("two devices through one relay", () => {
 });
 
 describe("connect flow", () => {
-  const material = new Map<
-    string,
-    { kdfSalt: string; kdfParams: typeof TEST_KDF; keyCheck: string }
-  >();
+  const material = new Map<string, { kdfSalt: string; kdfParams: typeof TEST_KDF; keyCheck: string }>();
   // Each test starts from an empty relay account store, independent of test order.
   beforeEach(() => material.clear());
   function fakeAuthRelay(accountId: string) {
@@ -388,12 +368,7 @@ describe("connect flow", () => {
   });
 
   test("phase 1 fails closed when the relay omits or cannot visibly identify the account", async () => {
-    for (const email of [
-      undefined,
-      "not-an-email",
-      "\u200b@\u200b.\u200b",
-      "\u034f@\u034f.\u034f",
-    ]) {
+    for (const email of [undefined, "not-an-email", "\u200b@\u200b.\u200b", "\u034f@\u034f.\u034f"]) {
       const malformedRelay = {
         async verifyMagicLink() {
           return {
@@ -404,9 +379,7 @@ describe("connect flow", () => {
           };
         },
       };
-      await expect(verifySignInToken(malformedRelay, "t1")).rejects.toThrow(
-        InvalidSignInResponseError,
-      );
+      await expect(verifySignInToken(malformedRelay, "t1")).rejects.toThrow(InvalidSignInResponseError);
     }
   });
 
@@ -416,9 +389,7 @@ describe("connect flow", () => {
         throw new SyntaxError("Unexpected end of JSON input");
       },
     };
-    await expect(verifySignInToken(malformedRelay, "t1")).rejects.toThrow(
-      InvalidSignInResponseError,
-    );
+    await expect(verifySignInToken(malformedRelay, "t1")).rejects.toThrow(InvalidSignInResponseError);
   });
 
   test("first device mints; second device with the right passphrase joins; wrong one is refused", async () => {
@@ -435,9 +406,9 @@ describe("connect flow", () => {
 
     const thirdVerification = await verifySignInToken(relay, "t3");
     relay.serveSession(thirdVerification.session);
-    await expect(
-      establishEncryption(relay, thirdVerification, "打错了", { derive }),
-    ).rejects.toThrow(WrongPassphraseError);
+    await expect(establishEncryption(relay, thirdVerification, "打错了", { derive })).rejects.toThrow(
+      WrongPassphraseError,
+    );
   });
 
   test("the first device's key publish already carries the fresh session", async () => {
@@ -446,9 +417,7 @@ describe("connect flow", () => {
     const verification = await verifySignInToken(relay, "t");
     // No serveSession — the exact regression that burned a live sign-in
     // token on first deploy: publishing before the session is served 401s.
-    await expect(establishEncryption(relay, verification, "鲸鱼在唱歌", { derive })).rejects.toThrow(
-      /401/,
-    );
+    await expect(establishEncryption(relay, verification, "鲸鱼在唱歌", { derive })).rejects.toThrow(/401/);
   });
 
   test("losing the publish race falls back to verifying the winner's material", async () => {
@@ -487,7 +456,6 @@ describe("retry pacing", () => {
     expect(nextSyncDelayMs(1, { baseMs: 1_000, maxMs: 3_000 })).toBe(2_000);
   });
 });
-
 
 describe("verification (the `unverified` bookkeeping) — never re-upload to find out", () => {
   test("a pull settles push bookkeeping from the seqs it carries", async () => {
@@ -762,7 +730,6 @@ describe("checkpoints: bootstrap from a snapshot, then backfill", () => {
   });
 });
 
-
 describe("a relay that predates the verification/snapshot endpoints", () => {
   test("404/405 answers degrade to the pessimistic path instead of failing the cycle", async () => {
     const full = fakeRelay();
@@ -795,7 +762,6 @@ describe("a relay that predates the verification/snapshot endpoints", () => {
     expect(full.snapshots.size).toBe(0);
   });
 });
-
 
 describe("checkpoint publish pacing", () => {
   test("a cycle that pushed does not publish; the next pull-only cycle does", async () => {

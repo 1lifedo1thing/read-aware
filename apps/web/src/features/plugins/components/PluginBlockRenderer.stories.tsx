@@ -27,10 +27,18 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const CancellableProgress: Story = {
-  args: { busy: true, blocks: [
-    { kind: "progress", value: null, label: "Importing books", cancel: { id: "import", label: "Cancel import", run: () => ({ toast: "Cancellation requested" }) } },
-    { kind: "progress", value: 12, max: 40, label: "Downloaded articles", showValue: true },
-  ] },
+  args: {
+    busy: true,
+    blocks: [
+      {
+        kind: "progress",
+        value: null,
+        label: "Importing books",
+        cancel: { id: "import", label: "Cancel import", run: () => ({ toast: "Cancellation requested" }) },
+      },
+      { kind: "progress", value: 12, max: 40, label: "Downloaded articles", showValue: true },
+    ],
+  },
 };
 
 /** Every simple block kind in one sequence, in declaration order. */
@@ -200,8 +208,7 @@ export const DictionaryEntry: Story = {
           senses: [
             {
               partOfSpeech: "noun",
-              definition:
-                "A crested passerine bird with silky brown plumage and waxy red tips on the wing feathers.",
+              definition: "A crested passerine bird with silky brown plumage and waxy red tips on the wing feathers.",
               examples: ["I was the shadow of the waxwing slain."],
             },
           ],

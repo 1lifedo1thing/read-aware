@@ -27,24 +27,18 @@ import { messageImages } from "../lib/chat-image";
  * present_* 即时执行且卡片就是其可见输出 —— 活动行只会闪一下徒增噪音，
  * 整体抑制。lookup_word 内嵌一次模型调用（数秒），行保持可见。
  */
-const SUPPRESSED_TOOLS: ReadonlySet<string> = new Set([
-  ...PRESENT_TOOL_NAMES,
-  ...INTERACTIVE_TOOL_NAMES,
-]);
+const SUPPRESSED_TOOLS: ReadonlySet<string> = new Set([...PRESENT_TOOL_NAMES, ...INTERACTIVE_TOOL_NAMES]);
 
 const log = createLogger("ai");
 
-export function toAgentTurnInput(
-  request: ChatTurnRequest,
-  signal?: AbortSignal,
-): SendTurnInput {
-  const attachments: SelectionAttachment[] | undefined = request.message.attachments?.filter(attachment => attachment.kind !== "image").map(
-    (attachment) => ({
+export function toAgentTurnInput(request: ChatTurnRequest, signal?: AbortSignal): SendTurnInput {
+  const attachments: SelectionAttachment[] | undefined = request.message.attachments
+    ?.filter((attachment) => attachment.kind !== "image")
+    .map((attachment) => ({
       text: attachment.text,
       anchor: attachment.cfiRange ?? undefined,
       chapter: attachment.chapterHref ?? undefined,
-    }),
-  );
+    }));
   return {
     text: request.message.content,
     attachments,
@@ -125,21 +119,32 @@ export function createPiChatTransport(): ChatTransport {
                       author: book.author,
                     })),
                   }
-                : chunk.reference.kind === "web-images" ? {
-                    kind: "web-images",
-                    images: chunk.reference.images.map(image => ({ url: image.url, ...(image.thumbnailUrl ? { thumbnailUrl: image.thumbnailUrl } : {}), sourceUrl: image.sourceUrl, title: image.title, caption: image.caption })),
-                  } : {
-                    kind: "words",
-                    words: chunk.reference.words.map((word) => ({
-                      term: word.term,
-                      language: word.language,
-                      entry: word.entry,
-                      source: word.source,
-                    })),
-                  };
+                : chunk.reference.kind === "web-images"
+                  ? {
+                      kind: "web-images",
+                      images: chunk.reference.images.map((image) => ({
+                        url: image.url,
+                        ...(image.thumbnailUrl ? { thumbnailUrl: image.thumbnailUrl } : {}),
+                        sourceUrl: image.sourceUrl,
+                        title: image.title,
+                        caption: image.caption,
+                      })),
+                    }
+                  : {
+                      kind: "words",
+                      words: chunk.reference.words.map((word) => ({
+                        term: word.term,
+                        language: word.language,
+                        entry: word.entry,
+                        source: word.source,
+                      })),
+                    };
             if (reference.kind === "web-images" && reference.images.length && !hasImageReference) {
               hasImageReference = true;
-              log.info("First image reference ready", { turnId: request.message.id, durationMs: Math.round(performance.now() - started) });
+              log.info("First image reference ready", {
+                turnId: request.message.id,
+                durationMs: Math.round(performance.now() - started),
+              });
             }
             yield { type: "reference", id: chunk.id, reference } satisfies ChatStreamChunk;
             break;
@@ -173,9 +178,7 @@ export function createPiChatTransport(): ChatTransport {
               ? `, tokens in ${chunk.tokens.input} out ${chunk.tokens.output} cacheRead ${chunk.tokens.cacheRead} cacheWrite ${chunk.tokens.cacheWrite}`
               : "";
             const cost = chunk.costUsd !== undefined ? `, cost $${chunk.costUsd.toFixed(4)}` : "";
-            log.info(
-              `model round ${chunk.round}: ttfb ${chunk.ttfbMs}ms, total ${chunk.totalMs}ms${tokens}${cost}`,
-            );
+            log.info(`model round ${chunk.round}: ttfb ${chunk.ttfbMs}ms, total ${chunk.totalMs}ms${tokens}${cost}`);
             break;
           }
           default:

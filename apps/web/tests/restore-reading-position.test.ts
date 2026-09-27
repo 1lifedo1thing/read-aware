@@ -11,9 +11,17 @@ test("fresh, reset and stale positions start at the beginning even when the rend
     let page = 0;
     const view = {
       goTo: async () => undefined,
-      goToFraction: async () => { throw Error("Stored position unavailable"); },
-      init: async () => { page = 0; },
-      renderer: { next: async () => { page++; } },
+      goToFraction: async () => {
+        throw Error("Stored position unavailable");
+      },
+      init: async () => {
+        page = 0;
+      },
+      renderer: {
+        next: async () => {
+          page++;
+        },
+      },
     };
     await restoreReadingPosition(view, input);
     expect(page).toBe(0);
@@ -23,9 +31,16 @@ test("fresh, reset and stale positions start at the beginning even when the rend
 test("valid saved targets and fractions are retained instead of restarting the book", async () => {
   let page = 0;
   const view = {
-    goTo: async () => { page = 2; return { index: 2 }; },
-    goToFraction: async () => { page = 3; },
-    init: async () => { page = 0; },
+    goTo: async () => {
+      page = 2;
+      return { index: 2 };
+    },
+    goToFraction: async () => {
+      page = 3;
+    },
+    init: async () => {
+      page = 0;
+    },
   };
   await restoreReadingPosition(view, { virtual: false, reset: false, target: "saved-page", fraction: 0.5 });
   expect(page).toBe(2);
@@ -34,11 +49,24 @@ test("valid saved targets and fractions are retained instead of restarting the b
 });
 
 test("failed saved positions retain the opening request identity through every fallback", async () => {
-  const context = {}, seen: (object | undefined)[] = [];
-  await restoreReadingPosition({
-    goTo: async (_target, source) => { seen.push(source); return undefined; },
-    goToFraction: async (_fraction, source) => { seen.push(source); throw Error("missing fraction"); },
-    init: async input => { seen.push(input?.context); },
-  }, { virtual: false, reset: false, target: "missing", fraction: 0.5, context });
-  expect(seen).toHaveLength(3); expect(seen.every(source => source === context)).toBe(true);
+  const context = {},
+    seen: (object | undefined)[] = [];
+  await restoreReadingPosition(
+    {
+      goTo: async (_target, source) => {
+        seen.push(source);
+        return undefined;
+      },
+      goToFraction: async (_fraction, source) => {
+        seen.push(source);
+        throw Error("missing fraction");
+      },
+      init: async (input) => {
+        seen.push(input?.context);
+      },
+    },
+    { virtual: false, reset: false, target: "missing", fraction: 0.5, context },
+  );
+  expect(seen).toHaveLength(3);
+  expect(seen.every((source) => source === context)).toBe(true);
 });

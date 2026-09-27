@@ -32,9 +32,7 @@ describe("reading cursor prompt context", () => {
     );
 
     expect(prompt.indexOf("<reading_cursor>")).toBeLessThan(prompt.indexOf("> A selected sentence."));
-    expect(prompt.indexOf("> A selected sentence.")).toBeLessThan(
-      prompt.indexOf("这段话是什么意思？"),
-    );
+    expect(prompt.indexOf("> A selected sentence.")).toBeLessThan(prompt.indexOf("这段话是什么意思？"));
   });
 
   test("keeps the authored turn first and appends only the language anchor without a cursor", () => {

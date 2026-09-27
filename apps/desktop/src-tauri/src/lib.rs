@@ -1,40 +1,39 @@
 mod android_update;
 mod app_environment;
 mod book_metadata;
-mod covers;
-mod web_image_cache;
-mod resource_images;
-mod import;
-mod desktop_update;
-mod desktop_startup;
-mod desktop_preferences;
-mod file_associations;
 mod comic_metadata;
+mod covers;
+mod desktop_preferences;
+mod desktop_startup;
+mod desktop_update;
 mod diagnostics;
 mod error;
 mod exit_coordination;
 mod export_file;
 mod external_open;
 mod fb2_metadata;
+mod file_associations;
+mod import;
+mod local_api;
 mod metadata;
 mod mobi_metadata;
 mod native_path;
 mod pdf_metadata;
-mod plugins;
-mod plugin_updates;
 mod plugin_sandbox_policy;
-mod secrets;
-mod local_api;
+mod plugin_updates;
+mod plugins;
+mod resource_images;
 mod resources;
 mod save_targets;
+mod secrets;
 mod storage;
 mod storefront;
-mod window_input;
+mod web_image_cache;
 #[cfg(target_os = "macos")]
 mod wheel_phase;
+mod window_input;
 #[cfg(desktop)]
 mod window_state;
-
 
 use tauri::Manager;
 
@@ -65,7 +64,9 @@ async fn book_file_size(app: tauri::AppHandle, path: String) -> Result<u64, Comm
         let file = open_picked_book(&app, &path)?;
         file.metadata()
             .map(|metadata| metadata.len())
-            .map_err(|err| CommandError::context(&format!("Failed to inspect selected book {path}"), err))
+            .map_err(|err| {
+                CommandError::context(&format!("Failed to inspect selected book {path}"), err)
+            })
     })
     .await
 }
@@ -94,7 +95,6 @@ async fn read_book_head(
     })
     .await
 }
-
 
 #[cfg(target_os = "macos")]
 fn inherit_system_proxy() {
@@ -501,7 +501,10 @@ fn system_fonts() -> Vec<String> {
             return families;
         };
         let mut collection = None;
-        if factory.GetSystemFontCollection(&mut collection, false).is_err() {
+        if factory
+            .GetSystemFontCollection(&mut collection, false)
+            .is_err()
+        {
             return families;
         }
         let Some(collection) = collection else {
@@ -512,8 +515,7 @@ fn system_fonts() -> Vec<String> {
         // (the count includes the NUL terminator).
         let mut locale_buf = [0u16; 85];
         let locale_len = GetUserDefaultLocaleName(&mut locale_buf);
-        let user_locale =
-            (locale_len > 1).then(|| windows::core::PCWSTR(locale_buf.as_ptr()));
+        let user_locale = (locale_len > 1).then(|| windows::core::PCWSTR(locale_buf.as_ptr()));
 
         let count = collection.GetFontFamilyCount();
         families.reserve(count as usize);

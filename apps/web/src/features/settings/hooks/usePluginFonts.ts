@@ -1,23 +1,15 @@
 import { useEffect, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { pluginFontsAtom } from "../../plugins/state/plugin-store";
-import {
-  buildPluginFontFaceCss,
-  findRegisteredByRef,
-} from "../../plugins/lib/plugin-theme";
+import { buildPluginFontFaceCss, findRegisteredByRef } from "../../plugins/lib/plugin-theme";
 import type { RegisteredPluginFont } from "../../plugins/lib/plugin-types";
 import { pluginAssetUrl } from "../../plugins/runtime/plugin-backend";
 import { isPluginFont, type ReaderFontFamily } from "../lib/reader-settings";
 
 /** The registered contribution behind a `plugin:` font selection, or null. */
-export function useRegisteredPluginFont(
-  fontFamily: ReaderFontFamily,
-): RegisteredPluginFont | null {
+export function useRegisteredPluginFont(fontFamily: ReaderFontFamily): RegisteredPluginFont | null {
   const fonts = useAtomValue(pluginFontsAtom);
-  return useMemo(
-    () => (isPluginFont(fontFamily) ? findRegisteredByRef(fontFamily, fonts) : null),
-    [fontFamily, fonts],
-  );
+  return useMemo(() => (isPluginFont(fontFamily) ? findRegisteredByRef(fontFamily, fonts) : null), [fontFamily, fonts]);
 }
 
 /** `@font-face` rules for a registered plugin font (folder-served URLs). */

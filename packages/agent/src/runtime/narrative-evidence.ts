@@ -52,9 +52,11 @@ const NAME_ACTIONS = "说问答道想看笑摇点走来回叫站坐拿望听";
 // an action is not enough evidence that the model named a future character.
 const COMMON_NON_NAME_WORDS = new Set(["随即", "表面", "接着", "角度"]);
 const PRONOUN_COPULA = /^(?:我|你|您|他|她|它|这|那|其|谁|哪|何)(?:是|在|有|要|想|会)$/u;
-const ENUMERATION = /([\p{Script=Han}A-Za-z]{2,6})[、/]([\p{Script=Han}A-Za-z]{2,6})([、/]|和|与|及)([\p{Script=Han}A-Za-z]{2,6})/gu;
+const ENUMERATION =
+  /([\p{Script=Han}A-Za-z]{2,6})[、/]([\p{Script=Han}A-Za-z]{2,6})([、/]|和|与|及)([\p{Script=Han}A-Za-z]{2,6})/gu;
 const ENUMERATION_CUE = /(?:核心|三种|三样|公式|所谓|书中|原文|文中|写|说|是|用|包括|分为|即)/u;
-const TRANSLITERATION_CHAR = /[阿埃艾爱安奥巴贝比波布达德迪多俄尔法费夫弗格哈赫胡基加捷杰卡凯柯克库拉莱勒雷里利罗洛马梅米姆穆娜尼诺帕佩皮普奇乔切日萨塞斯塔泰特托瓦维沃乌西希谢亚耶伊扎泽佐露莘乜甫辽]/gu;
+const TRANSLITERATION_CHAR =
+  /[阿埃艾爱安奥巴贝比波布达德迪多俄尔法费夫弗格哈赫胡基加捷杰卡凯柯克库拉莱勒雷里利罗洛马梅米姆穆娜尼诺帕佩皮普奇乔切日萨塞斯塔泰特托瓦维沃乌西希谢亚耶伊扎泽佐露莘乜甫辽]/gu;
 const NAME_ENDING = /[夫卡娃娜奇斯尔科基克维丁林拉罗沙]$/u;
 const NAME_CONTEXT = /([\p{Script=Han}]{4,40}?)(?=(?:的|说|问|答|道|会|将|曾|上吊|自杀|死|杀|，|。|、|；|：|$))/gu;
 const HIGH_RISK_OUTCOME_TERMS = [
@@ -102,10 +104,7 @@ function hasNearEditionPhrase(haystack: string, needle: string, maxDistance: num
     const found = haystack.indexOf(needle[0]!, from);
     if (found < 0 || found + needle.length > haystack.length) return false;
     const candidate = haystack.slice(found, found + needle.length);
-    if (
-      candidate[candidate.length - 1] === needle[needle.length - 1] &&
-      candidate !== needle
-    ) {
+    if (candidate[candidate.length - 1] === needle[needle.length - 1] && candidate !== needle) {
       let distance = 0;
       for (let index = 0; index < needle.length; index += 1) {
         if (candidate[index] !== needle[index]) distance += 1;
@@ -153,9 +152,7 @@ function wordRuns(text: string): string[][] {
   return text
     .split(/[\n。！？!?；;：:,，、（）()【】[\]]+/u)
     .map((part) =>
-      [...segmenter.segment(part)]
-        .filter((segment) => segment.isWordLike)
-        .map((segment) => segment.segment),
+      [...segmenter.segment(part)].filter((segment) => segment.isWordLike).map((segment) => segment.segment),
     )
     .filter((run) => run.length > 0);
 }
@@ -204,10 +201,7 @@ function safeChapterCeiling(cursor?: ReadingCursor): number {
  * Load once per thread. The index stays host-side: unread prose is used only
  * as a negative evidence boundary and is never inserted into the model prompt.
  */
-export async function loadNarrativeBookIndex(
-  bookText: BookTextPort,
-  bookId: Id,
-): Promise<NarrativeBookIndex> {
+export async function loadNarrativeBookIndex(bookText: BookTextPort, bookId: Id): Promise<NarrativeBookIndex> {
   const toc = await bookText.getToc(bookId);
   const chapterTexts = await Promise.all(
     toc.map((chapter) => bookText.getChapterText(bookId, chapter.index).then((text) => text ?? "")),
@@ -226,9 +220,7 @@ export async function loadNarrativeBookIndex(
  * boundary. This is intentionally conservative: ordinary language is allowed;
  * exact quotes, recurring phrases, and likely proper names carry the signal.
  */
-export function inspectNarrativeEvidence(
-  input: NarrativeEvidenceInput,
-): NarrativeEvidenceViolation[] {
+export function inspectNarrativeEvidence(input: NarrativeEvidenceInput): NarrativeEvidenceViolation[] {
   const ceiling = safeChapterCeiling(input.cursor);
   const safeChapters = input.book.normalizedChapters.slice(0, ceiling + 1).join("");
   const unreadChapters = input.book.normalizedChapters.slice(ceiling + 1).join("");
@@ -239,10 +231,7 @@ export function inspectNarrativeEvidence(
   const strictPhraseScan =
     /(?:进度|读到哪|读了多少|还剩|剩多少|目录|第[一二三四五六七八九十百0-9]+部|一共[一二三四五六七八九十百0-9]+部)/u.test(
       input.readerText,
-    ) ||
-    /(?:不剧透|不提前|先不说|先不展开|不能告诉|还没读到|没读到|等你读到|留到后面)/u.test(
-      input.answer,
-    );
+    ) || /(?:不剧透|不提前|先不说|先不展开|不能告诉|还没读到|没读到|等你读到|留到后面)/u.test(input.answer);
 
   const allowedPhrase = (normalized: string) =>
     allowed.includes(normalized) || input.book.normalizedToc.includes(normalized);
@@ -269,11 +258,7 @@ export function inspectNarrativeEvidence(
   if (!input.allowFuture) {
     for (const phrase of HIGH_RISK_OUTCOME_TERMS) {
       const normalized = normalizeEvidenceText(phrase);
-      if (
-        input.answer.includes(phrase) &&
-        !allowedPhrase(normalized) &&
-        unreadChapters.includes(normalized)
-      ) {
+      if (input.answer.includes(phrase) && !allowedPhrase(normalized) && unreadChapters.includes(normalized)) {
         violations.set(normalized, { kind: "future-phrase", phrase });
       }
     }
@@ -305,8 +290,7 @@ export function inspectNarrativeEvidence(
     // Recurrence is the distinction between a book-specific formula/name and
     // ordinary prose that happens to recur later. Multi-word paraphrases need
     // substantially stronger evidence than a single lexicalized term.
-    const requiredCount =
-      tokenCount > 1 ? 8 : normalized.length <= 4 ? 5 : 3;
+    const requiredCount = tokenCount > 1 ? 8 : normalized.length <= 4 ? 5 : 3;
     if (futureCount < requiredCount) continue;
     violations.set(normalized, { kind: "future-phrase", phrase });
   }

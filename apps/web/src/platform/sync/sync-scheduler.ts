@@ -17,11 +17,7 @@ import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type D
  * focus pull, no push-on-write, no retry timer.
  */
 import { flushRestoredCredentialPublications } from "../restored-credential-publication";
-import {
-  AppError,
-  ERR_SYNC_NETWORK,
-  type OperationCondition,
-} from "@read-aware/core";
+import { AppError, ERR_SYNC_NETWORK, type OperationCondition } from "@read-aware/core";
 import { invoke } from "../ipc";
 import { isTauri } from "../environment";
 import { emitAppEvent } from "../app-events";
@@ -151,9 +147,7 @@ const transportJournalStore = {
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw) as TransportFeedJournal;
-      return typeof parsed?.endpointId === "string" &&
-        Array.isArray(parsed.devices) &&
-        Array.isArray(parsed.order)
+      return typeof parsed?.endpointId === "string" && Array.isArray(parsed.devices) && Array.isArray(parsed.order)
         ? parsed
         : null;
     } catch {
@@ -166,7 +160,8 @@ const transportJournalStore = {
   },
 };
 
-const newTransportSessions = () => new TransportSessionCache(findSyncTransport, error => log.warn("Transport session cleanup failed", error));
+const newTransportSessions = () =>
+  new TransportSessionCache(findSyncTransport, (error) => log.warn("Transport session cleanup failed", error));
 let transportSessions = newTransportSessions();
 onSyncTransportsChanged(() => transportSessions.refresh());
 
@@ -187,7 +182,8 @@ async function resolveEngine(): Promise<SyncEngine> {
         store: transportJournalStore,
       })
     : syncRelayClient();
-  if (sessions !== transportSessions) throw new AppError("plugin/cancelled", "Sync connection changed while resolving engine");
+  if (sessions !== transportSessions)
+    throw new AppError("plugin/cancelled", "Sync connection changed while resolving engine");
   engine ??= createSyncEngine({
     store: createIpcSyncStore(),
     relay,
@@ -198,14 +194,13 @@ async function resolveEngine(): Promise<SyncEngine> {
     observe: observeRemoteHlcStamps,
     // Every page/batch/blob lands in the status snapshot, which is what the
     // header indicator and the Data & Sync panel subscribe to.
-    onProgress: progress => progressSink?.(progress),
+    onProgress: (progress) => progressSink?.(progress),
   });
   return engine;
 }
 
 /** 401 = the relay no longer knows this session; nothing but a re-login helps. */
-const isAuthRejection = (error: unknown): boolean =>
-  error instanceof RelayError && error.status === 401;
+const isAuthRejection = (error: unknown): boolean => error instanceof RelayError && error.status === 401;
 
 const syncWork = new SyncWorkGate();
 let running = false;
@@ -213,14 +208,17 @@ let running = false;
 /** How soon the next cycle runs while a bootstrap's backfill is still owed. */
 const BACKFILL_FOLLOW_UP_MS = 1_500;
 
-function runCycle(isCurrent = () => true, origin: DomainActor = causalActor("system")): Promise<SyncCycleOutcome | null> {
-  return syncWork.run(() => isCurrent() ? runAcceptedCycle(origin) : Promise.resolve(null));
+function runCycle(
+  isCurrent = () => true,
+  origin: DomainActor = causalActor("system"),
+): Promise<SyncCycleOutcome | null> {
+  return syncWork.run(() => (isCurrent() ? runAcceptedCycle(origin) : Promise.resolve(null)));
 }
 
 async function runAcceptedCycle(origin: DomainActor): Promise<SyncCycleOutcome | null> {
   if (running) return null;
   running = true;
-  progressSink = progress => setStatus({ progress }, origin);
+  progressSink = (progress) => setStatus({ progress }, origin);
   // Denominators first: what the outbox holds now is what this cycle's push
   // and blob phases will work through. Best-effort — without them the ring
   // just stays indeterminate.
@@ -230,25 +228,28 @@ async function runAcceptedCycle(origin: DomainActor): Promise<SyncCycleOutcome |
   } catch {
     // Non-Tauri or transient failure: progress still renders, just unmeasured.
   }
-  setStatus({
-    state: "syncing",
-    progress: {
-      phase: "pull",
-      pulled: 0,
-      pushed: 0,
-      verified: 0,
-      backfilled: 0,
-      backfillFrontier: 0,
-      backfillCursor: 0,
-      blobsDone: 0,
-      blobsTotal: 0,
-      blobKey: null,
-      blobDirection: null,
-      blobPartsDone: 0,
-      blobPartsTotal: 0,
+  setStatus(
+    {
+      state: "syncing",
+      progress: {
+        phase: "pull",
+        pulled: 0,
+        pushed: 0,
+        verified: 0,
+        backfilled: 0,
+        backfillFrontier: 0,
+        backfillCursor: 0,
+        blobsDone: 0,
+        blobsTotal: 0,
+        blobKey: null,
+        blobDirection: null,
+        blobPartsDone: 0,
+        blobPartsTotal: 0,
+      },
+      cycleTotals,
     },
-    cycleTotals,
-  }, origin);
+    origin,
+  );
   try {
     await flushRestoredCredentialPublications();
     const outcome = await (await resolveEngine()).syncOnce();
@@ -269,15 +270,18 @@ async function runAcceptedCycle(origin: DomainActor): Promise<SyncCycleOutcome |
       // re-overlay the projection onto KV and announce what moved.
       await refreshRoamingPreferences(origin);
     }
-    setStatus({
-      state: "idle",
-      lastSyncAt: Date.now(),
-      lastErrorCode: null,
-      progress: null,
-      cycleTotals: null,
-      lastCycle: { pulled, pushed, blobs, backfilled: outcome.backfilled },
-      backfillRemaining: outcome.backfillRemaining,
-    }, origin);
+    setStatus(
+      {
+        state: "idle",
+        lastSyncAt: Date.now(),
+        lastErrorCode: null,
+        progress: null,
+        cycleTotals: null,
+        lastCycle: { pulled, pushed, blobs, backfilled: outcome.backfilled },
+        backfillRemaining: outcome.backfillRemaining,
+      },
+      origin,
+    );
     // Covers other devices extracted: fetch whatever the shelf still lacks.
     // Runs after EVERY cycle (not just pulls) because the peer's cover upload
     // produces no event to pull — only its bytes appearing on the relay.
@@ -319,9 +323,24 @@ export function fetchRemoteBlob(key: string, origin: DomainActor = "system"): Pr
 
 /** Read-only local admission used both by discovery and the accepted download.
  * Never resolves an engine, opens a transport, probes, or returns credentials. */
-async function remoteBlobAdmission(): Promise<{ reason?: "not-tauri" | "sync-off" | "not-connected"; conditions: OperationCondition[] }> {
-  const blocked = (reason: "not-tauri" | "sync-off" | "not-connected", kind: OperationCondition["kind"], detail: string) => ({
-    reason, conditions: [{ kind, state: reason === "not-tauri" ? "unavailable" as const : "unconfigured" as const, reason: detail, errorCode: "library/content-unavailable" }],
+async function remoteBlobAdmission(): Promise<{
+  reason?: "not-tauri" | "sync-off" | "not-connected";
+  conditions: OperationCondition[];
+}> {
+  const blocked = (
+    reason: "not-tauri" | "sync-off" | "not-connected",
+    kind: OperationCondition["kind"],
+    detail: string,
+  ) => ({
+    reason,
+    conditions: [
+      {
+        kind,
+        state: reason === "not-tauri" ? ("unavailable" as const) : ("unconfigured" as const),
+        reason: detail,
+        errorCode: "library/content-unavailable",
+      },
+    ],
   });
   if (!isTauri()) return blocked("not-tauri", "provider", "desktop-required");
   const profile = await getSyncProfile();
@@ -329,11 +348,18 @@ async function remoteBlobAdmission(): Promise<{ reason?: "not-tauri" | "sync-off
   // A transport connection has no relay session — the master key plus the
   // profile binding are its whole credential set.
   const connection = parseTransportAccountId(profile.remoteAccountId);
-  const credentials = await afterSecretWrites(() => !!getSecret("sync.master-key") && (!!connection || !!getSecret("sync.session")));
+  const credentials = await afterSecretWrites(
+    () => !!getSecret("sync.master-key") && (!!connection || !!getSecret("sync.session")),
+  );
   if (!credentials) return blocked("not-connected", "account", "source-sync-credentials-missing");
-  if (connection && !findSyncTransport(connection.ref)) return blocked("not-connected", "provider", "source-transport-unavailable");
-  return { conditions: [{ kind: "account", state: "satisfied", reason: "source-sync-credentials-present" },
-    { kind: "provider", state: "unknown", reason: "source-download-not-checked" }] };
+  if (connection && !findSyncTransport(connection.ref))
+    return blocked("not-connected", "provider", "source-transport-unavailable");
+  return {
+    conditions: [
+      { kind: "account", state: "satisfied", reason: "source-sync-credentials-present" },
+      { kind: "provider", state: "unknown", reason: "source-download-not-checked" },
+    ],
+  };
 }
 
 export async function getRemoteBlobFetchConditions(signal?: AbortSignal): Promise<OperationCondition[]> {
@@ -343,13 +369,16 @@ export async function getRemoteBlobFetchConditions(signal?: AbortSignal): Promis
   return result.conditions;
 }
 
-async function fetchAcceptedRemoteBlob(key: string, origin: DomainActor = causalActor("system")): Promise<RemoteBlobFetch> {
+async function fetchAcceptedRemoteBlob(
+  key: string,
+  origin: DomainActor = causalActor("system"),
+): Promise<RemoteBlobFetch> {
   const admission = await remoteBlobAdmission();
   if (admission.reason) return { outcome: "unavailable", reason: admission.reason };
   // Surface the download like any sync activity: the indicator ring narrates
   // "syncing <book> n/m" while parts stream in, then yields to the prior state.
   const restoreState = status.state === "syncing" ? null : status.state;
-  progressSink = progress => setStatus({ progress }, origin);
+  progressSink = (progress) => setStatus({ progress }, origin);
   setStatus({ state: "syncing" }, origin);
   try {
     const result = await (await resolveEngine()).fetchBlob(key);
@@ -377,8 +406,11 @@ async function fetchAcceptedRemoteBlob(key: string, origin: DomainActor = causal
  * accepted cycle may still need to finish its roaming preference overlay.
  * The supplied fetcher is valid only within this operation, allowing the v1
  * exporter to retrieve missing source bytes without waiting behind itself. */
-export function withSyncBackup<T>(operation: (fetchBlob: typeof fetchRemoteBlob) => Promise<T>, signal?: AbortSignal): Promise<T> {
-  return syncWork.withPaused(async runOwned => {
+export function withSyncBackup<T>(
+  operation: (fetchBlob: typeof fetchRemoteBlob) => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  return syncWork.withPaused(async (runOwned) => {
     // Transport journals use the write-through KV queue; commit observers can
     // enqueue events after their native receipts. Preserve that causal tail.
     await flushLocalKV();
@@ -402,12 +434,15 @@ export async function syncNow(origin: DomainActor = "user"): Promise<SyncCycleOu
     return await runCycle(undefined, origin);
   } catch (error) {
     log.error("manual sync failed", error);
-    setStatus({
-      state: isAuthRejection(error) ? "unauthenticated" : "error",
-      lastErrorCode: classifySyncError(error),
-      progress: null,
-      cycleTotals: null,
-    }, origin);
+    setStatus(
+      {
+        state: isAuthRejection(error) ? "unauthenticated" : "error",
+        lastErrorCode: classifySyncError(error),
+        progress: null,
+        cycleTotals: null,
+      },
+      origin,
+    );
     throw error;
   }
 }
@@ -423,18 +458,21 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
   disposeScheduler?.();
   // Restarting is also the account-boundary transition. Clear the previous
   // account's live status synchronously while the persisted profile loads.
-  setStatus({
-    state: "disabled",
-    accountConnected: false,
-    backend: null,
-    transportRef: null,
-    lastSyncAt: null,
-    lastErrorCode: null,
-    progress: null,
-    cycleTotals: null,
-    lastCycle: null,
-    backfillRemaining: 0,
-  }, origin);
+  setStatus(
+    {
+      state: "disabled",
+      accountConnected: false,
+      backend: null,
+      transportRef: null,
+      lastSyncAt: null,
+      lastErrorCode: null,
+      progress: null,
+      cycleTotals: null,
+      lastCycle: null,
+      backfillRemaining: 0,
+    },
+    origin,
+  );
   if (!isTauri()) return () => {};
 
   let disposed = false;
@@ -465,12 +503,15 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     if (doorbellDebounce !== null) window.clearTimeout(doorbellDebounce);
     watchSocket?.close();
     watchSocket = null;
-    setStatus({
-      state: "unauthenticated",
-      lastErrorCode: null,
-      progress: null,
-      cycleTotals: null,
-    }, origin);
+    setStatus(
+      {
+        state: "unauthenticated",
+        lastErrorCode: null,
+        progress: null,
+        cycleTotals: null,
+      },
+      origin,
+    );
   };
 
   const tick = (origin: DomainActor = causalActor("system")) => {
@@ -498,12 +539,15 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
         if (classifySyncError(error) !== ERR_SYNC_NETWORK) {
           void hydrateMissingCovers(fetchRemoteBlob, { origin });
         }
-        setStatus({
-          state: "error",
-          lastErrorCode: classifySyncError(error),
-          progress: null,
-          cycleTotals: null,
-        }, origin);
+        setStatus(
+          {
+            state: "error",
+            lastErrorCode: classifySyncError(error),
+            progress: null,
+            cycleTotals: null,
+          },
+          origin,
+        );
         schedule(nextSyncDelayMs(failures, { baseMs: PULL_INTERVAL_MS }), origin);
       });
   };
@@ -554,7 +598,9 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
       if (disposed) return;
       const delay = Math.min(60_000, 1_000 * 2 ** watchRetries);
       watchRetries += 1;
-      watchReconnect = window.setTimeout(() => { void openWatch(); }, delay);
+      watchReconnect = window.setTimeout(() => {
+        void openWatch();
+      }, delay);
     };
     socket.onerror = () => socket.close();
   };
@@ -587,16 +633,19 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     if (!profile?.syncEnabled || !profile.remoteAccountId || !credentialed) {
       return;
     }
-    setStatus({
-      state: "idle",
-      accountConnected: true,
-      backend: connection ? "transport" : "relay",
-      transportRef: connection?.ref ?? null,
-      lastSyncAt: lastSuccessfulSyncAt(profile),
-    }, origin);
+    setStatus(
+      {
+        state: "idle",
+        accountConnected: true,
+        backend: connection ? "transport" : "relay",
+        transportRef: connection?.ref ?? null,
+        lastSyncAt: lastSuccessfulSyncAt(profile),
+      },
+      origin,
+    );
     // Duplicates that predate this build (or arrived while sync was off)
     // reconcile once at start; pull-time detection covers everything after.
-    void syncWork.run(() => disposed ? Promise.resolve(0) : reconcileDuplicateBooks());
+    void syncWork.run(() => (disposed ? Promise.resolve(0) : reconcileDuplicateBooks()));
     if (connection) {
       // Manual cadence: the connection is bound and reported, nothing runs
       // until the user (or an Agent tool acting for them) asks. `syncNow`
@@ -607,7 +656,7 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     }
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
-    offBroadcast = onDomainEventBroadcast(event => {
+    offBroadcast = onDomainEventBroadcast((event) => {
       // A local write: push soon, but let a burst (import, batch edit) settle.
       if (disposed) return;
       if (pushDebounce !== null) window.clearTimeout(pushDebounce);
@@ -650,11 +699,14 @@ export function restartSyncScheduler(origin: DomainActor = "system"): void {
 
 // ── Connect / disconnect bookkeeping (called by the settings panel) ──────────
 
-export async function persistConnection(options: {
-  session: string;
-  accountId: string;
-  masterKeyBase64: string;
-}, origin: DomainActor = "user"): Promise<void> {
+export async function persistConnection(
+  options: {
+    session: string;
+    accountId: string;
+    masterKeyBase64: string;
+  },
+  origin: DomainActor = "user",
+): Promise<void> {
   origin = causalActor(origin);
   return syncWork.run(async () => {
     await setSecretAsync("sync.session", options.session, "local", origin);
@@ -712,11 +764,14 @@ export async function disconnectSync(origin: DomainActor = "user"): Promise<void
  * Mutual exclusion with the relay is structural: one profile row, one
  * master key, one outbox binding.
  */
-export async function persistTransportConnection(options: {
-  ref: string;
-  endpointId: string;
-  masterKeyBase64: string;
-}, origin: DomainActor = "user"): Promise<void> {
+export async function persistTransportConnection(
+  options: {
+    ref: string;
+    endpointId: string;
+    masterKeyBase64: string;
+  },
+  origin: DomainActor = "user",
+): Promise<void> {
   origin = causalActor(origin);
   return syncWork.run(async () => {
     await setSecretAsync("sync.master-key", options.masterKeyBase64, "local", origin);

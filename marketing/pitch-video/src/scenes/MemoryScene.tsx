@@ -48,8 +48,7 @@ export function MemoryScene() {
     const b = tileBox(r, c);
     return { x: b.x + COVER_W / 2, y: b.y + COVER_H / 2 };
   });
-  const reached = (i: number) =>
-    progress(frame, DRAW.from + (i / (THREAD.length - 1)) * (DRAW.to - DRAW.from) - 2, 10);
+  const reached = (i: number) => progress(frame, DRAW.from + (i / (THREAD.length - 1)) * (DRAW.to - DRAW.from) - 2, 10);
 
   return (
     <AbsoluteFill>
@@ -97,7 +96,17 @@ export function MemoryScene() {
             ))}
             {points.map((p, i) => {
               const k = reached(i);
-              return <circle key={i} cx={p.x} cy={p.y} r={6 * k} fill={THREAD_DOT} stroke={color.paper} strokeWidth={2 * k} />;
+              return (
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={6 * k}
+                  fill={THREAD_DOT}
+                  stroke={color.paper}
+                  strokeWidth={2 * k}
+                />
+              );
             })}
           </svg>
 

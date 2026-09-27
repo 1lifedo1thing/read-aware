@@ -4,5 +4,8 @@ import { AI_PREFERENCES_KEY, getAIPreferences } from "../../settings/lib/ai-pref
 
 export const memoryPolicy: MemoryBuildPolicy = {
   enabled: () => getAIPreferences().buildMemory,
-  subscribe: listener => onLocalKVChange(key => { if (key === AI_PREFERENCES_KEY) listener(); }),
+  subscribe: (listener) =>
+    onLocalKVChange((key) => {
+      if (key === AI_PREFERENCES_KEY) listener();
+    }),
 };

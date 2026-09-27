@@ -4,31 +4,53 @@ import { buildPluginContext } from "./plugin-context";
 import { PLUGIN_PERMISSIONS } from "@read-aware/core";
 
 test("diagnostics grant controls count queries and host report requests", async () => {
-  const create = (granted: boolean) => buildPluginContext({ id: `diagnostics-${granted}`, name: "Diagnostics", version: "1", schemaVersion: 1,
-    requires: {}, permissions: granted ? ["service:diagnostics"] : ["library:read", "service:sync"] }, "1", []);
-  const denied = create(false), granted = create(true);
+  const create = (granted: boolean) =>
+    buildPluginContext(
+      {
+        id: `diagnostics-${granted}`,
+        name: "Diagnostics",
+        version: "1",
+        schemaVersion: 1,
+        requires: {},
+        permissions: granted ? ["service:diagnostics"] : ["library:read", "service:sync"],
+      },
+      "1",
+      [],
+    );
+  const denied = create(false),
+    granted = create(true);
   let received: AbortSignal | undefined;
-  const operation = spyOn(hostDiagnostics, "verifyProjections").mockImplementation(signal => {
+  const operation = spyOn(hostDiagnostics, "verifyProjections").mockImplementation((signal) => {
     received = signal;
-    return new Promise((_resolve, reject) => signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }));
+    return new Promise((_resolve, reject) =>
+      signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }),
+    );
   });
   try {
-    denied.lifecycle.promote(); granted.lifecycle.promote();
+    denied.lifecycle.promote();
+    granted.lifecycle.promote();
     expect(denied.context.services.diagnostics).toBeUndefined();
-    expect(Object.keys(granted.context.services.diagnostics!).sort()).toEqual(["requestProjectionRepair", "requestReport", "verifyProjections"]);
+    expect(Object.keys(granted.context.services.diagnostics!).sort()).toEqual([
+      "requestProjectionRepair",
+      "requestReport",
+      "verifyProjections",
+    ]);
     expect(() => granted.context.services.diagnostics!.verifyProjections({ signal: AbortSignal.abort() })).toThrow();
     expect(operation).not.toHaveBeenCalled();
     const controller = new AbortController();
     const pending = granted.context.services.diagnostics!.verifyProjections({ signal: controller.signal });
-    await Promise.resolve(); controller.abort(new Error("stopped"));
+    await Promise.resolve();
+    controller.abort(new Error("stopped"));
     await expect(pending).rejects.toThrow("stopped");
     expect(received!.aborted).toBe(true);
     expect(granted.lifecycle.signal.aborted).toBe(false);
     granted.lifecycle.stop();
     expect(() => granted.context.services.diagnostics!.verifyProjections()).toThrow();
   } finally {
-    denied.lifecycle.stop(); granted.lifecycle.stop();
-    await granted.lifecycle.drainCleanups(); operation.mockRestore();
+    denied.lifecycle.stop();
+    granted.lifecycle.stop();
+    await granted.lifecycle.drainCleanups();
+    operation.mockRestore();
   }
 });
 
@@ -42,43 +64,83 @@ test("the diagnostic permission has explicit consent copy in every locale", asyn
 });
 
 test("report requests require the diagnostic grant and propagate only action, outcome and call cancellation", async () => {
-  const plugin = buildPluginContext({ id: "report-request", name: "Report", version: "1", schemaVersion: 1,
-    requires: { services: { diagnostics: "^1.1.0" } }, permissions: ["service:diagnostics"] }, "1", []);
+  const plugin = buildPluginContext(
+    {
+      id: "report-request",
+      name: "Report",
+      version: "1",
+      schemaVersion: 1,
+      requires: { services: { diagnostics: "^1.1.0" } },
+      permissions: ["service:diagnostics"],
+    },
+    "1",
+    [],
+  );
   plugin.lifecycle.promote();
   const operation = spyOn(hostDiagnostics, "requestReport").mockImplementation((action, signal) => {
     expect(action).toBe("export");
-    return new Promise((_resolve, reject) => signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }));
+    return new Promise((_resolve, reject) =>
+      signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }),
+    );
   });
   try {
     const caller = new AbortController();
     const pending = plugin.context.services.diagnostics!.requestReport("export", { signal: caller.signal });
-    await Promise.resolve(); caller.abort(Error("cancel report"));
+    await Promise.resolve();
+    caller.abort(Error("cancel report"));
     await expect(pending).rejects.toThrow("cancel report");
     expect(plugin.lifecycle.signal.aborted).toBe(false);
-    plugin.lifecycle.stop(); expect(() => plugin.context.services.diagnostics!.requestReport("send")).toThrow();
-  } finally { plugin.lifecycle.stop(); await plugin.lifecycle.drainCleanups(); operation.mockRestore(); }
+    plugin.lifecycle.stop();
+    expect(() => plugin.context.services.diagnostics!.requestReport("send")).toThrow();
+  } finally {
+    plugin.lifecycle.stop();
+    await plugin.lifecycle.drainCleanups();
+    operation.mockRestore();
+  }
 });
 
 test("projection repair requests require diagnostics access and inherit caller/activation cancellation", async () => {
-  const plugin = buildPluginContext({ id: "repair-request", name: "Repair", version: "1", schemaVersion: 1,
-    requires: { services: { diagnostics: "^1.2.0" } }, permissions: ["service:diagnostics"] }, "1", []);
+  const plugin = buildPluginContext(
+    {
+      id: "repair-request",
+      name: "Repair",
+      version: "1",
+      schemaVersion: 1,
+      requires: { services: { diagnostics: "^1.2.0" } },
+      permissions: ["service:diagnostics"],
+    },
+    "1",
+    [],
+  );
   let received: AbortSignal | undefined;
-  const operation = spyOn(hostDiagnostics, "requestProjectionRepair").mockImplementation(signal => {
+  const operation = spyOn(hostDiagnostics, "requestProjectionRepair").mockImplementation((signal) => {
     received = signal;
-    return new Promise((_resolve, reject) => signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }));
+    return new Promise((_resolve, reject) =>
+      signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }),
+    );
   });
   try {
     plugin.lifecycle.promote();
-    expect(() => plugin.context.services.diagnostics!.requestProjectionRepair({ signal: AbortSignal.abort() })).toThrow();
+    expect(() =>
+      plugin.context.services.diagnostics!.requestProjectionRepair({ signal: AbortSignal.abort() }),
+    ).toThrow();
     expect(operation).not.toHaveBeenCalled();
     const caller = new AbortController();
     const pending = plugin.context.services.diagnostics!.requestProjectionRepair({ signal: caller.signal });
-    await Promise.resolve(); caller.abort(Error("cancel request"));
-    await expect(pending).rejects.toThrow("cancel request"); expect(received?.aborted).toBe(true);
+    await Promise.resolve();
+    caller.abort(Error("cancel request"));
+    await expect(pending).rejects.toThrow("cancel request");
+    expect(received?.aborted).toBe(true);
     expect(plugin.lifecycle.signal.aborted).toBe(false);
     const retired = plugin.context.services.diagnostics!.requestProjectionRepair();
-    await Promise.resolve(); plugin.lifecycle.stop(); await expect(retired).rejects.toThrow();
+    await Promise.resolve();
+    plugin.lifecycle.stop();
+    await expect(retired).rejects.toThrow();
     expect(received?.aborted).toBe(true);
     expect(() => plugin.context.services.diagnostics!.requestProjectionRepair()).toThrow();
-  } finally { plugin.lifecycle.stop(); await plugin.lifecycle.drainCleanups(); operation.mockRestore(); }
+  } finally {
+    plugin.lifecycle.stop();
+    await plugin.lifecycle.drainCleanups();
+    operation.mockRestore();
+  }
 });

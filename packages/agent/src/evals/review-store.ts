@@ -38,18 +38,19 @@ export async function readHumanReviews(directory: string): Promise<Record<string
     schemaVersion: 1,
     reviews: {},
   });
-  if (file.schemaVersion !== 1 || !file.reviews || typeof file.reviews !== "object" || Array.isArray(file.reviews)) throw new Error("invalid human review file");
-  return Object.fromEntries(Object.entries(file.reviews).map(([id, entry]) => {
-    const normalized = normalizeHumanReviewInput(entry);
-    if (id !== normalized.targetId || typeof entry.updatedAt !== "string") throw new Error(`invalid review identity ${id}`);
-    return [id, { ...normalized, updatedAt: entry.updatedAt }];
-  }));
+  if (file.schemaVersion !== 1 || !file.reviews || typeof file.reviews !== "object" || Array.isArray(file.reviews))
+    throw new Error("invalid human review file");
+  return Object.fromEntries(
+    Object.entries(file.reviews).map(([id, entry]) => {
+      const normalized = normalizeHumanReviewInput(entry);
+      if (id !== normalized.targetId || typeof entry.updatedAt !== "string")
+        throw new Error(`invalid review identity ${id}`);
+      return [id, { ...normalized, updatedAt: entry.updatedAt }];
+    }),
+  );
 }
 
-export async function saveHumanReview(
-  directory: string,
-  input: HumanReviewInput,
-): Promise<HumanReview> {
+export async function saveHumanReview(directory: string, input: HumanReviewInput): Promise<HumanReview> {
   const normalized = normalizeHumanReviewInput(input);
   const reviews = await readHumanReviews(directory);
   // The user-facing form does not edit structured findings. Preserve them when
@@ -101,10 +102,7 @@ export async function reviewTargetExists(directory: string, targetId: string): P
   return false;
 }
 
-export async function saveManualSession(
-  directory: string,
-  session: ManualReviewSession,
-): Promise<void> {
+export async function saveManualSession(directory: string, session: ManualReviewSession): Promise<void> {
   const sessions = await readManualSessions(directory);
   const index = sessions.findIndex((entry) => entry.id === session.id);
   if (index >= 0) sessions[index] = session;

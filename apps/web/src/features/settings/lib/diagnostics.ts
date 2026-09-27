@@ -15,13 +15,7 @@ import { invoke } from "../../../platform/ipc";
 import { AppError } from "@read-aware/core";
 import { verifyProjectionReport, type ProjectionReport } from "../../../platform/projection-verification";
 import { readCurrentAppVersion } from "../../update/lib/software-update";
-import {
-  isAndroid,
-  isIOS,
-  isMacOS,
-  isTauri,
-  isWindows,
-} from "../../../platform/environment";
+import { isAndroid, isIOS, isMacOS, isTauri, isWindows } from "../../../platform/environment";
 import { exportTextFile } from "../../../platform/export-file";
 import { appHttpFetch } from "../../../platform/http-client";
 import { relayBaseUrl } from "../../../platform/sync/sync-scheduler";
@@ -69,15 +63,18 @@ export async function assembleDiagnosticsBundle(origin: DomainActor = "user"): P
         { unavailable: "storage self-check exists only in the desktop/mobile app" },
       ];
 
-  return stampEventCause({
-    generatedAt: new Date().toISOString(),
-    appVersion: await readCurrentAppVersion(),
-    platform: platformName(),
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    logs,
-    projections,
-  }, origin);
+  return stampEventCause(
+    {
+      generatedAt: new Date().toISOString(),
+      appVersion: await readCurrentAppVersion(),
+      platform: platformName(),
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      logs,
+      projections,
+    },
+    origin,
+  );
 }
 
 export async function exportDiagnosticsBundle(bundle: DiagnosticsBundle): Promise<boolean> {
@@ -110,8 +107,16 @@ export async function sendDiagnosticsReport(bundle: DiagnosticsBundle): Promise<
     throw new Error(`report upload failed (${response.status}): ${detail.slice(0, 200)}`);
   }
   const result: unknown = await response.json();
-  if (!result || typeof result !== "object" || !("ok" in result) || result.ok !== true || !("reportId" in result)
-    || typeof result.reportId !== "string" || !result.reportId.trim() || result.reportId.length > 256) {
+  if (
+    !result ||
+    typeof result !== "object" ||
+    !("ok" in result) ||
+    result.ok !== true ||
+    !("reportId" in result) ||
+    typeof result.reportId !== "string" ||
+    !result.reportId.trim() ||
+    result.reportId.length > 256
+  ) {
     throw new AppError("sync/server", "Invalid diagnostic report receipt");
   }
   return result.reportId;

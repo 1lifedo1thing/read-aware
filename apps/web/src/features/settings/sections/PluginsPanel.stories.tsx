@@ -5,11 +5,7 @@ import type { InstalledPlugin } from "../../plugins/lib/plugin-types";
 import { installedPluginsAtom } from "../../plugins/state/plugin-store";
 import { PluginsPanel } from "./PluginsPanel";
 
-function plugin(
-  id: string,
-  name: string,
-  patch: Partial<InstalledPlugin> = {},
-): InstalledPlugin {
+function plugin(id: string, name: string, patch: Partial<InstalledPlugin> = {}): InstalledPlugin {
   return {
     manifest: {
       id,

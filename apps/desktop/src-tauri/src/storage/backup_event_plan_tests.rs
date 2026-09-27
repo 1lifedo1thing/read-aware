@@ -1,10 +1,10 @@
 use super::*;
-use std::path::Path;
 use crate::storage::{
     self,
     backup_archive::{self, AuthenticatedBackup},
     backup_snapshot,
 };
+use std::path::Path;
 use std::{
     fs,
     sync::{atomic::AtomicBool, Arc},

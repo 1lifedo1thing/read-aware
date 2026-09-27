@@ -1,4 +1,10 @@
-import { actorFromEvent, actorOrigin, causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import {
+  actorFromEvent,
+  actorOrigin,
+  causalActor,
+  stampEventCause,
+  type DomainActor,
+} from "../../../platform/domain-actor";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
@@ -70,9 +76,7 @@ function rowToMessage(row: AiMessageRow): ChatMessage {
     role: row.role as ChatMessage["role"],
     content: row.content,
     createdAt: row.createdAt,
-    attachments: row.attachmentsJson
-      ? (JSON.parse(row.attachmentsJson) as ChatAttachment[])
-      : undefined,
+    attachments: row.attachmentsJson ? (JSON.parse(row.attachmentsJson) as ChatAttachment[]) : undefined,
     parts: row.partsJson ? (JSON.parse(row.partsJson) as ChatAssistantPart[]) : undefined,
     error: row.error || undefined,
   };
@@ -113,14 +117,9 @@ const memoryStore = new Map<string, ChatMessage[]>();
 /** Ids of the event-covered (non-error) messages last seen persisted. */
 const knownEventIds = new Map<string, Set<string>>();
 
-const eventable = (messages: ChatMessage[]): ChatMessage[] =>
-  messages.filter((message) => !message.error);
+const eventable = (messages: ChatMessage[]): ChatMessage[] => messages.filter((message) => !message.error);
 
-function toAppendedDraft(
-  conversationId: string,
-  message: ChatMessage,
-  seq: number,
-): DomainEventDraft {
+function toAppendedDraft(conversationId: string, message: ChatMessage, seq: number): DomainEventDraft {
   return {
     type: "aiMessage.appended",
     payload: {
@@ -129,15 +128,22 @@ function toAppendedDraft(
       role: message.role,
       seq,
       content: message.content,
-      attachments: message.attachments?.map((attachment) => attachment.kind === "image" ? {
-        attachmentId: crypto.randomUUID(), kind: "image" as const, cacheKey: attachment.cacheKey, name: attachment.name,
-      } : ({
-        attachmentId: crypto.randomUUID(),
-        kind: attachment.kind,
-        text: attachment.text,
-        anchor: attachment.cfiRange ?? undefined,
-        chapterHref: attachment.chapterHref ?? undefined,
-      })),
+      attachments: message.attachments?.map((attachment) =>
+        attachment.kind === "image"
+          ? {
+              attachmentId: crypto.randomUUID(),
+              kind: "image" as const,
+              cacheKey: attachment.cacheKey,
+              name: attachment.name,
+            }
+          : {
+              attachmentId: crypto.randomUUID(),
+              kind: attachment.kind,
+              text: attachment.text,
+              anchor: attachment.cfiRange ?? undefined,
+              chapterHref: attachment.chapterHref ?? undefined,
+            },
+      ),
     },
     createdAt: message.createdAt,
     // The user's turns are their writes; the assistant's are the agent's.
@@ -146,10 +152,7 @@ function toAppendedDraft(
 }
 
 /** Diff the new transcript against the last persisted one into event drafts. */
-async function conversationEventDrafts(
-  conversationId: string,
-  messages: ChatMessage[],
-): Promise<DomainEventDraft[]> {
+async function conversationEventDrafts(conversationId: string, messages: ChatMessage[]): Promise<DomainEventDraft[]> {
   let prev = knownEventIds.get(conversationId);
   if (!prev) {
     // First save without a prior load (defensive) — baseline from the store.
@@ -187,10 +190,7 @@ async function conversationEventDrafts(
 export async function loadConversation(conversationId: string): Promise<ChatMessage[]> {
   if (!isTauri()) return memoryStore.get(conversationId) ?? [];
   const rows = await invoke<AiMessageRow[]>("ai_chat_load", { conversationId });
-  knownEventIds.set(
-    conversationId,
-    new Set(rows.filter((row) => !row.error).map((row) => row.id)),
-  );
+  knownEventIds.set(conversationId, new Set(rows.filter((row) => !row.error).map((row) => row.id)));
   return rows.map(rowToMessage);
 }
 
@@ -222,11 +222,13 @@ export async function saveConversation(
       // the presentation carries only what no event describes — exactly the
       // columns DIFF_SPECS in storage/apply.rs excludes from the consistency
       // check. Both land in one transaction or neither does.
-      const drafts = (await conversationEventDrafts(conversationId, captured)).map(draft => source
-        ? { ...draft, origin: actorFromEvent(source, actorOrigin(draft.origin ?? origin!)) } : draft);
+      const drafts = (await conversationEventDrafts(conversationId, captured)).map((draft) =>
+        source ? { ...draft, origin: actorFromEvent(source, actorOrigin(draft.origin ?? origin!)) } : draft,
+      );
       const { presentation, errorStubs } = presentationRows(conversationId, captured);
       await commitDomainEventBatch(drafts, {
-        dispatch: events => invoke<CommitReport>("ai_chat_commit", { conversationId, events, presentation, errorStubs }),
+        dispatch: (events) =>
+          invoke<CommitReport>("ai_chat_commit", { conversationId, events, presentation, errorStubs }),
       });
       knownEventIds.set(conversationId, new Set(eventable(captured).map((m) => m.id)));
     } catch (err) {
@@ -237,7 +239,11 @@ export async function saveConversation(
   });
 }
 
-export async function clearConversation(conversationId: string, origin: DomainActor = "user", signal?: AbortSignal): Promise<void> {
+export async function clearConversation(
+  conversationId: string,
+  origin: DomainActor = "user",
+  signal?: AbortSignal,
+): Promise<void> {
   signal?.throwIfAborted();
   if (!isTauri()) {
     memoryStore.delete(conversationId);

@@ -33,30 +33,22 @@ export const SearchSettings: Story = {
 export const AdvancedSettings: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Advanced settings" }),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Advanced settings" }));
   },
 };
 
 export const SeparateFastModel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Advanced settings" }),
-    );
-    await userEvent.click(
-      canvas.getByRole("switch", { name: "Use a separate Fast model" }),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Advanced settings" }));
+    await userEvent.click(canvas.getByRole("switch", { name: "Use a separate Fast model" }));
   },
 };
 
 export const CustomProvider: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      canvas.getByRole("combobox", { name: "AI Provider" }),
-    );
+    await userEvent.click(canvas.getByRole("combobox", { name: "AI Provider" }));
     await userEvent.click(
       within(canvasElement.ownerDocument.body).getByRole("option", {
         name: "Custom (OpenAI-compatible)",
@@ -69,8 +61,6 @@ export const CustomAdvancedSettings: Story = {
   play: async (context) => {
     await CustomProvider.play?.(context);
     const canvas = within(context.canvasElement);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Advanced settings" }),
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Advanced settings" }));
   },
 };

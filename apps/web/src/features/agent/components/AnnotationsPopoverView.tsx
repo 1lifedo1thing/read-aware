@@ -60,13 +60,7 @@ export function AnnotationsPopoverView({
       triggerTooltip={t("agent.annotations.title")}
       triggerTooltipAlign="end"
       triggerClassName={cn(agentHeaderActionClass, open && "text-fg")}
-      trigger={
-        <Notebook
-          size={16}
-          weight={open ? "fill" : "regular"}
-          aria-hidden="true"
-        />
-      }
+      trigger={<Notebook size={16} weight={open ? "fill" : "regular"} aria-hidden="true" />}
       panelClassName="flex max-h-[min(28rem,70vh)] w-[clamp(18rem,28vw,26rem)] flex-col overflow-hidden p-0"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
@@ -76,17 +70,22 @@ export function AnnotationsPopoverView({
         </span>
       </div>
 
-      {isLoading ? <div className="flex justify-center px-4 py-6"><Spinner /></div> : loadFailed ? (
+      {isLoading ? (
+        <div className="flex justify-center px-4 py-6">
+          <Spinner />
+        </div>
+      ) : loadFailed ? (
         <div className="px-4 py-6">
-          <InlineError onRetry={failure?.retryable ? onRetryLoad : undefined} retryLabel={t("common:errorBoundary.retry")}>
+          <InlineError
+            onRetry={failure?.retryable ? onRetryLoad : undefined}
+            retryLabel={t("common:errorBoundary.retry")}
+          >
             {failure?.body ?? t("common:errors.generic")}
           </InlineError>
         </div>
       ) : annotations.length === 0 ? (
         <div className="px-4 py-8">
-          <Body className="text-center text-sm text-fg-muted">
-            {t("agent.empty.description")}
-          </Body>
+          <Body className="text-center text-sm text-fg-muted">{t("agent.empty.description")}</Body>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">

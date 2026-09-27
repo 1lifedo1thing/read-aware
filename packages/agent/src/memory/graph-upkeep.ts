@@ -30,7 +30,9 @@ export interface DigestBookTickInput {
   onProgress?: (digested: number) => void;
   rebuild?: boolean;
   targets?: readonly number[];
-  preparedDigest?(chapter: number): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
+  preparedDigest?(
+    chapter: number,
+  ): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
   onStarted?: () => void;
   onPlan?: (chapters: number[]) => void | Promise<void>;
   onChapterAttempted?: (chapter: number) => void;
@@ -63,12 +65,10 @@ export async function ensureBookClassification(
   for (let index = 0; index < Math.min(toc.length, 8, beforeChapterIndex) && sampleText.length < 600; index++) {
     input.signal?.throwIfAborted();
     await input.checkChapter?.(index);
-    const text = await input.deps.bookText
-      .getChapterText(input.bookId, index)
-      .catch((error) => {
-        input.deps.log?.warn("narrativity sampling: chapter text unavailable", error);
-        return undefined;
-      });
+    const text = await input.deps.bookText.getChapterText(input.bookId, index).catch((error) => {
+      input.deps.log?.warn("narrativity sampling: chapter text unavailable", error);
+      return undefined;
+    });
     if (text && text.trim().length > sampleText.length) sampleText = text.trim();
     await input.checkChapter?.(index);
   }
@@ -88,7 +88,12 @@ export async function ensureBookClassification(
     return undefined;
   }
   try {
-    return await input.deps.library.classifyBookIfUnclassified(input.bookId, policy.narrativity, input.signal, policy.spoilerSensitive);
+    return await input.deps.library.classifyBookIfUnclassified(
+      input.bookId,
+      policy.narrativity,
+      input.signal,
+      policy.spoilerSensitive,
+    );
   } catch (error) {
     input.deps.log?.warn("recording narrativity failed; will reclassify next tick", error);
     return undefined;
@@ -98,7 +103,8 @@ export async function ensureBookClassification(
 /** A report distinguishes completed work, remaining chapters and unknown boundaries. */
 export async function digestBookTick(input: DigestBookTickInput): Promise<DigestReport> {
   const request = { ...input, targets: input.targets && [...input.targets] };
-  if (request.targets?.some(index => !Number.isSafeInteger(index) || index < 0)) throw new AppError("memory/invalid-input", "Invalid digest targets");
+  if (request.targets?.some((index) => !Number.isSafeInteger(index) || index < 0))
+    throw new AppError("memory/invalid-input", "Invalid digest targets");
   digestExecutionBudget(request);
   return request.deps.bookMemory.runExclusive(request.bookId, () => digestBookTickExclusive(request), request.signal);
 }
@@ -112,9 +118,9 @@ async function digestBookTickExclusive(input: DigestBookTickInput): Promise<Dige
   input.signal?.throwIfAborted();
   if (!book) throw new AppError("reader/book-not-found", "Book not found");
   // 边界：显式 href → 书的进度 chapterHref（聊天时阅读器未开）→ 读完全书。
-  const href = input.resolveBoundary ? undefined :
-    input.throughChapterHref ??
-    (await deps.library.getBookStats(input.bookId))?.chapterHref;
+  const href = input.resolveBoundary
+    ? undefined
+    : (input.throughChapterHref ?? (await deps.library.getBookStats(input.bookId))?.chapterHref);
   input.signal?.throwIfAborted();
   let beforeChapterIndex = await input.resolveBoundary?.();
   input.signal?.throwIfAborted();
@@ -134,7 +140,8 @@ async function digestBookTickExclusive(input: DigestBookTickInput): Promise<Dige
   }
   // 纪要口径跟着书的叙事性走。未分类的书先分类；分类失败本节拍按
   // narrative 保守提炼——它的产物起码无害，分类落库后口径不符的行会被重算。
-  const narrativity = (max === 0 ? undefined : await ensureBookClassification(input, beforeChapterIndex)) ?? book.narrativity;
+  const narrativity =
+    (max === 0 ? undefined : await ensureBookClassification(input, beforeChapterIndex)) ?? book.narrativity;
   input.signal?.throwIfAborted();
   const report = await digestMissingChapters({
     bookText: deps.bookText,
@@ -149,10 +156,19 @@ async function digestBookTickExclusive(input: DigestBookTickInput): Promise<Dige
     signal: input.signal,
     log: deps.log,
     onProgress: input.onProgress,
-    rebuild: input.rebuild, targets: input.targets, preparedDigest: input.preparedDigest, onPlan: input.onPlan, onChapterAttempted: input.onChapterAttempted, onChapterCommitted: input.onChapterCommitted,
-    onReport: input.onReport, checkChapter: input.checkChapter,
+    rebuild: input.rebuild,
+    targets: input.targets,
+    preparedDigest: input.preparedDigest,
+    onPlan: input.onPlan,
+    onChapterAttempted: input.onChapterAttempted,
+    onChapterCommitted: input.onChapterCommitted,
+    onReport: input.onReport,
+    checkChapter: input.checkChapter,
   });
-  if (!narrativity) { report.status = "partial"; report.reason = "classification-pending"; }
+  if (!narrativity) {
+    report.status = "partial";
+    report.reason = "classification-pending";
+  }
   return report;
 }
 

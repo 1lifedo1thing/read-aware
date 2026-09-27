@@ -13,10 +13,10 @@ export function SettingsPage({ title, description, children, headingRef }: Setti
   return (
     <div className="mx-auto max-w-2xl px-6 py-9 sm:px-10">
       <header className="mb-7">
-        <h1 ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="font-serif text-2xl text-fg">{title}</h1>
-        {description && (
-          <p className="mt-1.5 font-sans text-sm leading-6 text-fg-muted">{description}</p>
-        )}
+        <h1 ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="font-serif text-2xl text-fg">
+          {title}
+        </h1>
+        {description && <p className="mt-1.5 font-sans text-sm leading-6 text-fg-muted">{description}</p>}
       </header>
       <Stack gap="xl">{children}</Stack>
     </div>

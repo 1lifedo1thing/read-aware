@@ -42,14 +42,20 @@ import { flattenPluginRequest, restorePluginResponse, type PluginNetworkResponse
 import { pluginNetworkAbort, pluginNetworkError } from "./plugin-network-error";
 import { PluginRpcPending } from "./plugin-rpc-pending";
 import { PluginCallbackRegistry } from "./plugin-callback-wire";
-import { parsePluginWorkerMessage, PLUGIN_PROTOCOL_VERSION, validPluginCallId, type WorkerMessage } from "./plugin-worker-protocol";
+import {
+  parsePluginWorkerMessage,
+  PLUGIN_PROTOCOL_VERSION,
+  validPluginCallId,
+  type WorkerMessage,
+} from "./plugin-worker-protocol";
 import { parsePluginHostMessage, type HostMessage, type ContextShape } from "./plugin-host-protocol";
 
 // ─── Wire protocol ───────────────────────────────────────────────────────────
 
 const post = (input: WorkerMessage) => {
   if (stopped && input.t !== "failed") throw codedError("Plugin runtime stopped", "plugin/unavailable");
-  const message = "error" in input && typeof input.error === "string" ? { ...input, error: input.error.slice(0, 4096) } : input;
+  const message =
+    "error" in input && typeof input.error === "string" ? { ...input, error: input.error.slice(0, 4096) } : input;
   self.postMessage(parsePluginWorkerMessage(message));
 };
 
@@ -83,15 +89,7 @@ function denyAmbientAuthority(name: string): void {
   }
 }
 
-for (const name of [
-  "fetch",
-  "WebSocket",
-  "EventSource",
-  "XMLHttpRequest",
-  "BroadcastChannel",
-  "indexedDB",
-  "caches",
-]) {
+for (const name of ["fetch", "WebSocket", "EventSource", "XMLHttpRequest", "BroadcastChannel", "indexedDB", "caches"]) {
   denyAmbientAuthority(name);
 }
 
@@ -116,52 +114,65 @@ const callbacks = new PluginCallbackRegistry();
  * the release travelling once the host answers.
  */
 type CallResult = Promise<unknown> & PluginActionRegistration;
-const contributionBindings = new WeakMap<object, (token: PluginReactionToken) => import("@read-aware/plugin-types").PluginEventRegistration<PluginActionRegistration>>();
+const contributionBindings = new WeakMap<
+  object,
+  (token: PluginReactionToken) => import("@read-aware/plugin-types").PluginEventRegistration<PluginActionRegistration>
+>();
 
 function callHost(method: string, args: unknown[], signal?: AbortSignal, reaction?: PluginReactionToken): CallResult {
   const prepared = preparePluginCall(method, args);
   args = prepared.args;
   signal ??= prepared.signal;
-  const receipt = pendingCalls.call(id => {
-    callbacks.send(args, wire => post({ t: "call", id, method, args: wire, ...(reaction ? { reaction } : {}) }));
-  }, { signal, cancel: id => post({ t: "cancel", id }), drainCancellation: pluginCallDrainsCancellation(method) });
+  const receipt = pendingCalls.call(
+    (id) => {
+      callbacks.send(args, (wire) => post({ t: "call", id, method, args: wire, ...(reaction ? { reaction } : {}) }));
+    },
+    { signal, cancel: (id) => post({ t: "cancel", id }), drainCancellation: pluginCallDrainsCancellation(method) },
+  );
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
-    void receipt.then(value => {
-      const { disposable } = value as { disposable?: string };
-      if (disposable) post({ t: "dispose", handle: disposable });
-    }).catch(() => {
-      // Failed calls have no registration to dispose; the host releases arguments.
-    });
+    void receipt
+      .then((value) => {
+        const { disposable } = value as { disposable?: string };
+        if (disposable) post({ t: "dispose", handle: disposable });
+      })
+      .catch(() => {
+        // Failed calls have no registration to dispose; the host releases arguments.
+      });
   };
-  const updateState: PluginActionRegistration["updateState"] = async state => {
+  const updateState: PluginActionRegistration["updateState"] = async (state) => {
     if (disposed) return { status: "inactive" };
-    const response = await receipt as { disposable?: string };
+    const response = (await receipt) as { disposable?: string };
     if (disposed) return { status: "inactive" };
     if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
-    return await callHost("$registration.updateState", [response.disposable, state]) as PluginActionStateReceipt;
+    return (await callHost("$registration.updateState", [response.disposable, state])) as PluginActionStateReceipt;
   };
   const bind = (token: PluginReactionToken) => {
     const bound = {
       dispose: async () => {
-        const response = await receipt as { disposable?: string };
+        const response = (await receipt) as { disposable?: string };
         if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
         await callHost("$registration.dispose", [response.disposable], undefined, token);
         disposed = true;
       },
       updateState: async (state: Parameters<PluginActionRegistration["updateState"]>[0]) => {
-        const response = await receipt as { disposable?: string };
+        const response = (await receipt) as { disposable?: string };
         if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
-        return await callHost("$registration.updateState", [response.disposable, state], undefined, token) as PluginActionStateReceipt;
+        return (await callHost(
+          "$registration.updateState",
+          [response.disposable, state],
+          undefined,
+          token,
+        )) as PluginActionStateReceipt;
       },
     };
     contributionBindings.set(bound, bind);
     return bound;
   };
   const isContribution = method.startsWith("contributions.") && method.endsWith(".register");
-  const promise = receipt.then(value => {
+  const promise = receipt.then((value) => {
     const response = value as { value: unknown; disposable?: string };
     if (!response.disposable) return response.value;
     const handle = { dispose, updateState };
@@ -206,7 +217,11 @@ function remoteNamespace(path: string, shape: ContextShape, reaction?: PluginRea
 const storageSnapshot = new PluginStorageMirror();
 let appLocale = "";
 let lifecyclePhase: PluginContext["lifecycle"]["phase"] = "activating";
-const activationLifecycle = Object.freeze({ get phase() { return lifecyclePhase; } });
+const activationLifecycle = Object.freeze({
+  get phase() {
+    return lifecyclePhase;
+  },
+});
 
 function assertLocalStorageWrite(): void {
   if (lifecyclePhase !== "active" && lifecyclePhase !== "migrating") {
@@ -217,9 +232,7 @@ function assertLocalStorageWrite(): void {
 async function drainActivationCalls(): Promise<void> {
   while (inFlightHostCalls.size > 0) {
     const results = await Promise.allSettled([...inFlightHostCalls]);
-    const failed = results.find(
-      (result): result is PromiseRejectedResult => result.status === "rejected",
-    );
+    const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
     if (failed && codeOf(failed.reason) !== "plugin/cancelled") throw failed.reason;
   }
   const failed = lifecycleCallErrors.shift();
@@ -243,7 +256,10 @@ function buildContext(
   const ctx = remoteNamespace("", namespaces as ContextShape, reaction) as Record<string, unknown>;
 
   const call = (method: string, args: unknown[], signal?: AbortSignal) => callHost(method, args, signal, reaction);
-  ctx.withEvent = (event: import("@read-aware/plugin-types").PluginReactionEvent | undefined, registration?: object) => {
+  ctx.withEvent = (
+    event: import("@read-aware/plugin-types").PluginReactionEvent | undefined,
+    registration?: object,
+  ) => {
     if (!event?.reaction) throw codedError("Event has no reaction lease", "plugin/invalid-cause");
     const token = Object.freeze({ ...event.reaction });
     if (token.status === "cycle") throw codedError("Event reaction would repeat a causal step", "plugin/event-cycle");
@@ -259,9 +275,8 @@ function buildContext(
   ctx.capabilities = capabilities;
   // The grant is activation metadata, not an RPC namespace. Keep a frozen
   // copy in the Worker so plugin code cannot widen or rewrite host authority.
-  const bookGrant = grants.book.mode === "book"
-    ? { mode: "book" as const, bookId: grants.book.bookId }
-    : { mode: grants.book.mode };
+  const bookGrant =
+    grants.book.mode === "book" ? { mode: "book" as const, bookId: grants.book.bookId } : { mode: grants.book.mode };
   Object.defineProperty(ctx, "grants", {
     value: Object.freeze({ book: Object.freeze(bookGrant) }),
     enumerable: true,
@@ -279,7 +294,8 @@ function buildContext(
   services.storage = {
     policy: () => call("services.storage.policy", []),
     get<T = unknown>(key: string): T | null {
-      if (serviceId && grants.book.mode !== "all") throw codedError("Book services cannot access unscoped private data", "plugin/service-forbidden");
+      if (serviceId && grants.book.mode !== "all")
+        throw codedError("Book services cannot access unscoped private data", "plugin/service-forbidden");
       const raw = storageSnapshot.get(key);
       if (raw === undefined) return null;
       try {
@@ -293,14 +309,20 @@ function buildContext(
       const raw = JSON.stringify(value ?? null);
       const id = storageSnapshot.begin(key, raw);
       const pending = call("services.storage.set", [key, value]);
-      void pending.then(() => storageSnapshot.settle(id), () => storageSnapshot.settle(id));
+      void pending.then(
+        () => storageSnapshot.settle(id),
+        () => storageSnapshot.settle(id),
+      );
       return pending as Promise<void>;
     },
     remove(key: string): Promise<void> {
       assertLocalStorageWrite();
       const id = storageSnapshot.begin(key, null);
       const pending = call("services.storage.remove", [key]);
-      void pending.then(() => storageSnapshot.settle(id), () => storageSnapshot.settle(id));
+      void pending.then(
+        () => storageSnapshot.settle(id),
+        () => storageSnapshot.settle(id),
+      );
       return pending as Promise<void>;
     },
     getDurable: <T = unknown>(key: string) => call("services.storage.getDurable", [key]) as Promise<T | null>,
@@ -312,16 +334,16 @@ function buildContext(
     // Host-side writes (settings page, agent) arrive as a `sync` patch and
     // then as this notification — in that order, so the mirror the handler
     // reads from is already fresh. Settings-key writes may echo with a reaction token.
-    onChange: (handler: Parameters<import("@read-aware/plugin-types").PluginStorage["onChange"]>[0], options?: Parameters<import("@read-aware/plugin-types").PluginStorage["onChange"]>[1]) =>
-      call("services.storage.onChange", [handler, options]),
-    observeDocuments: (query: import("@read-aware/plugin-types").PluginDocumentObservationQuery, handler: (event: import("@read-aware/plugin-types").PluginDocumentObservation) => unknown) =>
-      call("services.storage.observeDocuments", [query, handler]),
+    onChange: (
+      handler: Parameters<import("@read-aware/plugin-types").PluginStorage["onChange"]>[0],
+      options?: Parameters<import("@read-aware/plugin-types").PluginStorage["onChange"]>[1],
+    ) => call("services.storage.onChange", [handler, options]),
+    observeDocuments: (
+      query: import("@read-aware/plugin-types").PluginDocumentObservationQuery,
+      handler: (event: import("@read-aware/plugin-types").PluginDocumentObservation) => unknown,
+    ) => call("services.storage.observeDocuments", [query, handler]),
     collection: (name: string) =>
-      remoteNamespace(
-        `services.storage.collection(${name})`,
-        collectionShape as ContextShape,
-        reaction,
-      ),
+      remoteNamespace(`services.storage.collection(${name})`, collectionShape as ContextShape, reaction),
   };
 
   // `showToast` is fire-and-forget in the plugin API; don't hand back a promise.
@@ -341,11 +363,19 @@ function buildContext(
   const network = services.network as Record<string, unknown> | undefined;
   for (const operation of ["fetch", "openStream"] as const) {
     if (!network || typeof network[operation] !== "function") continue;
-    network[operation] = async (input: RequestInfo | URL, init?: RequestInit, options?: { retry?: "none" | "safe" }) => {
+    network[operation] = async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+      options?: { retry?: "none" | "safe" },
+    ) => {
       const acceptedOptions = options === undefined ? undefined : structuredClone(options);
       const request = await flattenPluginRequest(input, init);
       try {
-        const result = await call(`services.network.${operation}`, [request.url, request.init, acceptedOptions], request.signal);
+        const result = await call(
+          `services.network.${operation}`,
+          [request.url, request.init, acceptedOptions],
+          request.signal,
+        );
         return operation === "fetch" ? restorePluginResponse(result as PluginNetworkResponse) : result;
       } catch (error) {
         throw request.signal.aborted ? pluginNetworkAbort(request.signal.reason) : pluginNetworkError(error);
@@ -379,7 +409,9 @@ const failProtocol = () => {
   callbacks.clear();
   post({ t: "failed", error: "Host protocol or transport version rejected" });
 };
-self.onmessageerror = () => { if (!stopped) failProtocol(); };
+self.onmessageerror = () => {
+  if (!stopped) failProtocol();
+};
 
 self.onmessage = async (event: MessageEvent<unknown>) => {
   if (stopped) return;
@@ -396,7 +428,8 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
     } else if (booted && raw && validPluginCallId(raw.id) && raw.t === "result") {
       pendingCalls.settle(raw.id, false, error);
       // Rejected results must not strand a registration on the authoritative host.
-      if (typeof raw.disposable === "string" && raw.disposable.length > 0 && raw.disposable.length <= 128) post({ t: "dispose", handle: raw.disposable });
+      if (typeof raw.disposable === "string" && raw.disposable.length > 0 && raw.disposable.length <= 128)
+        post({ t: "dispose", handle: raw.disposable });
     } else {
       failProtocol();
     }
@@ -419,18 +452,28 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
           throw new Error("entry module must default-export an object with activate()");
         }
         pluginContext = buildContext(
-            message.manifest,
-            message.appVersion,
-            message.capabilities,
-            message.grants,
-            message.shape,
-          );
+          message.manifest,
+          message.appVersion,
+          message.capabilities,
+          message.grants,
+          message.shape,
+        );
         serviceId = message.serviceId;
         if (serviceId !== undefined) {
-          if (!plugin.services || !Object.hasOwn(plugin.services, serviceId) || typeof plugin.services[serviceId] !== "function") throw new Error("Declared service export is missing");
+          if (
+            !plugin.services ||
+            !Object.hasOwn(plugin.services, serviceId) ||
+            typeof plugin.services[serviceId] !== "function"
+          )
+            throw new Error("Declared service export is missing");
         } else await plugin.activate(pluginContext);
         await drainActivationCalls();
-        if (!stopped) post({ t: "ready", protocolVersion: PLUGIN_PROTOCOL_VERSION, hasMigration: typeof plugin.migrate === "function" });
+        if (!stopped)
+          post({
+            t: "ready",
+            protocolVersion: PLUGIN_PROTOCOL_VERSION,
+            hasMigration: typeof plugin.migrate === "function",
+          });
       } catch (error) {
         if (!stopped) post({ t: "failed", error: error instanceof Error ? error.message : String(error) });
       }
@@ -439,12 +482,21 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
 
     case "service": {
       try {
-        if (!serviceId || serviceId !== message.serviceId || serviceInvoked || lifecyclePhase !== "active") throw codedError("Service invocation is unavailable", "plugin/service-unavailable");
+        if (!serviceId || serviceId !== message.serviceId || serviceInvoked || lifecyclePhase !== "active")
+          throw codedError("Service invocation is unavailable", "plugin/service-unavailable");
         serviceInvoked = true;
         const value = await plugin!.services![serviceId]!(pluginContext!, message.input);
-        if (!stopped) callbacks.send(value ?? null, wire => post({ t: "result", id: message.id, ok: true, value: wire }));
+        if (!stopped)
+          callbacks.send(value ?? null, (wire) => post({ t: "result", id: message.id, ok: true, value: wire }));
       } catch (error) {
-        if (!stopped) post({ t: "result", id: message.id, ok: false, code: codeOf(error), error: error instanceof Error ? error.message : String(error) });
+        if (!stopped)
+          post({
+            t: "result",
+            id: message.id,
+            ok: false,
+            code: codeOf(error),
+            error: error instanceof Error ? error.message : String(error),
+          });
       }
       return;
     }
@@ -453,7 +505,7 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
       try {
         const value = await callbacks.invoke(message.handle, message.args);
         if (stopped) return;
-        callbacks.send(value ?? null, wire => post({ t: "result", id: message.id, ok: true, value: wire }));
+        callbacks.send(value ?? null, (wire) => post({ t: "result", id: message.id, ok: true, value: wire }));
       } catch (error) {
         if (stopped) return;
         post({
@@ -477,9 +529,11 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
     }
 
     case "result": {
-      const accepted = pendingCalls.settle(message.id, message.ok, message.ok
-        ? { value: message.value, disposable: message.disposable }
-        : codedError(message.error, message.code));
+      const accepted = pendingCalls.settle(
+        message.id,
+        message.ok,
+        message.ok ? { value: message.value, disposable: message.disposable } : codedError(message.error, message.code),
+      );
       if (!accepted && message.ok && message.disposable) post({ t: "dispose", handle: message.disposable });
       return;
     }

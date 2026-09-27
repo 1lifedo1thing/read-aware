@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { AppError } from "@read-aware/core";
-import { bindVirtualBook, getVirtualBookBinding, invalidateOwnedVirtualBook, removeOwnedVirtualBook, unbindVirtualBook } from "./virtual-books";
+import {
+  bindVirtualBook,
+  getVirtualBookBinding,
+  invalidateOwnedVirtualBook,
+  removeOwnedVirtualBook,
+  unbindVirtualBook,
+} from "./virtual-books";
 import { assertContentNotInvalidated, contentInvalidationRevision } from "../../library/lib/content-invalidation";
 import { registerContentProviderContribution } from "../state/plugin-store";
 
@@ -11,11 +17,18 @@ let failWrite = false;
 const values = new Map<string, string>();
 beforeEach(() => {
   previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
-  values.clear(); failWrite = false;
-  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => { if (failWrite) throw new AppError("db/locked", "Injected binding failure"); values.set(key, value); },
-  } });
+  values.clear();
+  failWrite = false;
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (failWrite) throw new AppError("db/locked", "Injected binding failure");
+        values.set(key, value);
+      },
+    },
+  });
 });
 afterEach(() => {
   if (previous) Object.defineProperty(globalThis, "localStorage", previous);
@@ -25,34 +38,60 @@ afterEach(() => {
 test("virtual removal propagates book failure and preserves the exact binding", async () => {
   bindVirtualBook("book", binding);
   const error = new AppError("db/locked", "Injected deletion failure");
-  await expect(removeOwnedVirtualBook(binding, async () => { throw error; })).rejects.toBe(error);
+  await expect(
+    removeOwnedVirtualBook(binding, async () => {
+      throw error;
+    }),
+  ).rejects.toBe(error);
   expect(getVirtualBookBinding("book")).toEqual(binding);
 });
 
 test("source invalidation is owned, requires a live binding and fences in-flight reads", async () => {
   bindVirtualBook("book", binding);
-  const provider = registerContentProviderContribution({ key: "virtual-test:content", pluginId: binding.pluginId,
-    providerId: binding.providerId, load: async () => ({ title: "Feed", sections: [] }) });
+  const provider = registerContentProviderContribution({
+    key: "virtual-test:content",
+    pluginId: binding.pluginId,
+    providerId: binding.providerId,
+    load: async () => ({ title: "Feed", sections: [] }),
+  });
   try {
     const initial = contentInvalidationRevision("book");
-    const receipt = await invalidateOwnedVirtualBook(binding, async id => ({ id }));
-    expect(receipt.bookId).toBe("book"); expect(receipt.revision).not.toBe(initial);
+    const receipt = await invalidateOwnedVirtualBook(binding, async (id) => ({ id }));
+    expect(receipt.bookId).toBe("book");
+    expect(receipt.revision).not.toBe(initial);
     expect(() => assertContentNotInvalidated("book", initial)).toThrow();
     expect(() => assertContentNotInvalidated("book", receipt.revision)).not.toThrow();
-    await expect(invalidateOwnedVirtualBook({ ...binding, pluginId: "foreign" }, async () => true)).rejects.toMatchObject({ code: "library/content-unavailable" });
-    await expect(invalidateOwnedVirtualBook(binding, async () => null)).rejects.toMatchObject({ code: "library/book-not-found" });
-    const abort = new AbortController(); abort.abort(new AppError("plugin/cancelled", "retired"));
-    await expect(invalidateOwnedVirtualBook(binding, async () => true, abort.signal)).rejects.toMatchObject({ code: "plugin/cancelled" });
+    await expect(
+      invalidateOwnedVirtualBook({ ...binding, pluginId: "foreign" }, async () => true),
+    ).rejects.toMatchObject({ code: "library/content-unavailable" });
+    await expect(invalidateOwnedVirtualBook(binding, async () => null)).rejects.toMatchObject({
+      code: "library/book-not-found",
+    });
+    const abort = new AbortController();
+    abort.abort(new AppError("plugin/cancelled", "retired"));
+    await expect(invalidateOwnedVirtualBook(binding, async () => true, abort.signal)).rejects.toMatchObject({
+      code: "plugin/cancelled",
+    });
     expect(contentInvalidationRevision("book")).toBe(receipt.revision);
-    await expect(invalidateOwnedVirtualBook(binding, async () => { provider.dispose(); return true; })).rejects.toMatchObject({ code: "library/content-unavailable" });
+    await expect(
+      invalidateOwnedVirtualBook(binding, async () => {
+        provider.dispose();
+        return true;
+      }),
+    ).rejects.toMatchObject({ code: "library/content-unavailable" });
     expect(contentInvalidationRevision("book")).toBe(receipt.revision);
-  } finally { provider.dispose(); }
+  } finally {
+    provider.dispose();
+  }
 });
 
 test("binding cleanup failure is not acknowledged, and a retry finishes after a committed deletion", async () => {
   bindVirtualBook("book", binding);
   let removals = 0;
-  const remove = async (id: string) => { expect(id).toBe("book"); removals++; };
+  const remove = async (id: string) => {
+    expect(id).toBe("book");
+    removals++;
+  };
   failWrite = true;
   await expect(removeOwnedVirtualBook(binding, remove)).rejects.toMatchObject({ code: "db/locked" });
   expect(getVirtualBookBinding("book")).toEqual(binding);
@@ -69,22 +108,38 @@ test("binding remains until deletion finishes and other owners are preserved", a
   bindVirtualBook("foreign", foreign);
   let finish!: () => void;
   let started!: () => void;
-  const ready = new Promise<void>(resolve => { started = resolve; });
-  const pending = removeOwnedVirtualBook(binding, () => new Promise<void>(resolve => { finish = resolve; started(); }));
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const pending = removeOwnedVirtualBook(
+    binding,
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+        started();
+      }),
+  );
   await ready;
   expect(getVirtualBookBinding("book")).toEqual(binding);
-  finish(); await pending;
+  finish();
+  await pending;
   expect(getVirtualBookBinding("foreign")).toEqual(foreign);
   expect(JSON.parse(values.get(registryKey)!)).toEqual({ foreign });
 });
 
 test("shared event cleanup is idempotent and a changed binding is never removed", async () => {
   bindVirtualBook("book", binding);
-  await removeOwnedVirtualBook(binding, async id => { unbindVirtualBook(id); });
+  await removeOwnedVirtualBook(binding, async (id) => {
+    unbindVirtualBook(id);
+  });
   expect(getVirtualBookBinding("book")).toBeNull();
   bindVirtualBook("book", binding);
   const replacement = { ...binding, key: "new" };
-  await expect(removeOwnedVirtualBook(binding, async id => { bindVirtualBook(id, replacement); })).rejects.toMatchObject({ code: "plugin/unavailable" });
+  await expect(
+    removeOwnedVirtualBook(binding, async (id) => {
+      bindVirtualBook(id, replacement);
+    }),
+  ).rejects.toMatchObject({ code: "plugin/unavailable" });
   expect(getVirtualBookBinding("book")).toEqual(replacement);
 });
 
@@ -92,19 +147,44 @@ test("corrupt registry is a failed read, never a successful no-op deletion or ov
   for (const raw of ["{", "[]", "null", '{"book":null}', '{"book":{"pluginId":"p"}}']) {
     values.set(registryKey, raw);
     let removed = false;
-    await expect(removeOwnedVirtualBook(binding, async () => { removed = true; })).rejects.toMatchObject({ code: "db/error" });
+    await expect(
+      removeOwnedVirtualBook(binding, async () => {
+        removed = true;
+      }),
+    ).rejects.toMatchObject({ code: "db/error" });
     expect(removed).toBe(false);
     expect(() => bindVirtualBook("new", binding)).toThrow();
     expect(values.get(registryKey)).toBe(raw);
   }
 });
 
-
 test("an expected book guard refuses a replacement binding before deleting and allows already-unbound recovery", async () => {
   bindVirtualBook("replacement", binding);
   let removed = false;
-  await expect(removeOwnedVirtualBook(binding, async () => { removed = true; }, "old-book")).rejects.toMatchObject({ code: "reader/superseded" });
-  expect(removed).toBe(false); expect(getVirtualBookBinding("replacement")).toEqual(binding);
-  await removeOwnedVirtualBook(binding, async () => { removed = true; }, "replacement"); expect(removed).toBe(true);
-  await removeOwnedVirtualBook(binding, async () => { throw Error("must not repeat deletion"); }, "replacement");
+  await expect(
+    removeOwnedVirtualBook(
+      binding,
+      async () => {
+        removed = true;
+      },
+      "old-book",
+    ),
+  ).rejects.toMatchObject({ code: "reader/superseded" });
+  expect(removed).toBe(false);
+  expect(getVirtualBookBinding("replacement")).toEqual(binding);
+  await removeOwnedVirtualBook(
+    binding,
+    async () => {
+      removed = true;
+    },
+    "replacement",
+  );
+  expect(removed).toBe(true);
+  await removeOwnedVirtualBook(
+    binding,
+    async () => {
+      throw Error("must not repeat deletion");
+    },
+    "replacement",
+  );
 });

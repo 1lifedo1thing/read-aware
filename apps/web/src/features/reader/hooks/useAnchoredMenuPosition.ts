@@ -41,10 +41,7 @@ export function useAnchoredMenuPosition(anchorRect: SelectionOverlayRect | null 
     const top =
       preferredTop >= EDGE_PADDING
         ? preferredTop
-        : Math.min(
-            fallbackTop,
-            Math.max(EDGE_PADDING, containerHeight - menuHeight - EDGE_PADDING),
-          );
+        : Math.min(fallbackTop, Math.max(EDGE_PADDING, containerHeight - menuHeight - EDGE_PADDING));
 
     setPosition({ left, top });
   }, [anchorRect]);

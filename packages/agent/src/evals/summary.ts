@@ -1,12 +1,5 @@
 import { summarizeQuality, type HumanReview } from "./reviews";
-import type {
-  EvalAggregate,
-  EvalComparison,
-  EvalRunRecord,
-  EvalSummary,
-  EvalTelemetry,
-  EvalTokenUsage,
-} from "./types";
+import type { EvalAggregate, EvalComparison, EvalRunRecord, EvalSummary, EvalTelemetry, EvalTokenUsage } from "./types";
 
 type NumericTelemetryKey = Exclude<keyof EvalTelemetry, "tokens">;
 
@@ -25,12 +18,9 @@ function meanField(records: EvalRunRecord[], key: NumericTelemetryKey): number |
 }
 
 function meanTokens(records: EvalRunRecord[]): EvalTokenUsage | undefined {
-  const values = records.flatMap((record) =>
-    record.telemetry.tokens ? [record.telemetry.tokens] : [],
-  );
+  const values = records.flatMap((record) => (record.telemetry.tokens ? [record.telemetry.tokens] : []));
   if (values.length === 0) return undefined;
-  const field = (key: keyof EvalTokenUsage) =>
-    values.reduce((total, value) => total + value[key], 0) / values.length;
+  const field = (key: keyof EvalTokenUsage) => values.reduce((total, value) => total + value[key], 0) / values.length;
   return {
     input: field("input"),
     output: field("output"),
@@ -44,15 +34,9 @@ function score(record: EvalRunRecord): number {
   return record.status === "error" ? 0 : (record.assessment?.score ?? 0);
 }
 
-function aggregate(
-  records: EvalRunRecord[],
-  variantId: string,
-  scenarioId?: string,
-): EvalAggregate {
+function aggregate(records: EvalRunRecord[], variantId: string, scenarioId?: string): EvalAggregate {
   const selected = records.filter(
-    (record) =>
-      record.variantId === variantId &&
-      (scenarioId === undefined || record.scenarioId === scenarioId),
+    (record) => record.variantId === variantId && (scenarioId === undefined || record.scenarioId === scenarioId),
   );
   const passed = selected.filter((record) => record.status === "passed").length;
   const failed = selected.filter((record) => record.status === "failed").length;
@@ -66,9 +50,7 @@ function aggregate(
     errors,
     passRate: selected.length === 0 ? 0 : passed / selected.length,
     meanScore:
-      selected.length === 0
-        ? 0
-        : selected.reduce((total, record) => total + score(record), 0) / selected.length,
+      selected.length === 0 ? 0 : selected.reduce((total, record) => total + score(record), 0) / selected.length,
     telemetry: {
       meanWallTimeMs: meanField(selected, "wallTimeMs"),
       meanModelTimeMs: meanField(selected, "modelTimeMs"),
@@ -80,10 +62,7 @@ function aggregate(
   };
 }
 
-function subtractOptional(
-  candidate: number | undefined,
-  baseline: number | undefined,
-): number | undefined {
+function subtractOptional(candidate: number | undefined, baseline: number | undefined): number | undefined {
   return candidate === undefined || baseline === undefined ? undefined : candidate - baseline;
 }
 
@@ -94,38 +73,21 @@ function pairedMean(
   const deltas = pairs.flatMap(([baseline, candidate]) => {
     const baselineValue = read(baseline);
     const candidateValue = read(candidate);
-    return baselineValue === undefined || candidateValue === undefined
-      ? []
-      : [candidateValue - baselineValue];
+    return baselineValue === undefined || candidateValue === undefined ? [] : [candidateValue - baselineValue];
   });
   return mean(deltas);
 }
 
-function pairedTokens(
-  pairs: Array<[EvalRunRecord, EvalRunRecord]>,
-): EvalTokenUsage | undefined {
-  const keys: Array<keyof EvalTokenUsage> = [
-    "input",
-    "output",
-    "cacheRead",
-    "cacheWrite",
-    "total",
-  ];
+function pairedTokens(pairs: Array<[EvalRunRecord, EvalRunRecord]>): EvalTokenUsage | undefined {
+  const keys: Array<keyof EvalTokenUsage> = ["input", "output", "cacheRead", "cacheWrite", "total"];
   const values = Object.fromEntries(
-    keys.map((key) => [
-      key,
-      pairedMean(pairs, (record) => record.telemetry.tokens?.[key]),
-    ]),
+    keys.map((key) => [key, pairedMean(pairs, (record) => record.telemetry.tokens?.[key])]),
   ) as Record<keyof EvalTokenUsage, number | undefined>;
   if (keys.some((key) => values[key] === undefined)) return undefined;
   return values as EvalTokenUsage;
 }
 
-function compare(
-  records: EvalRunRecord[],
-  baselineVariantId: string,
-  candidateVariantId: string,
-): EvalComparison {
+function compare(records: EvalRunRecord[], baselineVariantId: string, candidateVariantId: string): EvalComparison {
   const baseline = new Map(
     records
       .filter((record) => record.variantId === baselineVariantId)
@@ -137,12 +99,8 @@ function compare(
       const baselineRecord = baseline.get(`${candidate.scenarioId}:${candidate.repetition}`);
       return baselineRecord ? ([[baselineRecord, candidate]] as Array<[EvalRunRecord, EvalRunRecord]>) : [];
     });
-  const baselinePassRate = mean(
-    pairs.map(([record]) => (record.status === "passed" ? 1 : 0)),
-  );
-  const candidatePassRate = mean(
-    pairs.map(([, record]) => (record.status === "passed" ? 1 : 0)),
-  );
+  const baselinePassRate = mean(pairs.map(([record]) => (record.status === "passed" ? 1 : 0)));
+  const candidatePassRate = mean(pairs.map(([, record]) => (record.status === "passed" ? 1 : 0)));
 
   return {
     baselineVariantId,
@@ -182,7 +140,13 @@ export function buildEvalSummary(
   return {
     suiteId,
     quality: summarizeQuality(records, reviews),
-    qualityByVariant: variantIds.map(variantId => ({ variantId, ...summarizeQuality(records.filter(r => r.variantId === variantId), reviews) })),
+    qualityByVariant: variantIds.map((variantId) => ({
+      variantId,
+      ...summarizeQuality(
+        records.filter((r) => r.variantId === variantId),
+        reviews,
+      ),
+    })),
     ...(suiteDisplayName ? { suiteDisplayName } : {}),
     ...(definitionHash ? { definitionHash } : {}),
     baselineVariantId,
@@ -195,18 +159,16 @@ export function buildEvalSummary(
     byScenario: variantIds.flatMap((variantId) =>
       scenarioIds.map((scenarioId) => aggregate(records, variantId, scenarioId)),
     ),
-    byTag: [...scenariosByTag.keys()]
-      .sort()
-      .flatMap((tag) =>
-        variantIds.flatMap((variantId) => {
-          const members = new Set(scenariosByTag.get(tag));
-          const entry = aggregate(
-            records.filter((record) => members.has(record.scenarioId)),
-            variantId,
-          );
-          return entry.runs === 0 ? [] : [{ ...entry, tag }];
-        }),
-      ),
+    byTag: [...scenariosByTag.keys()].sort().flatMap((tag) =>
+      variantIds.flatMap((variantId) => {
+        const members = new Set(scenariosByTag.get(tag));
+        const entry = aggregate(
+          records.filter((record) => members.has(record.scenarioId)),
+          variantId,
+        );
+        return entry.runs === 0 ? [] : [{ ...entry, tag }];
+      }),
+    ),
     comparisons: variantIds
       .slice(1)
       .map((candidateVariantId) => compare(records, baselineVariantId, candidateVariantId)),

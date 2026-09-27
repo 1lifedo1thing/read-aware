@@ -11,11 +11,7 @@
  *  - `commitBlob` refuses to write the descriptor while any part is missing,
  *    so a torn upload can never look complete.
  */
-import type {
-  PluginSyncBatchListing,
-  PluginSyncTransportSession,
-  SealedEventWire,
-} from "@read-aware/plugin-types";
+import type { PluginSyncBatchListing, PluginSyncTransportSession, SealedEventWire } from "@read-aware/plugin-types";
 import type { WebdavClient } from "./client";
 import {
   batchFile,
@@ -122,9 +118,7 @@ export function createWebdavTransportSession(options: {
       if (outcome === "exists") {
         // Stale bookkeeping (a lost ack): fail the push; the caller re-reads
         // the listing and lands on the next free index.
-        throw new Error(
-          `webdav: batch ${index} already exists for device ${deviceId} — stale push index`,
-        );
+        throw new Error(`webdav: batch ${index} already exists for device ${deviceId} — stale push index`);
       }
     },
 

@@ -111,13 +111,7 @@ export function CodeBlock({ code, language }: { code: string; language: string }
           label={copyLabel}
           title={copyLabel}
           onClick={() => void copyCode()}
-          icon={
-            copied ? (
-              <Check aria-hidden="true" size={15} />
-            ) : (
-              <Copy aria-hidden="true" size={15} />
-            )
-          }
+          icon={copied ? <Check aria-hidden="true" size={15} /> : <Copy aria-hidden="true" size={15} />}
           className="text-fg-subtle hover:text-fg"
         />
       </figcaption>

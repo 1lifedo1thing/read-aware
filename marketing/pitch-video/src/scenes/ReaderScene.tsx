@@ -146,14 +146,34 @@ export function ReaderScene() {
 }
 
 /** Keeps a caption on screen for a window, fading it out at the end. */
-function CaptionWindow({ from, to, frame, children }: { from: number; to: number; frame: number; children: ReactNode }) {
+function CaptionWindow({
+  from,
+  to,
+  frame,
+  children,
+}: {
+  from: number;
+  to: number;
+  frame: number;
+  children: ReactNode;
+}) {
   if (frame < from - 20 || frame > to) return null;
   return <AbsoluteFill style={{ opacity: 1 - progress(frame, to - 8, 8) }}>{children}</AbsoluteFill>;
 }
 
 // ------------------------------------------------------------------ page --
 
-function Page({ frame, focus, sentenceMode, context }: { frame: number; focus: number; sentenceMode: number; context: number }) {
+function Page({
+  frame,
+  focus,
+  sentenceMode,
+  context,
+}: {
+  frame: number;
+  focus: number;
+  sentenceMode: number;
+  context: number;
+}) {
   return (
     <div
       style={{
@@ -165,7 +185,16 @@ function Page({ frame, focus, sentenceMode, context }: { frame: number; focus: n
         color: color.pageText,
       }}
     >
-      <div style={{ textAlign: "center", fontSize: 28, lineHeight: "40px", color: color.stone500, marginBottom: 36, opacity: context }}>
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 28,
+          lineHeight: "40px",
+          color: color.stone500,
+          marginBottom: 36,
+          opacity: context,
+        }}
+      >
         Chapter I.
       </div>
       <div style={{ fontSize: 21, lineHeight: 1.85, textAlign: "justify" }}>
@@ -173,7 +202,10 @@ function Page({ frame, focus, sentenceMode, context }: { frame: number; focus: n
           const lit = Math.max(0, 1 - Math.abs(i - focus));
           const ink = interpolateColors(mix(1, lit, sentenceMode), [0, 1], [color.pageMuted, color.pageText]);
           return (
-            <p key={i} style={{ margin: "0 0 20px", textIndent: i === 0 ? 0 : "1.2em", opacity: i === 0 ? 1 : context }}>
+            <p
+              key={i}
+              style={{ margin: "0 0 20px", textIndent: i === 0 ? 0 : "1.2em", opacity: i === 0 ? 1 : context }}
+            >
               <span
                 style={{
                   color: ink,
@@ -298,7 +330,9 @@ function ChatPanel({ frame, reveal }: { frame: number; reveal: number }) {
         flexDirection: "column",
       }}
     >
-      <div style={{ flex: 1, padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
+      <div
+        style={{ flex: 1, padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}
+      >
         {sent && (
           <>
             <UserTurn passage={PHRASE} text={QUESTION} style={arrive(progress(frame, SEND, 10), 10, 3)} />
@@ -329,7 +363,11 @@ function ChatPanel({ frame, reveal }: { frame: number; reveal: number }) {
         placeholder="Ask about this book…"
         value={sent ? "" : typed(QUESTION, frame, TYPE.from, TYPE.rate)}
         caret={!sent && frame >= TYPE.from}
-        chip={!sent && frame >= CHIP_IN ? <AttachmentChip text={PHRASE} style={arrive(progress(frame, CHIP_IN, 8), 6, 2)} /> : undefined}
+        chip={
+          !sent && frame >= CHIP_IN ? (
+            <AttachmentChip text={PHRASE} style={arrive(progress(frame, CHIP_IN, 8), 6, 2)} />
+          ) : undefined
+        }
       />
     </div>
   );

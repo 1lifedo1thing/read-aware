@@ -1,5 +1,4 @@
-export const headingText = (text: string) =>
-  text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[`*_]/g, "");
+export const headingText = (text: string) => text.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[`*_]/g, "");
 export const headingId = (text: string) =>
   headingText(text)
     .trim()
@@ -16,8 +15,6 @@ export function docHeadings(body: string) {
       return [];
     }
     const match = !fenced && /^(##)\s+(.+)$/.exec(line);
-    return match
-      ? [{ title: headingText(match[2]), id: headingId(match[2]) }]
-      : [];
+    return match ? [{ title: headingText(match[2]), id: headingId(match[2]) }] : [];
   });
 }

@@ -147,12 +147,14 @@ export async function pickBookFilesNative(t: TFunction<"shelf">): Promise<BookIm
   if (isAndroid()) {
     const picks = await pickBooksAndroid();
     if (picks == null) return [];
-    return Promise.all(picks.map(async (pick) => ({
-      kind: "native-path" as const,
-      path: pick.uri,
-      name: pick.name || fileNameFromPath(pick.uri),
-      size: pick.size ?? (await invoke<number>("book_file_size", { path: pick.uri })),
-    })));
+    return Promise.all(
+      picks.map(async (pick) => ({
+        kind: "native-path" as const,
+        path: pick.uri,
+        name: pick.name || fileNameFromPath(pick.uri),
+        size: pick.size ?? (await invoke<number>("book_file_size", { path: pick.uri })),
+      })),
+    );
   }
 
   const selection = await open({
@@ -162,10 +164,12 @@ export async function pickBookFilesNative(t: TFunction<"shelf">): Promise<BookIm
   });
   if (selection == null) return [];
   const paths = Array.isArray(selection) ? selection : [selection];
-  return Promise.all(paths.map(async (path) => ({
-    kind: "native-path" as const,
-    path,
-    name: fileNameFromPath(path),
-    size: await invoke<number>("book_file_size", { path }),
-  })));
+  return Promise.all(
+    paths.map(async (path) => ({
+      kind: "native-path" as const,
+      path,
+      name: fileNameFromPath(path),
+      size: await invoke<number>("book_file_size", { path }),
+    })),
+  );
 }

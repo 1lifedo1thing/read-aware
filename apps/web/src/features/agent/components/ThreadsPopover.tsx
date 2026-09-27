@@ -11,11 +11,7 @@ import { useToast } from "@read-aware/ui";
 import { describeError, useTranslation } from "../../../i18n";
 import { conversationCommands } from "../../../domain/conversation-control";
 import { createLogger } from "../../../platform/logger";
-import {
-  listGlobalThreads,
-  newGlobalThreadId,
-  type ConversationSummary,
-} from "../../ai/lib/conversation-store";
+import { listGlobalThreads, newGlobalThreadId, type ConversationSummary } from "../../ai/lib/conversation-store";
 import { activeGlobalThreadAtom } from "../../ai/state/global-thread";
 import { ThreadsPopoverView } from "./ThreadsPopoverView";
 
@@ -47,11 +43,13 @@ export function ThreadsPopover() {
       threads={threads}
       activeThreadId={activeThreadId}
       onSelect={setActiveThreadId}
-      onDelete={(threadId) => void remove(threadId).catch(error => {
-        createLogger("threads").warn("Could not clear conversation", error);
-        const description = describeError(error);
-        toast({ variant: "destructive", title: t("agent.threads.delete"), description: description.body });
-      })}
+      onDelete={(threadId) =>
+        void remove(threadId).catch((error) => {
+          createLogger("threads").warn("Could not clear conversation", error);
+          const description = describeError(error);
+          toast({ variant: "destructive", title: t("agent.threads.delete"), description: description.body });
+        })
+      }
     />
   );
 }

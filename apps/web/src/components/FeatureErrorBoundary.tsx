@@ -94,11 +94,7 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
   }
 }
 
-export function FeatureErrorBoundary(props: {
-  surface: string;
-  resetKey?: unknown;
-  children: ReactNode;
-}) {
+export function FeatureErrorBoundary(props: { surface: string; resetKey?: unknown; children: ReactNode }) {
   const { t } = useTranslation("common");
   return (
     <Boundary

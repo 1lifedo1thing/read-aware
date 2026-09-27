@@ -1,7 +1,17 @@
-import type { PluginToast, PluginView, PluginViewCloseReason, PluginViewContent, PluginViewResult } from "./plugin-types";
+import type {
+  PluginToast,
+  PluginView,
+  PluginViewCloseReason,
+  PluginViewContent,
+  PluginViewResult,
+} from "./plugin-types";
 import type { PluginResultOptions } from "../components/plugin-view-types";
 import { navigatePluginViewStack, normalizePluginView, PluginViewError } from "./plugin-view";
-import { observePluginCallbackOwners, releasePluginCallbacks, retainPluginCallbacks } from "../runtime/plugin-callback-wire";
+import {
+  observePluginCallbackOwners,
+  releasePluginCallbacks,
+  retainPluginCallbacks,
+} from "../runtime/plugin-callback-wire";
 import { createLogger } from "../../../platform/logger";
 import { normalizePluginToast, showPluginFailureToast, showPluginToast } from "./plugin-toast";
 import { PluginLiveView } from "./plugin-live-view";
@@ -10,12 +20,24 @@ import { ownPluginViewClose } from "./plugin-view-close";
 
 const log = createLogger("plugin-views");
 type OwnedView = { view: PluginView; renderKey: number; dispose: () => void };
-type Frame = OwnedView & { notifyClosed(reason: PluginViewCloseReason): void; forms: PluginFormDrafts; rendered?: () => void; live?: PluginLiveView; liveError?: unknown;
+type Frame = OwnedView & {
+  notifyClosed(reason: PluginViewCloseReason): void;
+  forms: PluginFormDrafts;
+  rendered?: () => void;
+  live?: PluginLiveView;
+  liveError?: unknown;
   /** Replace this frame's content in place, keeping its identity and drafts. */
   swap(next: PluginViewContent): void;
   /** Plugin-computed list search: the text last answered and the latest request. */
-  searchQuery: string; searchRequest: number };
-type Effects = { close?: () => void; refresh?: () => void; toast?: (message: PluginToast) => void; failure?: (error: unknown) => void };
+  searchQuery: string;
+  searchRequest: number;
+};
+type Effects = {
+  close?: () => void;
+  refresh?: () => void;
+  toast?: (message: PluginToast) => void;
+  failure?: (error: unknown) => void;
+};
 export type PluginViewSnapshot = {
   stack: readonly PluginView[];
   /** Explicit navigation replaces UI state, unlike a refresh of root data. */
@@ -36,10 +58,23 @@ function ownView(raw: PluginView, onRetired: () => void, renderKey: number): Own
     const view = normalizePluginView(raw);
     const unwatch = observePluginCallbackOwners(raw, onRetired);
     let releaseView: () => void;
-    try { releaseView = retainPluginCallbacks(view); }
-    catch (error) { unwatch(); throw error; }
-    return { view, renderKey, dispose: () => { unwatch(); releaseView(); } };
-  } finally { releaseRaw(); }
+    try {
+      releaseView = retainPluginCallbacks(view);
+    } catch (error) {
+      unwatch();
+      throw error;
+    }
+    return {
+      view,
+      renderKey,
+      dispose: () => {
+        unwatch();
+        releaseView();
+      },
+    };
+  } finally {
+    releaseRaw();
+  }
 }
 
 /** Resource ownership and async navigation are independent of React rendering. */
@@ -53,12 +88,29 @@ export class PluginViewSession {
   private inlineRequest = 0;
   private readonly foreground = new Set<number>();
   private readonly listeners = new Set<() => void>();
-  private snapshot: PluginViewSnapshot = { stack: [], renderKey: null, forms: null, busy: false, error: false, liveError: null, searchQuery: "", dialog: null };
+  private snapshot: PluginViewSnapshot = {
+    stack: [],
+    renderKey: null,
+    forms: null,
+    busy: false,
+    error: false,
+    liveError: null,
+    searchQuery: "",
+    dialog: null,
+  };
 
-  constructor(private effects: Effects = {}, private readonly parent?: PluginViewSession) {}
-  configure(effects: Effects): void { this.effects = effects; }
+  constructor(
+    private effects: Effects = {},
+    private readonly parent?: PluginViewSession,
+  ) {}
+  configure(effects: Effects): void {
+    this.effects = effects;
+  }
   getSnapshot = (): PluginViewSnapshot => this.snapshot;
-  subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
 
   private publish(patch: Partial<PluginViewSnapshot> = {}): void {
     const dialog = patch.dialog === undefined ? this.snapshot.dialog : patch.dialog;
@@ -67,24 +119,36 @@ export class PluginViewSession {
       frame.live?.setVisible(visible);
       if (!visible) frame.forms.hide();
     }
-    this.snapshot = { ...this.snapshot, stack: this.frames.map(frame => frame.view), renderKey: this.frames.at(-1)?.renderKey ?? null,
+    this.snapshot = {
+      ...this.snapshot,
+      stack: this.frames.map((frame) => frame.view),
+      renderKey: this.frames.at(-1)?.renderKey ?? null,
       forms: this.frames.at(-1)?.forms ?? null,
-      busy: this.foreground.size > 0, liveError: this.frames.at(-1)?.liveError ?? null, searchQuery: this.frames.at(-1)?.searchQuery ?? "", ...patch };
+      busy: this.foreground.size > 0,
+      liveError: this.frames.at(-1)?.liveError ?? null,
+      searchQuery: this.frames.at(-1)?.searchQuery ?? "",
+      ...patch,
+    };
     for (const listener of [...this.listeners]) listener();
   }
 
   private release(dispose: () => void): void {
-    try { dispose(); } catch (error) { log.warn("View callback cleanup failed", error); }
+    try {
+      dispose();
+    } catch (error) {
+      log.warn("View callback cleanup failed", error);
+    }
   }
 
   private replaceFrames(next: Frame[], reason: PluginViewCloseReason): void {
     const previous = this.frames;
     this.frames = next;
-    for (const frame of previous) if (!next.includes(frame)) {
-      this.release(() => frame.notifyClosed(reason));
-      this.release(frame.dispose);
-      if (!next.some(candidate => candidate.forms === frame.forms)) frame.forms.dispose();
-    }
+    for (const frame of previous)
+      if (!next.includes(frame)) {
+        this.release(() => frame.notifyClosed(reason));
+        this.release(frame.dispose);
+        if (!next.some((candidate) => candidate.forms === frame.forms)) frame.forms.dispose();
+      }
   }
 
   private ownFrame(raw: PluginView, renderKey: number, forms?: PluginFormDrafts): Frame {
@@ -93,29 +157,48 @@ export class PluginViewSession {
     let painted: OwnedView | undefined;
     const swap = (next: PluginViewContent) => {
       const replacement = ownView(next, this.close, renderKey);
-      const previous = current; current = replacement; frame.view = replacement.view;
+      const previous = current;
+      current = replacement;
+      frame.view = replacement.view;
       frame.forms.reconcile(replacement.view);
       // Keep only the visible callbacks plus the latest unpainted snapshot.
       // A button in the old React commit must not lose its handle mid-click.
       if (previous !== painted) this.release(previous.dispose);
       this.publish();
     };
-    const frame: Frame = { ...current, notifyClosed: closed.notify, forms: forms ?? new PluginFormDrafts(current.view), swap, searchQuery: "", searchRequest: 0,
+    const frame: Frame = {
+      ...current,
+      notifyClosed: closed.notify,
+      forms: forms ?? new PluginFormDrafts(current.view),
+      swap,
+      searchQuery: "",
+      searchRequest: 0,
       rendered: () => {
-        const prior = painted; painted = current;
+        const prior = painted;
+        painted = current;
         if (prior && prior !== current) this.release(prior.dispose);
       },
       dispose: () => {
         closed.dispose();
-        frame.live?.dispose(); current.dispose();
+        frame.live?.dispose();
+        current.dispose();
         if (painted && painted !== current) painted.dispose();
       },
     };
     try {
       if (forms) forms.reconcile(current.view);
-      if (current.view.live) frame.live = new PluginLiveView(current.view.live, swap, error => { frame.liveError = error; this.publish(); });
+      if (current.view.live)
+        frame.live = new PluginLiveView(current.view.live, swap, (error) => {
+          frame.liveError = error;
+          this.publish();
+        });
       return frame;
-    } catch (error) { closed.dispose(); current.dispose(); if (!forms) frame.forms.dispose(); throw error; }
+    } catch (error) {
+      closed.dispose();
+      current.dispose();
+      if (!forms) frame.forms.dispose();
+      throw error;
+    }
   }
 
   acknowledgeRender = (view: PluginView | null): void => {
@@ -126,7 +209,9 @@ export class PluginViewSession {
   retryLive = (): void => {
     const frame = this.frames.at(-1);
     if (!this.active || !frame?.live) return;
-    frame.liveError = null; frame.live.retry(); this.publish();
+    frame.liveError = null;
+    frame.live.retry();
+    this.publish();
   };
 
   setRoot(view: PluginView | null): void {
@@ -142,8 +227,7 @@ export class PluginViewSession {
       // view below always receives a new key, even at the same stack depth.
       const previous = this.frames.length === 1 ? this.frames[0] : undefined;
       if (view) frame = this.ownFrame(view, previous?.renderKey ?? ++this.nextFrameKey, previous?.forms);
-    }
-    catch (failure) {
+    } catch (failure) {
       error = true;
       log.error("Plugin root view failed validation", failure);
       this.release(() => releasePluginCallbacks(view));
@@ -152,7 +236,10 @@ export class PluginViewSession {
     this.publish({ error });
   }
 
-  resume(): void { this.active = true; this.publish(); }
+  resume(): void {
+    this.active = true;
+    this.publish();
+  }
   suspend(): number {
     this.active = false;
     for (const frame of this.frames) frame.live?.setVisible(false);
@@ -169,7 +256,10 @@ export class PluginViewSession {
     this.replaceFrames([], reason);
     this.publish();
   }
-  close = (): void => { this.dispose("closed"); this.effects.close?.(); };
+  close = (): void => {
+    this.dispose("closed");
+    this.effects.close?.();
+  };
   private dismissAll(): void {
     if (!this.active) return;
     if (!this.parent) this.close();
@@ -194,8 +284,13 @@ export class PluginViewSession {
   };
 
   /** An unmount flush or stale UI event must never execute as the next page. */
-  runFrom = (renderKey: number | null, run: () => PluginViewResult | Promise<PluginViewResult>, options?: PluginResultOptions): Promise<PluginViewResult> => {
-    if (renderKey === null || this.frames.at(-1)?.renderKey !== renderKey || this.snapshot.dialog) return Promise.resolve(null);
+  runFrom = (
+    renderKey: number | null,
+    run: () => PluginViewResult | Promise<PluginViewResult>,
+    options?: PluginResultOptions,
+  ): Promise<PluginViewResult> => {
+    if (renderKey === null || this.frames.at(-1)?.renderKey !== renderKey || this.snapshot.dialog)
+      return Promise.resolve(null);
     return this.run(run, options);
   };
 
@@ -205,22 +300,34 @@ export class PluginViewSession {
    * its text, focus and caret and no busy overlay covers the typing. Only the
    * latest request may answer; a stale or null answer changes nothing.
    */
-  refine = async (renderKey: number | null, query: string, run: () => PluginViewResult | Promise<PluginViewResult>): Promise<void> => {
+  refine = async (
+    renderKey: number | null,
+    query: string,
+    run: () => PluginViewResult | Promise<PluginViewResult>,
+  ): Promise<void> => {
     const frame = this.frames.at(-1);
     if (renderKey === null || !this.active || !frame || frame.renderKey !== renderKey || this.snapshot.dialog) return;
     frame.searchQuery = query;
     this.publish();
-    const epoch = this.epoch, request = ++frame.searchRequest;
-    const current = () => this.active && epoch === this.epoch && frame === this.frames.at(-1) && request === frame.searchRequest;
+    const epoch = this.epoch,
+      request = ++frame.searchRequest;
+    const current = () =>
+      this.active && epoch === this.epoch && frame === this.frames.at(-1) && request === frame.searchRequest;
     let releaseResult = () => {};
     try {
       const result = await run();
       releaseResult = retainPluginCallbacks(result);
       if (!current() || result == null) return;
-      if (typeof result !== "object" || Array.isArray(result) || !result.view || Object.keys(result).some(key => key !== "view")) {
+      if (
+        typeof result !== "object" ||
+        Array.isArray(result) ||
+        !result.view ||
+        Object.keys(result).some((key) => key !== "view")
+      ) {
         throw new PluginViewError("A search answer must contain only a view");
       }
-      if ("live" in result.view || "onClose" in result.view) throw new PluginViewError("A search answer must contain only view content");
+      if ("live" in result.view || "onClose" in result.view)
+        throw new PluginViewError("A search answer must contain only view content");
       frame.swap(result.view);
     } catch (error) {
       log.error("Plugin list search failed", error);
@@ -233,7 +340,10 @@ export class PluginViewSession {
     }
   };
 
-  run = async (run: () => PluginViewResult | Promise<PluginViewResult>, options?: PluginResultOptions): Promise<PluginViewResult> => {
+  run = async (
+    run: () => PluginViewResult | Promise<PluginViewResult>,
+    options?: PluginResultOptions,
+  ): Promise<PluginViewResult> => {
     if (!this.active || !this.frames.length) return null;
     const source = this.frames.at(-1);
     const epoch = this.epoch;
@@ -241,21 +351,30 @@ export class PluginViewSession {
     const dialog = options?.presentation === "dialog";
     if (dialog) {
       this.closeDialog(false, "replaced");
-      this.publish({ dialog: { requestId: request, title: options?.dialogTitle ?? "", session: new PluginViewSession({}, this) } });
+      this.publish({
+        dialog: { requestId: request, title: options?.dialogTitle ?? "", session: new PluginViewSession({}, this) },
+      });
     } else {
       this.inlineRequest = request;
       if (!options?.background) this.foreground.add(request);
       this.publish();
     }
-    const current = () => this.active && epoch === this.epoch && source === this.frames.at(-1)
-      && (dialog ? this.snapshot.dialog?.requestId === request : this.inlineRequest === request);
+    const current = () =>
+      this.active &&
+      epoch === this.epoch &&
+      source === this.frames.at(-1) &&
+      (dialog ? this.snapshot.dialog?.requestId === request : this.inlineRequest === request);
     let releaseResult = () => {};
     try {
       const result = await run();
       releaseResult = retainPluginCallbacks(result);
       if (!current()) return null;
-      if (result == null) { if (dialog) this.closeDialog(); return result; }
-      if (typeof result !== "object" || Array.isArray(result)) throw new PluginViewError("Plugin action result must be an object");
+      if (result == null) {
+        if (dialog) this.closeDialog();
+        return result;
+      }
+      if (typeof result !== "object" || Array.isArray(result))
+        throw new PluginViewError("Plugin action result must be an object");
       if (result.close !== undefined && result.close !== false && result.close !== true && result.close !== "all") {
         throw new PluginViewError("Plugin close must be a boolean or all");
       }
@@ -268,17 +387,30 @@ export class PluginViewSession {
           const frame = this.ownFrame(result.view, ++this.nextFrameKey);
           try {
             const navigation = result.navigation === undefined ? options?.navigation : result.navigation;
-            const next = navigatePluginViewStack(this.frames.map(item => item.view), frame.view, navigation);
-            const existing = new Map(this.frames.map(item => [item.view, item]));
-            this.replaceFrames(next.map(view => view === frame.view ? frame : existing.get(view)!), result.navigation === "reset" ? "reset" : "replaced");
-          } catch (error) { this.release(frame.dispose); frame.forms.dispose(); throw error; }
+            const next = navigatePluginViewStack(
+              this.frames.map((item) => item.view),
+              frame.view,
+              navigation,
+            );
+            const existing = new Map(this.frames.map((item) => [item.view, item]));
+            this.replaceFrames(
+              next.map((view) => (view === frame.view ? frame : existing.get(view)!)),
+              result.navigation === "reset" ? "reset" : "replaced",
+            );
+          } catch (error) {
+            this.release(frame.dispose);
+            frame.forms.dispose();
+            throw error;
+          }
           this.closeDialog();
           this.publish();
         }
       } else if (result.navigation) throw new PluginViewError("Plugin navigation requires a view");
       else if (result.close === "all") this.dismissAll();
-      else if (result.close) { if (dialog) this.closeDialog(true); else this.close(); }
-      else if (dialog) this.closeDialog();
+      else if (result.close) {
+        if (dialog) this.closeDialog(true);
+        else this.close();
+      } else if (dialog) this.closeDialog();
       if (result.toast !== undefined) (this.effects.toast ?? showPluginToast)(result.toast);
       return result;
     } catch (error) {

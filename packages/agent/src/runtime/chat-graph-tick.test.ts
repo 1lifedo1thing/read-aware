@@ -7,10 +7,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { messageText } from "../testing/message-text";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
-import {
-  fauxAssistantMessage,
-  type FauxProviderRegistration,
-} from "@earendil-works/pi-ai/providers/faux";
+import { fauxAssistantMessage, type FauxProviderRegistration } from "@earendil-works/pi-ai/providers/faux";
 import type { Id } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import { createInMemoryDeps } from "../testing/fixtures";
@@ -42,9 +39,7 @@ describe("chat-driven graph catch-up", () => {
       if (system.includes("Digest ONE chapter")) {
         const match = messageText(context.messages[0]).match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         log.push(`digest:${match?.[1]}`);
-        return fauxAssistantMessage(
-          '{"summary": "本章要点。", "concepts": [{"name": "概念"}], "relations": []}',
-        );
+        return fauxAssistantMessage('{"summary": "本章要点。", "concepts": [{"name": "概念"}], "relations": []}');
       }
       log.push("other");
       return fauxAssistantMessage('{"new": [], "reinforced": []}');
@@ -53,11 +48,7 @@ describe("chat-driven graph catch-up", () => {
 
   test("each book-thread turn digests a budgeted batch until the backlog clears", async () => {
     const model = makeFaux();
-    faux.setResponses([
-      fauxAssistantMessage("答一"),
-      fauxAssistantMessage("答二"),
-      fauxAssistantMessage("答三"),
-    ]);
+    faux.setResponses([fauxAssistantMessage("答一"), fauxAssistantMessage("答二"), fauxAssistantMessage("答三")]);
     const log: string[] = [];
     const { deps, stores } = createInMemoryDeps({
       // 未分类的存量书：读到第 4 章（index 3），纪要欠账 3 章（0/1/2）。
@@ -97,11 +88,7 @@ describe("chat-driven graph catch-up", () => {
     await drain("第二条消息。");
     // 第二轮：分类已落库不再跑；补最后一章，账清
     expect(log.filter((entry) => entry === "classify")).toHaveLength(1);
-    expect(log.filter((entry) => entry.startsWith("digest:"))).toEqual([
-      "digest:0",
-      "digest:1",
-      "digest:2",
-    ]);
+    expect(log.filter((entry) => entry.startsWith("digest:"))).toEqual(["digest:0", "digest:1", "digest:2"]);
     const digests = stores.chapterDigests.get("b1") ?? [];
     expect(digests.map((digest) => digest.chapterIndex).sort((a, b) => a - b)).toEqual([0, 1, 2]);
     expect(digests.every((digest) => digest.flavor === "expository")).toBe(true);

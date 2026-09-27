@@ -61,9 +61,7 @@ export function fromBase64(s: string): Uint8Array {
 
 /** The identity a sealed event is bound to; part of every event AAD. */
 function eventAad(id: string, hlc: HlcStamp): Uint8Array {
-  return utf8(
-    `ra-event:v${ENVELOPE_VERSION}:${id}:${hlc.wallMs}:${hlc.counter}:${hlc.deviceId}`,
-  );
+  return utf8(`ra-event:v${ENVELOPE_VERSION}:${id}:${hlc.wallMs}:${hlc.counter}:${hlc.deviceId}`);
 }
 
 /** Encrypt one event for the relay. */
@@ -90,11 +88,7 @@ export function openEvent(key: Uint8Array, sealed: SealedEvent): PlainEvent {
   if (version !== ENVELOPE_VERSION) {
     throw new Error(`sync envelope: unsupported event envelope version ${String(version)}`);
   }
-  const cipher = xchacha20poly1305(
-    key,
-    fromBase64(sealed.nonce),
-    eventAad(sealed.id, sealed.hlc),
-  );
+  const cipher = xchacha20poly1305(key, fromBase64(sealed.nonce), eventAad(sealed.id, sealed.hlc));
   const event = JSON.parse(fromUtf8(cipher.decrypt(fromBase64(sealed.ciphertext)))) as PlainEvent;
   if (
     event.id !== sealed.id ||

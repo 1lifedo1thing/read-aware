@@ -92,10 +92,7 @@ export function desktopChromeKind(): DesktopChromeKind {
  * tighter reading margins on tablets.
  */
 export function hasCoarsePointer(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia?.("(pointer: coarse)").matches === true
-  );
+  return typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true;
 }
 
 /**
@@ -122,8 +119,7 @@ export function applyPlatformAttributes(): void {
 function preventContextMenu(event: MouseEvent): void {
   const target = event.target;
   const inEditable =
-    target instanceof HTMLElement &&
-    (target.isContentEditable || target.closest("input, textarea") !== null);
+    target instanceof HTMLElement && (target.isContentEditable || target.closest("input, textarea") !== null);
   if (!inEditable) event.preventDefault();
 }
 

@@ -28,7 +28,7 @@ pub(crate) use event_plan::{
     FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest,
     RowStructureReceipt,
 };
-pub(crate) use event_plan::{RestoreRequest, RestoreReceipt};
+pub(crate) use event_plan::{RestoreReceipt, RestoreRequest};
 const MAX_FILES: usize = 100_000;
 const MAX_BYTES: u64 = 512 * 1024 * 1024 * 1024;
 const MAX_MANIFEST: u64 = 32 * 1024 * 1024;
@@ -416,4 +416,4 @@ pub(crate) fn plan_events_fixture(
     )
 }
 
-pub(crate) use event_plan::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};
+pub(crate) use event_plan::{ProgramStageQuery, ProgramStageReceipt, ProgramStageRequest};

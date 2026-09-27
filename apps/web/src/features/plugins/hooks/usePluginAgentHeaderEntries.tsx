@@ -13,16 +13,20 @@ export function usePluginAgentHeaderEntries(): HeaderActionEntry[] {
   const actions = useAtomValue(headerActionsAtom);
   const threadId = useAtomValue(activeGlobalThreadAtom);
   const input: HeaderActionInput = { thread: { kind: "global", id: threadId } };
-  return actions.filter(action => action.surface === "agent" && actionVisible(action)).map(action => ({
-    id: `plugin:${action.key}`,
-    inline: <PluginHeaderItem key={`${action.key}:${threadId}`} action={action} input={input} />,
-    overflow: {
+  return actions
+    .filter((action) => action.surface === "agent" && actionVisible(action))
+    .map((action) => ({
       id: `plugin:${action.key}`,
-      label: contributionText(action.title),
-      icon: renderPluginIcon(action.icon, 16),
-      disabled: !actionEnabled(action),
-      checked: action.state?.checked,
-      run: () => { void openHeaderActionDialog(action, input); },
-    },
-  }));
+      inline: <PluginHeaderItem key={`${action.key}:${threadId}`} action={action} input={input} />,
+      overflow: {
+        id: `plugin:${action.key}`,
+        label: contributionText(action.title),
+        icon: renderPluginIcon(action.icon, 16),
+        disabled: !actionEnabled(action),
+        checked: action.state?.checked,
+        run: () => {
+          void openHeaderActionDialog(action, input);
+        },
+      },
+    }));
 }

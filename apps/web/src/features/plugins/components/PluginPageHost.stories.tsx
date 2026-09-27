@@ -38,8 +38,7 @@ const listView: PluginView = {
 };
 
 /** Seeds one registered page action and points the host at it. */
-const registered = (action: RegisteredHeaderAction) =>
-  withAtoms(seed(headerActionsAtom, [action]));
+const registered = (action: RegisteredHeaderAction) => withAtoms(seed(headerActionsAtom, [action]));
 
 /**
  * The full-page container for a shelf action registered with
@@ -77,9 +76,7 @@ export const ListPage: Story = {
  * dropped rather than repeating itself.
  */
 export const TitleMatchesPluginName: Story = {
-  decorators: [
-    registered(pageAction("notebook", "Vocabulary", () => listView, "Vocabulary")),
-  ],
+  decorators: [registered(pageAction("notebook", "Vocabulary", () => listView, "Vocabulary"))],
 };
 
 /** A detail page built from the block vocabulary. */
@@ -114,9 +111,7 @@ export const FormPage: Story = {
 
 /** The view is still resolving: the page frame is up, the body not yet. */
 export const AwaitingView: Story = {
-  decorators: [
-    registered(pageAction("slow", "Loading page", () => new Promise<PluginView>(() => {}))),
-  ],
+  decorators: [registered(pageAction("slow", "Loading page", () => new Promise<PluginView>(() => {})))],
 };
 
 /**

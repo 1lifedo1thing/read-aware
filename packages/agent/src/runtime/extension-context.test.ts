@@ -15,24 +15,24 @@ describe("agent extension boundaries", () => {
   test("accepts only current-scope, nonduplicate memory candidates", () => {
     const candidates = normalizeExternalMemoryCandidates({
       scope: { kind: "book", bookId: "book-1" as never },
-      existing: [{
-        id: "m1",
-        scope: "user",
-        kind: "fact",
-        content: "Already known",
-        importance: 0.5,
-        evidenceCount: 1,
-        createdAt: "2026-01-01",
-        updatedAt: "2026-01-01",
-      }],
+      existing: [
+        {
+          id: "m1",
+          scope: "user",
+          kind: "fact",
+          content: "Already known",
+          importance: 0.5,
+          evidenceCount: 1,
+          createdAt: "2026-01-01",
+          updatedAt: "2026-01-01",
+        },
+      ],
       candidates: [
         { scope: "user", kind: "fact", content: "already known" },
         { scope: "global", kind: "insight", content: "wrong scope" },
         { scope: "book:book-1", kind: "insight", content: "Useful connection" },
       ],
     });
-    expect(candidates).toEqual([
-      { scope: "book:book-1", kind: "insight", content: "Useful connection" },
-    ]);
+    expect(candidates).toEqual([{ scope: "book:book-1", kind: "insight", content: "Useful connection" }]);
   });
 });
