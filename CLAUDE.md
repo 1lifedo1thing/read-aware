@@ -141,5 +141,10 @@ historical material, not current status or an automatic work queue.
 
 Use bun from the repo root. Available scripts include `bun run dev` (Tauri),
 `bun run dev:web`, `bun run dev:landing`, `bun run storybook`, `bun run test`,
-`bun run typecheck`, `bun run build`, `bun run build:desktop`, and
-`bun run check:docs`. Select relevant commands; package scripts provide focused checks.
+`bun run typecheck`, `bun run lint:deps`, `bun run build`, `bun run build:desktop`,
+and `bun run check:docs`. Select relevant commands; package scripts provide focused
+checks, such as `test:runtime` in `apps/web` for the reader suites in headless Chrome.
+`.github/workflows/ci.yml` gates PRs and `main` on typecheck, tests, `lint:deps`,
+docs, the runtime suites, and rustfmt/clippy. `lint:deps` only accepts a shrinking
+`.dependency-cruiser-known-violations.json`; after fixing violations, run
+`bun run lint:deps:baseline` in that workspace and commit the smaller file.
