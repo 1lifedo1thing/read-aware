@@ -1,4 +1,6 @@
 use super::*;
+use crate::error::CODE_EXPORT_TARGET_INVALID;
+use crate::save_targets::LocalFiles;
 use crate::storage::backup_tasks::IDLE_LIMIT;
 use std::time::Instant;
 #[test]
@@ -105,12 +107,17 @@ fn backup_export_writes_only_encrypted_output_then_retires_the_private_snapshot_
     let private = snapshot.directory().to_owned();
     lease.publish(snapshot).unwrap();
     let destination = out.path().join("backup.age");
+    let targets = SaveTargets::default();
+    targets
+        .bind_session("main", &task_id, FilePath::Path(destination.clone()))
+        .unwrap();
     write(
         &tasks,
+        &targets,
         "main",
         &task_id,
         SecretString::from("a real export task password".to_owned()),
-        &destination,
+        &LocalFiles,
         data.path(),
     )
     .unwrap();
@@ -130,13 +137,18 @@ fn backup_export_rejects_managed_destinations_and_failures_consume_ready_tasks()
     let snapshot = make_snapshot(data.path(), staging.path());
     let private = snapshot.directory().to_owned();
     lease.publish(snapshot).unwrap();
+    let targets = SaveTargets::default();
+    targets
+        .bind_session("main", &task_id, FilePath::Path(data.path().join("db")))
+        .unwrap();
     assert_eq!(
         write(
             &tasks,
+            &targets,
             "main",
             &task_id,
             SecretString::from("a real export task password".to_owned()),
-            &data.path().join("db"),
+            &LocalFiles,
             data.path()
         )
         .unwrap_err()
@@ -155,4 +167,59 @@ fn backup_export_rejects_managed_destinations_and_failures_consume_ready_tasks()
         .unwrap(),
         "PRIVATE EXPORT CONTENT"
     );
+}
+#[test]
+fn backup_export_writes_only_to_the_dialog_grant_of_its_own_window_and_task_once() {
+    let data = tempfile::tempdir().unwrap();
+    let staging = tempfile::tempdir().unwrap();
+    let out = tempfile::tempdir().unwrap();
+    let password = || SecretString::from("a real export task password".to_owned());
+    let tasks = BackupTasks::default();
+    let targets = SaveTargets::default();
+    let ready = |task_id: &str| {
+        let lease = tasks.begin("main", task_id).unwrap();
+        lease.publish(make_snapshot(data.path(), staging.path())).unwrap();
+    };
+    let destination = out.path().join("backup.age");
+    let attempt = |task_id: &str| {
+        write(&tasks, &targets, "main", task_id, password(), &LocalFiles, data.path())
+    };
+
+    // No dialog grant: nothing is written and the ready task is consumed.
+    let forged = id();
+    ready(&forged);
+    assert_eq!(attempt(&forged).unwrap_err().code, CODE_EXPORT_TARGET_INVALID);
+    assert!(tasks.is_empty());
+
+    // A grant for another window or another task does not authorize this one.
+    let task_id = id();
+    ready(&task_id);
+    targets
+        .bind_session("other", &task_id, FilePath::Path(destination.clone()))
+        .unwrap();
+    targets
+        .bind_session("main", &id(), FilePath::Path(destination.clone()))
+        .unwrap();
+    assert_eq!(attempt(&task_id).unwrap_err().code, CODE_EXPORT_TARGET_INVALID);
+    assert!(!destination.exists());
+
+    // The task's own grant writes once; the grant does not survive the write.
+    let task_id = id();
+    ready(&task_id);
+    targets
+        .bind_session("main", &task_id, FilePath::Path(destination.clone()))
+        .unwrap();
+    attempt(&task_id).unwrap();
+    assert!(std::fs::read(&destination).unwrap().starts_with(b"age-encryption.org/v1\n"));
+    assert_eq!(
+        targets.redeem_session("main", &task_id).unwrap_err().code,
+        CODE_EXPORT_TARGET_INVALID
+    );
+
+    // A failed write attempt (task gone) still spends the grant.
+    targets
+        .bind_session("main", &task_id, FilePath::Path(destination.clone()))
+        .unwrap();
+    assert!(attempt(&task_id).is_err());
+    assert!(targets.redeem_session("main", &task_id).is_err());
 }

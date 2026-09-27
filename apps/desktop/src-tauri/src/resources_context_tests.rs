@@ -1,4 +1,5 @@
 use super::*;
+use crate::save_targets::LocalFiles;
 
 fn database() -> Connection {
     let mut conn = Connection::open_in_memory().unwrap();
@@ -69,7 +70,7 @@ fn invalid_json_hash_and_stale_sources_never_seal_or_replace_output() {
     let path = dir.path().join("bundle.json");
     std::fs::write(&path, b"previous").unwrap();
     mutate(&conn, "before save");
-    assert!(with_revision(&mut conn, &current, || save(&mut entries, &info.id, &path)).is_err());
+    assert!(with_revision(&mut conn, &current, || save(&mut entries, &info.id, &LocalFiles, FilePath::Path(path.clone()))).is_err());
     assert_eq!(std::fs::read(&path).unwrap(), b"previous");
 }
 
@@ -111,7 +112,7 @@ fn second_connection_changes_are_checked_at_native_admission_and_not_only_in_js(
     let output = dir.path().join("bundle.json");
     with_revision(&mut conn, &revision, || {
         mutate(&other, "after admission");
-        save(&mut entries, &info.id, &output)
+        save(&mut entries, &info.id, &LocalFiles, FilePath::Path(output.clone()))
     }).unwrap();
     assert_eq!(std::fs::read(&output).unwrap(), artifact());
     assert!(with_revision(&mut conn, &revision, || read(&mut entries, &info.id, 0, 1)).is_err());

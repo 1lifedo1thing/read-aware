@@ -10,11 +10,15 @@ export type FullBackupProgress =
 export type FullBackupCaptureReceipt = { taskId: string; format: 2 };
 type Dependencies = {
   id(): string;
-  selectDestination(): Promise<string | null>;
+  /** Opens the host's save dialog and binds the picked destination to this
+   * task natively. Resolves to the location for display, or null on cancel. */
+  selectDestination(taskId: string): Promise<string | null>;
   /** Includes source preparation and all write fences; resolves only after
    * physical capture and fence release. No password or destination here. */
   capture(taskId: string, progress: (update: FullBackupProgress) => void, signal?: AbortSignal): Promise<FullBackupCaptureReceipt>;
-  write(taskId: string, password: string, destination: string): Promise<void>;
+  /** Writes to the destination bound by `selectDestination`, consuming it. */
+  write(taskId: string, password: string): Promise<void>;
+  /** Also releases an unused destination binding. */
   cancel(taskId: string): Promise<void>;
   warn(message: string, error: unknown): void;
 };
@@ -28,10 +32,13 @@ export function createFullBackupExport(deps: Dependencies) {
       throw new AppError("backup/password-policy", "Invalid full backup passphrase length");
     }
     // Never keep a write fence across user input.
-    const destination = await deps.selectDestination();
-    signal?.throwIfAborted();
-    if (destination === null) return false;
     const taskId = deps.id();
+    const destination = await deps.selectDestination(taskId);
+    if (destination === null) {
+      signal?.throwIfAborted();
+      return false;
+    }
+    // From here the native destination binding exists; every exit cancels.
     let cancelling: Promise<void> | undefined;
     const cancel = (): Promise<void> => cancelling ??= Promise.resolve().then(() => deps.cancel(taskId))
       .catch(error => deps.warn("Full backup task cleanup failed", error))
@@ -54,7 +61,7 @@ export function createFullBackupExport(deps: Dependencies) {
       }
       progress({ phase: "encrypting" });
       signal?.throwIfAborted();
-      await deps.write(taskId, password, destination);
+      await deps.write(taskId, password);
       // A successful atomic publication remains success even if abort raced
       // with the native reply. Do not claim the saved file was rolled back.
       return true;

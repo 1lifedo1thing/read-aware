@@ -3,9 +3,11 @@
 use super::backup_tasks::{cancelled, missing, BackupTasks, Phase, PreparedBackup};
 use super::{backup_archive, backup_snapshot, backup_staging::BackupStaging, DataDir, Db};
 use crate::error::CommandError;
+use crate::save_targets::{self, SaveIo, SaveTargets};
 use age::secrecy::SecretString;
 use std::path::Path;
 use tauri::Manager;
+use tauri_plugin_dialog::FilePath;
 
 #[derive(Clone, serde::Serialize)]
 #[serde(
@@ -137,34 +139,67 @@ pub async fn backup_export_capture(
     .await
 }
 
+/// The archive's destination comes only from the save dialog the host opened
+/// for this task: the webview never names a path. The grant is bound to the
+/// window and task rather than a clock, because source preparation and capture
+/// of a large library can take arbitrarily long; write and cancel consume it.
+#[tauri::command]
+pub async fn backup_export_choose_destination(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+) -> Result<Option<String>, CommandError> {
+    uuid::Uuid::parse_str(&task_id)
+        .map_err(|_| CommandError::new("backup/invalid-archive", "Invalid backup task ID"))?;
+    let filter = Some(("AGE".to_owned(), "age".to_owned()));
+    let picked = save_targets::choose(&app, "readaware-backup.age".to_owned(), filter).await?;
+    let Some(target) = picked else {
+        return Ok(None);
+    };
+    // For display only; no command accepts it back as a destination.
+    let location = target.to_string();
+    app.state::<SaveTargets>()
+        .bind_session(window.label(), &task_id, target)?;
+    Ok(Some(location))
+}
+
 fn write(
     tasks: &BackupTasks,
+    targets: &SaveTargets,
     owner: &str,
     id: &str,
     password: SecretString,
-    destination: &Path,
+    io: &impl SaveIo,
     data_dir: &Path,
 ) -> Result<(), CommandError> {
+    // Any write attempt spends the task's destination grant.
+    let target = targets.redeem_session(owner, id);
     let (lease, prepared) = tasks.take(owner, id, Phase::Export)?;
     let PreparedBackup::Export(snapshot) = prepared else {
         return Err(missing());
     };
     let result = (|| {
         lease.check()?;
-        if !destination.is_absolute() {
-            return Err(CommandError::new(
-                "backup/invalid-archive",
-                "Backup destination must be absolute",
-            ));
+        let target = target?;
+        if let FilePath::Path(destination) = &target {
+            if !destination.is_absolute() {
+                return Err(CommandError::new(
+                    "backup/invalid-archive",
+                    "Backup destination must be absolute",
+                ));
+            }
+            let parent = destination.parent().ok_or_else(missing)?.canonicalize()?;
+            if parent.starts_with(data_dir.canonicalize()?) {
+                return Err(CommandError::new(
+                    "backup/invalid-archive",
+                    "Backup destination overlaps managed application data",
+                ));
+            }
         }
-        let parent = destination.parent().ok_or_else(missing)?.canonicalize()?;
-        if parent.starts_with(data_dir.canonicalize()?) {
-            return Err(CommandError::new(
-                "backup/invalid-archive",
-                "Backup destination overlaps managed application data",
-            ));
-        }
-        backup_archive::write_archive(&snapshot, password, destination, || lease.check())
+        io.publish(
+            target,
+            Box::new(|out| backup_archive::encrypt_archive(&snapshot, password, out, || lease.check())),
+        )
     })();
     drop(snapshot); // Retain admission until private files are actually released.
     drop(lease);
@@ -176,7 +211,6 @@ pub async fn backup_export_write(
     window: tauri::WebviewWindow,
     task_id: String,
     password: String,
-    destination: String,
 ) -> Result<(), CommandError> {
     let tasks = app.state::<BackupTasks>().inner().clone();
     let owner = window.label().to_owned();
@@ -184,10 +218,11 @@ pub async fn backup_export_write(
     super::blocking("backup_export_write", move || {
         write(
             &tasks,
+            &app.state::<SaveTargets>(),
             &owner,
             &task_id,
             password,
-            Path::new(&destination),
+            &app,
             &app.state::<DataDir>().0,
         )
     })
@@ -202,6 +237,7 @@ pub async fn backup_export_cancel(
     let tasks = app.state::<BackupTasks>().inner().clone();
     let owner = window.label().to_owned();
     super::blocking("backup_export_cancel", move || {
+        app.state::<SaveTargets>().release_session(&owner, &task_id)?;
         tasks.cancel(&owner, Some(&task_id))
     })
     .await

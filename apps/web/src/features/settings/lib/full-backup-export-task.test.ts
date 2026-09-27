@@ -6,9 +6,9 @@ function fixture() {
   const calls: string[] = [];
   const deps = {
     id: () => "task",
-    selectDestination: async (): Promise<string | null> => { calls.push("pick"); return "/backup.age"; },
+    selectDestination: async (_taskId: string): Promise<string | null> => { calls.push("pick"); return "/backup.age"; },
     capture: async (taskId: string, _progress: (update: FullBackupProgress) => void) => { calls.push("capture"); return { taskId, format: 2 as const }; },
-    write: async (_id: string, _password: string, _destination: string) => { calls.push("write"); },
+    write: async (_id: string, _password: string) => { calls.push("write"); },
     cancel: async (_id: string) => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };
@@ -22,12 +22,25 @@ test("full export resolves user input before capture, validates password, and on
   expect(calls).toEqual([]);
   deps.selectDestination = async () => null;
   expect(await run(password)).toBe(false); expect(calls).toEqual([]);
-  deps.selectDestination = async () => { calls.push("pick"); return "/backup.age"; };
-  deps.write = async (id, secret, destination) => {
-    expect([id, secret, destination]).toEqual(["task", password, "/backup.age"]); calls.push("write");
+  // The destination is bound natively to the task; only the task ID and the
+  // password reach the write, never a path.
+  deps.selectDestination = async taskId => { expect(taskId).toBe("task"); calls.push("pick"); return "/backup.age"; };
+  deps.write = async (...args: unknown[]) => {
+    expect(args).toEqual(["task", password]); calls.push("write");
   };
   expect(await run(password, undefined, update => { calls.push(update.phase); })).toBe(true);
   expect(calls).toEqual(["pick", "capture", "encrypting", "write", "cancel"]);
+});
+
+test("an abort right after the pick releases the native destination binding", async () => {
+  const { deps, run, calls } = fixture(); const controller = new AbortController();
+  deps.selectDestination = async () => { calls.push("pick"); controller.abort(); return "/backup.age"; };
+  expect((await run(password, controller.signal).catch(error => error)).name).toBe("AbortError");
+  expect(calls).toEqual(["pick", "cancel"]);
+  const cancelled = new AbortController(); calls.length = 0;
+  deps.selectDestination = async () => { calls.push("pick"); cancelled.abort(); return null; };
+  expect((await run(password, cancelled.signal).catch(error => error)).name).toBe("AbortError");
+  expect(calls).toEqual(["pick"]);
 });
 
 test("cancel waits for physical capture and retries cleanup after cancellation overtakes admission", async () => {

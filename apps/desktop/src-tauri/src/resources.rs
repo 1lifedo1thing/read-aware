@@ -1,16 +1,17 @@
 //! Ephemeral, unsynced resource snapshots. Only the trusted host calls these
 //! commands; Workers receive owner-scoped public references, never paths/IDs.
 use crate::error::CommandError;
+use crate::save_targets::{SaveIo, SaveTargets};
 use serde::Serialize;
 use std::{
     collections::HashMap,
     fs::File,
     io::{Read, Seek, SeekFrom, Write},
-    path::Path,
     sync::Mutex,
     time::{Duration, Instant},
 };
 use tauri::Manager;
+use tauri_plugin_dialog::FilePath;
 #[path = "resources_context.rs"]
 mod context;
 #[path = "resource_directories.rs"]
@@ -158,23 +159,23 @@ fn read(
     entry.file.read_exact(&mut bytes)?;
     Ok(bytes)
 }
-fn save(entries: &mut HashMap<String, Entry>, id: &str, path: &Path) -> Result<(), CommandError> {
+fn save(
+    entries: &mut HashMap<String, Entry>,
+    id: &str,
+    io: &impl SaveIo,
+    target: FilePath,
+) -> Result<(), CommandError> {
     prune(entries);
     let entry = entries.get_mut(id).ok_or_else(missing)?;
     if !entry.ready {
         return Err(invalid("Seal the resource before exporting"));
     }
-    let parent = path
-        .parent()
-        .ok_or_else(|| invalid("Export destination has no parent"))?;
-    let mut staging = tempfile::NamedTempFile::new_in(parent)?;
-    entry.file.seek(SeekFrom::Start(0))?;
-    std::io::copy(&mut entry.file, staging.as_file_mut())?;
-    staging.as_file().sync_all()?;
-    staging
-        .persist(path)
-        .map_err(|error| CommandError::from(error.error))?;
-    Ok(())
+    let source = &mut entry.file;
+    io.publish(target, Box::new(|out| {
+        source.seek(SeekFrom::Start(0))?;
+        std::io::copy(source, out)?;
+        Ok(())
+    }))
 }
 
 #[tauri::command]
@@ -336,12 +337,15 @@ pub async fn resource_read(
 pub async fn resource_save(
     app: tauri::AppHandle,
     id: String,
-    path: String,
+    token: String,
 ) -> Result<(), CommandError> {
     crate::storage::blocking("resource_save", move || {
+        // `token` is `export_choose_target`'s single-use grant; any write
+        // attempt spends it.
+        let target = app.state::<SaveTargets>().redeem(&token, Instant::now())?;
         let resources = app.state::<ResourceFiles>();
         let mut entries = resources.0.lock()?;
-        context::admit(&app, &mut entries, &id, |entries| save(entries, &id, Path::new(&path)))
+        context::admit(&app, &mut entries, &id, |entries| save(entries, &id, &app, target))
     })
     .await
 }
@@ -357,6 +361,7 @@ pub async fn resource_release(app: tauri::AppHandle, id: String) -> Result<(), C
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::save_targets::LocalFiles;
     #[test]
     fn importing_requires_a_sealed_lease_and_keeps_it_alive_after_release() {
         let mut entries = HashMap::new();
@@ -384,9 +389,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("output.txt");
         std::fs::write(&path, "previous").unwrap();
-        save(&mut entries, &info.id, &path).unwrap();
+        save(&mut entries, &info.id, &LocalFiles, FilePath::Path(path.clone())).unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"hello");
-        assert!(save(&mut entries, &info.id, &dir.path().join("missing/output")).is_err());
+        assert!(save(&mut entries, &info.id, &LocalFiles, FilePath::Path(dir.path().join("missing/output"))).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"hello");
     }
     #[test]

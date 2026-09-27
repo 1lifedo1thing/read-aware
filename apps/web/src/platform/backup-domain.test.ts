@@ -26,7 +26,7 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
     if (command === "restored_credentials_pending") return [...credentialObligations];
     if (["secret_keys", "reading_sessions_pending"].includes(command)) return [];
     if (command === "backup_close_reading_sessions") return [];
-    if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+    if (command === "backup_export_choose_destination") return "/synthetic/backup.age";
     if (command === "backup_export_sources") return [];
     if (command === "backup_export_capture") return { taskId: args.taskId, format: 2 };
     return undefined;

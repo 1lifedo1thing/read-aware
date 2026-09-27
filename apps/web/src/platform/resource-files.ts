@@ -1,4 +1,3 @@
-import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "./ipc";
 import type { ResourceImageReceipt } from "@read-aware/core";
 import { saveResourceFile } from "./resource-save";
@@ -14,10 +13,11 @@ export const nativeResourceFiles = {
   release: (id: string) => invoke<void>("resource_release", { id }),
   copyImage: (id: string) => invoke<ResourceImageReceipt>("resource_copy_image", { id }),
   imagePreview: (id: string) => invoke<ArrayBuffer>("resource_image_preview", { id }),
+  /** The native side opens the save dialog and returns a single-use token
+   * for the picked destination; the webview never names a writable path. */
   async save(id: string, filename: string, signal?: AbortSignal, beforeWrite?: () => void): Promise<boolean> {
-    const extension = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
-    return saveResourceFile(() => save({ defaultPath: filename,
-      ...(extension ? { filters: [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }] } : {}) }),
-    path => invoke("resource_save", { id, path }), signal, beforeWrite);
+    const extension = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() ?? null;
+    return saveResourceFile(() => invoke<string | null>("export_choose_target", { filename, extension }),
+      token => invoke("resource_save", { id, token }), signal, beforeWrite);
   },
 };

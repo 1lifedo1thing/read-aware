@@ -16,7 +16,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {},
     __TAURI_INTERNALS__: { transformCallback: () => 1, invoke: async (command: string, args: any) => {
       commands.push(command);
-      if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+      if (command === "backup_export_choose_destination") return "/synthetic/backup.age";
       if (command === "plugin:dialog|open") return "/synthetic/source.age";
       if (command === "backup_export_sources") return exportSources;
       if (command === "backup_export_capture") { order.push("backup-read"); return { taskId: args.taskId, format: 2 }; }
@@ -120,7 +120,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     let saved = false;
     const backup = exportFullBackup(password).then(result => { saved = true; return result; });
     // The destination dialog settles before the export reserves sync admission.
-    await Bun.sleep(0); expect(commands).toContain("plugin:dialog|save");
+    await Bun.sleep(0); expect(commands).toContain("backup_export_choose_destination");
     const laterCycle = scheduler.syncNow(), laterBlob = scheduler.fetchRemoteBlob("later");
     try {
     await Bun.sleep(0); expect(order).toEqual(["cycle"]); expect(downloads).toEqual([]);

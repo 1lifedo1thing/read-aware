@@ -8,13 +8,16 @@ import type { FullBackupCaptureReceipt, FullBackupProgress } from "../../src/fea
 import type { BackupSourceReceipt, BackupPlanReceipt, FullBackupImportProgress } from "../../src/features/settings/lib/full-backup-import-task";
 import type { BackupReviewPage } from "../../src/features/settings/lib/backup-review-types";
 
-/** Isolated native capture/decrypt/review acceptance. Does not apply a restore,
- * exercise a file picker, or expose the generated archive password. */
+/** Isolated native capture/decrypt/review acceptance. Does not apply a restore
+ * or expose the generated archive password. The archive destination comes only
+ * from the host's native save dialog: the operator confirms it (choose a
+ * throwaway path such as /tmp) and the returned location is re-opened. */
 export async function backupPreflight() {
   const profile = (await appDataDir()).replace(/[/\\]$/, "");
   if (!/\/com\.readaware\.app\.(capability-e2e|validation-backup-e2e)$/.test(profile)) throw Error("Requires isolated acceptance profile");
   const taskId = crypto.randomUUID(), wrongId = crypto.randomUUID(), importId = crypto.randomUUID();
-  const destination = `/tmp/readaware-validation-${taskId}.age`;
+  const destination = await invoke<string | null>("backup_export_choose_destination", { taskId });
+  if (destination === null) throw Error("Backup save dialog was cancelled");
   let password = `Validation-${crypto.randomUUID()}`;
   const phases: string[] = [];
   const captureProgress = new Channel<FullBackupProgress>();
@@ -31,7 +34,7 @@ export async function backupPreflight() {
         }
       }));
     if (capture.taskId !== taskId || capture.format !== 2) throw Error("Invalid capture receipt");
-    await invoke("backup_export_write", { taskId, password, destination });
+    await invoke("backup_export_write", { taskId, password });
     await invoke("backup_export_cancel", { taskId });
     try {
       await invoke("backup_import_open", { taskId: wrongId, source: destination, password: "Intentionally-wrong-validation-password", progress: importProgress });

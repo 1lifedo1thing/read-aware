@@ -3,7 +3,7 @@ import { expect, spyOn, test } from "bun:test";
 if (process.env.BACKUP_SCHEDULES_PROOF === "1") {
   let capture: Promise<void> | undefined;
   const native = async (command: string, args: any): Promise<unknown> => {
-    if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+    if (command === "backup_export_choose_destination") return "/synthetic/backup.age";
     if (command === "backup_export_capture") { await capture; return { taskId: args.taskId, format: 2 }; }
     if (command === "local_device_get") return { deviceId: "schedule-proof", lastHlcWallMs: null, lastHlcCounter: null };
     if (["backup_export_sources", "reading_sessions_pending", "backup_close_reading_sessions", "secret_keys", "restored_credentials_pending"].includes(command)) return [];

@@ -22,14 +22,17 @@ const fence = <T>(run: () => Promise<T>) => withSyncBackup(() => withPluginDataB
 const kvSnapshot = async () => Object.entries(await invoke<Record<string, string>>("load_kv_all")).sort(([a], [b]) => a.localeCompare(b));
 const grantSnapshot = (value: unknown) => JSON.stringify(Object.entries((value ?? {}) as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
 
-/** Capture our own inert source candidate. Password never leaves module memory. */
+/** Capture our own inert source candidate. Password never leaves module memory.
+ * The archive destination comes only from the host's native save dialog: the
+ * operator confirms it (a throwaway path such as /tmp) before capture. */
 export async function prepareFull2BackupGrantFixture() {
   await assertFull2BookAccessProfile();
   if (fixture) throw new Error("Fixture already prepared");
   const id = `full2-backup-grant-${crypto.randomUUID()}`;
-  const archive = `/tmp/${id}.age`;
   const password = `Full2-${crypto.randomUUID()}`;
   const taskId = crypto.randomUUID();
+  const archive = await invoke<string | null>("backup_export_choose_destination", { taskId });
+  if (archive === null) throw new Error("Backup save dialog was cancelled");
   let installed = false;
   try {
     await installPluginFiles(id, [
@@ -39,7 +42,7 @@ export async function prepareFull2BackupGrantFixture() {
     installed = true;
     await flushLocalKV();
     await fence(() => invoke("backup_export_capture", { taskId, progress: new Channel() }));
-    await invoke("backup_export_write", { taskId, password, destination: archive });
+    await invoke("backup_export_write", { taskId, password });
     fixture = { id, archive, password };
   } finally {
     await invoke("backup_export_cancel", { taskId });

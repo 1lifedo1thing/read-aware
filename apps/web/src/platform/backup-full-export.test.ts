@@ -3,13 +3,14 @@ import { expect, test } from "bun:test";
 if (process.env.FULL_EXPORT_PROOF === "1") {
   const calls: string[] = [];
   let sources: string[] = [];
+  let chosenFor: string | undefined;
   let capturing: ReturnType<typeof Promise.withResolvers<void>>;
   let releaseCapture: ReturnType<typeof Promise.withResolvers<void>>;
   let writing: ReturnType<typeof Promise.withResolvers<void>>;
   let releaseWrite: ReturnType<typeof Promise.withResolvers<void>>;
   const native = async (command: string, args: any): Promise<unknown> => {
     calls.push(command);
-    if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+    if (command === "backup_export_choose_destination") { chosenFor = args.taskId; return "/synthetic/backup.age"; }
     if (command === "backup_export_sources") return sources;
     if (command === "sync_profile_get") return { syncEnabled: false };
     if (command === "backup_export_capture") {
@@ -19,7 +20,8 @@ if (process.env.FULL_EXPORT_PROOF === "1") {
     }
     if (command === "backup_export_write") {
       expect(args.password).toBe("a synthetic password");
-      expect(args.destination).toBe("/synthetic/backup.age");
+      // The native grant bound at the dialog carries the destination.
+      expect(args.destination).toBeUndefined(); expect(args.taskId).toBe(chosenFor);
       writing.resolve(); await releaseWrite.promise;
     }
     if (["reading_sessions_pending", "backup_close_reading_sessions", "secret_keys"].includes(command)) return [];
@@ -36,7 +38,7 @@ if (process.env.FULL_EXPORT_PROOF === "1") {
     writing = Promise.withResolvers(); releaseWrite = Promise.withResolvers();
     const task = exportFullBackup("a synthetic password");
     await capturing.promise;
-    expect(calls.indexOf("plugin:dialog|save")).toBeLessThan(calls.indexOf("backup_export_sources"));
+    expect(calls.indexOf("backup_export_choose_destination")).toBeLessThan(calls.indexOf("backup_export_sources"));
     expect(calls.indexOf("backup_close_reading_sessions")).toBeLessThan(calls.indexOf("backup_export_capture"));
     await expect(localKV.setItemAsync("export-proof", "denied")).rejects.toMatchObject({ code: "backup/busy" });
     releaseCapture.resolve(); await writing.promise;

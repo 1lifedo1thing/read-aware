@@ -26,6 +26,7 @@ mod plugin_sandbox_policy;
 mod secrets;
 mod local_api;
 mod resources;
+mod save_targets;
 mod storage;
 mod storefront;
 mod window_input;
@@ -763,7 +764,7 @@ pub fn run() {
         .manage(exit_coordination::ExitCoordination::default())
         .manage(local_api::LocalApi::default())
         .manage(external_open::ExternalOpenQueue::new(launch_open_paths))
-        .manage(export_file::ExportTargets::default())
+        .manage(save_targets::SaveTargets::default())
         .manage(storage::BlobReadSessions::default())
         .manage(storage::BlobWriteSessions::default())
         .manage(resources::ResourceFiles::default())
@@ -942,6 +943,9 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(targets) = window.app_handle().try_state::<save_targets::SaveTargets>() {
+                    targets.release_owner(window.label());
+                }
                 if let Some(tasks) = window.app_handle().try_state::<storage::backup_tasks::BackupTasks>() {
                     let tasks = tasks.inner().clone();
                     let owner = window.label().to_owned();
@@ -1123,6 +1127,7 @@ pub fn run() {
             storage::backup_close_reading_sessions,
             storage::backup_export::backup_export_sources,
             storage::backup_export::backup_export_capture,
+            storage::backup_export::backup_export_choose_destination,
             storage::backup_export::backup_export_write,
             storage::backup_export::backup_export_cancel,
             storage::backup_import::backup_import_open,

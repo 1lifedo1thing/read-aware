@@ -1,5 +1,4 @@
 import { AppError } from "@read-aware/core";
-import { save } from "@tauri-apps/plugin-dialog";
 import { Channel, invoke } from "../../../platform/ipc";
 import { createLogger } from "../../../platform/logger";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
@@ -13,7 +12,9 @@ const log = createLogger("full-backup-export");
  * from the existing v1 subset actions. Never expose this through plugin IPC. */
 export const exportFullBackup = createFullBackupExport({
   id: () => crypto.randomUUID(),
-  selectDestination: () => save({ defaultPath: "readaware-backup.age", filters: [{ name: "AGE", extensions: ["age"] }] }),
+  // The native side opens the save dialog (readaware-backup.age, AGE filter)
+  // and keeps the pick bound to this task; the webview never names a path.
+  selectDestination: taskId => invoke<string | null>("backup_export_choose_destination", { taskId }),
   capture: (taskId, onProgress, signal) => withSyncBackup(fetchBlob => withPluginDataBackup("export",
     () => withBackupCapture(async () => {
       signal?.throwIfAborted();
@@ -31,7 +32,7 @@ export const exportFullBackup = createFullBackupExport({
       }
       signal?.throwIfAborted();
     }), signal),
-  write: (taskId, password, destination) => invoke("backup_export_write", { taskId, password, destination }),
+  write: (taskId, password) => invoke("backup_export_write", { taskId, password }),
   cancel: taskId => invoke("backup_export_cancel", { taskId }),
   warn: (message, error) => log.warn(message, error),
 });

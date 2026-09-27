@@ -1221,6 +1221,7 @@
 | `storage::backup_close_reading_sessions` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::backup_export::backup_export_sources` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::backup_export::backup_export_capture` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::backup_export::backup_export_choose_destination` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::backup_export::backup_export_write` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::backup_export::backup_export_cancel` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::backup_import::backup_import_open` | [OPS08](#OPS08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

@@ -7,7 +7,7 @@ if (process.env.BACKUP_ISOLATION_PROOF === "1") {
   const native = async (command: string, args: any): Promise<unknown> => {
     calls.push(command);
     await holds.get(command);
-    if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+    if (command === "backup_export_choose_destination") return "/synthetic/backup.age";
     if (command === "plugin:dialog|open") return "/synthetic/source.age";
     if (command === "backup_export_capture") {
       if (captureFailure) throw captureFailure;

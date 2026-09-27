@@ -16,7 +16,7 @@ if (process.env.BACKUP_READING_PROOF === "1") {
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
     transformCallback: () => 1,
     invoke: async (command: string, args: any) => {
-      if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+      if (command === "backup_export_choose_destination") return "/synthetic/backup.age";
       if (command === "plugin:dialog|open") return "/synthetic/source.age";
       if (command === "backup_export_sources") return [];
       if (command === "backup_import_open") return { taskId: args.taskId, format: 2, schemaVersion: 1, tables: {}, events: 0, blobs: 0, credentials: 0, pluginPrograms: 0 };

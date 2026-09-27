@@ -14,7 +14,6 @@ use std::{
     path::Path,
     rc::Rc,
 };
-use tempfile::NamedTempFile;
 
 #[path = "backup_archive_read.rs"]
 mod reader;
@@ -252,13 +251,30 @@ impl<F: FnMut() -> Result<(), CommandError>> Read for CheckedReader<'_, F> {
     }
 }
 
-/// Password remains a zeroizing SecretString. Archive work factor is fixed and
-/// capped at 18; age also calibrates its machine default on first construction.
-/// Neither that calibration nor one KDF invocation is interruptible mid-call.
+/// Archive fixture for tests: atomically replaces a plain path. The export
+/// command publishes `encrypt_archive` through its dialog-issued save target.
+#[cfg(test)]
 pub(crate) fn write_archive(
     snapshot: &BackupSnapshot,
     password: SecretString,
     destination: &Path,
+    check: impl FnMut() -> Result<(), CommandError>,
+) -> Result<(), CommandError> {
+    crate::save_targets::replace_path(
+        destination,
+        Box::new(|out| encrypt_archive(snapshot, password, out, check)),
+    )
+}
+
+/// Streams the finalized ciphertext into `out` (a private staging file) and
+/// syncs it. The caller publishes it only after this returns successfully.
+/// Password remains a zeroizing SecretString. Archive work factor is fixed and
+/// capped at 18; age also calibrates its machine default on first construction.
+/// Neither that calibration nor one KDF invocation is interruptible mid-call.
+pub(crate) fn encrypt_archive(
+    snapshot: &BackupSnapshot,
+    password: SecretString,
+    out: &mut File,
     mut check: impl FnMut() -> Result<(), CommandError>,
 ) -> Result<(), CommandError> {
     password_policy(&password)?;
@@ -278,10 +294,6 @@ pub(crate) fn write_archive(
             "snapshot manifest changed",
         ));
     }
-    let parent = destination
-        .parent()
-        .ok_or_else(|| invalid("backup destination has no parent"))?;
-    let mut temporary = NamedTempFile::new_in(parent)?;
     let mut recipient = age::scrypt::Recipient::new(password);
     recipient.set_work_factor(WORK_FACTOR);
     let encryptor =
@@ -291,7 +303,7 @@ pub(crate) fn write_archive(
             })?;
     check()?;
     {
-        let encrypted = encryptor.wrap_output(temporary.as_file_mut())?;
+        let encrypted = encryptor.wrap_output(&mut *out)?;
         let mut archive = tar::Builder::new(encrypted);
         archive.append_data(
             &mut header(manifest.len() as u64),
@@ -343,13 +355,9 @@ pub(crate) fn write_archive(
         check()?;
         archive.into_inner()?.finish()?;
     }
-    temporary.as_file_mut().flush()?;
-    temporary.as_file().sync_all()?;
-    check()?;
-    temporary
-        .persist(destination)
-        .map_err(|error| CommandError::from(error.error))?;
-    Ok(())
+    out.flush()?;
+    out.sync_all()?;
+    check()
 }
 
 /// Authentication and physical-member integrity only. The merge preflight must
