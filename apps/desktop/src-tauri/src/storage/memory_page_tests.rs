@@ -167,7 +167,7 @@ fn byte_shortened_pages_keep_contiguous_offsets_and_full_result_revision() {
         .unwrap();
     let first = memory_page_inner(&mut conn, &json!({"scopes":["user"],"limit":100})).unwrap();
     assert_eq!(first.total, 20);
-    assert!(first.items.len() > 0 && first.items.len() < 20);
+    assert!(!first.items.is_empty() && first.items.len() < 20);
     let offset = first.next_offset.unwrap();
     assert_eq!(offset, first.items.len());
     let second = memory_page_inner(

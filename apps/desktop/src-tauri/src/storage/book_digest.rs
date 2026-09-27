@@ -210,10 +210,13 @@ pub(crate) fn book_digest_commit_inner(
         return Err(CommandError::internal("Incomplete digest commit"));
     }
     let row = read_digest(&tx, id, index)?.ok_or_else(conflict)?;
+    // The projection stores canonical JSON text; compare text to text
+    // (`Value == String` would match a JSON string value instead).
+    let (characters, relations) = (p["characters"].to_string(), p["relations"].to_string());
     if row.0.as_deref() != p.get("chapterHref").and_then(Value::as_str)
         || Some(row.1.as_str()) != p.get("summary").and_then(Value::as_str)
-        || row.2 != p["characters"].to_string()
-        || row.3 != p["relations"].to_string()
+        || row.2 != characters
+        || row.3 != relations
         || Some(row.4) != p["digestVersion"].as_i64()
         || row.5.as_deref() != Some(flavor)
         || row.7.as_deref() != Some(version)

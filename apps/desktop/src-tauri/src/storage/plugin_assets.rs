@@ -275,16 +275,26 @@ fn cleanup_pending(conn: &Connection, dir: &Path, id: &str) -> bool {
     }
 }
 
+/// The bytes to store and the labels they are served with.
+pub(crate) struct AssetInput<'a> {
+    pub filename: &'a str,
+    pub mime: &'a str,
+    pub source: File,
+}
+
 pub(crate) fn store_inner(
     conn: &mut Connection,
     dir: &Path,
     id: &str,
     name: &str,
     revision: Option<&str>,
-    filename: &str,
-    mime: &str,
-    mut source: File,
+    input: AssetInput<'_>,
 ) -> Result<PluginAssetReceipt, CommandError> {
+    let AssetInput {
+        filename,
+        mime,
+        mut source,
+    } = input;
     assert_mutable(conn, id)?;
     labels(filename, mime)?;
     let previous = expected(conn, id, name, revision)?;

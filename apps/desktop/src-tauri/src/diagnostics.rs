@@ -71,7 +71,7 @@ pub fn diagnostics_read_logs(app: tauri::AppHandle) -> Result<Vec<LogFileTail>, 
             Some((name, modified_ms, entry.path()))
         })
         .collect();
-    files.sort_by(|a, b| b.1.cmp(&a.1));
+    files.sort_by_key(|file| std::cmp::Reverse(file.1));
 
     let mut remaining = MAX_TOTAL_BYTES;
     let mut tails = Vec::new();

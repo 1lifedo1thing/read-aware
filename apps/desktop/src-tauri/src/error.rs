@@ -93,16 +93,12 @@ impl From<rusqlite::Error> for CommandError {
 
 impl From<std::io::Error> for CommandError {
     fn from(error: std::io::Error) -> Self {
-        // ENOSPC by raw errno: `ErrorKind::StorageFull` is not stable on our
-        // minimum toolchain (1.77).
-        let code = if error.raw_os_error() == Some(28) {
-            CODE_FS_NO_SPACE
-        } else {
-            match error.kind() {
-                std::io::ErrorKind::NotFound => CODE_FS_NOT_FOUND,
-                std::io::ErrorKind::PermissionDenied => CODE_FS_PERMISSION,
-                _ => CODE_INTERNAL,
-            }
+        // `StorageFull` covers ENOSPC and Windows' disk-full codes alike.
+        let code = match error.kind() {
+            std::io::ErrorKind::StorageFull => CODE_FS_NO_SPACE,
+            std::io::ErrorKind::NotFound => CODE_FS_NOT_FOUND,
+            std::io::ErrorKind::PermissionDenied => CODE_FS_PERMISSION,
+            _ => CODE_INTERNAL,
         };
         Self::new(code, error.to_string())
     }

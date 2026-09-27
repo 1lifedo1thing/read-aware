@@ -330,7 +330,6 @@ pub(crate) struct CheckpointFileMeta {
     pub hlc: Hlc,
     pub remote_seq: Option<i64>,
     pub event_count: i64,
-    pub device_id: String,
     pub created_at: String,
 }
 
@@ -363,6 +362,8 @@ pub(crate) fn read_checkpoint_meta(file: &Connection) -> Result<CheckpointFileMe
         })?),
         _ => None,
     };
+    // Format 1 requires the publisher id; restore never consumes it.
+    get("device_id")?;
     Ok(CheckpointFileMeta {
         format: int("format")?,
         schema_version: int("schema_version")?,
@@ -373,7 +374,6 @@ pub(crate) fn read_checkpoint_meta(file: &Connection) -> Result<CheckpointFileMe
         },
         remote_seq,
         event_count: int("event_count")?,
-        device_id: get("device_id")?,
         created_at: get("created_at")?,
     })
 }
@@ -902,11 +902,11 @@ pub(crate) fn backfill_remote_events(
     if complete {
         set_log_complete(&tx, true)?;
         set_backfill_frontier(&tx, None)?;
-        if events::projections_stale_conn(&tx)? {
-            if events::replay_projections(&tx, data_dir)?.is_some() {
-                events::set_projections_stale_conn(&tx, false)?;
-                replayed = true;
-            }
+        if events::projections_stale_conn(&tx)?
+            && events::replay_projections(&tx, data_dir)?.is_some()
+        {
+            events::set_projections_stale_conn(&tx, false)?;
+            replayed = true;
         }
     }
     tx.commit()?;

@@ -1197,7 +1197,9 @@ fn reading_time_genesis_reproduces_the_aggregates_exactly() {
     )
     .unwrap();
 
-    fn aggregates(c: &Connection) -> (i64, i64, i64, Vec<(String, i64)>, Vec<(i64, i64)>) {
+    /// (total, first, last, daily rows, hourly rows)
+    type Aggregates = (i64, i64, i64, Vec<(String, i64)>, Vec<(i64, i64)>);
+    fn aggregates(c: &Connection) -> Aggregates {
         let (total, first, last) = c
             .query_row(
                 "SELECT total_ms, first_started_at, last_read_at
@@ -2821,7 +2823,9 @@ fn rebuild_and_verify_refuse_an_incomplete_log() {
     assert!(backfill_status(&b).unwrap().is_none());
 }
 
-fn session_event(id: &str, wall: i64, book: &str, ms: i64, started: i64, ended: i64, hour: i64, progress: Option<serde_json::Value>) -> EventRow {
+/// `span` is the session's (startedAt, endedAt).
+fn session_event(id: &str, wall: i64, book: &str, ms: i64, span: (i64, i64), hour: i64, progress: Option<serde_json::Value>) -> EventRow {
+    let (started, ended) = span;
     let mut payload = serde_json::json!({
         "bookId": book, "ms": ms, "startedAt": started, "endedAt": ended,
         "localDay": "2026-09-07", "localHour": hour,
@@ -2864,7 +2868,7 @@ fn a_reading_session_accrues_time_and_position_and_flushes_exactly_once() {
     // and a page turn race in before the flush lands.
     reading_session_accrue_inner(&conn, "b1", "2026-09-07", 15, 20_000, 1_040_000).unwrap();
     reading_session_position_inner(&conn, "b1", "2026-09-07", 15, 1_041_000, &position(13, "ch1.html")).unwrap();
-    let flush = session_event("s1", 2_000, "b1", 20_000, 1_000_000, 1_030_000, 15, Some(position(12, "ch1.html")));
+    let flush = session_event("s1", 2_000, "b1", 20_000, (1_000_000, 1_030_000), 15, Some(position(12, "ch1.html")));
     let report = reading_session_flush_inner(&mut conn, std::slice::from_ref(&flush)).unwrap();
     assert_eq!((report.appended, report.applied), (1, 1));
     assert_eq!(scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 20_000);
@@ -2890,7 +2894,7 @@ fn a_reading_session_accrues_time_and_position_and_flushes_exactly_once() {
     assert!(sync_outbox_events_inner(&conn, 10).unwrap().iter().any(|e| e.id == "s1"));
     // Closing the remainder (40s now, position observed at 1_041_000)
     // empties the bucket.
-    let rest = session_event("s2", 2_001, "b1", 40_000, 1_040_000, 1_060_000, 15, Some(observed(position(13, "ch1.html"), 1_041_000)));
+    let rest = session_event("s2", 2_001, "b1", 40_000, (1_040_000, 1_060_000), 15, Some(observed(position(13, "ch1.html"), 1_041_000)));
     reading_session_flush_inner(&mut conn, &[rest]).unwrap();
     assert!(reading_sessions_pending_inner(&conn).unwrap().is_empty());
     assert_eq!(scalar::<i64>(&conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"), 60_000);
@@ -2904,8 +2908,8 @@ fn a_session_that_closes_late_never_overwrites_a_newer_position() {
     // but observed EARLIER. Whatever order the events merge in, 60% stands.
     let (mut a, dir) = conn_with_dir();
     commit_events_inner(&mut a, &[imported("e1", 1_000, "b1", "沙丘")]).unwrap();
-    let phone = session_event("phone", 5_000, "b1", 600_000, 4_000, 5_000, 10, Some(position(60, "ch3.html")));
-    let laptop = session_event("laptop", 6_000, "b1", 300_000, 2_000, 3_000, 10, Some(position(40, "ch2.html")));
+    let phone = session_event("phone", 5_000, "b1", 600_000, (4_000, 5_000), 10, Some(position(60, "ch3.html")));
+    let laptop = session_event("laptop", 6_000, "b1", 300_000, (2_000, 3_000), 10, Some(position(40, "ch2.html")));
     commit_events_inner(&mut a, std::slice::from_ref(&phone)).unwrap();
     super::events::apply_remote_events_inner(&mut a, &dir, std::slice::from_ref(&laptop), None).unwrap();
     assert_eq!(scalar::<f64>(&a, "SELECT progress_percent FROM books WHERE id='b1'"), 60.0);
@@ -2932,7 +2936,7 @@ fn a_session_that_closes_late_never_overwrites_a_newer_position() {
     // `endedAt` moving past the phone's close, but its page was observed
     // long before — `progress.observedAt` is the clock that decides.
     let ticking_laptop = session_event(
-        "laptop-ticking", 7_000, "b1", 900_000, 2_000, 9_000, 10,
+        "laptop-ticking", 7_000, "b1", 900_000, (2_000, 9_000), 10,
         Some(observed(position(45, "ch2.html"), 3_000)),
     );
     super::events::apply_remote_events_inner(&mut b, &dir_b, &[ticking_laptop], None).unwrap();
@@ -3107,7 +3111,7 @@ fn stress_million_event_log() {
 
     let books = 200usize;
     let mut wall = 1_000_000_000_000i64;
-    let mut next = |wall: &mut i64| { *wall += 1; *wall };
+    let next = |wall: &mut i64| { *wall += 1; *wall };
     let mut batch: Vec<EventRow> = Vec::new();
     for b in 0..books {
         batch.push(imported(&format!("imp-{b}"), next(&mut wall), &format!("b{b}"), &format!("书 {b}")));
@@ -3125,11 +3129,11 @@ fn stress_million_event_log() {
             let b = i % books;
             let w = next(&mut wall);
             let ev_row = match i % 10 {
-                0..=6 => session_event(&format!("s-{i}"), w, &format!("b{b}"), 600_000, w - 600_000, w, ((i / 7) % 24) as i64,
+                0..=6 => session_event(&format!("s-{i}"), w, &format!("b{b}"), 600_000, (w - 600_000, w), ((i / 7) % 24) as i64,
                     Some(position(((i / 7) % 100) as i64, "ch.html"))),
                 7..=8 => ev(&format!("h-{i}"), w, "highlight.created", serde_json::json!({
                     "highlightId": format!("h-{i}"), "bookId": format!("b{b}"), "text": "一句话", "cfiRange": "epubcfi(/6/2!/4/2,/1:0,/1:5)", "color": "yellow" })),
-                _ => ev(&format!("st-{i}"), w, "book.starred", serde_json::json!({ "bookId": format!("b{b}"), "starred": i % 2 == 0 })),
+                _ => ev(&format!("st-{i}"), w, "book.starred", serde_json::json!({ "bookId": format!("b{b}"), "starred": i.is_multiple_of(2) })),
             };
             batch.push(ev_row);
             i += 1;

@@ -69,7 +69,7 @@ pub(in crate::storage) fn verify_path(
     entry: &CapturedFile,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<(), CommandError> {
-    if !fs::symlink_metadata(&path)?.file_type().is_file() {
+    if !fs::symlink_metadata(path)?.file_type().is_file() {
         return Err(CommandError::new(
             CODE_CHANGED,
             "backup member is not a regular file",

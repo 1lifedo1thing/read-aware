@@ -50,12 +50,25 @@ fn current(conn: &Connection, revision: &str) -> Result<(), CommandError> {
     }
     Ok(())
 }
-fn header(conn: &Connection) -> Result<Option<(String, i64, i64, Option<String>)>, CommandError> {
+struct WorkHeader {
+    revision: String,
+    page_count: i64,
+    base_index: i64,
+    checkpoint: Option<String>,
+}
+fn header(conn: &Connection) -> Result<Option<WorkHeader>, CommandError> {
     Ok(conn
         .query_row(
             "SELECT revision,page_count,base_index,checkpoint FROM identity_consolidation_work WHERE id=1",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            |row| {
+                Ok(WorkHeader {
+                    revision: row.get(0)?,
+                    page_count: row.get(1)?,
+                    base_index: row.get(2)?,
+                    checkpoint: row.get(3)?,
+                })
+            },
         )
         .optional()?)
 }
@@ -68,9 +81,9 @@ pub(crate) fn identity_work_read_inner(
     validate(revision, index)?;
     let tx = conn.transaction()?;
     current(&tx, revision)?;
-    let (_, count, base_index, checkpoint) = header(&tx)?
-        .filter(|(stored, _, _, _)| stored == revision)
-        .unwrap_or((revision.into(), 0, 0, None));
+    let (count, base_index, checkpoint) = header(&tx)?
+        .filter(|work| work.revision == revision)
+        .map_or((0, 0, None), |work| (work.page_count, work.base_index, work.checkpoint));
     // Index zero is also the atomic resume/header read. Other pruned reads are stale.
     if index != 0 && index < base_index {
         return Err(conflict());
@@ -111,11 +124,10 @@ pub(crate) fn identity_work_append_inner(
     }
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     current(&tx, revision)?;
-    let stored = header(&tx)?;
-    let (count, base_index) = if let Some((_, count, base, _)) =
-        stored.filter(|(stored, _, _, _)| stored == revision)
+    let (count, base_index) = if let Some(work) =
+        header(&tx)?.filter(|work| work.revision == revision)
     {
-        (count, base)
+        (work.page_count, work.base_index)
     } else {
         if index != 0 {
             return Err(conflict());
@@ -217,7 +229,12 @@ pub(crate) fn identity_work_compact_inner(
     }
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     current(&tx, revision)?;
-    let (stored, count, base, checkpoint) = header(&tx)?.ok_or_else(conflict)?;
+    let WorkHeader {
+        revision: stored,
+        page_count: count,
+        base_index: base,
+        checkpoint,
+    } = header(&tx)?.ok_or_else(conflict)?;
     if stored != revision || count != expected_page_count {
         return Err(conflict());
     }

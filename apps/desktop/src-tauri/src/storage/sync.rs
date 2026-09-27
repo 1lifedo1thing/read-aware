@@ -15,7 +15,7 @@ pub const CODE_SYNC_QUOTA: &str = "sync/quota";
 
 // ── sync_profile (single row) ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncProfile {
     pub sync_enabled: bool,
@@ -25,18 +25,6 @@ pub struct SyncProfile {
     pub encryption_key_ref: Option<String>,
     pub last_push_at: Option<String>,
     pub last_pull_at: Option<String>,
-}
-
-impl Default for SyncProfile {
-    fn default() -> Self {
-        SyncProfile {
-            sync_enabled: false,
-            remote_account_id: None,
-            encryption_key_ref: None,
-            last_push_at: None,
-            last_pull_at: None,
-        }
-    }
 }
 
 pub(crate) fn sync_profile_get_inner(conn: &Connection) -> Result<SyncProfile, CommandError> {

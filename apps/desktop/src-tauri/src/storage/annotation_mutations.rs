@@ -125,10 +125,10 @@ fn target(event: &EventRow) -> Result<(&str, &str), CommandError> {
         return Err(invalid());
     }
     if event.event_type == "note.updated" {
-        if !payload
+        if payload
             .get("body")
             .and_then(|v| v.as_str())
-            .is_some_and(|v| v.encode_utf16().count() <= 100_000)
+            .is_none_or(|v| v.encode_utf16().count() > 100_000)
         {
             return Err(invalid());
         }

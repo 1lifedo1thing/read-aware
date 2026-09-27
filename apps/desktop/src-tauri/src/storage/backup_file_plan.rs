@@ -29,7 +29,7 @@ pub(crate) use program_stage::{ProgramStageRequest, ProgramStageReceipt, Program
 #[path = "backup_file_inventory.rs"]
 mod inventory;
 pub(crate) use credentials::{CredentialChoice, CredentialFacts, PreparedCredentials};
-pub(crate) use inventory::{BlobAvailability, BlobBinding};
+pub(crate) use inventory::BlobBinding;
 
 #[path = "backup_review.rs"]
 mod review;
@@ -70,7 +70,6 @@ pub(crate) struct ProgramTree {
 #[derive(Debug)]
 pub(crate) struct ProgramMatch {
     pub root: String,
-    pub kind: FileMatchKind,
     pub source: Option<ProgramTree>,
     pub target: Option<ProgramTree>,
 }
@@ -321,7 +320,6 @@ pub(super) fn plan(
         let source = a.remove(&root);
         let target = b.remove(&root);
         programs.push(ProgramMatch {
-            kind: kind(source.as_ref(), target.as_ref()),
             root,
             source,
             target,

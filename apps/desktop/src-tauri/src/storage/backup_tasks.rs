@@ -19,10 +19,11 @@ pub(crate) enum Phase {
     Source,
     Plan,
 }
+/// Each phase's state is boxed: the task slot holds only a pointer.
 pub(crate) enum PreparedBackup {
-    Export(BackupSnapshot),
-    Source(PreflightedBackup),
-    Plan(FilePlan),
+    Export(Box<BackupSnapshot>),
+    Source(Box<PreflightedBackup>),
+    Plan(Box<FilePlan>),
 }
 impl PreparedBackup {
     fn phase(&self) -> Phase {
@@ -35,7 +36,7 @@ impl PreparedBackup {
 }
 impl From<BackupSnapshot> for PreparedBackup {
     fn from(value: BackupSnapshot) -> Self {
-        Self::Export(value)
+        Self::Export(Box::new(value))
     }
 }
 

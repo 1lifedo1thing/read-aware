@@ -239,7 +239,7 @@ pub fn extract_mobi_metadata_from_path(path: &Path) -> Result<BookMetadata, Stri
     // (they follow the text records in book order, so this is the first
     // picture a reader would meet).
     let cover = cover.or_else(|| {
-        if resource_start >= NOT_SET {
+        if resource_start == NOT_SET {
             return None;
         }
         let first = resource_start as usize;

@@ -5,16 +5,53 @@ use crate::error::CommandError;
 use rusqlite::{Connection, OptionalExtension};
 
 type Emit<'a> = dyn FnMut(&str, &str, Option<i64>, Option<&str>) -> Result<(), CommandError> + 'a;
+/// A required reference: `sql` selects the rowids of `table` rows whose `kind`
+/// relation to `related` is broken.
+struct Relation {
+    table: &'static str,
+    kind: &'static str,
+    related: &'static str,
+    sql: &'static str,
+}
+const MESSAGE_CONVERSATION: Relation = Relation {
+    table: "ai_messages",
+    kind: "conversation",
+    related: "ai_conversations",
+    sql: "SELECT rowid FROM ai_messages m WHERE NOT EXISTS(SELECT 1 FROM ai_conversations c WHERE c.id=m.conversation_id)",
+};
+// Entity lookup follows exactly one redirect. A cross-side chain/cycle
+// would silently resolve to the wrong root even though each side is flat.
+const ENTITY_REDIRECT_CHAIN: Relation = Relation {
+    table: "entity_redirects",
+    kind: "entityRedirect",
+    related: "entity_redirects",
+    sql: "SELECT r.rowid FROM entity_redirects r WHERE EXISTS(SELECT 1 FROM entity_redirects next WHERE next.merged_id=r.keep_id)",
+};
+const BOOK_ALIAS_CHAIN: Relation = Relation {
+    table: "book_aliases",
+    kind: "bookAlias",
+    related: "book_aliases",
+    sql: "SELECT r.rowid FROM book_aliases r WHERE EXISTS(SELECT 1 FROM book_aliases next WHERE next.merged_id=r.keep_id)",
+};
+const VIRTUAL_BINDING: Relation = Relation {
+    table: "books",
+    kind: "virtualBinding",
+    related: "app_kv",
+    sql: "SELECT rowid FROM books b WHERE b.format='virtual' AND NOT EXISTS(SELECT 1 FROM reviewed_virtual_bindings v WHERE v.id=b.id)",
+};
 fn missing(
     plan: &RowPlan,
     conn: &Connection,
-    table: &str,
-    kind: &str,
-    related: &str,
-    sql: &str,
+    relation: &Relation,
     check: &mut impl FnMut() -> Result<(), CommandError>,
     emit: &mut Emit<'_>,
 ) -> Result<(), CommandError> {
+    let Relation {
+        table,
+        kind,
+        related,
+        sql,
+    } = relation;
     let mut query = conn.prepare(sql)?;
     let mut rows = query.query([])?;
     while let Some(row) = rows.next()? {
@@ -47,11 +84,9 @@ pub(super) fn validate(
             .flatten();
         emit("foreignKey", &table, entry, Some(&parent))?;
     }
-    missing(plan,conn,"ai_messages","conversation","ai_conversations","SELECT rowid FROM ai_messages m WHERE NOT EXISTS(SELECT 1 FROM ai_conversations c WHERE c.id=m.conversation_id)",check,emit)?;
-    // Entity lookup follows exactly one redirect. A cross-side chain/cycle
-    // would silently resolve to the wrong root even though each side is flat.
-    missing(plan,conn,"entity_redirects","entityRedirect","entity_redirects","SELECT r.rowid FROM entity_redirects r WHERE EXISTS(SELECT 1 FROM entity_redirects next WHERE next.merged_id=r.keep_id)",check,emit)?;
-    missing(plan, conn, "book_aliases", "bookAlias", "book_aliases", "SELECT r.rowid FROM book_aliases r WHERE EXISTS(SELECT 1 FROM book_aliases next WHERE next.merged_id=r.keep_id)", check, emit)?;
+    missing(plan, conn, &MESSAGE_CONVERSATION, check, emit)?;
+    missing(plan, conn, &ENTITY_REDIRECT_CHAIN, check, emit)?;
+    missing(plan, conn, &BOOK_ALIAS_CHAIN, check, emit)?;
     virtual_books(plan, conn, check, emit)
 }
 fn virtual_books(
@@ -97,5 +132,5 @@ fn virtual_books(
             }
         }
     }
-    missing(plan,conn,"books","virtualBinding","app_kv","SELECT rowid FROM books b WHERE b.format='virtual' AND NOT EXISTS(SELECT 1 FROM reviewed_virtual_bindings v WHERE v.id=b.id)",check,emit)
+    missing(plan, conn, &VIRTUAL_BINDING, check, emit)
 }

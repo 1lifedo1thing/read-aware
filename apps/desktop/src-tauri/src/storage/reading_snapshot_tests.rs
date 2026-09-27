@@ -40,11 +40,9 @@ fn snapshot_counts_pending_once_across_a_racing_tick_and_flush() {
         2_000,
         "b1",
         20_000,
-        1_000_000,
-        1_030_000,
+        (1_000_000, 1_030_000),
         15,
-        Some(position(12, "ch1")),
-    );
+        Some(position(12, "ch1")));
     reading_session_flush_inner(&mut conn, &[flush]).unwrap();
     let second =
         reading_time_snapshot_inner(&mut conn, query(Some("b1"), Some("2026-09-07"), None, 1))
@@ -125,11 +123,9 @@ fn snapshot_is_consistent_while_a_separate_connection_flushes() {
                     2_000 + index,
                     "b1",
                     1_000,
-                    1_000_000,
-                    1_000_000,
+                    (1_000_000, 1_000_000),
                     15,
-                    None,
-                );
+                    None);
                 reading_session_flush_inner(&mut writer, &[event]).unwrap();
                 std::thread::yield_now();
             }
@@ -152,8 +148,8 @@ fn snapshot_is_consistent_while_a_separate_connection_flushes() {
 fn scoped_history_validates_book_and_projection_and_never_flushes() {
     let mut conn = migrated_conn();
     commit_events_inner(&mut conn, &[imported("a", 1_000, "a", "A"), imported("b", 1_001, "b", "B")]).unwrap();
-    commit_events_inner(&mut conn, &[session_event("s1", 2_000, "a", 5_000, 1_000_000, 1_000_000, 15, None),
-        session_event("s2", 2_001, "b", 10_000, 1_000_000, 1_000_000, 18, None)]).unwrap();
+    commit_events_inner(&mut conn, &[session_event("s1", 2_000, "a", 5_000, (1_000_000, 1_000_000), 15, None),
+        session_event("s2", 2_001, "b", 10_000, (1_000_000, 1_000_000), 18, None)]).unwrap();
     reading_session_accrue_inner(&conn, "a", "2026-09-07", 15, 9_000, 1_010_000).unwrap();
     let event_count = scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events");
     let one = reading_time_scope_inner(&mut conn, Some("a".into())).unwrap();

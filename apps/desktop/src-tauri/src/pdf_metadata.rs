@@ -180,7 +180,7 @@ mod tests {
         let mut offsets = Vec::new();
         for (index, object) in objects.iter().enumerate() {
             offsets.push(pdf.len());
-            write!(pdf, "{} 0 obj\n", index + 1).unwrap();
+            writeln!(pdf, "{} 0 obj", index + 1).unwrap();
             pdf.extend(object);
             pdf.extend(b"\nendobj\n");
         }

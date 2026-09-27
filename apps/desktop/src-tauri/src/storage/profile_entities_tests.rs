@@ -221,7 +221,7 @@ fn late_remote_arrivals_replay_to_the_same_profile_and_identity_graph() {
     let mut reversed = migrated_conn();
     commit_events_inner(&mut ordered, &events).unwrap();
     for event in events.iter().rev() {
-        apply_remote_events_inner(&mut reversed, &[event.clone()]).unwrap();
+        apply_remote_events_inner(&mut reversed, std::slice::from_ref(event)).unwrap();
     }
     assert_eq!(snapshot(&mut reversed), snapshot(&mut ordered));
     assert_eq!(

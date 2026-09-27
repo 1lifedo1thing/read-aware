@@ -29,9 +29,6 @@ pub async fn durable_job_get(owner: String, id: String, app: tauri::AppHandle) -
     }).await
 }
 
-pub(crate) fn durable_job_create_inner(conn: &mut Connection, owner: &str, id: &str, plan: Value) -> Result<DurableJobRecord, CommandError> {
-    durable_job_create_with_source_inner(conn, owner, id, plan, None)
-}
 pub(crate) fn validate_source(source: &Value) -> Result<(), CommandError> {
     let text = |value: &Value, max: usize| value.as_str().is_some_and(|s| !s.is_empty() && s.encode_utf16().count() <= max && !s.chars().any(char::is_control));
     let object = source.as_object().ok_or_else(|| invalid("Invalid job source"))?;
@@ -51,7 +48,7 @@ pub(crate) fn durable_job_create_with_source_inner(conn: &mut Connection, owner:
     identity(owner, id)?;
     if let Some(value) = &source { validate_source(value)?; }
     let steps = plan.get("steps").and_then(Value::as_array).ok_or_else(|| invalid("Missing job steps"))?;
-    if steps.is_empty() || steps.len() > 32 || plan.get("title").and_then(Value::as_str).map_or(true, |title| title.is_empty() || title.len() > 640) {
+    if steps.is_empty() || steps.len() > 32 || plan.get("title").and_then(Value::as_str).is_none_or(|title| title.is_empty() || title.len() > 640) {
         return Err(invalid("Invalid job plan"));
     }
     let json = plan.to_string();
@@ -109,7 +106,7 @@ pub(crate) fn durable_job_checkpoint_inner(conn: &mut Connection, owner: &str, i
     }
     let attempt = state.get("attempt").ok_or_else(|| invalid("Missing attempt"))?;
     if !attempt.is_null() && (next >= count || attempt["stepIndex"].as_u64() != Some(next as u64)
-        || attempt["dispatchId"].as_str().map_or(true, |id| id.is_empty() || id.len() > 128)
+        || attempt["dispatchId"].as_str().is_none_or(|id| id.is_empty() || id.len() > 128)
         || !matches!(attempt["phase"].as_str(), Some("prepared" | "dispatching" | "unknown" | "settled"))) {
         return Err(invalid("Invalid dispatch checkpoint"));
     }

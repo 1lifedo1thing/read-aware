@@ -25,7 +25,7 @@ pub(super) fn decode_key(
         Ok(head)
     }
     fn number(bytes: &mut &[u8]) -> Result<[u8; 8], CommandError> {
-        Ok(take(bytes, 8)?.try_into().map_err(|_| invalid())?)
+        take(bytes, 8)?.try_into().map_err(|_| invalid())
     }
     if u64::from_le_bytes(number(&mut key)?) != expected as u64 {
         return Err(invalid());

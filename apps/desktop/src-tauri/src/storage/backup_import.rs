@@ -222,7 +222,7 @@ fn open_source(
         credentials: report.credentials,
         plugin_programs: report.plugin_programs,
     };
-    lease.publish(PreparedBackup::Source(source))?;
+    lease.publish(PreparedBackup::Source(Box::new(source)))?;
     Ok(receipt)
 }
 fn summarize(
@@ -285,22 +285,31 @@ fn summarize(
         plugin_programs: plan.programs.len(),
     })
 }
+/// The live installation a plan compares against, and where it stages.
+struct PlanRoots<'a> {
+    data_dir: &'a Path,
+    bundled: crate::plugins::BundledPrograms,
+    staging: &'a BackupStaging,
+}
 fn build_plan(
     tasks: &BackupTasks,
     owner: &str,
     task_id: String,
     conn: &mut rusqlite::Connection,
-    data_dir: &Path,
-    bundled: crate::plugins::BundledPrograms,
-    staging: &BackupStaging,
+    roots: PlanRoots<'_>,
     send: impl FnMut(ImportProgress) -> Result<(), CommandError>,
 ) -> Result<PlanReceipt, CommandError> {
+    let PlanRoots {
+        data_dir,
+        bundled,
+        staging,
+    } = roots;
     let (lease, prepared) = tasks.take(owner, &task_id, Phase::Source)?;
     let PreparedBackup::Source(source) = prepared else {
         return Err(missing());
     };
     let mut progress = Reporter::new(send);
-    let events = backup_archive::plan_events(source, conn, staging, || {
+    let events = backup_archive::plan_events(*source, conn, staging, || {
         progress.update(&lease, ImportProgress::ComparingEvents)
     })?;
     let rows = events.plan_rows(conn, || {
@@ -316,7 +325,7 @@ fn build_plan(
         })?;
     }
     let receipt = summarize(task_id, &files, &lease)?;
-    lease.publish(PreparedBackup::Plan(files))?;
+    lease.publish(PreparedBackup::Plan(Box::new(files)))?;
     Ok(receipt)
 }
 
@@ -362,9 +371,11 @@ pub async fn backup_import_plan(
             &owner,
             task_id,
             &mut conn,
-            &app.state::<DataDir>().0,
-            bundled,
-            &app.state::<BackupStaging>(),
+            PlanRoots {
+                data_dir: &app.state::<DataDir>().0,
+                bundled,
+                staging: &app.state::<BackupStaging>(),
+            },
             |update| progress.send(update).map_err(|_| cancelled()),
         )
     })

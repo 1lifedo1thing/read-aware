@@ -85,7 +85,7 @@ fn begin_with_id_at(
     } else {
         None
     };
-    match storage::begin_plugin_update(conn, &id, plugin_id, candidate_token, had_previous) {
+    match storage::begin_plugin_update(conn, id, plugin_id, candidate_token, had_previous) {
         Ok(journal) => Ok(journal),
         Err(error) => {
             if backup.exists() {

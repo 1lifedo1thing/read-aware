@@ -85,7 +85,14 @@ fn backup_restore_rows_commits_selected_history_legacy_settings_and_presentation
         .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
         .unwrap();
     let receipt = plan.restore_rows(&tx, &revision, || Ok(())).unwrap();
-    assert!(receipt.chunks > 10);
+    let chunks: i64 = tx
+        .query_row(
+            "SELECT count(*) FROM domain_events WHERE type='backup.restoreChunk'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(chunks > 10);
     assert!(receipt.rows >= 5);
     assert_eq!(content(&tx, "chosen"), long);
     assert_eq!(content(&tx, "target-only"), "retained legacy target");

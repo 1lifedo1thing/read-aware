@@ -113,14 +113,14 @@ fn backup_row_plan_covers_every_current_table_and_preserves_actual_legacy_and_pr
     );
     assert_eq!(plan.tables["vocabulary_entries"].source_rows, 1);
     assert_eq!(
-        plan.tables["vocabulary_entries"].policy,
+        policy::table("vocabulary_entries").unwrap(),
         RowPolicy::LegacyData
     );
     assert_eq!(
-        plan.tables["reading_sessions_pending"].policy,
+        policy::table("reading_sessions_pending").unwrap(),
         RowPolicy::RecoverReading
     );
-    assert_eq!(plan.tables["annotations_fts"].policy, RowPolicy::Rebuild);
+    assert_eq!(policy::table("annotations_fts").unwrap(), RowPolicy::Rebuild);
     assert!(plan.tables["domain_events"].comparisons.is_none());
     assert!(plan.tables["schema_migrations"].comparisons.is_none());
     assert!(
@@ -132,7 +132,7 @@ fn backup_row_plan_covers_every_current_table_and_preserves_actual_legacy_and_pr
             > 0
     );
     assert_eq!(
-        plan.tables["local_device"].policy,
+        policy::table("local_device").unwrap(),
         RowPolicy::PreserveDevice
     );
     let tx = target.transaction().unwrap();

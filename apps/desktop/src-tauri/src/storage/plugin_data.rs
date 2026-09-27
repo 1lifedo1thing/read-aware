@@ -44,8 +44,8 @@ pub(crate) fn plugin_data_snapshot_conn(tx: &Connection, plugin_id: &str) -> Res
             .collect::<Result<BTreeMap<_, _>, _>>()?;
         rows
     };
-    let documents = plugin_docs::plugin_docs_snapshot_inner(&tx, plugin_id)?;
-    let schema = get_kv_inner(&tx, &schema_key)?;
+    let documents = plugin_docs::plugin_docs_snapshot_inner(tx, plugin_id)?;
+    let schema = get_kv_inner(tx, &schema_key)?;
     Ok(PluginDataSnapshot { plugin_id: plugin_id.into(), kv, documents, schema })
 }
 
@@ -68,7 +68,7 @@ pub(crate) fn plugin_data_restore_tx(tx: &Transaction, plugin_id: &str, snapshot
     if let Some(schema) = snapshot.schema {
         tx.execute("INSERT INTO app_kv (key, value_json, updated_at) VALUES (?1, ?2, strftime('%Y-%m-%dT%H:%M:%fZ','now'))", params![schema_key, schema])?;
     }
-    plugin_docs::replace_plugin_documents(&tx, plugin_id, snapshot.documents)?;
+    plugin_docs::replace_plugin_documents(tx, plugin_id, snapshot.documents)?;
     Ok(())
 }
 

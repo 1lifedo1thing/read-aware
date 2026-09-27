@@ -413,8 +413,9 @@ pub async fn resource_store_plugin_asset(app: tauri::AppHandle, plugin_id: Strin
         let source = reader(&app, &id)?;
         let db = app.state::<crate::storage::Db>(); let mut conn = db.0.lock()?;
         let dir = app.state::<crate::storage::DataDir>();
+        let input = crate::storage::plugin_assets::AssetInput { filename: &name, mime: &mime_type, source };
         crate::storage::plugin_assets::store_inner(&mut conn, &dir.0, &plugin_id, &key,
-            expected_revision.as_deref(), &name, &mime_type, source)
+            expected_revision.as_deref(), input)
     }).await
 }
 #[derive(Serialize)]

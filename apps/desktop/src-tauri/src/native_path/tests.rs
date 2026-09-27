@@ -45,7 +45,7 @@ fn failed_copy_preserves_error_code_and_removes_partial_file() {
     let cache_dir = tempfile::tempdir().unwrap();
     for (cause, code) in [
         (io::ErrorKind::PermissionDenied.into(), CODE_FS_PERMISSION),
-        (io::Error::from_raw_os_error(28), CODE_FS_NO_SPACE),
+        (io::ErrorKind::StorageFull.into(), CODE_FS_NO_SPACE),
     ] {
         let source = Cursor::new(b"partial book").chain(FailingReader(Some(cause)));
 

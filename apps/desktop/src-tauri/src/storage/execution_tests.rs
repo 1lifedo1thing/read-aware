@@ -90,7 +90,7 @@ fn every_storage_command_keeps_lock_waits_off_ui_dispatch() {
         ["covers.rs", "import.rs", "secrets.rs"].map(|name| root.parent().unwrap().join(name)),
     );
     for path in paths {
-        if !path.extension().is_some_and(|ext| ext == "rs") {
+        if path.extension().is_none_or(|ext| ext != "rs") {
             continue;
         }
         let source = fs::read_to_string(&path).unwrap();

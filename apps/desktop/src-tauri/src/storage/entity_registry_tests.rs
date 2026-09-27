@@ -484,7 +484,7 @@ fn reverse_remote_arrivals_and_replay_preserve_the_same_registry_revision() {
     commit_events_inner(&mut ordered, &events).unwrap();
     let dir = tempfile::tempdir().unwrap();
     for event in events.iter().rev() {
-        super::super::apply_remote_events_inner(&mut reversed, dir.path(), &[event.clone()], None)
+        super::super::apply_remote_events_inner(&mut reversed, dir.path(), std::slice::from_ref(event), None)
             .unwrap();
     }
     assert_eq!(revision(&ordered).unwrap(), revision(&reversed).unwrap());

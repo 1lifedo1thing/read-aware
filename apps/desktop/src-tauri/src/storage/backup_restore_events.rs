@@ -85,7 +85,6 @@ impl Writer<'_, '_> {
 }
 pub(crate) struct RestoreFacts {
     pub restore_id: String,
-    pub chunks: u64,
     pub rows: u64,
 }
 pub(crate) fn reconcile(
@@ -176,7 +175,6 @@ pub(crate) fn reconcile(
     check()?;
     Ok(RestoreFacts {
         restore_id: writer.id,
-        chunks: writer.chunks,
         rows: count,
     })
 }

@@ -181,9 +181,6 @@ fn set_inner(app: &tauri::AppHandle, key: &str, value: &str, roam: bool, source:
 
 /// The encrypted value/deletion and publication obligation commit together.
 /// Remote projection overlays cannot replace a newer unpublished local choice.
-pub(crate) fn write_sealed(conn: &mut rusqlite::Connection, key: &str, sealed: Option<&str>, roam: bool) -> Result<(), CommandError> {
-    write_sealed_with_source(conn, key, sealed, roam, None)
-}
 pub(crate) fn write_sealed_with_source(conn: &mut rusqlite::Connection, key: &str, sealed: Option<&str>, roam: bool, source: Option<&serde_json::Value>) -> Result<(), CommandError> {
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if !roam && crate::storage::restored_credentials::contains(&tx, key)? {

@@ -61,26 +61,6 @@ impl BackupSnapshot {
     pub fn directory(&self) -> &Path {
         self.directory.path()
     }
-
-    /// Recheck before handing this host-created snapshot to archive encryption.
-    /// This is not a parser for an unauthenticated, user-supplied SQLite file.
-    pub fn verify(
-        &self,
-        mut check: impl FnMut() -> Result<(), CommandError>,
-    ) -> Result<(), CommandError> {
-        let encoded = std::fs::read(self.directory().join("manifest.json"))?;
-        let manifest: BackupManifest = serde_json::from_slice(&encoded)?;
-        if manifest != self.manifest
-            || manifest.format != FORMAT
-            || manifest.schema_version != SCHEMA_VERSION
-        {
-            return Err(CommandError::new(CODE_CHANGED, "backup manifest changed"));
-        }
-        for entry in &manifest.files {
-            files::verify_file(self.directory(), entry, &mut check)?;
-        }
-        Ok(())
-    }
 }
 
 fn table_counts(conn: &Connection) -> Result<BTreeMap<String, u64>, CommandError> {

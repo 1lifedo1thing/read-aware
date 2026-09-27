@@ -8,6 +8,25 @@ fn database(path: &Path) -> Connection {
     ensure_local_device(&conn).unwrap();
     conn
 }
+/// The captured tree matches its own manifest, member by member, through the
+/// verifier restore uses. (The archive writer re-hashes while it streams.)
+fn verify_capture(
+    snapshot: &BackupSnapshot,
+    mut check: impl FnMut() -> Result<(), CommandError>,
+) -> Result<(), CommandError> {
+    let manifest: BackupManifest =
+        serde_json::from_slice(&fs::read(snapshot.directory().join("manifest.json"))?)?;
+    if manifest != snapshot.manifest
+        || manifest.format != FORMAT
+        || manifest.schema_version != SCHEMA_VERSION
+    {
+        return Err(CommandError::new(CODE_CHANGED, "backup manifest changed"));
+    }
+    for entry in &manifest.files {
+        files::verify_file(snapshot.directory(), entry, &mut check)?;
+    }
+    Ok(())
+}
 fn roots() -> (TempDir, TempDir) {
     (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap())
 }
@@ -123,7 +142,7 @@ fn full_backup_snapshot_preserves_database_blobs_plugins_and_credentials_without
         "presentation error"
     );
     assert!(!snapshot.directory().join("database.sqlite-wal").exists());
-    snapshot.verify(|| Ok(())).unwrap();
+    verify_capture(&snapshot, || Ok(())).unwrap();
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -280,14 +299,13 @@ fn full_backup_snapshot_cancel_and_staged_tampering_are_detected() {
     }
     let snapshot = capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(())).unwrap();
     assert_eq!(
-        snapshot
-            .verify(|| Err(CommandError::new(CODE_CANCELLED, "cancelled")))
+        verify_capture(&snapshot, || Err(CommandError::new(CODE_CANCELLED, "cancelled")))
             .unwrap_err()
             .code,
         CODE_CANCELLED
     );
     fs::write(snapshot.directory().join("database.sqlite"), "tampered").unwrap();
-    assert_eq!(snapshot.verify(|| Ok(())).unwrap_err().code, CODE_CHANGED);
+    assert_eq!(verify_capture(&snapshot, || Ok(())).unwrap_err().code, CODE_CHANGED);
 }
 
 #[cfg(unix)]

@@ -42,7 +42,6 @@ pub(crate) struct RowCounts {
 }
 #[derive(Debug)]
 pub(crate) struct TablePlan {
-    pub policy: RowPolicy,
     pub source_rows: u64,
     pub target_rows: u64,
     /// None means routed to another stage (schema, events, indexes, journal).
@@ -292,7 +291,6 @@ pub(super) fn plan(
         tables.insert(
             name,
             TablePlan {
-                policy,
                 source_rows,
                 target_rows,
                 comparisons,

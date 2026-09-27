@@ -1,3 +1,4 @@
+use super::inventory::BlobAvailability;
 use super::*;
 use crate::storage::{
     self,
@@ -145,22 +146,12 @@ fn backup_file_plan_compares_bytes_whole_programs_and_missing_or_orphan_targets_
         FilePolicy::PreserveCredentialKey
     );
     assert_eq!(plan.matches["secret.key"].kind, FileMatchKind::Different);
-    assert_eq!(
-        plan.programs
-            .iter()
-            .find(|p| p.root == "plugins/proof")
-            .unwrap()
-            .kind,
-        FileMatchKind::Different
-    );
-    assert_eq!(
-        plan.programs
-            .iter()
-            .find(|p| p.root == "bundled-plugins/proof")
-            .unwrap()
-            .kind,
-        FileMatchKind::Same
-    );
+    let program_kind = |root: &str| {
+        let program = plan.programs.iter().find(|p| p.root == root).unwrap();
+        kind(program.source.as_ref(), program.target.as_ref())
+    };
+    assert_eq!(program_kind("plugins/proof"), FileMatchKind::Different);
+    assert_eq!(program_kind("bundled-plugins/proof"), FileMatchKind::Same);
     assert!(plan
         .programs
         .iter()

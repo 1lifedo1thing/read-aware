@@ -59,9 +59,11 @@ fn backup_import_apply_consumes_the_owned_plan_and_returns_only_a_committed_rece
         "main",
         id.clone(),
         &mut conn,
-        target.path(),
-        crate::plugins::BundledPrograms::fixture(target.path()),
-        &root,
+        PlanRoots {
+            data_dir: target.path(),
+            bundled: crate::plugins::BundledPrograms::fixture(target.path()),
+            staging: &root,
+        },
         |_| Ok(()),
     )
     .unwrap();
@@ -156,9 +158,11 @@ fn backup_import_real_archive_to_private_plan_preserves_target_and_rejects_wrong
         "main",
         id.clone(),
         &mut conn,
-        target.path(),
-        crate::plugins::BundledPrograms::fixture(target.path()),
-        &root,
+        PlanRoots {
+            data_dir: target.path(),
+            bundled: crate::plugins::BundledPrograms::fixture(target.path()),
+            staging: &root,
+        },
         |_| Ok(()),
     )
     .unwrap();
@@ -310,9 +314,11 @@ fn backup_import_cancel_after_decryption_and_during_planning_erases_private_work
         "main",
         id.clone(),
         &mut conn,
-        target.path(),
-        crate::plugins::BundledPrograms::fixture(target.path()),
-        &root,
+        PlanRoots {
+            data_dir: target.path(),
+            bundled: crate::plugins::BundledPrograms::fixture(target.path()),
+            staging: &root,
+        },
         |phase| {
             if phase == ImportProgress::ComparingRows {
                 tasks.cancel("main", Some(&id))?;
@@ -393,9 +399,11 @@ fn backup_import_review_pages_are_stable_private_evidence_and_invalid_queries_ke
         "main",
         id.clone(),
         &mut conn,
-        target.path(),
-        crate::plugins::BundledPrograms::fixture(target.path()),
-        &root,
+        PlanRoots {
+            data_dir: target.path(),
+            bundled: crate::plugins::BundledPrograms::fixture(target.path()),
+            staging: &root,
+        },
         |_| Ok(()),
     )
     .unwrap();

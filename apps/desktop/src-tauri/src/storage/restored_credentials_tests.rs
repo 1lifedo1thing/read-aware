@@ -15,21 +15,21 @@ fn restored_credentials_local_writes_and_deletions_survive_crash_before_publicat
     assert!(crate::secrets::write_sealed_with_source(&mut conn, "ai-api-key.a", None, true, Some(&serde_json::json!({"version":1}))).is_err());
     assert!(contains(&conn, "ai-api-key.a").unwrap());
     let stale = crate::secrets::encrypt(root.path(), "stale projection").unwrap();
-    assert_eq!(crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&stale), false).unwrap_err().code, "ui/superseded");
+    assert_eq!(crate::secrets::write_sealed_with_source(&mut conn, "ai-api-key.a", Some(&stale), false, None).unwrap_err().code, "ui/superseded");
     drop(conn); let mut conn = db(root.path());
     assert_eq!(credential_crypto::local(&conn, root.path(), "ai-api-key.a").unwrap().as_ref().map(|value| value.as_str()), Some("new local value"));
     let draft = event(&conn, "ai-api-key.a", 1000);
     let report = publish(&mut conn, root.path(), vec![draft]).unwrap();
     assert_eq!(report.sources.get(&report.events[0].id), Some(&latest));
     assert_eq!(report.events.len(), 1); assert!(!contains(&conn, "ai-api-key.a").unwrap());
-    crate::secrets::write_sealed(&mut conn, "ai-api-key.a", None, true).unwrap();
+    crate::secrets::write_sealed_with_source(&mut conn, "ai-api-key.a", None, true, None).unwrap();
     drop(conn); let mut conn = db(root.path());
     assert!(contains(&conn, "ai-api-key.a").unwrap());
     let draft = event(&conn, "ai-api-key.a", 2000);
     let deletion = publish(&mut conn, root.path(), vec![draft]).unwrap();
     assert!(deletion.events[0].payload["value"].is_null());
     assert!(deletion.sources.is_empty()); // Legacy/restore writes do not inherit obsolete provenance.
-    crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&sealed), false).unwrap();
+    crate::secrets::write_sealed_with_source(&mut conn, "ai-api-key.a", Some(&sealed), false, None).unwrap();
     assert!(pending(&conn).unwrap().is_empty()); // Remote overlays never echo.
 }
 
@@ -39,11 +39,11 @@ fn restored_credentials_local_value_and_marker_roll_back_together_and_backfill_i
     secret(&conn, root.path(), "ai-api-key.a", "old");
     let next = crate::secrets::encrypt(root.path(), "next").unwrap();
     conn.execute_batch("CREATE TRIGGER refuse_marker BEFORE INSERT ON restored_credential_publications BEGIN SELECT RAISE(ABORT,'marker failure'); END;").unwrap();
-    assert!(crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&next), true).is_err());
-    assert!(crate::secrets::write_sealed(&mut conn, "ai-api-key.a", None, true).is_err());
+    assert!(crate::secrets::write_sealed_with_source(&mut conn, "ai-api-key.a", Some(&next), true, None).is_err());
+    assert!(crate::secrets::write_sealed_with_source(&mut conn, "ai-api-key.a", None, true, None).is_err());
     assert_eq!(credential_crypto::local(&conn, root.path(), "ai-api-key.a").unwrap().as_ref().map(|value| value.as_str()), Some("old"));
-    crate::secrets::write_sealed(&mut conn, "plugin.test.token", Some(&next), true).unwrap();
-    crate::secrets::write_sealed(&mut conn, "sync.session", Some(&next), true).unwrap();
+    crate::secrets::write_sealed_with_source(&mut conn, "plugin.test.token", Some(&next), true, None).unwrap();
+    crate::secrets::write_sealed_with_source(&mut conn, "sync.session", Some(&next), true, None).unwrap();
     assert!(pending(&conn).unwrap().is_empty());
     conn.execute_batch("DROP TRIGGER refuse_marker; INSERT INTO synced_preferences VALUES ('secret:ai-api-key.a','null','now');").unwrap();
     secret(&conn, root.path(), "ai-api-key.b", "unpublished");

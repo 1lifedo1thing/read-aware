@@ -123,7 +123,7 @@ fn immutable_versions_deduplicate_and_ranked_sources_survive_replay_and_late_rem
     assert_eq!(snapshot(&mut conn), before);
     let mut reverse = migrated_conn();
     for event in events.iter().rev() {
-        apply_remote_events_inner(&mut reverse, &[event.clone()]).unwrap();
+        apply_remote_events_inner(&mut reverse, std::slice::from_ref(event)).unwrap();
     }
     assert_eq!(snapshot(&mut reverse), before);
     assert_eq!(

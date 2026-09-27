@@ -3,7 +3,6 @@
 use super::PreflightedBackup;
 use crate::error::CommandError;
 use rusqlite::{params, Connection, Transaction};
-use std::path::Path;
 
 #[path = "backup_plan_events.rs"]
 mod events;
