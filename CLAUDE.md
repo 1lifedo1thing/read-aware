@@ -37,9 +37,11 @@ TanStack Router, Jotai, Tailwind CSS v4, Vite, and Tauri 2.
 - Design memory retrieval around scope, reading progress, relevance and feedback.
   Memory writes and consolidation must account for promotion, conflicts, deduplication,
   entity identity and forgetting. Context exports use structured, versioned bundles.
-- `foliate-js` is the single reader engine, vendored under
-  `apps/web/public/foliate-js` as static runtime modules. Read original files without
-  conversion or rebundling the engine; surface DRM as unsupported.
+- `foliate-js` is the single reader engine. Its TypeScript source lives in
+  `apps/web/foliate-js/src`; `build:foliate` compiles it into git-ignored static runtime
+  modules under `apps/web/public/foliate-js`. Edit the source, never the emitted `.js`.
+  Read original files without conversion or rebundling the engine; surface DRM as
+  unsupported.
 
 ## Reuse existing components and architecture
 
@@ -141,12 +143,13 @@ historical material, not current status or an automatic work queue.
 
 Use bun from the repo root. Available scripts include `bun run dev` (Tauri),
 `bun run dev:web`, `bun run dev:landing`, `bun run storybook`, `bun run test`,
-`bun run typecheck`, `bun run lint`, `bun run lint:deps`, `bun run build`,
+`bun run typecheck`, `bun run lint`, `bun run format`, `bun run lint:deps`, `bun run build`,
 `bun run build:desktop`, and `bun run check:docs`. Select relevant commands; package
 scripts provide focused checks, such as `test:runtime` in `apps/web` for the reader
 suites in headless Chrome. `bun run lint` is type-aware oxlint (`.oxlintrc.json`)
 plus a check that no promise rejection is discarded without a log or a comment.
-`.github/workflows/ci.yml` gates PRs and `main` on typecheck, lint, tests, `lint:deps`,
+`bun run format` applies Biome (`biome.json`); Rust uses `cargo fmt`.
+`.github/workflows/ci.yml` gates PRs and `main` on typecheck, lint, formatting, tests, `lint:deps`,
 docs, the runtime suites, and rustfmt/clippy. `lint:deps` only accepts a shrinking
 `.dependency-cruiser-known-violations.json`; after fixing violations, run
 `bun run lint:deps:baseline` in that workspace and commit the smaller file.

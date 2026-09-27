@@ -34,6 +34,8 @@ jobs:
       - run: bun run typecheck
       - name: Lint (type-aware oxlint and swallowed promise rejections)
         run: bun run lint
+      - name: Formatting (Biome)
+        run: bun run format:check
       - run: bun run test
       - name: Dependency boundaries (ratchet against the recorded baseline)
         run: bun run lint:deps
