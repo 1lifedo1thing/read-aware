@@ -484,8 +484,71 @@ fn uninstall_files_unchecked(app: tauri::AppHandle, id: String) -> Result<(), St
     Ok(())
 }
 
-/// Serves `<app_data>/plugins/<path>` for `raplugin://localhost/<path>` (and
-/// Windows' `http://raplugin.localhost/<path>`). Module scripts import
+/// Every place a `raplugin://` path may resolve, in lookup order, as
+/// (containment base, requested file). Each base is exactly one plugin's own
+/// folder — or one staged candidate's — so a plugin can never reach another
+/// plugin's files, nor the `.rollback`/`.candidates` bookkeeping trees.
+///
+/// Paths are `<plugin id>/<file path>` or `__candidate/<token>/<file path>`.
+/// Plain ASCII only: plugin folders are machine-named, and rejecting
+/// percent-escapes, backslashes and dot-prefixed segments outright beats
+/// decoding them. (Installed plugin files never start with a dot: every
+/// staging path skips or rejects hidden entries.)
+fn asset_lookups(
+    rel: &str,
+    bundled: Option<&bundled::BundledRoot>,
+    user: Option<&Path>,
+) -> Vec<(PathBuf, PathBuf)> {
+    let plain_file = |path: &str| {
+        !path.is_empty()
+            && !path.contains(['%', '\\'])
+            && path
+                .split('/')
+                .all(|part| !part.is_empty() && !part.starts_with('.'))
+    };
+    let mut lookups = Vec::new();
+    // A separately staged candidate gets an explicit protocol namespace. It
+    // is executable for health checking but is never discovered as installed.
+    if let Some(candidate_rel) = rel.strip_prefix("__candidate/") {
+        if let (Some(user), Some((token, rest))) = (user, candidate_rel.split_once('/')) {
+            if valid_candidate_token(token) && plain_file(rest) {
+                let base = candidates_dir(user).join(token);
+                lookups.push((base.clone(), base.join(rest)));
+            }
+        }
+        return lookups;
+    }
+    let Some((id, rest)) = rel.split_once('/') else {
+        return lookups;
+    };
+    if !valid_plugin_id(id) || !plain_file(rest) {
+        return lookups;
+    }
+    // Bundled root first: a bundled id shadows a user-dir copy, matching
+    // plugins_list.
+    if let Some(root) = bundled {
+        let base = root.plugin_dir(id);
+        lookups.push((base.clone(), base.join(rest)));
+    }
+    if let Some(user) = user {
+        let base = user.join(id);
+        lookups.push((base.clone(), base.join(rest)));
+    }
+    lookups
+}
+
+/// The first lookup naming a regular file inside its own base. Both ends are
+/// canonicalized so containment also holds through symlinks.
+fn resolve_asset(lookups: Vec<(PathBuf, PathBuf)>) -> Option<PathBuf> {
+    lookups.into_iter().find_map(|(base, full)| {
+        let canonical = full.canonicalize().ok()?;
+        let canonical_base = base.canonicalize().ok()?;
+        (canonical.starts_with(&canonical_base) && canonical.is_file()).then_some(canonical)
+    })
+}
+
+/// Serves one plugin's files for `raplugin://localhost/<id>/<path>` (and
+/// Windows' `http://raplugin.localhost/<id>/<path>`). Module scripts import
 /// cross-origin, so responses carry a permissive CORS header; the CSP's
 /// `script-src` is what actually scopes which origins may execute them.
 pub fn serve_plugin_asset(
@@ -500,51 +563,10 @@ pub fn serve_plugin_asset(
             .unwrap()
     }
 
-    let rel = request.uri().path().trim_start_matches('/').to_string();
-    // Plain ASCII paths only — plugin folders are machine-named; rejecting
-    // percent-escapes and dot segments outright beats decoding them.
-    if rel.is_empty() || rel.contains("..") || rel.contains('%') || rel.contains('\\') {
-        return not_found();
-    }
-    // A separately staged candidate gets an explicit protocol namespace. It
-    // is executable for health checking but is never discovered as installed.
-    let mut candidates: Vec<(PathBuf, PathBuf)> = Vec::new();
-    if let Some(candidate_rel) = rel.strip_prefix("__candidate/") {
-        if let Some((token, rest)) = candidate_rel.split_once('/') {
-            if valid_candidate_token(token) && !rest.is_empty() {
-                if let Ok(user) = plugins_dir(app) {
-                    let base = candidates_dir(&user).join(token);
-                    candidates.push((base.clone(), base.join(rest)));
-                }
-            }
-        }
-    }
-    // Bundled root first (a bundled id shadows a user-dir copy, matching
-    // plugins_list), then the user dir; containment is canonicalized per
-    // candidate. `rel` is `<plugin id>/<file path>`.
-    if let Some((id, rest)) = rel.split_once('/') {
-        if let Some(root) = bundled_root(app) {
-            let base = root.plugin_dir(id);
-            let full = base.join(rest);
-            candidates.push((base, full));
-        }
-    }
-    if let Ok(user) = plugins_dir(app) {
-        let full = user.join(&rel);
-        candidates.push((user, full));
-    }
-    let mut resolved: Option<PathBuf> = None;
-    for (base, full) in candidates {
-        // Canonicalize both ends so the containment check holds through symlinks.
-        let (Ok(canonical), Ok(canonical_base)) = (full.canonicalize(), base.canonicalize()) else {
-            continue;
-        };
-        if canonical.starts_with(&canonical_base) && canonical.is_file() {
-            resolved = Some(canonical);
-            break;
-        }
-    }
-    let Some(canonical) = resolved else {
+    let rel = request.uri().path().trim_start_matches('/');
+    let user = plugins_dir(app).ok();
+    let lookups = asset_lookups(rel, bundled_root(app), user.as_deref());
+    let Some(canonical) = resolve_asset(lookups) else {
         return not_found();
     };
     let Ok(bytes) = fs::read(&canonical) else {
@@ -715,6 +737,86 @@ mod tests {
 
         assert_eq!(version(&plugins.join("sample")), "1.0.0");
         assert!(!rollback_dir(plugins).join("sample").exists());
+    }
+
+    /// Two user plugins, a bundled one, retained/candidate bookkeeping, and
+    /// the bundled root, laid out as the app lays them out.
+    fn asset_fixture() -> (tempfile::TempDir, PathBuf, bundled::BundledRoot, String) {
+        let temp = tempfile::tempdir().unwrap();
+        let plugins = temp.path().join("plugins");
+        let token = uuid::Uuid::new_v4().to_string();
+        write_plugin(&plugins.join("alpha"), "alpha", "1.0.0");
+        fs::create_dir_all(plugins.join("alpha/lib")).unwrap();
+        fs::write(plugins.join("alpha/lib/chunk.js"), "// chunk").unwrap();
+        write_plugin(&plugins.join("beta"), "beta", "1.0.0");
+        fs::write(plugins.join("beta/secret.js"), "// beta only").unwrap();
+        write_plugin(&rollback_dir(&plugins).join("alpha"), "alpha", "0.9.0");
+        write_plugin(&candidates_dir(&plugins).join(&token), "alpha", "2.0.0");
+        let bundled_dir = temp.path().join("bundled-plugins");
+        write_plugin(&bundled_dir.join("gamma"), "gamma", "1.0.0");
+        write_plugin(&plugins.join("gamma"), "gamma", "0.1.0");
+        let root = bundled::BundledRoot::Extracted(bundled_dir);
+        (temp, plugins, root, token)
+    }
+
+    fn serve(rel: &str, root: &bundled::BundledRoot, plugins: &Path) -> Option<String> {
+        resolve_asset(asset_lookups(rel, Some(root), Some(plugins)))
+            .map(|path| fs::read_to_string(path).unwrap())
+    }
+
+    #[test]
+    fn plugin_assets_resolve_only_inside_the_requested_plugin() {
+        let (_temp, plugins, root, token) = asset_fixture();
+        assert_eq!(serve("alpha/main.js", &root, &plugins).unwrap(), "// 1.0.0");
+        assert_eq!(serve("alpha/lib/chunk.js", &root, &plugins).unwrap(), "// chunk");
+        assert_eq!(serve("beta/secret.js", &root, &plugins).unwrap(), "// beta only");
+        // A bundled id shadows a user-dir copy.
+        assert_eq!(serve("gamma/main.js", &root, &plugins).unwrap(), "// 1.0.0");
+        // The candidate namespace serves the staged tree by token.
+        assert_eq!(
+            serve(&format!("__candidate/{token}/main.js"), &root, &plugins).unwrap(),
+            "// 2.0.0"
+        );
+        for rel in [
+            // Another plugin through traversal, escapes or backslashes.
+            "alpha/../beta/secret.js",
+            "alpha/%2e%2e/beta/secret.js",
+            "alpha\\..\\beta\\secret.js",
+            "alpha/./main.js",
+            // Bookkeeping trees are not plugins.
+            ".rollback/alpha/main.js",
+            ".candidates/alpha/main.js",
+            &format!(".candidates/{token}/main.js"),
+            // The candidate namespace needs a real token and a file.
+            "__candidate/not-a-token/main.js",
+            &format!("__candidate/{token}"),
+            &format!("__candidate/{token}/"),
+            &format!("__candidate/{token}/../../beta/secret.js"),
+            // Malformed ids, bare roots and folders.
+            "Alpha/main.js",
+            "-alpha/main.js",
+            "alpha",
+            "alpha/",
+            "alpha//main.js",
+            "alpha/lib",
+            "manifest.json",
+            "",
+        ] {
+            assert_eq!(serve(rel, &root, &plugins), None, "{rel} must not resolve");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn plugin_asset_symlinks_cannot_leave_their_plugin() {
+        let (_temp, plugins, root, _) = asset_fixture();
+        std::os::unix::fs::symlink(plugins.join("beta/secret.js"), plugins.join("alpha/escape.js"))
+            .unwrap();
+        std::os::unix::fs::symlink(plugins.join("alpha/lib"), plugins.join("alpha/linked"))
+            .unwrap();
+        assert_eq!(serve("alpha/escape.js", &root, &plugins), None);
+        // A link that stays inside the plugin still resolves.
+        assert_eq!(serve("alpha/linked/chunk.js", &root, &plugins).unwrap(), "// chunk");
     }
 
     #[test]
