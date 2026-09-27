@@ -39,11 +39,21 @@ type Options = {
   onAdvancePastEnd: () => void;
 };
 
+type CrossingNavigation = () => Promise<unknown> | void;
+
+/** One cross-fade run: the newest jump waiting for it, and its completion. */
+type Crossing = {
+  pending: CrossingNavigation | null;
+  settled: Promise<void>;
+};
+
 export type ReaderPagination = {
   /** True while a section cross-fade is in flight; the view renders hidden. */
   isCrossing: boolean;
   /** Run a navigation behind the cross-fade — for any jump far enough that a
-   *  hard swap would read as a glitch rather than a move. */
+   *  hard swap would read as a glitch rather than a move. Latest wins: a jump
+   *  requested mid-crossing lands after it; the promise settles once the view
+   *  is at rest. */
   crossTo: (navigate: () => Promise<unknown> | void) => Promise<void>;
   crossSection: (direction: -1 | 1, targetSection?: number) => Promise<void>;
   crossSectionRef: RefObject<(direction: -1 | 1, targetSection?: number) => Promise<void>>;
@@ -64,6 +74,9 @@ export type ReaderPagination = {
   resetShellScrollTravel: () => void;
   /** Abandon the previous engine's turn queue when a new book is opened. */
   resetPageTurnQueue: () => void;
+  /** Abandon the previous engine's crossing, and any jump queued behind it,
+   *  when a new book is opened. */
+  resetCrossing: () => void;
 };
 
 export function useReaderPagination({
@@ -75,45 +88,88 @@ export function useReaderPagination({
   onAdvancePastEnd,
 }: Options): ReaderPagination {
   const [isCrossing, setIsCrossing] = useState(false);
-  const crossingSectionRef = useRef(false);
   const overscrollRef = useRef(0);
   const overscrollResetTimerRef = useRef<number | null>(null);
   /** Signed wheel travel accumulated while the shell is open. */
   const shellScrollAccumRef = useRef(0);
 
+  /** The crossing in flight, or null. See `runCrossing`. */
+  const crossingRef = useRef<Crossing | null>(null);
+
   /**
    * Run a navigation behind a cross-fade: fade the current section out, move
-   * while hidden, fade the destination back in. Every jump that lands somewhere
-   * the reader was not looking goes through here — a section crossing, a scrub
-   * of the progress bar — because an instant swap of the whole page reads as a
-   * glitch rather than as travel.
+   * while hidden, fade the destination back in, then settle briefly so one
+   * wheel push advances a single section.
+   *
+   * Absolute jumps requested while this runs are not dropped: the newest one
+   * is kept in `pending` and applied once the running navigation has settled —
+   * still behind the fade when it arrives before the reveal, as a follow-up
+   * crossing when it arrives during the settle. Superseded targets are
+   * skipped, never replayed. A queued jump belongs to the engine it was aimed
+   * at: if the view was replaced (another book, a re-open) it is discarded.
    */
-  const crossTo = useCallback(
-    async (navigate: () => Promise<unknown> | void) => {
-      if (crossingSectionRef.current) return;
+  const runCrossing = useCallback(
+    (navigate: CrossingNavigation): Promise<void> => {
       const view = viewRef.current;
-      if (!view) return;
-      crossingSectionRef.current = true;
-      const renderer = view.renderer;
-      // Stop the old chapter's native momentum before its scroll bounds change.
-      // Hiding the content with opacity alone leaves WebKit's scrolling layer live.
-      const resumeScroll = renderer && "suspendScroll" in renderer ? renderer.suspendScroll() : undefined;
-      setIsCrossing(true); // fade the current section out
-      try {
-        await new Promise((resolve) => window.setTimeout(resolve, SECTION_CROSS_FADE_MS));
-        await navigate();
-      } catch {
-        // At the first/last section, or a teardown race — fall through to reveal.
-      } finally {
-        resumeScroll?.();
-      }
-      // The destination has rendered while hidden; reveal it on the next frame,
-      // then settle briefly so one push advances a single section.
-      window.requestAnimationFrame(() => setIsCrossing(false));
-      await new Promise((resolve) => window.setTimeout(resolve, SECTION_CROSS_COOLDOWN_MS));
-      crossingSectionRef.current = false;
+      if (!view) return Promise.resolve();
+      const crossing: Crossing = { pending: null, settled: Promise.resolve() };
+      crossingRef.current = crossing;
+      const takePending = (): CrossingNavigation | null => {
+        const next = crossing.pending;
+        crossing.pending = null;
+        return next && viewRef.current === view ? next : null;
+      };
+      crossing.settled = (async () => {
+        const renderer = view.renderer;
+        // Stop the old chapter's native momentum before its scroll bounds change.
+        // Hiding the content with opacity alone leaves WebKit's scrolling layer live.
+        const resumeScroll = renderer && "suspendScroll" in renderer ? renderer.suspendScroll() : undefined;
+        setIsCrossing(true); // fade the current section out
+        try {
+          await new Promise((resolve) => window.setTimeout(resolve, SECTION_CROSS_FADE_MS));
+          for (let next: CrossingNavigation | null = navigate; next; next = takePending()) {
+            try {
+              await next();
+            } catch {
+              // At the first/last section, or a teardown race — fall through to
+              // the next queued jump, or to the reveal.
+            }
+          }
+        } finally {
+          resumeScroll?.();
+        }
+        // The destination has rendered while hidden; reveal it on the next frame,
+        // then settle briefly so one push advances a single section. A crossing
+        // started for a replacement engine (see resetCrossing) owns the fade
+        // from then on, so an abandoned run must not reveal under it.
+        const ownsFade = () => crossingRef.current === crossing || crossingRef.current === null;
+        window.requestAnimationFrame(() => { if (ownsFade()) setIsCrossing(false); });
+        await new Promise((resolve) => window.setTimeout(resolve, SECTION_CROSS_COOLDOWN_MS));
+        if (crossingRef.current === crossing) crossingRef.current = null;
+        // A jump that arrived during the settle still lands, as its own crossing.
+        const late = takePending();
+        if (late) await runCrossing(late);
+      })();
+      return crossing.settled;
     },
     [viewRef],
+  );
+
+  /**
+   * Jump behind the cross-fade — to an absolute target (a progress-bar scrub,
+   * a fraction), where only the latest request matters. During a crossing the
+   * request replaces any queued one and lands after the in-flight navigation;
+   * the returned promise settles once the view has come to rest, including any
+   * newer jump that superseded this one.
+   */
+  const crossTo = useCallback(
+    (navigate: CrossingNavigation): Promise<void> => {
+      const inFlight = crossingRef.current;
+      if (!inFlight) return runCrossing(navigate);
+      inFlight.pending = navigate;
+      return inFlight.settled;
+    },
+    [runCrossing],
   );
 
   /**
@@ -122,16 +178,22 @@ export function useReaderPagination({
    * it smooths the otherwise abrupt chapter swap. An explicit `targetSection`
    * jumps straight to that spine index instead of relying on next/prev — which
    * only cross once the viewport is pinned at a section edge.
+   *
+   * Unlike `crossTo`, a relative step requested during a crossing is dropped:
+   * it is the same push's leftover momentum, and replaying it would skip a
+   * whole section the reader never saw.
    */
   const crossSection = useCallback(
-    (direction: -1 | 1, targetSection?: number) =>
-      crossTo(() => {
+    async (direction: -1 | 1, targetSection?: number): Promise<void> => {
+      if (crossingRef.current) return;
+      await runCrossing(() => {
         const view = viewRef.current;
         if (!view) return;
         if (targetSection != null) return view.goTo(targetSection);
         return direction === 1 ? view.next() : view.prev();
-      }),
-    [crossTo, viewRef],
+      });
+    },
+    [runCrossing, viewRef],
   );
   const crossSectionRef = useRef(crossSection);
   useEffect(() => {
@@ -306,6 +368,12 @@ export function useReaderPagination({
     shellScrollAccumRef.current = 0;
   }, []);
 
+  const resetCrossing = useCallback(() => {
+    // The previous engine's crossing (and any jump queued for it) is not the
+    // new book's: requests made from now on start their own crossing.
+    crossingRef.current = null;
+  }, []);
+
   const resetPageTurnQueue = useCallback(() => {
     // Abandon the previous engine's queue — a turn that never settled (teardown
     // race) must not wedge the running flag against the new book.
@@ -336,5 +404,6 @@ export function useReaderPagination({
     turnPage,
     resetShellScrollTravel,
     resetPageTurnQueue,
+    resetCrossing,
   };
 }
