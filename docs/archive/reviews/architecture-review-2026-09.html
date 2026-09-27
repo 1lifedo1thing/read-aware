@@ -430,6 +430,35 @@ infra/        （原 platform/）ipc、事件存储、kv、secrets、blob、sync
   <li><b>目录改名</b>（<code>services→host</code>、<code>platform→infra</code>）：我倾向于不改，只加依赖规则。</li>
 </ol>
 
+<h2 id="progress"><span class="num">11</span>处理进展（同日更新）</h2>
+<p>第 0 段（止血）和第 1 段（守门）已完成。v1 备份按决定直接退役。每个单元单独提交，并在运行中的桌面应用里做了实机验证。</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>项目</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td>relay 配额顺序</td><td><span class="badge ok">已修</span> 先预留配额再写入，最后释放旧对象；超额时旧 blob 和记账都保持不变；错误返回稳定错误码并带 CORS 头</td></tr>
+    <tr><td>插件受限面</td><td><span class="badge ok">已修</span> 共修复 7 处漂移；受限面改为穷尽式策略表，domain 新增方法不分类就无法编译</td></tr>
+    <tr><td>插件资源协议</td><td><span class="badge ok">已修</span> 只能在所请求插件自己的目录内解析路径；<code>.rollback</code>、<code>.candidates</code> 实机返回 404</td></tr>
+    <tr><td>v1 备份</td><td><span class="badge ok">已退役</span> 导入旧的 .json 文件会得到明确的 <code>backup/legacy-format</code> 提示（已实机验证）；清理了无人调用的原生命令</td></tr>
+    <tr><td>会话保存</td><td><span class="badge ok">已修</span> 新命令 <code>ai_chat_commit</code> 在一个事务里完成；UI 成为唯一的对话写入者；确认 <code>adoptLegacyThread</code> 的竞态真实存在并已修复（已实机验证）</td></tr>
+    <tr><td>阅读器</td><td><span class="badge ok">已修</span> 引擎生命周期只由书和阅读模式决定：实机切换外壳、主题、字号时引擎都不重开，切换阅读模式时恰好重开一次；跨章期间的进度跳转不再丢失；坐标映射统一为一处</td></tr>
+    <tr><td>导出写路径</td><td><span class="badge ok">已修</span> <code>write_export_file</code>、<code>resource_save</code>、<code>backup_export_write</code> 只接受原生保存对话框签发的授权；伪造令牌实机被拒</td></tr>
+    <tr><td>原生加固</td><td><span class="badge ok">已修</span> 连接锁中毒后自动恢复；所有命令移出主线程，并由守卫测试强制；27 个 String 错误改为 <code>CommandError</code>；诊断日志读取失败如实报错；roaming 偏好的写入与事件原子提交</td></tr>
+    <tr><td>守门</td><td><span class="badge ok">已上线</span> <code>ci.yml</code> 覆盖 typecheck（所有 tsconfig）、type-aware oxlint、Biome 格式、全部测试、依赖边界棘轮（只允许违规减少）、阅读器 Chrome 回归、rustfmt、clippy <code>-D warnings</code>、vendor 补丁测试</td></tr>
+    <tr><td>lint 顺带发现的 bug</td><td><span class="badge ok">已修</span> <code>finally</code> 里的错误遮盖原始错误；请求缓存 key 全部撞成 <code>[object Request]</code>；读不到同步配置时调度器静默停摆；一个永远不会失败的 story 断言</td></tr>
+  </tbody>
+</table></div>
+
+<h3>仍待处理</h3>
+<ul>
+  <li><b>relay 需要部署</b>：修复只有部署到线上后才生效，这属于对外操作，需要单独授权。</li>
+  <li><b>分片 blob 重传</b>：对已有的分片 blob 重传时如果中途放弃，由于每次加密的 nonce 不同，新旧分片可能混在一起。修复需要修改同步协议（分片按上传 id 暂存、提交时原子切换）。</li>
+  <li><b>读取方向的路径授权</b>：<code>read_book_head</code>、<code>library_stage_import</code>、<code>backup_import_open</code> 等 6 个命令仍然接受 webview 传来的任意路径；拖拽导入需要在原生端记录拖放授权。</li>
+  <li><b>市场仓库的 <code>.d.ts</code></b>：<code>DomainSubscribe</code> 的返回类型放宽为 <code>unknown</code>，需要同步到插件市场仓库。</li>
+  <li>pre-SQLite 一次性启动迁移仍然直接写投影行（有注释标明，并有 genesis 对账兜底）。</li>
+  <li>第 2–4 段（契约单一来源、结构拆分、清理）按原路线推进；依赖边界基线当前为 web 615 条（跨 feature 直引 384、下层引用 features 180、循环 38、platform 上引 8、domain/platform 用 jotai 5）、agent 循环 7 条，只允许减少。</li>
+</ul>
+
 <footer>
   ReadAware 工程评审 · 2026-09-27 · 基线 main@10cdd803。本页是当时的快照，不代表之后的状态。<br>
   审计证据（knip 输出、rustfmt 差异、未测试文件清单、测试目录的 tsconfig）是在审计会话的临时目录里生成的，没有入库。
