@@ -6,6 +6,9 @@
 import {
   BLOB_HEAD_BYTES_HEADER,
   BLOB_HEAD_PARTS_HEADER,
+  ERR_SYNC_FILE_TOO_LARGE,
+  ERR_SYNC_QUOTA,
+  isRelayErrorCode,
   type AccountResponse,
   type AuthRequestResponse,
   type AuthVerifyResponse,
@@ -15,19 +18,48 @@ import {
   type PublishSnapshotBody,
   type PullEventsResponse,
   type PushEventsResponse,
+  type RelayErrorCode,
+  type RelayErrorResponse,
   type SealedEventWire,
   type SnapshotMeta,
   type SnapshotResponse,
   type SyncKeyMaterial,
 } from "@read-aware/core";
 
+/**
+ * The app's stable code for a relay refusal whose cause decides what the user
+ * can do: out of room (clears once space is freed or the plan grows) versus a
+ * file past the per-file cap (final for that file). Other relay codes carry
+ * no app-level meaning beyond their HTTP status.
+ */
+function appCodeFor(relayCode: RelayErrorCode | undefined): string | undefined {
+  switch (relayCode) {
+    case "relay/blob-quota-exceeded":
+    case "relay/event-quota-exceeded":
+      return ERR_SYNC_QUOTA;
+    case "relay/blob-too-large":
+    case "relay/blob-part-too-large":
+      return ERR_SYNC_FILE_TOO_LARGE;
+    default:
+      return undefined;
+  }
+}
+
 export class RelayError extends Error {
+  /** The relay's own wire code; absent from relays that predate codes. */
+  readonly relayCode: RelayErrorCode | undefined;
+  /** The app error code (`errorCode()`), when the relay's code maps to one. */
+  readonly code: string | undefined;
+
   constructor(
     public status: number,
     message: string,
+    relayCode?: RelayErrorCode,
   ) {
     super(`relay ${status}: ${message}`);
     this.name = "RelayError";
+    this.relayCode = relayCode;
+    this.code = appCodeFor(relayCode);
   }
 }
 
@@ -74,13 +106,16 @@ export function createRelayClient(options: RelayClientOptions) {
     const res = await fetchFn(`${base}${path}`, { method, body, headers });
     if (!res.ok) {
       let message = res.statusText;
+      let relayCode: RelayErrorCode | undefined;
       try {
-        const parsed = (await res.json()) as { error?: string };
-        if (parsed.error) message = parsed.error;
+        const parsed = (await res.json()) as Partial<Record<keyof RelayErrorResponse, unknown>>;
+        if (typeof parsed.error === "string" && parsed.error) message = parsed.error;
+        // An unknown code (a newer relay) is left out rather than trusted.
+        if (isRelayErrorCode(parsed.code)) relayCode = parsed.code;
       } catch {
         // non-JSON error body; keep the status text
       }
-      throw new RelayError(res.status, message);
+      throw new RelayError(res.status, message, relayCode);
     }
     // A 200 with the wrong content kind is not the relay: it is some other
     // server answering on the relay's URL (misconfigured base URL, captive

@@ -26,7 +26,13 @@ export function classifySyncError(error: unknown): string | null {
   if (error instanceof RelayMisdirectedError) return ERR_SYNC_MISDIRECTED;
   if (error instanceof RelayError) {
     if (error.status === 401 || error.status === 403) return ERR_SYNC_UNAUTHORIZED;
-    if (error.status === 413) return ERR_SYNC_QUOTA;
+    if (error.status === 413) {
+      // Coded quota and file-size refusals returned above via errorCode().
+      // A coded 413 left here is a request-size limit (an event or batch
+      // too large) — not the account's room, so no quota copy. An uncoded
+      // one comes from a relay that predates codes: keep reading it as quota.
+      return error.relayCode === undefined ? ERR_SYNC_QUOTA : null;
+    }
     if (error.status === 429) return ERR_SYNC_RATE_LIMITED;
     if (error.status >= 500) return ERR_SYNC_SERVER;
     return null; // other 4xx: no copy is better than wrong copy

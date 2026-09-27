@@ -322,6 +322,25 @@ describe("two devices through one relay", () => {
     expect(a.blobOutbox.has("bookfile:flaky")).toBe(true);
     expect(a.blobStates.get("bookfile:ok")).toBe("synced");
   });
+
+  test("a relay's stable 413 code decides quota versus size, whatever the wording", async () => {
+    const relay = fakeRelay();
+    const refusing: SyncRelayApi = {
+      ...relay,
+      async putBlob(key) {
+        if (key === "bookfile:full") {
+          throw new RelayError(413, "no room", "relay/blob-quota-exceeded");
+        }
+        throw new RelayError(413, "over the account quota?", "relay/blob-part-too-large");
+      },
+    };
+    const a = fakeDevice();
+    a.putLocalBlob("bookfile:full", new Uint8Array(10));
+    a.putLocalBlob("bookfile:big", new Uint8Array(10));
+    expect(await engineFor(a, refusing).syncBlobsOnce()).toBe(0);
+    expect(a.blobStates.get("bookfile:full")).toBe("rejected: sync/quota");
+    expect(a.blobStates.get("bookfile:big")).toBe("rejected: sync/file-too-large");
+  });
 });
 
 describe("connect flow", () => {

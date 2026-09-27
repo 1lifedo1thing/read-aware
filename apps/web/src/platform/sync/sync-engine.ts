@@ -150,6 +150,9 @@ function classifyBlobRejection(error: unknown): string {
   const status = (error as { status?: number }).status;
   const message = error instanceof Error ? error.message : String(error);
   if (status === 413) {
+    // Coded relay refusals already returned above (RelayError maps the
+    // relay's stable code). An uncoded 413 comes from a relay that predates
+    // codes, and its wording is then the one thing that tells quota from size.
     return /account blob quota/i.test(message) ? ERR_SYNC_QUOTA : ERR_SYNC_FILE_TOO_LARGE;
   }
   return ERR_SYNC_REJECTED;
