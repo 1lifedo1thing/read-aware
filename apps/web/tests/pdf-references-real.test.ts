@@ -5,6 +5,7 @@ import { resolvePDFHref } from "../foliate-js/src/pdf-navigation";
 import { contentCFI } from "../foliate-js/src/content-navigation";
 import { listReferencesInBook, readReferenceInBook } from "../src/features/library/lib/book-references";
 import type { Book } from "../foliate-js/src/book";
+import type { PDFDestination, PDFDocument as VendoredPDFDocument } from "../foliate-js/src/vendor/pdfjs/pdf.mjs";
 
 test("real PDF.js parses PDF link destinations, notes and target text through the public query implementation", async () => {
   const source = await PDFDocument.create();
@@ -17,11 +18,18 @@ test("real PDF.js parses PDF link destinations, notes and target text through th
     Rect: [30, 600, 50, 620], T: PDFString.of("Writer"), Contents: PDFString.of("Actual note") })));
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const pdf = await getDocument({ data: await source.save(), useSystemFonts: true, isEvalSupported: false }).promise;
+  // The engine consumes pdf.js through the vendored declarations of this pinned release, which
+  // narrow the destinations pdfjs-dist types as any[]; this is the same runtime value.
+  const navigation: Pick<VendoredPDFDocument, "getDestination" | "getPageIndex" | "numPages"> = {
+    numPages: pdf.numPages,
+    getPageIndex: ref => pdf.getPageIndex(ref),
+    getDestination: name => pdf.getDestination(name) as Promise<PDFDestination | null>,
+  };
   try {
     const book: Book = { sections: [0, 1].map(i => ({ id: `page:${i + 1}`, size: 1000, load: () => "",
       getReferences: async signal => readPDFReferences(await pdf.getPage(i + 1), signal),
       getText: async signal => readPDFPageText(await pdf.getPage(i + 1), signal),
-    })), resolveHref: href => resolvePDFHref(pdf, href) };
+    })), resolveHref: href => resolvePDFHref(navigation, href) };
     const query = { bookId: "pdf", contentVersion: "fixture", sectionIndex: 0 };
     const page = await listReferencesInBook(book, query);
     expect(page.items.map(item => item.kind)).toEqual(["link", "inline-note"]);

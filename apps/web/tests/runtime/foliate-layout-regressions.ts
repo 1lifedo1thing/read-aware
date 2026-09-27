@@ -2,6 +2,7 @@ import type { Book } from "../../foliate-js/src/book";
 import type { View } from "../../foliate-js/src/view";
 import type { LoadDetail, RelocateDetail } from "../../foliate-js/src/renderer";
 import { fb2Fixture } from "../fixtures/foliate-books";
+import { anchorRangeOf, rendererOf } from "./runtime-assertions";
 
 type Modules = {
   view: typeof import("../../foliate-js/src/view");
@@ -87,7 +88,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
     try {
       await view.open(book);
       await view.goTo(0);
-      const doc: Document | undefined = view.renderer.getContents()[0]?.doc;
+      const doc: Document | undefined = rendererOf(view).getContents()[0]?.doc;
       if (!doc) throw new Error("FB2 chapter did not load");
       equal(doc.querySelector("em")?.textContent, "world");
       equal(doc.querySelector("img")?.getAttribute("alt"), "Cover image");
@@ -96,9 +97,9 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       const range = doc.createRange();
       range.selectNodeContents(text);
       const restored = view.resolveCFI(view.getCFI(0, range));
-      equal(restored.anchor(doc).toString(), "world");
+      equal(anchorRangeOf(restored, doc).toString(), "world");
       await view.goTo("#note-one");
-      equal(view.renderer.getContents()[0]?.index, 2);
+      equal(rendererOf(view).getContents()[0]?.index, 2);
     } finally { dispose(view); book.destroy(); }
   });
 

@@ -5,10 +5,11 @@ import { makePDFFixture } from "./fixtures/foliate-pdf.js";
 import type { PDFDocument } from "../foliate-js/src/vendor/pdfjs/pdf.mjs";
 
 test("PDF metadata validates third-party values without losing titles or authors", () => {
-  const values: Record<string, unknown> = { "dc:title": { en: "Title", zh: "标题" },
+  const title = { en: "Title", zh: "标题" };
+  const values: Record<string, unknown> = { "dc:title": title,
     "dc:creator": ["First", "Second"], "dc:language": ["en"], "dc:subject": ["reading"] };
   const result = getPDFMetadata({ get: name => values[name] }, { Title: "Fallback", Author: "Fallback author" });
-  expect(result.title).toEqual(values["dc:title"]);
+  expect(result.title).toEqual(title);
   expect(result.author).toEqual(["First", "Second"]);
   expect(result.language).toEqual(["en"]);
   const invalid = getPDFMetadata({ get: () => ({ malformed: 3 }) }, { Title: "Valid", Author: "Writer" });

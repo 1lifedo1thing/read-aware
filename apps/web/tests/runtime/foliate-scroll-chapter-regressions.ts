@@ -38,7 +38,7 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
       renderer.setChapterStarts(starts);
       renderer.setLayoutAttributes({ flow: "scrolled", "max-inline-size": "700px" });
       renderer.setStyles("body {font:20px/30px serif !important}");
-      await view.goTo({ index: 20, anchor: doc => doc.getElementById("hidden-anchor") });
+      await view.goTo({ index: 20, anchor: (doc: Document) => doc.getElementById("hidden-anchor") });
       assert(view.lastLocation?.section.current === 20, "A hidden saved anchor left the initial reader without a location");
       await view.goTo("20");
       // Neighbours are probed on demand; a probe that starts its own chapter

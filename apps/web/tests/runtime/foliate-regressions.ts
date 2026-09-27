@@ -1,5 +1,6 @@
 import type * as CFI from "../../foliate-js/src/epubcfi";
 import type { View } from "../../foliate-js/src/view";
+import { rendererOf } from "./runtime-assertions";
 
 type Result = { name: string; passed: boolean; details?: string };
 type FoundationModules = {
@@ -116,7 +117,7 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
           createDocument: () => new DOMParser().parseFromString(html, "text/html"),
         }],
       });
-      view.renderer.setAttribute("flow", "scrolled");
+      rendererOf(view).setAttribute("flow", "scrolled");
       await view.goTo(0);
       await new Promise<void>((resolve) => setTimeout(resolve, 300));
       const renderer = view.renderer as import("../../foliate-js/src/paginator").Paginator;

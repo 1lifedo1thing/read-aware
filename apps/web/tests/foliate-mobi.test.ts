@@ -3,7 +3,7 @@ import { isMOBI, MOBI } from "../foliate-js/src/mobi.js";
 import { MOBI6 } from "../foliate-js/src/mobi6.js";
 import { KF8 } from "../foliate-js/src/kf8.js";
 import { CDIC_HEADER, HUFF_HEADER, decompressPalmDOC, getVarLen, huffcdic } from "../foliate-js/src/mobi-binary.js";
-import { unzlibSync } from "../public/foliate-js/vendor/fflate.js";
+import { unzlibSync } from "./helpers/fflate";
 import { makeKF8Fixture, makeMOBI6Fixture, joinBytes, writeStruct } from "./fixtures/foliate-mobi.js";
 import { withDom } from "./helpers/foliate-dom.js";
 

@@ -50,7 +50,7 @@ test("actual EPUB page labels preserve duplicates and fragments without loading 
 test("catalog bounds, missing lists, nested labels, resolver failures and cancellation remain distinct", async () => {
   const book: Book = { sections: [{ id: "page", load: () => "", size: 0 }], resolveHref: () => ({ index: 0 }) };
   expect(await navigationTargetsInBook(book, query, contentCFI)).toMatchObject({ status: "absent", items: [], total: 0 });
-  book.pageList = [{ label: "group", subitems: [{ label: "v".repeat(301), href: "page" }] }];
+  book.pageList = [{ label: "group", href: null, subitems: [{ label: "v".repeat(301), href: "page" }] }];
   const page = await navigationTargetsInBook(book, query, contentCFI);
   expect(page.items.map(item => item.index)).toEqual([0, 1]);
   expect(page.items[0]?.location).toBeNull(); expect(page.items[1]?.label).toHaveLength(300); expect(page.items[1]?.labelTruncated).toBe(true);

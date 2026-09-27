@@ -1,5 +1,6 @@
 import type { BookFile } from "../../foliate-js/src/book";
 import { makePDFFixture } from "../fixtures/foliate-pdf";
+import { anchorRangeOf } from "./runtime-assertions";
 
 type Modules = {
   pdf: typeof import("../../foliate-js/src/pdf");
@@ -59,8 +60,10 @@ export async function runPDFRegressions(modules: Modules): Promise<Result[]> {
       equal(book.metadata.title, "PDF Engine Fixture");
       equal(book.sections.length, 3);
       equal(await book.sections[1].getText(), "Hello PDF world\nGo to final chapter");
-      equal((await book.resolveHref(book.toc![1].href))?.index, 2);
-      equal((await book.splitTOCHref(book.toc![0].href))?.[0], "page:2");
+      const [chapterHref, firstHref] = [book.toc?.[1]?.href, book.toc?.[0]?.href];
+      if (!chapterHref || !firstHref) throw new Error("PDF outline entries have no destinations");
+      equal((await book.resolveHref(chapterHref))?.index, 2);
+      equal((await book.splitTOCHref(firstHref))?.[0], "page:2");
       if (slices < 1) throw new Error("Range transport was not used");
       const [a, b] = await Promise.all([book.sections[1].load(), book.sections[1].load()]);
       equal(a.src, b.src);
@@ -94,7 +97,7 @@ export async function runPDFRegressions(modules: Modules): Promise<Result[]> {
       range.setStart(text, 10);
       range.setEnd(text, 15);
       const cfi = view.getCFI(1, range);
-      equal(view.resolveCFI(cfi).anchor(doc).toString(), "world");
+      equal(anchorRangeOf(view.resolveCFI(cfi), doc).toString(), "world");
       const originalCount = doc.querySelectorAll(".textLayer span").length;
       const original = doc.querySelector("canvas");
       if (!original) throw new Error("PDF has no canvas");
@@ -102,7 +105,7 @@ export async function runPDFRegressions(modules: Modules): Promise<Result[]> {
       if (!pixels?.some((value, i) => i % 4 !== 3 && value < 80)) throw new Error("Blank PDF raster");
       renderer.setPageColors({ background: "#101010", foreground: "#eeeeee" });
       await waitFor("PDF palette redraw", () => doc.querySelector("canvas") !== original && doc.querySelectorAll(".textLayer span").length === originalCount);
-      equal(view.resolveCFI(cfi).anchor(doc).toString(), "world");
+      equal(anchorRangeOf(view.resolveCFI(cfi), doc).toString(), "world");
       const canvas = doc.querySelector("canvas")!;
       const background = canvas.getContext("2d")!.getImageData(5, 5, 1, 1).data;
       if (Math.abs(background[0] - 16) > 2) throw new Error(`Wrong painted PDF background: ${background[0]}`);

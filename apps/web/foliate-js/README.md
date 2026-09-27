@@ -65,13 +65,17 @@ resources, decompression, navigation, ownership, and the type gate. Fixtures
 under `tests/fixtures/` include deterministic EPUB, FB2, PDF, MOBI6/PalmDOC,
 and KF8 documents.
 
-`tests/runtime/foliate-*-regressions.ts` must run inside the foreground Tauri
-webview, not a plain browser. They exercise native iframe layout, vertical/RTL
-pagination, fixed pages, PDF canvas pixels and palette redraws, images, CFI
-restoration, footnotes, media highlighting, and close/navigation races. Load
-the emitted modules from `/foliate-js/` using the Tauri bridge, then pass those
-module objects to the suites. Importing public modules from Vite source would
-rewrite their URLs, so the suites use type-only engine imports.
+`tests/runtime/*-regressions.ts` need a real layout engine, not `bun test`. They
+exercise native iframe layout, vertical/RTL pagination, fixed pages, PDF canvas
+pixels and palette redraws, images, CFI restoration, footnotes, media
+highlighting, and close/navigation races. `tests/runtime/index.html` loads the
+emitted modules from `/foliate-js/` and runs every suite; importing public
+modules from Vite source would rewrite their URLs, so the suites use type-only
+engine imports. `bun run test:runtime` (in `apps/web`) drives that page in
+headless Chrome (`CHROME_PATH` overrides the executable). The shipping WebKit
+engine is the authoritative run for layout changes: open
+`/tests/runtime/index.html` in the foreground Tauri dev window and read
+`window.__runtimeRegressions`.
 
 Repository EPUB samples additionally exercise real ZIP books. Larger external
 MOBI/AZW3 samples may be supplied to `runMOBIRegressions` as File objects; they

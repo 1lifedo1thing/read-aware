@@ -1,5 +1,6 @@
 import type { Book } from "../../foliate-js/src/book";
 import { makeKF8Fixture, makeMOBI6Fixture } from "../fixtures/foliate-mobi";
+import { anchorRangeOf, rendererOf } from "./runtime-assertions";
 
 type Modules = { view: typeof import("../../foliate-js/src/view") };
 type Result = { name: string; passed: boolean; details?: string };
@@ -20,9 +21,9 @@ export async function runMOBIRegressions(modules: Modules, extraFiles: File[] = 
       const index = file.name === "fixture.mobi" ? 2 : 0;
       const href = book.getSectionHref?.(index);
       await view.goTo(href ?? index);
-      const content: { doc: Document; index: number } | undefined = view.renderer.getContents()[0];
+      const content: { doc: Document; index: number } | undefined = rendererOf(view).getContents()[0];
       if (!content || content.index !== index) throw new Error(`Failed to load section ${index}`);
-      for (const image of content.doc.querySelectorAll("img[src]")) {
+      for (const image of content.doc.querySelectorAll<HTMLImageElement>("img[src]")) {
         if (!image.getAttribute("src")) continue;
         await image.decode();
         if (!image.naturalWidth) throw new Error("Empty MOBI illustration");
@@ -40,13 +41,13 @@ export async function runMOBIRegressions(modules: Modules, extraFiles: File[] = 
       if (text) {
         const range = content.doc.createRange();
         range.selectNodeContents(text);
-        const restored = view.resolveCFI(view.getCFI(index, range)).anchor(content.doc);
+        const restored = anchorRangeOf(view.resolveCFI(view.getCFI(index, range)), content.doc);
         if (restored.toString() !== range.toString()) throw new Error("MOBI CFI selection changed");
       }
       if (book.sections.length > 1) {
         const next = (index + 1) % book.sections.length;
         await view.goTo(book.getSectionHref?.(next) ?? next);
-        if (view.renderer.getContents()[0]?.index !== next) throw new Error("MOBI section navigation failed");
+        if (rendererOf(view).getContents()[0]?.index !== next) throw new Error("MOBI section navigation failed");
       }
       results.push({ name, passed: true });
     } catch (error) { results.push({ name, passed: false, details: String(error) }); }

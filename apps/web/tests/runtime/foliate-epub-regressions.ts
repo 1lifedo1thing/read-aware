@@ -1,5 +1,6 @@
 import type { Book } from "../../foliate-js/src/book";
 import { makeEPUBFixture } from "../fixtures/foliate-epub";
+import { anchorRangeOf, rendererOf } from "./runtime-assertions";
 
 type Modules = {
   epub: typeof import("../../foliate-js/src/epub");
@@ -29,7 +30,7 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
     try {
       await view.open(book);
       await view.goTo(0);
-      const doc: Document | undefined = view.renderer.getContents()[0]?.doc;
+      const doc: Document | undefined = rendererOf(view).getContents()[0]?.doc;
       if (!doc) throw new Error("Missing EPUB content document");
       equal(doc.defaultView?.getComputedStyle(doc.body).color, "rgb(12, 34, 56)");
       const image = doc.querySelector("img");
@@ -39,10 +40,10 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
       const range = doc.createRange();
       range.selectNodeContents(doc.querySelector("em")!);
       const target = view.resolveCFI(view.getCFI(0, range));
-      equal(target.anchor(doc).toString(), "EPUB");
+      equal(anchorRangeOf(target, doc).toString(), "EPUB");
       await view.goTo("OPS/two.xhtml#note");
-      equal(view.renderer.getContents()[0]?.index, 1);
-      equal(view.renderer.getContents()[0]?.doc.querySelector("aside")?.textContent, "Footnote text.");
+      equal(rendererOf(view).getContents()[0]?.index, 1);
+      equal(rendererOf(view).getContents()[0]?.doc.querySelector("aside")?.textContent, "Footnote text.");
     } finally { view.close(); view.remove(); book.destroy(); }
   });
 
@@ -57,7 +58,7 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
         await view.open(book);
         const index = book.sections.findIndex(section => section.linear !== "no");
         await view.goTo(index);
-        const content: { doc: Document; index: number } | undefined = view.renderer.getContents()[0];
+        const content: { doc: Document; index: number } | undefined = rendererOf(view).getContents()[0];
         if (!content) throw new Error("First chapter did not load");
         equal(content.index, index);
         for (const img of content.doc.querySelectorAll("img")) {
@@ -73,7 +74,7 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
         if (text) {
           const range = content.doc.createRange();
           range.selectNodeContents(text);
-          equal(view.resolveCFI(view.getCFI(index, range)).anchor(content.doc).toString(), range.toString());
+          equal(anchorRangeOf(view.resolveCFI(view.getCFI(index, range)), content.doc).toString(), range.toString());
         }
       } finally { view.close(); view.remove(); await book.destroy?.(); }
     });

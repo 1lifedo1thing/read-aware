@@ -32,7 +32,7 @@ test("search ranges read across inline nodes with bounded context, without a ren
   const original = document.body.innerHTML;
   const book: Book = { sections: [{ id: "one", size: 100, load: () => "", createDocument: () => document }] };
   const hits = await searchLocationsInBook(book, "v1", { bookId: "book", query: "needle" }, searchContentSection);
-  expect(hits.hits[0].range).toEqual(hits.hits[0].location);
+  expect(hits.hits[0].location).toEqual(hits.hits[0].range);
   const page = await readContentRange(book, hits.hits[0].range, { ...options, limit: 3, contextChars: 4 }, allow);
   expect(page).toMatchObject({ text: "Nee", totalLength: 6, nextOffset: 3, context: { before: "ore ", after: " aft" } });
   expect(await readContentRange(book, { cfi: page.cfi }, { ...options, offset: page.nextOffset!, contextChars: 0 }, allow))

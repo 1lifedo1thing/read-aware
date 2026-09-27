@@ -94,7 +94,7 @@ export async function runViewRegressions(modules: Modules): Promise<Result[]> {
       view.renderer?.setAttribute('flow', flow);
       await view.goToFraction(0.3);
       const initial = view.lastLocation;
-      if (!initial) throw new Error('Missing initial reading location');
+      if (!initial?.range) throw new Error('Missing initial reading location');
       const startOffset = initial.range.startOffset;
       for (let attempt = 0; attempt < 4; attempt++) {
         const cfi = view.lastLocation?.cfi;
@@ -103,7 +103,7 @@ export async function runViewRegressions(modules: Modules): Promise<Result[]> {
         await view.open(book);
         view.renderer?.setAttribute('flow', flow);
         await view.init({ lastLocation: cfi });
-        equal(view.lastLocation?.range.startOffset, startOffset);
+        equal(view.lastLocation?.range?.startOffset, startOffset);
       }
     } finally { await view.close(); view.remove(); await book.destroy?.(); }
   });

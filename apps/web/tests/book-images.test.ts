@@ -4,7 +4,7 @@ import type { Book } from "../foliate-js/src/book";
 import { contentCFI } from "../foliate-js/src/content-navigation";
 import { EPUB } from "../foliate-js/src/epub";
 import { MOBI } from "../foliate-js/src/mobi";
-import { unzlibSync } from "../public/foliate-js/vendor/fflate.js";
+import { unzlibSync } from "./helpers/fflate";
 import { makeFB2 } from "../foliate-js/src/fb2";
 import { makeComicBook } from "../foliate-js/src/comic-book";
 import { listImagesInBook, readImageInBook } from "../src/features/library/lib/book-images";
