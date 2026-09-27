@@ -23,6 +23,7 @@ import { contextBundleAccess } from "./context-bundle-access";
 import type { ResourceOwner } from "../services/resource-owner";
 import type { ResourceAccess } from "../services/resource-access";
 import type { MemoryObservation, MemoryObservationQuery, MemoryObservationResult } from "@read-aware/core";
+import { settled } from "../platform/write-settlement";
 
 const log = createLogger("memory-observation");
 const observer = new MemoryObserver({
@@ -69,34 +70,34 @@ export function createMemoryDomain(origin: DomainActor, lifetime?: AbortSignal, 
       } },
     commands: { mutate: (input: import("@read-aware/core").MemoryMutation, signal?: AbortSignal) => {
       const work = mutateMemory(input, origin, entitySignal(signal));
-      trackCleanup?.(work.then(() => {}, () => {}));
+      trackCleanup?.(settled(work));
       return work;
     },
       context: { capture: (selector: import("@read-aware/core").ContextBundleSelector, signal?: AbortSignal) => {
         const work = context.capture(selector, signal);
         // Publication dispatched to native drains to its real receipt even when the caller retires.
-        trackCleanup?.(work.then(() => {}, () => {}));
+        trackCleanup?.(settled(work));
         return work;
       } },
       updateProfile: (input: import("@read-aware/core").UserProfileChange) => {
         const work = changeUserProfile(input, origin, lifetime);
-        trackCleanup?.(work.then(() => {}, () => {}));
+        trackCleanup?.(settled(work));
         return work;
       },
       completeOnboarding: (input: import("@read-aware/core").OnboardingChange, signal?: AbortSignal) => {
         const work = completeOnboarding(input, origin, entitySignal(signal));
-        trackCleanup?.(work.then(() => {}, () => {}));
+        trackCleanup?.(settled(work));
         return work;
       },
       decideEntity: (input: import("@read-aware/core").EntityDecision, signal?: AbortSignal) => {
         const work = decideEntity(input, origin, entitySignal(signal));
         // The caller owns write errors; retirement still waits for the native transaction.
-        trackCleanup?.(work.then(() => {}, () => {}));
+        trackCleanup?.(settled(work));
         return work;
       },
       classify: (input: import("@read-aware/core").BookClassificationChange, signal?: AbortSignal) => {
         const work = changeBookClassification(input, origin, entitySignal(signal));
-        trackCleanup?.(work.then(() => {}, () => {}));
+        trackCleanup?.(settled(work));
         return work;
       },
       startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.start(bookId, mode, options, entitySignal(access?.signal), causalActor(origin)), access),

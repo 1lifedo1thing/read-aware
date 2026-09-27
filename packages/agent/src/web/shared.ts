@@ -91,7 +91,7 @@ export function jsonRequest(provider: string, apiKey: string, transport: AgentFe
       if (!response.ok) {
         const code = response.status === 401 ? "auth" : [402, 403, ...accessStatuses].includes(response.status) ? "access"
           : response.status === 429 ? "rate-limited" : [400, 422].includes(response.status) ? "invalid-input" : "provider";
-        await response.body?.cancel().catch(() => {});
+        await response.body?.cancel().catch(() => {}); // Best-effort release; the HTTP error below is the result.
         throw new AppError(`search/${code}`, `${provider} HTTP ${response.status}`, { retryable: response.status === 429 || response.status >= 500 });
       }
       const reader = response.body?.getReader();
@@ -107,7 +107,7 @@ export function jsonRequest(provider: string, apiKey: string, transport: AgentFe
           text += decoder.decode(chunk.value, { stream: true });
         }
         text += decoder.decode();
-      } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+      } finally { await reader.cancel().catch(() => {}); /* best-effort release after the read settled */ reader.releaseLock(); }
       combined.throwIfAborted();
       try { return record(JSON.parse(text)); } catch { throw malformed(); }
     } catch (error) {

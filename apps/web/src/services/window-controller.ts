@@ -1,6 +1,7 @@
 import { AppError, assertOperationConditions, type OperationCondition, errorCode, normalizeHostWindowRequest, type HostWindowObservation,
   type HostWindowPort, type HostWindowRequest, type HostWindowSnapshot, type HostWindowState } from "@read-aware/core";
 import { ObservationCauses, causalActor, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
+import { settled } from "../platform/write-settlement";
 
 export type WindowViewport = { width: number; height: number };
 
@@ -109,7 +110,7 @@ export class HostWindowService implements HostWindowPort {
         return this.viewport ? copyEventCause(this.viewport, { ...this.viewport }) : null;
       }) };
       this.layoutReading = read;
-      void read.work.finally(() => { if (this.layoutReading === read) this.layoutReading = undefined; }).catch(() => {});
+      void settled(read.work).then(() => { if (this.layoutReading === read) this.layoutReading = undefined; });
     }
     const value = await this.layoutReading.work;
     signal?.throwIfAborted();

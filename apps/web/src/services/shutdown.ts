@@ -1,5 +1,6 @@
 import { AppError, errorCode } from "@read-aware/core";
 import { createLogger } from "../platform/logger";
+import { settled } from "../platform/write-settlement";
 
 export type ShutdownPhase = "settle" | "persist" | "receipts";
 export type ShutdownOwnerReport = { name: string; phase: ShutdownPhase; status: "flushed" | "failed" | "timed-out"; code?: string };
@@ -38,7 +39,7 @@ export class ShutdownCoordinator {
     if (!Number.isFinite(deadlineMs) || deadlineMs < 0) return Promise.reject(new AppError("ui/invalid-target", "Invalid shutdown deadline"));
     const run = this.run(deadlineMs, options.signal);
     this.inFlight = run;
-    void run.finally(() => { if (this.inFlight === run) this.inFlight = undefined; }).catch(() => {});
+    void settled(run).then(() => { if (this.inFlight === run) this.inFlight = undefined; });
     return run;
   }
 

@@ -25,7 +25,7 @@ export async function optionalImages<T>(read: (signal: AbortSignal) => Promise<T
     const value = await Promise.race([cancelled, Promise.resolve().then(() => {
       controller.signal.throwIfAborted();
       return read(controller.signal);
-    }).catch(() => undefined)]);
+    }).catch(() => undefined)]); // Optional images: a failed read is simply no images.
     if (signal?.aborted) throw new AppError("search/cancelled", "Web retrieval cancelled");
     return value;
   } finally {

@@ -1,4 +1,5 @@
 import { AppError, type InferenceAttemptReceipt, type InferenceRequestReceipt } from "@read-aware/core";
+import { settled } from "../../../platform/write-settlement";
 
 export type InferenceHistoryStorage = {
   key: string;
@@ -61,7 +62,7 @@ export class PluginInferenceHistory {
   }
   private flush(): Promise<void> {
     if (!this.dirty.size) return Promise.resolve();
-    const work = (tails.get(this.storage.key) ?? Promise.resolve()).catch(() => {}).then(() => this.storage.run(async () => {
+    const work = settled(tails.get(this.storage.key) ?? Promise.resolve()).then(() => this.storage.run(async () => {
       const pending = new Map(this.dirty);
       if (!pending.size) return;
       const entries = new Map(parse(await this.storage.read()).map(entry => [entry.receipt.requestId, entry]));
@@ -83,7 +84,7 @@ export class PluginInferenceHistory {
       for (const [id, entry] of pending) if (this.dirty.get(id) === entry) this.dirty.delete(id);
     }));
     tails.set(this.storage.key, work);
-    void work.finally(() => { if (tails.get(this.storage.key) === work) tails.delete(this.storage.key); }).catch(() => {});
+    void settled(work).then(() => { if (tails.get(this.storage.key) === work) tails.delete(this.storage.key); });
     this.track(work); return work;
   }
   async list(hasRequest: (id: string) => boolean): Promise<InferenceRequestReceipt[]> {

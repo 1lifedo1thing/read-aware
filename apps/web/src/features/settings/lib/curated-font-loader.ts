@@ -1,5 +1,8 @@
 import { curatedFacesFor } from "./curated-fonts";
 import type { CuratedFontFace } from "./curated-fonts-data.generated";
+import { createLogger } from "../../../platform/logger";
+
+const log = createLogger("curated-fonts");
 
 /**
  * Progressive loader for the curated reading fonts. Nothing is bundled: each
@@ -51,15 +54,22 @@ const FACE_FETCH_TIMEOUT_MS = 20_000;
 
 /** Fetch a face's bytes, served from the IndexedDB cache when present. */
 async function loadFaceBytes(face: CuratedFontFace): Promise<ArrayBuffer> {
-  const database = await db().catch(() => null);
+  // The IndexedDB cache only saves a download: without it, fetch from the network.
+  const database = await db().catch((error: unknown) => {
+    log.warn("Font cache unavailable", error);
+    return null;
+  });
   if (database) {
-    const cached = await idbGet(database, face.url).catch(() => undefined);
+    const cached = await idbGet(database, face.url).catch((error: unknown) => {
+      log.warn("Could not read a cached font face", error);
+      return undefined;
+    });
     if (cached) return cached;
   }
   const res = await fetch(face.url, { signal: AbortSignal.timeout(FACE_FETCH_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`Font fetch failed (${res.status}) for ${face.url}`);
   const bytes = await res.arrayBuffer();
-  if (database) await idbPut(database, face.url, bytes).catch(() => undefined);
+  if (database) await idbPut(database, face.url, bytes).catch((error: unknown) => log.warn("Could not cache a font face", error));
   return bytes;
 }
 

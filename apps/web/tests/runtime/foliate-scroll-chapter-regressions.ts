@@ -101,7 +101,7 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
       })),
       toc: [{ href: "0#preface" }, { href: "0#a" }, { href: "3#b" }],
       resolveHref: href => ({ index: Number(href[0]), anchor: doc => doc.getElementById(href.split("#")[1]!) }),
-      splitTOCHref: href => [href[0]!, href.split("#")[1]], getTOCFragment: (doc, id) => doc.getElementById(String(id)),
+      splitTOCHref: href => [href[0]!, href.split("#")[1]], getTOCFragment: (doc, id) => (typeof id === "string" ? doc.getElementById(id) : null),
     };
     try {
       const starts = await prepareReaderChapterStarts(book);
@@ -132,7 +132,7 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
       if (scenario === "failed-continuation") {
         await navigation;
         assert(resident() === "0", "Navigation waited for chapter continuations");
-        await scrollToEnd().catch(() => {});
+        await scrollToEnd().catch(() => {}); // The failed continuation is the scenario; the assertions below check it.
         assert(resident() === "0,2" && renderer.hasPendingContent(1), "A failed continuation was dropped from the chapter or reported as complete");
         const before = readingVisibleText(view).text;
         fail = false;

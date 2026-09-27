@@ -554,7 +554,7 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
       if (disposed) return;
       const delay = Math.min(60_000, 1_000 * 2 ** watchRetries);
       watchRetries += 1;
-      watchReconnect = window.setTimeout(openWatch, delay);
+      watchReconnect = window.setTimeout(() => { void openWatch(); }, delay);
     };
     socket.onerror = () => socket.close();
   };
@@ -573,7 +573,10 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
   };
 
   void (async () => {
-    const profile = await getSyncProfile().catch(() => null);
+    const profile = await getSyncProfile().catch((error: unknown) => {
+      log.warn("Sync profile unreadable; scheduled sync stays off", error);
+      return null;
+    });
     if (disposed) return;
     const connection = parseTransportAccountId(profile?.remoteAccountId ?? null);
     // A transport connection has no relay session; the master key plus the

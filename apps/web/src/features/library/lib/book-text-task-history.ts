@@ -1,4 +1,5 @@
 import { AppError, type BookTextTaskHistoryPage, type BookTextTaskHistoryQuery, type BookTextTaskSnapshot } from "@read-aware/core";
+import { settled } from "../../../platform/write-settlement";
 
 type RecordEntry = { generation: string; recordedAt: string; snapshot: BookTextTaskSnapshot };
 export type TextHistoryStorage = {
@@ -71,7 +72,7 @@ export class BookTextTaskHistory {
   private flush(): Promise<void> {
     if (!this.dirty.size) return Promise.resolve();
     const prior = tails.get(this.key) ?? Promise.resolve();
-    const work = prior.catch(() => {}).then(() => this.storage.run(async () => {
+    const work = settled(prior).then(() => this.storage.run(async () => {
       if (!this.dirty.size) return;
       const pending = new Map(this.dirty);
       const entries = new Map(parse(await this.storage.read()).map(entry => [entry.snapshot.taskId, entry]));
@@ -85,7 +86,7 @@ export class BookTextTaskHistory {
       for (const [id, entry] of pending) if (this.dirty.get(id) === entry) this.dirty.delete(id);
     }));
     tails.set(this.key, work);
-    void work.finally(() => { if (tails.get(this.key) === work) tails.delete(this.key); }).catch(() => {});
+    void settled(work).then(() => { if (tails.get(this.key) === work) tails.delete(this.key); });
     this.track(work); return work;
   }
 

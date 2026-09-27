@@ -64,6 +64,7 @@ import {
   settingsSnapshotFromDraft,
   type SettingsDraft,
 } from "./catalog-runtime";
+import { settled } from "../../platform/write-settlement";
 
 const log = createLogger("settings-domain");
 const dynamicOptions = new DynamicOptionsCache(error => log.warn("Dynamic setting options failed", error));
@@ -226,7 +227,7 @@ export function publishSettingsChanges(origin: DomainActor, changed: SettingChan
           void Promise.resolve(result).catch(error => log.error("Settings event callback failed", error));
         }
       } catch (error) {
-        log.error(`settings event handler from "${origin}" failed`, error);
+        log.error(`settings event handler from "${event.origin}" failed`, error);
       }
     }
   }
@@ -264,7 +265,7 @@ export type SettingsDomain = {
     resetReading(request: ReadingSettingsReset, signal?: AbortSignal): Promise<SettingsUpdateResult>;
   };
   events: {
-    subscribe(handler: (event: SettingsChangedEvent) => void): () => void;
+    subscribe(handler: (event: SettingsChangedEvent) => unknown): () => void;
   };
 };
 
@@ -361,7 +362,7 @@ export function createSettingsDomain(
           return commitResult(origin, before, result, { section: "reading", target: accepted.target.kind === "book"
             ? { kind: "book", bookId: accepted.target.bookId.trim() } : { kind: "global" } });
         }));
-        updateTail = result.then(() => {}, () => {});
+        updateTail = settled(result);
         const committed = await result;
         return { ...committed, settings: filterSnapshot(policy, committed.settings) };
       },

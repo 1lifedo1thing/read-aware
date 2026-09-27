@@ -1,3 +1,10 @@
+/** Resolves once `work` settles, whichever way it ends. Serialization tails and
+ * cleanup trackers wait on work whose outcome its own caller already observes. */
+export function settled(work: Promise<unknown>): Promise<void> {
+  // Not a swallowed failure: `work` itself still rejects for whoever awaits it.
+  return work.then(() => undefined, () => undefined);
+}
+
 /** Tracks dispatched durable writes so shutdown can wait for their real receipts.
  * Tracking never changes an outcome: a tracked failure still rejects its caller. */
 export class WriteSettlement {

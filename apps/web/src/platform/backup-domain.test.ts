@@ -135,7 +135,7 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
       expect(failures).toEqual([expect.objectContaining({ kind: "kv", code: "backup/busy" }), expect.objectContaining({ kind: "secret", code: "backup/busy" }), expect.objectContaining({ kind: "kv", code: "backup/busy" })]);
       capture.resolve({ taskId: capture.args.taskId, format: 2 }); expect(await backup).toBe(true);
       await events.commitDomainEvents({ type: "book.starred", payload: { bookId: "b", starred: true } });
-    } finally { capture?.resolve({ taskId: capture.args.taskId, format: 2 }); holds.clear(); await backup.catch(() => {}); off(); stopMirror(); }
+    } finally { capture?.resolve({ taskId: capture.args.taskId, format: 2 }); holds.clear(); await backup.catch(() => {}); /* asserted above; cleanup only waits for it to settle */ off(); stopMirror(); }
   });
 
   // Runs last: a dispatched restore keeps the domain fence until reload.

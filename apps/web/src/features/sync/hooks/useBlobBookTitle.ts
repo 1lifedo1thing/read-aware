@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { isTauri } from "../../../platform/environment";
+import { createLogger } from "../../../platform/logger";
 import { listLibraryBooks } from "../../library/lib/library-db";
 
 export function bookIdFromBlobKey(blobKey: string | null): string | null {
@@ -17,6 +18,7 @@ export function bookIdFromBlobKey(blobKey: string | null): string | null {
   return null;
 }
 
+const log = createLogger("sync-progress");
 const titles = new Map<string, string>();
 /** Ids a load already failed to find — retried at most once per session key. */
 const missing = new Set<string>();
@@ -27,7 +29,8 @@ async function loadTitles(): Promise<void> {
     .then((books) => {
       for (const book of books) titles.set(book.id, book.title);
     })
-    .catch(() => {})
+    // The caption then names no book; the transfer itself is unaffected.
+    .catch((error: unknown) => log.warn("Could not load book titles for sync progress", error))
     .finally(() => {
       loading = null;
     });

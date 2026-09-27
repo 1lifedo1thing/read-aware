@@ -271,7 +271,7 @@ async function assertCancelReplace(consumer: "jumper", bookId: string) {
     if (cancelledView) releasePluginCallbacks(cancelledView);
     if (gate.entered && gate.returned === 0) gate.release();
     gate.finish();
-    await gate.task.catch(() => undefined);
+    await gate.task.catch(() => undefined); // The probe asserts the task's outcome; cleanup only waits for it.
   }
 
   const replacement = await jumperSearch(bookId, SEARCH_QUERY);

@@ -18,6 +18,7 @@ import {
   NAMESPACES,
   type AppLocale,
 } from "./config";
+import { settled } from "../platform/write-settlement";
 
 function syncDocumentLocale(locale: AppLocale): void {
   if (typeof document !== "undefined") {
@@ -79,7 +80,7 @@ export function setLocale(locale: AppLocale, origin: DomainActor = "user"): Prom
     try { await i18n.changeLanguage(locale); syncDocumentLocale(locale); }
     finally { localeRequest = undefined; }
   });
-  localeTail = pending.catch(() => {});
+  localeTail = settled(pending);
   return pending;
 }
 

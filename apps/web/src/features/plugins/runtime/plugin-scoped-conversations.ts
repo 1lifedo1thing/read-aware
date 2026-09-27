@@ -8,6 +8,7 @@ import { pluginObjectAccessDenied, type CurrentBookSnapshot, type PluginBookAcce
 import { createLogger } from "../../../platform/logger";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
 import { restricted, restrictSurface, type RestrictedPolicy } from "./plugin-restricted-surface";
+import { settled } from "../../../platform/write-settlement";
 
 type Reader = {
   current(): CurrentBookSnapshot;
@@ -39,7 +40,7 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
       signal.throwIfAborted();
       const pending = mode === "read" ? lifecycle.read(`conversations.${operation}`, () => work(signal, fence.dispose), signal)
         : work(signal, fence.dispose);
-      if (mode !== "read") lifecycle.trackCleanup(pending.then(() => {}, () => {}));
+      if (mode !== "read") lifecycle.trackCleanup(settled(pending));
       const result = await pending;
       await fence.assertUnchanged({ retain: mode === "proposal" });
       return result;

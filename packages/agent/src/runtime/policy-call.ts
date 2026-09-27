@@ -29,7 +29,7 @@ export function policyCall(policy: LivePolicy, denied: () => Error, signal?: Abo
       const result = Promise.race([operation, aborted]);
       check();
       if (controller.signal.aborted) {
-        void result.catch(() => {});
+        void result.catch(() => {}); // Superseded by the abort thrown next.
         controller.signal.throwIfAborted();
       }
       const value = await result;

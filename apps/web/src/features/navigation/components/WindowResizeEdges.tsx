@@ -7,7 +7,10 @@
  * maximized, when there is nothing to resize.
  */
 import { isLinux, isTauri } from "../../../platform/environment";
+import { createLogger } from "../../../platform/logger";
 import { useWindowMaximized } from "../hooks/useWindowMaximized";
+
+const log = createLogger("window-resize");
 
 type Direction =
   | "East"
@@ -41,7 +44,7 @@ export function WindowResizeEdges() {
     void import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
       getCurrentWindow()
         .startResizeDragging(direction)
-        .catch(() => {}),
+        .catch((error: unknown) => log.warn("Window manager refused the resize drag", error)),
     );
   };
 

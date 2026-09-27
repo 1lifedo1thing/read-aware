@@ -8,6 +8,7 @@ import type { WorkspaceService, WorkspaceView } from "../../../services/workspac
 import type { actorHostCommands } from "../../../services/host-command-runtime";
 import { createLogger } from "../../../platform/logger";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
+import { settled } from "../../../platform/write-settlement";
 
 type Ui = PluginContext["services"]["ui"];
 type Reader = { current(): CurrentBookSnapshot; observe(handler: (source?: object) => void): () => void };
@@ -51,7 +52,7 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
     if (current.bookId !== null) policy.assertBook(current.bookId, "workspace reader close");
   };
   const waitForWork = <T>(work: Promise<T>) => {
-    lifecycle.trackCleanup(work.then(() => {}, () => {}));
+    lifecycle.trackCleanup(settled(work));
     return work;
   };
 

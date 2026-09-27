@@ -136,6 +136,7 @@ import {
   type PluginBookAccessPolicy,
 } from "../../../domain/plugin-object-access";
 import { readingRuntime } from "../../../domain/reading-runtime";
+import { settled } from "../../../platform/write-settlement";
 
 const log = createLogger("plugins");
 
@@ -425,7 +426,7 @@ export function buildPluginContext(
     return activationJobs;
   };
   const transactionCall = <T,>(perform: () => Promise<T>): Promise<T> => {
-    const pending = perform(); lifecycle.trackCleanup(pending.then(() => {}, () => {})); return pending;
+    const pending = perform(); lifecycle.trackCleanup(settled(pending)); return pending;
   };
   const settingsDomain = createSettingsDomain(operationActor, settingsAccess, permissions.has("service:network"));
   const changes = createPluginChanges(manifest, objectAccess, lifecycle, operationActor, settingsDomain);

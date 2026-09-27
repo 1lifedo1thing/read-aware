@@ -12,6 +12,7 @@ import { assertReactionAllowed, actorCause, causalActor, reactionActor, type Dom
 import { createLogger } from "../../../platform/logger";
 
 import { i18n } from "../../../i18n/instance";
+import { settled } from "../../../platform/write-settlement";
 
 const log = createLogger("plugin-services");
 
@@ -259,7 +260,7 @@ export class PluginServiceBroker {
           input, signal, callId, lineage: [...lineage, nextKey], origin });
       });
       entry.calls.add(execution);
-      const settlement = execution.then(() => {}, () => {}).finally(() => { entry.calls.delete(execution); });
+      const settlement = settled(execution).then(() => { entry.calls.delete(execution); });
       caller.track(settlement); entry.provider.track(settlement);
       let result: unknown;
       try { result = await execution; }

@@ -18,6 +18,7 @@ import {
 import { invoke } from "../../../platform/ipc";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { mintEventRows, broadcastDomainEventDrafts, type DomainEventDraft } from "../../../platform/domain-events";
+import { settled } from "../../../platform/write-settlement";
 
 const REGISTRY_KEY = "read-aware-virtual-books";
 
@@ -119,9 +120,9 @@ export function resolveContentProvider(
 const bindingTails = new Map<string, Promise<unknown>>();
 export function withVirtualBookBinding<T>(binding: VirtualBookBinding, work: () => Promise<T>): Promise<T> {
   const key = JSON.stringify([binding.pluginId, binding.providerId, binding.key]);
-  const result = (bindingTails.get(key) ?? Promise.resolve()).catch(() => {}).then(work);
+  const result = settled(bindingTails.get(key) ?? Promise.resolve()).then(work);
   bindingTails.set(key, result);
-  void result.finally(() => { if (bindingTails.get(key) === result) bindingTails.delete(key); }).catch(() => {});
+  void settled(result).then(() => { if (bindingTails.get(key) === result) bindingTails.delete(key); });
   return result;
 }
 

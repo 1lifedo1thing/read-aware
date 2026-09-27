@@ -380,7 +380,7 @@ function writeBookAccess(id: string, grant: PluginBookAccess | null, origin: Dom
     if (grant) map[id] = grant; else delete map[id];
     return localKV.setItemAsync(BOOK_ACCESS_KEY, JSON.stringify(map), origin);
   });
-  bookAccessWriteTail = work.catch(() => {});
+  bookAccessWriteTail = settled(work);
   return work;
 }
 
@@ -530,6 +530,7 @@ export function closePluginDialog(requestId: string): boolean {
 // ─── Install consent (docs/plugins/plugin-system.md §2/§4) ───────────────────────────
 
 import type { PluginManifest } from "../lib/plugin-types";
+import { settled } from "../../../platform/write-settlement";
 
 export type PluginInstallConsentRequest = {
   manifest: PluginManifest;

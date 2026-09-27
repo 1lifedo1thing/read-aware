@@ -4,6 +4,7 @@ import type { ReadingModeStepOutcome, ReadingModeStepReceipt, ReadingStep, Readi
 import type { ReadingSessionChange as PublicReadingSessionChange, ReadingDemandSnapshot, ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
 import { normalizeBookRangeQuery, type BookTextRange, type ReadingSelectionSnapshot, type ReadingSelectionReceipt } from "@read-aware/core";
 import { operationAvailability, type ReadingOperationQuery, type OperationCondition, type OperationAvailability } from "@read-aware/core";
+import { settled } from "../platform/write-settlement";
 
 type ReadingSessionChange = Omit<PublicReadingSessionChange, "origin"> & { origin: DomainActor };
 
@@ -608,7 +609,7 @@ export class ReadingSessionController {
           : target.cfi || target.href || target.fraction !== undefined || target.sectionIndex !== undefined ? engine.navigate(target, change.origin)
           : this.state.location;
       });
-      this.engineTails.set(engine, movement.catch(() => {}));
+      this.engineTails.set(engine, settled(movement));
       const location = await movement;
       check();
       if (this.session !== session || session.engine !== engine) throw new AppError("reader/superseded", "Reader engine was replaced");
