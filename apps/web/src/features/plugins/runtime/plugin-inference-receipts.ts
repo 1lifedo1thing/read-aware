@@ -41,6 +41,8 @@ export class PluginInferenceReceipts {
     this.entries.set(id, entry);
     try { await this.history.record(entry.receipt); } catch (error) {
       entry.receipt = { ...entry.receipt, status: "failed", settled: true, errorCode: errorCode(error) ?? "db/error", revision: 1 };
+      // The history tracks every write on the lifecycle, which logs a failure and
+      // reports it at drain; the caller already receives the original error.
       void this.history.record(entry.receipt).catch(() => {});
       this.entries.delete(id); throw error;
     }
@@ -50,6 +52,8 @@ export class PluginInferenceReceipts {
       return this.history.record(entry.receipt);
     };
     return {
+      // Attempt metadata is best-effort for an in-flight ask; a failed write is
+      // logged and reported at drain by the lifecycle-tracked history write.
       attempt: (receipt: InferenceAttemptReceipt) => { void change({ attempts: [...entry.receipt.attempts, structuredClone(receipt)] }).catch(() => {}); },
       finish: (error?: unknown) => {
         entry.cancel = undefined;

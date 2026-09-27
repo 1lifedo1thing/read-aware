@@ -77,7 +77,7 @@ export function PluginsPanel() {
             variant: "success",
           });
         } catch (error) {
-          await candidate.discard().catch(() => {});
+          await candidate.discard().catch(cleanup => log.warn("plugin candidate discard failed after install failure", cleanup));
           throw error;
         }
       }
@@ -110,7 +110,7 @@ export function PluginsPanel() {
             variant: "success",
           });
         } catch (error) {
-          await candidate.discard().catch(() => {});
+          await candidate.discard().catch(cleanup => log.warn("plugin candidate discard failed after install failure", cleanup));
           throw error;
         }
       }

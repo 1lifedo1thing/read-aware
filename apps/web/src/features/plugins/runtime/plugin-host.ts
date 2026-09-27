@@ -467,6 +467,13 @@ async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: Plugi
   active.set(previous.manifest.id, restored);
 }
 
+/** Best-effort discard after an install/update already failed. The original
+ * failure is what the caller reports; a discard failure leaves the candidate
+ * staged and is logged rather than masking that error. */
+async function discardCandidateAfterFailure(token: string): Promise<void> {
+  await discardPluginCandidate(token).catch(error => log.warn("Failed candidate cleanup failed", error));
+}
+
 /**
  * Blue-green install/update: activate and probe the staged candidate while the
  * previous version still owns the durable on-disk slot. Only then commit the
@@ -483,14 +490,14 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
     previousAccess = getPluginBookAccess(manifest.id);
     grant = checkedBookAccess(requestedGrant ?? previousAccess.grant);
   } catch (error) {
-    await discardPluginCandidate(entry.token).catch(() => {});
+    await discardCandidateAfterFailure(entry.token);
     throw error;
   }
   let grantPersisted = false;
   const existing = getInstalled().find((plugin) => plugin.manifest.id === manifest.id);
 
   if (existing?.builtin) {
-    await discardPluginCandidate(entry.token).catch(() => {});
+    await discardCandidateAfterFailure(entry.token);
     throw new Error(`"${manifest.id}" is a built-in plugin and cannot be replaced`);
   }
 
@@ -641,7 +648,7 @@ async function prepareStagedCandidate(
   try {
     return preparedCandidate(entry);
   } catch (error) {
-    await discardPluginCandidate(entry.token).catch(() => {});
+    await discardCandidateAfterFailure(entry.token);
     throw error;
   }
 }
