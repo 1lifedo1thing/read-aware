@@ -2819,6 +2819,21 @@
   },
   {
     "type": "dependency",
+    "from": "src/features/reader/hooks/useReaderEngineSession.ts",
+    "to": "src/features/settings/lib/reader-settings.ts",
+    "unresolvedTo": "../../settings/lib/reader-settings",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "features-via-public-index"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "src/features/reader/hooks/useReaderNoteEditor.ts",
     "to": "src/features/annotations/lib/annotation-db.ts",
     "unresolvedTo": "../../annotations/lib/annotation-db",
@@ -3477,6 +3492,21 @@
   },
   {
     "type": "dependency",
+    "from": "src/features/reader/lib/reader-engine-session.ts",
+    "to": "src/features/settings/lib/reader-settings.ts",
+    "unresolvedTo": "../../settings/lib/reader-settings",
+    "dependencyTypes": [
+      "local",
+      "type-only",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "features-via-public-index"
+    }
+  },
+  {
+    "type": "dependency",
     "from": "src/features/reader/lib/reader-types.ts",
     "to": "src/features/library/lib/library-types.ts",
     "unresolvedTo": "../../library/lib/library-types",
@@ -4022,64 +4052,6 @@
     "unresolvedTo": "../../reader/lib/reading-trace-runtime",
     "dependencyTypes": [
       "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "features-via-public-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/settings/lib/backup-io.ts",
-    "to": "src/features/annotations/lib/annotation-db.ts",
-    "unresolvedTo": "../../annotations/lib/annotation-db",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "features-via-public-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/settings/lib/backup-io.ts",
-    "to": "src/features/annotations/lib/annotation-types.ts",
-    "unresolvedTo": "../../annotations/lib/annotation-types",
-    "dependencyTypes": [
-      "local",
-      "type-only",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "features-via-public-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/settings/lib/backup-io.ts",
-    "to": "src/features/library/lib/library-db.ts",
-    "unresolvedTo": "../../library/lib/library-db",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "features-via-public-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/settings/lib/backup-io.ts",
-    "to": "src/features/library/lib/library-types.ts",
-    "unresolvedTo": "../../library/lib/library-types",
-    "dependencyTypes": [
-      "local",
-      "type-only",
       "import"
     ],
     "rule": {
