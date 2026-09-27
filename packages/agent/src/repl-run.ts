@@ -28,6 +28,7 @@ import type { AnnotationItem, BookOverview } from "./ports";
 import { createAgentRuntime } from "./runtime/runtime";
 import { loadEpubFixture } from "./testing/epub-fixture";
 import { createInMemoryDeps } from "./testing/fixtures";
+import { hostTurn } from "./testing/transcript-host";
 import { threadScopeKey, type ThreadScope } from "./thread-scope";
 import { visibleScopes } from "./tools/memory-tools";
 
@@ -147,7 +148,7 @@ async function runTurn(scope: ThreadScope, text: string): Promise<void> {
   };
 
   try {
-    for await (const chunk of runtime.sendTurn(scope, { text })) {
+    for await (const chunk of hostTurn(stores.turns, { key: threadScopeKey(scope), sendTurn: input => runtime.sendTurn(scope, input) }, { text })) {
       switch (chunk.type) {
         case "thinking":
           switchChannel("thinking");

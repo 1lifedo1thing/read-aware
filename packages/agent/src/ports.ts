@@ -70,6 +70,11 @@ export type TurnImage = { kind: "local"; cacheKey: string; name: string }
   | { kind: "web"; url: string; thumbnailUrl?: string; name: string };
 
 export interface TurnRecord {
+  /**
+   * Host message identity (the chat surface's message id). The runtime uses it
+   * only to separate the current turn (`SendTurnInput.turnId`) from history.
+   */
+  id?: string;
   images?: TurnImage[];
   role: "user" | "assistant";
   content: string;
@@ -307,13 +312,21 @@ export interface MemoryPort {
 }
 
 /**
- * 线程转录的读写。key 是 threadScopeKey()（`book:<id>` | `global`）。
- * 运行时负责在每轮结束后 append 用户轮与助手轮（doc §10 第 5 步）；
- * 集成到产品时由端口实现负责翻译成 aiMessage.appended 事件。
+ * 线程转录（对运行时只读）+ 滚动摘要。key 是 threadScopeKey()
+ * （`book:<id>` | `global:<threadId>`）。
+ *
+ * 转录只有一个写入者：宿主的聊天界面。sendTurn 之前宿主先持久化本轮用户
+ * 消息（其 id 作为 SendTurnInput.turnId 传入），流结束后再持久化助手回复
+ * （失败则是 load 不返回的错误存根）。产品里这条路径是 useBookConversation →
+ * conversation-store → ai_chat_commit（事件与展示列同一事务）；测试与 eval
+ * 用 testing/transcript-host 扮演同一个宿主。运行时从不写转录。
+ *
+ * 因此一轮进行中（含轮后管道）load() 可能已含、也可能未含本轮消息：需要
+ * "本轮之前的历史"的代码必须按 turnId 切分（history.ts 的 historyBeforeTurn），
+ * 不得按条数推断。
  */
 export interface ConversationPort {
   load(threadKey: string): Promise<TurnRecord[]>;
-  append(threadKey: string, turn: TurnRecord): Promise<void>;
   /**
    * 历史对话原文检索（search_conversation 工具的后端；doc §6）。
    * threadKey 缺省时检索全部线程。一次接收多个查询变体（与

@@ -7,6 +7,7 @@ import { createCompleteFn, createStreamFn, type CompleteFn, type StreamFn } from
 import type { ResolveModel } from "../models/roles";
 import { AgentThread } from "../runtime/thread";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import { applyEvalRouting, evalProviderRegistry, resolveEvalModel } from "./model-config";
 import type { AgentEvalScenario, AgentEvalTurn } from "./agent-harness";
 import { buildAgentObservation, captureModelRequest } from "./trace";
@@ -123,7 +124,9 @@ export async function createManualEvalSession(
       const initialState = options.scenario.observeState ? toJsonValue(await options.scenario.observeState(setupContext)) : undefined;
       const originalSources = structuredClone({ books: setupContext.stores.books, chapters: setupContext.stores.chapters });
       const startedAt = performance.now();
-      for await (const chunk of thread.sendTurn({ ...turn, signal: askOptions?.signal })) {
+      // A manual session is a continuing chat: the session plays the host that
+      // owns the transcript (ConversationPort), so follow-ups see prior turns.
+      for await (const chunk of hostTurn(setupContext.stores.turns, thread, { ...turn, signal: askOptions?.signal })) {
         chunks.push(chunk);
       }
       await thread.flushBackgroundWork();

@@ -7,6 +7,7 @@ import { readPiCliKey } from "./dev-key";
 import { createAgentRuntime } from "./runtime/runtime";
 import type { AnnotationItem, BookOverview } from "./ports";
 import { createInMemoryDeps } from "./testing/fixtures";
+import { hostTurn } from "./testing/transcript-host";
 import { threadScopeKey, type ThreadScope } from "./thread-scope";
 import type { Id } from "@read-aware/core";
 
@@ -71,7 +72,7 @@ const runtime = createAgentRuntime({
 
 async function run(scope: ThreadScope, text: string): Promise<void> {
   console.log(`\n◆ [${threadScopeKey(scope)}] user: ${text}`);
-  for await (const chunk of runtime.sendTurn(scope, { text })) {
+  for await (const chunk of hostTurn(stores.turns, { key: threadScopeKey(scope), sendTurn: input => runtime.sendTurn(scope, input) }, { text })) {
     if (chunk.type === "text") process.stdout.write(chunk.text);
     else if (chunk.type === "tool-step" && chunk.phase === "start") {
       console.log(`  ⚙ ${chunk.tool} …`);

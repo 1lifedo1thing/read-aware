@@ -3,6 +3,7 @@ import type { Api, Context, Model } from "@earendil-works/pi-ai";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
 import { fauxAssistantMessage, type FauxProviderRegistration } from "@earendil-works/pi-ai/providers/faux";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import { memoryPolicyState } from "../testing/memory-policy";
 import { AgentThread } from "./thread";
 import { contextPolicyState } from "../testing/reading-context-policy";
@@ -36,10 +37,10 @@ function fixture(permissions: ReadingContextPermissions) {
   return { faux, policy, memory, deps, stores, thread, input, prompts, searches: () => searches };
 }
 
-test("all four policies constrain actual prompt assembly but retain local attachments", async () => {
+test("all four policies constrain actual prompt assembly; the host transcript keeps local attachments", async () => {
   for (const selection of [true, false]) for (const surrounding of [true, false]) {
     const f = fixture({ selection, surrounding });
-    await collect(f.thread.sendTurn(f.input)); await f.thread.flushBackgroundWork();
+    await collect(hostTurn(f.stores.turns, f.thread, f.input)); await f.thread.flushBackgroundWork();
     expect(f.prompts[0]!.includes("SELECTED PRIVATE")).toBe(selection);
     expect(f.prompts[0]!.includes("VIEWPORT")).toBe(selection && surrounding);
     expect(f.prompts[0]!.includes("<grounding_context>")).toBe(selection && surrounding);
@@ -52,9 +53,9 @@ test("all four policies constrain actual prompt assembly but retain local attach
 
 test("tightening between turns rebuilds cached context and filters hydrated selections", async () => {
   const f = fixture({ selection: true, surrounding: true });
-  await collect(f.thread.sendTurn(f.input)); await f.thread.flushBackgroundWork();
+  await collect(hostTurn(f.stores.turns, f.thread, f.input)); await f.thread.flushBackgroundWork();
   f.policy.set({ selection: false, surrounding: false });
-  await collect(f.thread.sendTurn({ text: "A new typed question", readingCursor: f.input.readingCursor }));
+  await collect(hostTurn(f.stores.turns, f.thread, { text: "A new typed question", readingCursor: f.input.readingCursor }));
   await f.thread.flushBackgroundWork();
   expect(f.prompts[1]).not.toContain("SELECTED PRIVATE");
   expect(f.prompts[1]).not.toContain("VIEWPORT");
@@ -69,8 +70,8 @@ test("mid-request off/on rejects late output; the next request can run", async (
     f.policy.set({ selection: true, surrounding: true });
     return fauxAssistantMessage("LATE OUTPUT");
   }, fauxAssistantMessage("Recovered")]);
-  await expect(collect(f.thread.sendTurn(f.input))).rejects.toMatchObject({ code: "ai/context-changed" });
-  await collect(f.thread.sendTurn({ text: "New request" }));
+  await expect(collect(hostTurn(f.stores.turns, f.thread, f.input))).rejects.toMatchObject({ code: "ai/context-changed" });
+  await collect(hostTurn(f.stores.turns, f.thread, { text: "New request" }));
   await f.thread.flushBackgroundWork();
   expect(JSON.stringify(f.stores.turns.get("book:b1"))).not.toContain("LATE OUTPUT");
   f.thread.dispose();

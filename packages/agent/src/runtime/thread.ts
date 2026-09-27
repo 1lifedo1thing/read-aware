@@ -35,9 +35,11 @@ import { AsyncQueue } from "./async-queue";
 import { elideStaleToolResults, releaseToolImages } from "./context-slim";
 import {
   formatUserTurn,
+  historyBeforeTurn,
   lastAssistantText,
   lastTurnTail,
   turnRecordsToMessages,
+  turnsForModel,
 } from "./history";
 import { buildGroundingContext } from "./grounding-context";
 import { renderExtensionContext } from "./extension-context";
@@ -256,7 +258,7 @@ export class AgentThread {
   }
 
   /** Load only bounded transcript context for a safety rewrite. */
-  private async loadRepairSessionTurns(call: ReadingContextCall): Promise<TurnRecord[]> {
+  private async loadRepairSessionTurns(call: ReadingContextCall, turnId?: string): Promise<TurnRecord[]> {
     if (this.scope.kind !== "book") return [];
     const load = <T>(promise: Promise<T>, label: string): Promise<T | undefined> =>
       promise.catch((error) => {
@@ -270,10 +272,10 @@ export class AgentThread {
       load(this.deps.conversations.load(this.key), "repair conversation history unavailable"),
     );
     call.assertAllowed();
-    return permittedTurnRecords(
-      lastTurnTail(records ?? [], REBUILD_HISTORY_TURNS),
+    return turnsForModel(permittedTurnRecords(
+      lastTurnTail(historyBeforeTurn(records ?? [], turnId), REBUILD_HISTORY_TURNS),
       call.permissions,
-    );
+    ));
   }
 
   private async repairUnsafeAnswer(input: {
@@ -344,8 +346,9 @@ export class AgentThread {
   /**
    * 首次使用时创建 Agent。全局线程从转录 store 水化历史（线程内连续）；
    * 书线程不水化 —— 章节会话首轮由 sendTurn 重置为"一轮尾巴"基线。
+   * 水化只取本轮之前的历史（宿主可能已落库本轮用户消息）。
    */
-  private async ensureAgent(call: ReadingContextCall): Promise<Agent> {
+  private async ensureAgent(call: ReadingContextCall, turnId?: string): Promise<Agent> {
     if (this.agent) {
       // Apply refreshed metadata only between turns; never replace the user's model ID.
       this.agent.state.model = this.resolveModel("smart");
@@ -353,7 +356,7 @@ export class AgentThread {
     }
     const model = this.resolveModel("smart");
     const records =
-      this.scope.kind === "book" ? [] : await this.deps.conversations.load(this.key);
+      this.scope.kind === "book" ? [] : historyBeforeTurn(await this.deps.conversations.load(this.key), turnId);
     call.assertAllowed();
     const agent = new Agent({
       initialState: {
@@ -566,7 +569,7 @@ export class AgentThread {
         return undefined;
       })));
       call.assertAllowed();
-      const agent = await call.wait(this.ensureAgent(call));
+      const agent = await call.wait(this.ensureAgent(call, input.turnId));
       const profile = await call.wait(this.deps.profile.getProfileContext());
       // 本轮所在章节：选区的章节优先于阅读位置（问哪段话,会话就属于哪章）。
       // 仅决定对话会话；纪要的阅读边界始终来自当前游标。
@@ -602,7 +605,7 @@ export class AgentThread {
           this.sessionMemoryPolicy = loaded ? policyKey : undefined;
         }
         if (newSession) {
-          const records = await call.wait(this.deps.conversations.load(this.key));
+          const records = historyBeforeTurn(await call.wait(this.deps.conversations.load(this.key)), input.turnId);
           const tailTurns = this.preserveRecentHistoryOnRebuild ? REBUILD_HISTORY_TURNS : 1;
           agent.state.messages = turnRecordsToMessages(
             permittedTurnRecords(lastTurnTail(records, tailTurns), call.permissions),
@@ -646,12 +649,13 @@ export class AgentThread {
         ? "[host note: The selected passage is withheld by the reader's privacy settings. Do not guess its wording or automatically reconstruct that selection with tools. Ask for a self-contained question when the request depends on the missing passage.]"
         : undefined;
       const promptText = [basePromptText, withheldNote, extensionContext].filter(Boolean).join("\n\n");
-      // UI 在流开始前就把本轮用户消息持久化（retry 的截断可见性依赖这一点）。
-      // 全局线程水化 / 未来任何全量重建会把它带进 state，而 prompt() 马上又
-      // 注入同一条 —— 尾部等值的 user 消息属于本轮，丢弃避免问题被喂两遍。
+      // 宿主在流开始前就把本轮用户消息持久化（retry 的截断可见性依赖这一点）。
+      // 带 turnId 时水化已按身份切掉本轮（historyBeforeTurn）；只有不标识轮次的
+      // 宿主才会把它带进 state，而 prompt() 马上又注入同一条 —— 此时尾部等值的
+      // user 消息属于本轮，丢弃避免问题被喂两遍。
       const tail = agent.state.messages[agent.state.messages.length - 1];
       if (
-        !resume && tail &&
+        !resume && input.turnId === undefined && tail &&
         "role" in tail &&
         tail.role === "user" &&
         typeof tail.content === "string" &&
@@ -874,7 +878,7 @@ export class AgentThread {
               draft: visibleDraft,
               cursor,
               attachments: input.attachments,
-              recentTurns: await this.loadRepairSessionTurns(call),
+              recentTurns: await this.loadRepairSessionTurns(call, input.turnId),
               violations,
               book: bookIndex,
               signal: input.signal,
@@ -914,20 +918,8 @@ export class AgentThread {
         }
       }
 
-      await this.deps.conversations.append(this.key, {
-        role: "user",
-        content: input.text,
-        createdAt: startedAt,
-        attachments: localInput.attachments,
-        images: localInput.images,
-      });
-      if (answer) {
-        await this.deps.conversations.append(this.key, {
-          role: "assistant",
-          content: answer,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      // The transcript is the host's to persist (ConversationPort): it saved the
+      // user message before this turn and saves the streamed reply after it.
 
       // ask-note：书线程每个提问留痕（doc §7）；选区锚优先，退而锚当前阅读位置
       if (this.scope.kind === "book") {
@@ -943,7 +935,7 @@ export class AgentThread {
       // 轮后管道：记忆提炼 + 滚动摘要 + 图谱节拍。异步、不阻塞、失败静默
       // （doc §10 第 6 步）
       call.assertAllowed();
-      this.scheduleBackgroundPipeline(userText, answer, call.permissions, cursor?.chapter);
+      this.scheduleBackgroundPipeline(userText, answer, call.permissions, cursor?.chapter, input.turnId);
       if (discardUnsafeAgent) this.discardAgent({ preserveRecentHistory: true });
       turnCompleted = true;
     } finally {
@@ -968,16 +960,24 @@ export class AgentThread {
    * 不强行蒸馏：转录是 raw source，按需靠 search_conversation 取。
    * 返回 bootstrap 摘要（作本轮滚动摘要的 previous）；失败返回 undefined，
    * 本轮按无摘要继续、下轮门条件仍在，自动重试。
+   *
+   * 历史按本轮身份切分：管道与宿主保存助手回复并发，load() 此刻可能只含
+   * 本轮用户消息、也可能已含回复——按条数切会误删一条真实历史。
    */
   private async adoptLegacyThread(
     fast: () => ReturnType<ResolveModel>,
     deps: RuntimeDeps,
     complete: CompleteFn,
     permissions: ReadingContextPermissions,
+    turnId: string | undefined,
   ): Promise<string | undefined> {
-    const persisted = await deps.conversations.load(this.key).catch(() => []);
-    // load() 此刻已含本轮 user+assistant 两条；历史 = 之前的部分。
-    const history = permittedTurnRecords(persisted.slice(0, Math.max(0, persisted.length - 2)), permissions);
+    const persisted = await deps.conversations.load(this.key).catch((error) => {
+      // Adoption is optional continuity: a failed read skips it rather than
+      // failing this turn's memory and summary pipeline.
+      deps.log?.warn("legacy thread adoption could not read the transcript", error);
+      return [];
+    });
+    const history = permittedTurnRecords(historyBeforeTurn(persisted, turnId), permissions);
     if (history.length < 2) return undefined;
     const window = history.slice(-AgentThread.ADOPTION_WINDOW_TURNS);
     const summary = await bootstrapSummaryFromHistory({
@@ -1019,7 +1019,10 @@ export class AgentThread {
     userText: string,
     assistantText: string,
     permissions: ReadingContextPermissions,
-    cursorChapterHref?: string,
+    cursorChapterHref: string | undefined,
+    // The current turn's host identity: the transcript this pipeline reads may
+    // or may not hold this turn yet, so history is cut by identity, not count.
+    turnId: string | undefined,
   ): void {
     if (!assistantText) return;
     const fast = () => this.resolveModel("fast");
@@ -1035,7 +1038,7 @@ export class AgentThread {
       // 同一事实不会被写两遍。
       const previousInsights = await deps.conversations.getInsights(this.key);
       const bootstrapped =
-        previousInsights === undefined ? await this.adoptLegacyThread(fast, deps, complete, permissions) : undefined;
+        previousInsights === undefined ? await this.adoptLegacyThread(fast, deps, complete, permissions, turnId) : undefined;
       if (this.disposed) return;
       const snapshots = await deps.memory.snapshotMemories({
         scopes: visibleScopes(this.scope),

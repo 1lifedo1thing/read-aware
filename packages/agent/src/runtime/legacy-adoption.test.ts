@@ -15,6 +15,7 @@ import type { Id } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import type { RuntimeDeps, TurnRecord } from "../ports";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import type { ThreadScope } from "../thread-scope";
 import { AgentThread } from "./thread";
 
@@ -75,8 +76,9 @@ describe("legacy thread adoption", () => {
     });
   }
 
-  async function drain(thread: AgentThread, text: string): Promise<void> {
-    for await (const _ of thread.sendTurn({ text })) {
+  /** One chat turn with the host saving the transcript around it, as in the product. */
+  async function drain(transcripts: Map<string, TurnRecord[]>, thread: AgentThread, text: string): Promise<void> {
+    for await (const _ of hostTurn(transcripts, thread, { text })) {
       // drain
     }
   }
@@ -91,7 +93,7 @@ describe("legacy thread adoption", () => {
     const calls: Array<{ kind: string; content: string }> = [];
     const thread = makeThread(deps, model, trackingComplete(calls));
 
-    await drain(thread, "接着聊。");
+    await drain(stores.turns, thread, "接着聊。");
     await thread.flushBackgroundWork();
 
     const bootstrap = calls.find((call) => call.kind === "bootstrap");
@@ -113,16 +115,16 @@ describe("legacy thread adoption", () => {
   test("insights are the adoption watermark: a second turn never bootstraps again", async () => {
     const model = makeFaux();
     faux.setResponses([fauxAssistantMessage("回一"), fauxAssistantMessage("回二")]);
-    const { deps } = createInMemoryDeps({
+    const { deps, stores } = createInMemoryDeps({
       books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
       turns: { "book:b1": legacyTurns() },
     });
     const calls: Array<{ kind: string; content: string }> = [];
     const thread = makeThread(deps, model, trackingComplete(calls));
 
-    await drain(thread, "第一轮。");
+    await drain(stores.turns, thread, "第一轮。");
     await thread.flushBackgroundWork();
-    await drain(thread, "第二轮。");
+    await drain(stores.turns, thread, "第二轮。");
     await thread.flushBackgroundWork();
 
     expect(calls.filter((call) => call.kind === "bootstrap")).toHaveLength(1);
@@ -131,14 +133,14 @@ describe("legacy thread adoption", () => {
   test("a pre-summarized thread and a fresh thread both skip adoption", async () => {
     const model = makeFaux();
     faux.setResponses([fauxAssistantMessage("回一"), fauxAssistantMessage("回二")]);
-    const { deps } = createInMemoryDeps({
+    const { deps, stores } = createInMemoryDeps({
       books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
       turns: { "book:b1": legacyTurns() },
       insights: { "book:b1": "已有摘要" },
     });
     const calls: Array<{ kind: string; content: string }> = [];
     const thread = makeThread(deps, model, trackingComplete(calls));
-    await drain(thread, "有摘要的旧线程。");
+    await drain(stores.turns, thread, "有摘要的旧线程。");
     await thread.flushBackgroundWork();
     expect(calls.filter((call) => call.kind === "bootstrap")).toHaveLength(0);
 
@@ -147,8 +149,43 @@ describe("legacy thread adoption", () => {
     });
     const freshCalls: Array<{ kind: string; content: string }> = [];
     const freshThread = makeThread(fresh.deps, model, trackingComplete(freshCalls));
-    await drain(freshThread, "全新线程。");
+    await drain(fresh.stores.turns, freshThread, "全新线程。");
     await freshThread.flushBackgroundWork();
     expect(freshCalls.filter((call) => call.kind === "bootstrap")).toHaveLength(0);
   });
+
+  // Production ordering: the chat host saves the user message and awaits it
+  // before streaming, and saves the reply only after the stream ends. The
+  // post-turn pipeline is scheduled inside the stream, so its transcript read
+  // races the reply save. Adoption used to assume both rows were present and
+  // sliced off the last two — when the pipeline won, that dropped the most
+  // recent historical reply instead of this turn's.
+  for (const replySavedFirst of [false, true]) {
+    test(`adoption folds exactly the pre-turn history (${replySavedFirst ? "reply saved before" : "pipeline reads before"} the reply save)`, async () => {
+      const model = makeFaux();
+      faux.setResponses([fauxAssistantMessage("本轮回答")]);
+      const { deps, stores } = createInMemoryDeps({
+        books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
+        turns: { "book:b1": legacyTurns() },
+      });
+      const calls: Array<{ kind: string; content: string }> = [];
+      const thread = makeThread(deps, model, trackingComplete(calls));
+      const transcript = stores.turns.get("book:b1")!;
+      transcript.push({ id: "turn-1", role: "user", content: "接着聊。", createdAt: "2026-09-27T00:00:00Z" });
+      for await (const _ of thread.sendTurn({ text: "接着聊。", turnId: "turn-1" })) {
+        // stream
+      }
+      const saveReply = () => transcript.push({ id: "reply-1", role: "assistant", content: "本轮回答", createdAt: "2026-09-27T00:00:05Z" });
+      if (replySavedFirst) saveReply();
+      await thread.flushBackgroundWork();
+      if (!replySavedFirst) saveReply();
+
+      const bootstrap = calls.find((call) => call.kind === "bootstrap");
+      expect(bootstrap).toBeDefined();
+      expect(bootstrap!.content).toContain("我读书主要为了研究人物心理");
+      expect(bootstrap!.content).toContain("明白，这本书很适合。");
+      expect(bootstrap!.content).not.toContain("接着聊");
+      expect(bootstrap!.content).not.toContain("本轮回答");
+    });
+  }
 });

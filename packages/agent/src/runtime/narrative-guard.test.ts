@@ -9,6 +9,7 @@ import {
 import type { Id } from "@read-aware/core";
 import type { ThreadChunk } from "../chunks";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import { AgentThread } from "./thread";
 
 const BOOK_ID = "narrative-book" as Id;
@@ -46,7 +47,7 @@ describe("narrative output guard", () => {
 
   afterEach(() => faux?.unregister());
 
-  test("holds an unsafe stream, rewrites it, and persists only the safe answer", async () => {
+  test("holds an unsafe stream and rewrites it, so the host can only record the safe answer", async () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
     faux.setResponses([
@@ -68,7 +69,7 @@ describe("narrative output guard", () => {
     });
 
     const chunks = await collect(
-      thread.sendTurn({
+      hostTurn(stores.turns, thread, {
         text: "别剧透，讲讲我现在看到的内容。",
         readingCursor: {
           chapterIndex: 0,
@@ -176,8 +177,8 @@ describe("narrative output guard", () => {
     });
 
     const cursor = { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" };
-    await collect(thread.sendTurn({ text: "先回答这个。", readingCursor: cursor }));
-    await collect(thread.sendTurn({ text: "再继续。", readingCursor: cursor }));
+    await collect(hostTurn(stores.turns, thread, { text: "先回答这个。", readingCursor: cursor }));
+    await collect(hostTurn(stores.turns, thread, { text: "再继续。", readingCursor: cursor }));
 
     const rebuilt = JSON.stringify(rebuiltContext?.messages ?? []);
     expect(rebuilt).toContain("旧问题 2");
@@ -244,7 +245,7 @@ describe("narrative output guard", () => {
     });
 
     const chunks = await collect(
-      thread.sendTurn({
+      hostTurn(stores.turns, thread, {
         text: "给我讲讲后面最著名的那段。",
         readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
       }),
@@ -308,7 +309,7 @@ describe("narrative output guard", () => {
       repairCompleteFn: async () => { repairs++; return fauxAssistantMessage(replacement); },
       streamFn: streamSimple,
     });
-    const chunks = await collect(thread.sendTurn({
+    const chunks = await collect(hostTurn(stores.turns, thread, {
       text: "梳理已读到的主要线索。",
       readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
     }));

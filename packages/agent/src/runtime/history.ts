@@ -57,6 +57,23 @@ export function turnRecordsToMessages(records: TurnRecord[], model: Model<Api>):
 }
 
 /**
+ * 本轮之前的转录。宿主在本轮开始前持久化用户消息、结束后持久化回复，
+ * 所以并发读取者可能看到两条都没有、只有一条或两条都有——稳定的只有身份：
+ * 从 id === turnId 的记录起（含其后）都属于本轮或更晚。没有 turnId、或本轮
+ * 尚未落库时，读到的每条记录都早于本轮。
+ */
+export function historyBeforeTurn(records: TurnRecord[], turnId?: string): TurnRecord[] {
+  if (turnId === undefined) return records;
+  const index = records.findIndex((record) => record.id === turnId);
+  return index < 0 ? records : records.slice(0, index);
+}
+
+/** Host message ids separate turns for the runtime; they carry nothing for a model. */
+export function turnsForModel<T extends TurnRecord>(records: T[]): Array<Omit<T, "id">> {
+  return records.map(({ id: _hostId, ...turn }) => turn);
+}
+
+/**
  * 书线程无状态装配的历史尾巴：默认仍是最后一次完整的
  * user↔assistant 交换；需要重建安全边界时，调用方可以请求固定数量的
  * 最近完整交换。尾部未完成的 user 记录始终不会被装配，避免把当前问题

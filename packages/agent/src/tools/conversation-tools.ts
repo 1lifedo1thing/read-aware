@@ -9,6 +9,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 import { AppError, normalizeConversationTarget } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
+import { turnsForModel } from "../runtime/history";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import { normalizeBookIdParam } from "./current-book";
 import { textResult } from "./tool-result";
@@ -46,7 +47,7 @@ export function buildConversationTools(scope: ThreadScope, deps: RuntimeDeps, st
           includeAttachments: call.permissions.selection,
         }));
         call.assertAllowed();
-        return textResult(permittedTurnRecords(results, call.permissions));
+        return textResult(turnsForModel(permittedTurnRecords(results, call.permissions)));
       } finally { call.dispose(); }
     },
   };
@@ -72,7 +73,7 @@ export function buildConversationTools(scope: ThreadScope, deps: RuntimeDeps, st
         const records = await call.wait(deps.conversations.load(key));
         const clamped = Math.min(Math.max(1, Math.floor(n)), 20);
         call.assertAllowed();
-        return textResult(permittedTurnRecords(records.slice(-clamped), call.permissions));
+        return textResult(turnsForModel(permittedTurnRecords(records.slice(-clamped), call.permissions)));
       } finally { call.dispose(); }
     },
   };

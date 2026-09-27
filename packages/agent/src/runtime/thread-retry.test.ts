@@ -4,6 +4,7 @@ import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai/provid
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ThreadChunk } from "../chunks";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import { AgentThread } from "./thread";
 import { contextPolicyState } from "../testing/reading-context-policy";
 
@@ -44,9 +45,9 @@ for (const kind of ["book", "global"] as const) test(`${kind}: retry keeps compl
     completeFn: async () => fauxAssistantMessage('{"new":[],"reinforced":[]}') });
   try {
     const input = { text: "Find diagrams", turnId: "user-1" };
-    await expect(collect(thread.sendTurn(input))).rejects.toMatchObject({ code: "ai/network" });
-    await expect(collect(thread.sendTurn({ ...input, retry: true }))).rejects.toMatchObject({ code: "ai/network" });
-    const chunks = await collect(thread.sendTurn({ ...input, retry: true }));
+    await expect(collect(hostTurn(stores.turns, thread, input))).rejects.toMatchObject({ code: "ai/network" });
+    await expect(collect(hostTurn(stores.turns, thread, { ...input, retry: true }))).rejects.toMatchObject({ code: "ai/network" });
+    const chunks = await collect(hostTurn(stores.turns, thread, { ...input, retry: true }));
     expect(searches).toBe(1);
     expect(writes).toBe(1);
     expect(recoveredContext).toContain("web_search");

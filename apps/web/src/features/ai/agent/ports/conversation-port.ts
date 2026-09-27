@@ -1,8 +1,9 @@
 /**
- * ConversationPort over conversation-store。
- * 重要：`append` 是空操作 —— 产品里转录的持久化仍归 useBookConversation /
- * useGlobalConversation（它们存的是带 attachments 的原始消息，对 UI 更有用）。
- * 运行时只*读*转录做水化与原话检索，写摘要（insights）归自己。
+ * ConversationPort over conversation-store（只读转录 + 摘要）。
+ * 转录的唯一写入者是聊天界面：useBookConversation / useGlobalConversation 在
+ * 一轮开始前保存用户消息（其 id 即 SendTurnInput.turnId），流结束后保存回复，
+ * 经 conversation-store → ai_chat_commit 与事件同事务落库。运行时只读转录做
+ * 水化与原话检索，按 turnId 区分本轮与历史；写摘要（insights）归运行时自己。
  */
 import { searchTurnRecords, type ConversationPort, type TurnRecord } from "@read-aware/agent";
 import { clearStoredConversationInsights, getStoredConversationInsights, putStoredConversationInsights } from "../../lib/conversation-insights-store";
@@ -32,6 +33,7 @@ function toTurns(messages: ChatMessage[]): TurnRecord[] {
   return messages
     .filter((message) => !message.error)
     .map((message) => ({
+      id: message.id,
       role: message.role,
       content: message.content,
       createdAt: message.createdAt,
@@ -46,9 +48,6 @@ function toTurns(messages: ChatMessage[]): TurnRecord[] {
 export function createConversationPort(): ConversationPort {
   return {
     load: async (threadKey) => toTurns(await loadConversation(threadKeyToStoreId(threadKey))),
-    append: async () => {
-      // no-op：见文件头注释
-    },
     searchTurns: async ({ queries, threadKey, limit, includeAttachments }) => {
       // 匹配核心与 eval 的内存端口同源（searchTurnRecords：多变体合并 +
       // 精确优先 + 词元回退）——此前这里是逐字子串匹配，口语查询几乎

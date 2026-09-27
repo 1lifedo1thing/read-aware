@@ -10,6 +10,7 @@ import type { Id } from "@read-aware/core";
 import type { ThreadChunk } from "../chunks";
 import type { AnnotationItem, BookOverview, RuntimeDeps } from "../ports";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import { AgentThread } from "./thread";
 import { memoryPolicyState } from "../testing/memory-policy";
 
@@ -97,8 +98,8 @@ describe("AgentThread", () => {
     ]);
     const thread = makeThread(deps, { ...model, input: ["text", "image"] });
     try {
-      await collect(thread.sendTurn({ text: "Describe this illustration." }));
-      await collect(thread.sendTurn({ text: "Thanks." }));
+      await collect(hostTurn(turns, thread, { text: "Describe this illustration." }));
+      await collect(hostTurn(turns, thread, { text: "Thanks." }));
       expect(contexts[0]).toContain('"type":"image"');
       expect(contexts[0]).toContain('"data":"AQID"');
       expect(contexts[1]).not.toContain('"data":"AQID"');
@@ -154,7 +155,7 @@ describe("AgentThread", () => {
     } finally { thread.dispose(); await thread.flushBackgroundWork(); }
   });
 
-  test("streams text and tool steps, persists both turns", async () => {
+  test("streams text and tool steps; the host records both turns", async () => {
     const { faux, model } = makeFaux();
     faux.setResponses([
       fauxAssistantMessage([fauxToolCall("get_annotations", {})], { stopReason: "toolUse" }),
@@ -163,7 +164,7 @@ describe("AgentThread", () => {
     const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
 
-    const chunks = await collect(thread.sendTurn({ text: "我划了什么重点？" }));
+    const chunks = await collect(hostTurn(turns, thread, { text: "我划了什么重点？" }));
 
     const text = chunks.filter((c) => c.type === "text").map((c) => c.text).join("");
     expect(text).toBe("You highlighted two passages.");
@@ -224,9 +225,9 @@ describe("AgentThread", () => {
         return streamSimple(selected, context, options);
       },
     });
-    await collect(thread.sendTurn({ text: "first turn" }));
+    await collect(hostTurn(turns, thread, { text: "first turn" }));
     current = { ...current, maxTokens: 16_384 };
-    await collect(thread.sendTurn({ text: "second turn" }));
+    await collect(hostTurn(turns, thread, { text: "second turn" }));
     expect(sent.map((entry) => entry.id)).toEqual([model.id, model.id]);
     expect(sent.map((entry) => entry.maxTokens)).toEqual([8_192, 16_384]);
     expect(turns.get("book:b1")).toHaveLength(4);
@@ -347,7 +348,7 @@ describe("AgentThread", () => {
       getApiKey: () => "test", streamFn: streamSimple,
       completeFn: async () => { modelCalls++; return fauxAssistantMessage("must not execute"); },
     });
-    await collect(thread.sendTurn({ text: "New question" }));
+    await collect(hostTurn(stores.turns, thread, { text: "New question" }));
     await thread.flushBackgroundWork();
     expect(stores.turns.get("book:b1")).toHaveLength(4);
     expect(stores.asks).toHaveLength(1);
@@ -521,7 +522,7 @@ describe("AgentThread", () => {
     const thread = makeThread(deps, model);
 
     await collect(
-      thread.sendTurn({
+      hostTurn(turns, thread, {
         text: "q1",
         readingCursor: {
           chapter: "ch1.xhtml",
@@ -532,7 +533,7 @@ describe("AgentThread", () => {
       }),
     );
     await collect(
-      thread.sendTurn({
+      hostTurn(turns, thread, {
         text: "q2",
         readingCursor: {
           chapter: "ch1.xhtml",
@@ -613,16 +614,16 @@ describe("AgentThread", () => {
       (context) => { contexts.push(context); return fauxAssistantMessage("a3"); },
       (context) => { contexts.push(context); return fauxAssistantMessage("a4"); },
     ]);
-    const { deps } = makeDeps();
+    const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
 
-    await collect(thread.sendTurn({ text: "q1", readingCursor: { chapter: "ch1.xhtml" } }));
-    await collect(thread.sendTurn({ text: "q2", readingCursor: { chapter: "ch1.xhtml" } }));
+    await collect(hostTurn(turns, thread, { text: "q1", readingCursor: { chapter: "ch1.xhtml" } }));
+    await collect(hostTurn(turns, thread, { text: "q2", readingCursor: { chapter: "ch1.xhtml" } }));
     // 换章发新消息 → 旧 state 扔掉，重置为持久记录的一轮尾巴（q2,a2）+ 本轮
-    await collect(thread.sendTurn({ text: "q3", readingCursor: { chapter: "ch2.xhtml" } }));
+    await collect(hostTurn(turns, thread, { text: "q3", readingCursor: { chapter: "ch2.xhtml" } }));
     expect(contexts[2]?.messages).toHaveLength(3);
     // 新章节里继续 → 又开始累积（q2,a2,u3,a3,u4）
-    await collect(thread.sendTurn({ text: "q4", readingCursor: { chapter: "ch2.xhtml" } }));
+    await collect(hostTurn(turns, thread, { text: "q4", readingCursor: { chapter: "ch2.xhtml" } }));
     expect(contexts[3]?.messages).toHaveLength(5);
   });
 
@@ -652,14 +653,14 @@ describe("AgentThread", () => {
       (context) => { contexts.push(context); return fauxAssistantMessage("a2"); },
       (context) => { contexts.push(context); return fauxAssistantMessage("a3"); },
     ]);
-    const { deps } = makeDeps();
+    const { deps, turns } = makeDeps();
     const thread = makeThread(deps, model);
 
-    await collect(thread.sendTurn({ text: "q1", readingCursor: { chapter: "ch1.xhtml" } }));
-    await collect(thread.sendTurn({ text: "q2", readingCursor: { chapter: "ch1.xhtml" } }));
+    await collect(hostTurn(turns, thread, { text: "q1", readingCursor: { chapter: "ch1.xhtml" } }));
+    await collect(hostTurn(turns, thread, { text: "q2", readingCursor: { chapter: "ch1.xhtml" } }));
     // 选区来自 ch2（attachment 的 chapter 优先于阅读位置）→ 视为换章
     await collect(
-      thread.sendTurn({
+      hostTurn(turns, thread, {
         text: "q3",
         readingCursor: { chapter: "ch1.xhtml" },
         attachments: [{ text: "quoted", chapter: "ch2.xhtml" }],
@@ -711,14 +712,15 @@ describe("AgentThread", () => {
       streamFn: streamSimple,
     });
 
-    await expect(collect(thread.sendTurn({ text: "q1" }))).rejects.toMatchObject({
+    await expect(collect(hostTurn(turns, thread, { text: "q1" }))).rejects.toMatchObject({
       code: "ai/provider",
       retryable: true,
     });
-    expect(turns.get("global:empty-response")).toBeUndefined();
+    // The host saved the question before the turn; the failure left no reply.
+    expect(turns.get("global:empty-response")?.map((turn) => turn.content)).toEqual(["q1"]);
 
-    await collect(thread.sendTurn({ text: "q1-retry" }));
-    expect(turns.get("global:empty-response")?.map((turn) => turn.content)).toEqual(["q1-retry", "recovered"]);
+    await collect(hostTurn(turns, thread, { text: "q1-retry" }));
+    expect(turns.get("global:empty-response")?.map((turn) => turn.content)).toEqual(["q1", "q1-retry", "recovered"]);
   });
 
   test("a query tool result does not turn an empty follow-up into a successful answer", async () => {
@@ -849,6 +851,27 @@ describe("AgentThread", () => {
 
     // [old q, old a, new q]，而不是 [old q, old a, new q, new q]
     expect(captured?.messages).toHaveLength(3);
+  });
+
+  test("the host turn id separates this turn from an identical earlier question (global hydration)", async () => {
+    const { faux, model } = makeFaux();
+    let captured: Context | undefined;
+    faux.setResponses([(context) => { captured = context; return fauxAssistantMessage("ok"); }]);
+    const { deps, turns } = makeDeps();
+    // The earlier ask failed (its error stub never loads) and the reader asked again.
+    turns.set("global:t2", [
+      { id: "u1", role: "user", content: "same q", createdAt: "2026-06-01T00:00:00Z" },
+      { id: "u2", role: "user", content: "same q", createdAt: "2026-06-02T00:00:00Z" },
+    ]);
+    const thread = new AgentThread({
+      scope: { kind: "global", threadId: "t2" }, deps, resolveModel: () => model,
+      getApiKey: () => "test-key", completeFn: noopComplete, streamFn: streamSimple,
+    });
+
+    await collect(thread.sendTurn({ text: "same q", turnId: "u2" }));
+
+    // History is the earlier ask; the current one is fed exactly once.
+    expect(captured?.messages.map((message) => message.role)).toEqual(["user", "user"]);
   });
 
   test("rejects a second turn while one is streaming", async () => {

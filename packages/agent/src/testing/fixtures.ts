@@ -655,12 +655,8 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       },
     },
     conversations: {
-      load: async (key) => stores.turns.get(key) ?? [],
-      append: async (key, turn) => {
-        const list = stores.turns.get(key) ?? [];
-        list.push(turn);
-        stores.turns.set(key, list);
-      },
+      // Read-only, as in the product: the host writes (see testing/transcript-host).
+      load: async (key) => structuredClone(stores.turns.get(key) ?? []),
       searchTurns: async ({ queries, threadKey, limit, includeAttachments }) => {
         // 与产品端口同一套匹配核心（searchTurnRecords）——匹配语义在
         // 接缝两侧不许漂移，eval 不许替产品圆谎。

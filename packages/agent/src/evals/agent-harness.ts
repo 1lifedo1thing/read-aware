@@ -19,6 +19,7 @@ import type { SendTurnInput } from "../runtime/thread";
 import { AgentThread } from "../runtime/thread";
 import type { InMemorySeed, InMemoryStores } from "../testing/fixtures";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { hostTurn } from "../testing/transcript-host";
 import type { ThreadScope } from "../thread-scope";
 import { evaluateAgentTrace, type AgentTraceExpectation } from "./assertions";
 import { reviewRubric } from "./rubric";
@@ -252,7 +253,8 @@ export function createAgentEvalVariant(
           const rawTurn: RawEvalTurn = { input: turn, chunks,
             ...(scenario.observeState ? { stateBefore: toJsonValue(await scenario.observeState(setupContext)) } : {}) };
           rawTurns.push(rawTurn);
-          for await (const chunk of thread.sendTurn({ ...turn, signal: context.signal })) {
+          // The harness plays the chat host: it owns the transcript (ConversationPort).
+          for await (const chunk of hostTurn(setupContext.stores.turns, thread, { ...turn, signal: context.signal })) {
             chunks.push(chunk);
           }
           if (scenario.observeState) rawTurn.stateAfter = toJsonValue(await scenario.observeState(setupContext));
