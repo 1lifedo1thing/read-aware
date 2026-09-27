@@ -1048,6 +1048,7 @@ export const staticSettingPaths = [
   "shortcuts.search", "shortcuts.settings", "shortcuts.new-conversation", "shortcuts.next-page", "shortcuts.prev-page",
   "shortcuts.next-chapter", "shortcuts.prev-chapter", "shortcuts.toggle-controls", "shortcuts.reader-mode-next-unit", "shortcuts.reader-mode-prev-unit",
   "shortcuts.selection-copy", "shortcuts.selection-highlight", "shortcuts.selection-underline", "shortcuts.selection-add-note", "shortcuts.selection-look-up", "shortcuts.selection-ask-ai",
+  "menus.readerToolbar.visible", "menus.readerToolbar.overflow",
 ];
 const retiredSettingSlot = 25;
 export const settingPathId = (path: string): string => {
