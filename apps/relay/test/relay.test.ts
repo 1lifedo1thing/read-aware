@@ -323,6 +323,249 @@ describe("blobs", () => {
   });
 });
 
+describe("blob replacement never costs the stored copy", () => {
+  type Handle = (req: Request) => Promise<Response>;
+  const usedBytes = async (handle: Handle, session: string) =>
+    ((await (await handle(get("/v1/account", session))).json()) as { blobBytesUsed: number })
+      .blobBytesUsed;
+  const stored = async (handle: Handle, path: string, session: string) => {
+    const res = await handle(get(path, session));
+    return res.status === 200 ? [...new Uint8Array(await res.arrayBuffer())] : res.status;
+  };
+
+  test("an over-quota replacement keeps the old blob and the ledger intact", async () => {
+    const { handle } = makeRelay({ maxAccountBlobBytes: 20 });
+    const { session } = await login(handle, "reader@example.com");
+    const original = new Uint8Array(10).fill(1);
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1", original, session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab2", new Uint8Array(5), session));
+
+    // 16 replacing 10 nets +6 → 21 > 20.
+    const refused = await handle(
+      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(16).fill(2), session),
+    );
+    expect(refused.status).toBe(413);
+    expect(await refused.json()).toEqual({
+      error: "account blob quota exceeded",
+      code: "relay/blob-quota-exceeded",
+    });
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual([...original]);
+    expect(await usedBytes(handle, session)).toBe(15);
+  });
+
+  test("an admitted replacement charges only the net change, growing or shrinking", async () => {
+    const { handle } = makeRelay({ maxAccountBlobBytes: 20 });
+    const { session } = await login(handle, "reader@example.com");
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(10), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab2", new Uint8Array(5), session));
+
+    // 15 replacing 10: gross 30 would overflow, net 20 fits exactly.
+    const grown = await handle(
+      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(15).fill(3), session),
+    );
+    expect(grown.status).toBe(200);
+    expect(((await grown.json()) as { bytesUsed: number }).bytesUsed).toBe(20);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual(
+      new Array(15).fill(3),
+    );
+
+    const shrunk = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(4), session));
+    expect(((await shrunk.json()) as { bytesUsed: number }).bytesUsed).toBe(9);
+    // A same-size overwrite moves nothing and reports the standing total.
+    const same = await handle(
+      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(4).fill(9), session),
+    );
+    expect(((await same.json()) as { bytesUsed: number }).bytesUsed).toBe(9);
+    expect(await usedBytes(handle, session)).toBe(9);
+  });
+
+  test("an account over a lowered quota may still shrink a blob, never grow one", async () => {
+    const ADMIN = "admin-secret-token";
+    const { handle, advance } = makeRelay({ adminToken: ADMIN, maxAccountBlobBytes: 20 });
+    const { session } = await login(handle, "reader@example.com");
+    const day = 24 * 60 * 60 * 1000;
+    await handle(
+      post(
+        "/v1/admin/tier",
+        { email: "reader@example.com", tier: "pro", expiresAtMs: 1_755_000_000_000 + day },
+        ADMIN,
+      ),
+    );
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(30).fill(1), session));
+    advance(2 * day); // back to free: 30 stored against a 20-byte quota
+
+    const grown = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(31), session));
+    expect(grown.status).toBe(413);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual(
+      new Array(30).fill(1),
+    );
+    expect(await usedBytes(handle, session)).toBe(30);
+
+    const shrunk = await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(25), session));
+    expect(shrunk.status).toBe(200);
+    expect(await usedBytes(handle, session)).toBe(25);
+  });
+
+  test("a whole blob replacing a chunked one counts the parts it supersedes", async () => {
+    const { handle } = makeRelay({ maxAccountBlobBytes: 25 });
+    const { session } = await login(handle, "reader@example.com");
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(8), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(8), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=2", new Uint8Array(0), session));
+    expect(await usedBytes(handle, session)).toBe(21);
+
+    // 20 bytes replace descriptor (5) + parts (16): net −1, admitted.
+    const replaced = await handle(
+      putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(20).fill(4), session),
+    );
+    expect(replaced.status).toBe(200);
+    expect(((await replaced.json()) as { bytesUsed: number }).bytesUsed).toBe(20);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toBe(404);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=1", session)).toBe(404);
+
+    // Refused the other way round: the chunked blob survives whole.
+    await handle(putBytes("/v1/blobs/bookfile%3Ab2?part=0&parts=1", new Uint8Array(3), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab2?commit=1&parts=1", new Uint8Array(0), session));
+    expect(await usedBytes(handle, session)).toBe(28);
+    const refused = await handle(putBytes("/v1/blobs/bookfile%3Ab2", new Uint8Array(9), session));
+    expect(refused.status).toBe(413);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab2", session)).toEqual([2, 0, 0, 0, 1]);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab2?part=0", session)).toEqual([0, 0, 0]);
+    expect(await usedBytes(handle, session)).toBe(28);
+  });
+
+  test("a re-staged part is charged by net size; over quota, the old part stays", async () => {
+    const { handle } = makeRelay({ maxAccountBlobBytes: 20 });
+    const { session } = await login(handle, "reader@example.com");
+    const path = "/v1/blobs/bookfile%3Ab1?part=0&parts=1";
+    await handle(putBytes(path, new Uint8Array(12).fill(1), session));
+
+    const restaged = await handle(putBytes(path, new Uint8Array(15).fill(2), session));
+    expect(restaged.status).toBe(200);
+    expect(((await restaged.json()) as { bytesUsed: number }).bytesUsed).toBe(15);
+
+    const refused = await handle(putBytes(path, new Uint8Array(21).fill(3), session));
+    expect(refused.status).toBe(413);
+    expect(((await refused.json()) as { code: string }).code).toBe("relay/blob-quota-exceeded");
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toEqual(
+      new Array(15).fill(2),
+    );
+    expect(await usedBytes(handle, session)).toBe(15);
+  });
+
+  test("a commit replaces a whole blob and sweeps the stale tail, net of both", async () => {
+    const { handle } = makeRelay();
+    const { session } = await login(handle, "reader@example.com");
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(30), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(10), session));
+    const committed = await handle(
+      putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=1", new Uint8Array(0), session),
+    );
+    expect(((await committed.json()) as { bytesUsed: number }).bytesUsed).toBe(10 + 5);
+
+    // A longer upload's tail, then a shorter commit over the same key.
+    for (let i = 0; i < 3; i += 1) {
+      const path = `/v1/blobs/bookfile%3Ab1?part=${i}&parts=3`;
+      await handle(putBytes(path, new Uint8Array(7), session));
+    }
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=3", new Uint8Array(0), session));
+    expect(await usedBytes(handle, session)).toBe(21 + 5);
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(4), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=1", new Uint8Array(0), session));
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual([2, 0, 0, 0, 1]);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=1", session)).toBe(404);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=2", session)).toBe(404);
+    expect(await usedBytes(handle, session)).toBe(4 + 5);
+  });
+
+  test("a commit is not refused by the quota its staged parts already passed", async () => {
+    const { handle } = makeRelay({ maxAccountBlobBytes: 20 });
+    const { session } = await login(handle, "reader@example.com");
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=2", new Uint8Array(10), session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=1&parts=2", new Uint8Array(10), session));
+    const committed = await handle(
+      putBytes("/v1/blobs/bookfile%3Ab1?commit=1&parts=2", new Uint8Array(0), session),
+    );
+    expect(committed.status).toBe(200);
+    expect(await usedBytes(handle, session)).toBe(25);
+  });
+
+  test("a failed put keeps the old object and releases its reservation", async () => {
+    const { handle, failBlobPuts } = makeRelay();
+    const { session } = await login(handle, "reader@example.com");
+    const original = new Uint8Array(10).fill(1);
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1", original, session));
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(6), session));
+    expect(await usedBytes(handle, session)).toBe(16);
+
+    failBlobPuts((key) => key.startsWith("bookfile:b1"));
+    for (const path of ["/v1/blobs/bookfile%3Ab1", "/v1/blobs/bookfile%3Ab1?part=0&parts=1"]) {
+      const failed = await handle(putBytes(path, new Uint8Array(40).fill(9), session));
+      expect(failed.status).toBe(500);
+      expect(failed.headers.get("access-control-allow-origin")).toBe("*");
+      expect(((await failed.json()) as { code: string }).code).toBe("relay/internal");
+    }
+    failBlobPuts(null);
+
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1", session)).toEqual([...original]);
+    expect(await stored(handle, "/v1/blobs/bookfile%3Ab1?part=0", session)).toEqual(
+      new Array(6).fill(0),
+    );
+    expect(await usedBytes(handle, session)).toBe(16);
+  });
+});
+
+describe("error bodies", () => {
+  test("every refusal carries CORS, its wording, and a stable code", async () => {
+    const { handle } = makeRelay();
+    const denied = await handle(get("/v1/account"));
+    expect(denied.status).toBe(401);
+    expect(denied.headers.get("access-control-allow-origin")).toBe("*");
+    expect(await denied.json()).toEqual({
+      error: "authentication required",
+      code: "relay/unauthorized",
+    });
+    const { session } = await login(handle, "reader@example.com");
+    const missing = await handle(get("/v1/nowhere", session));
+    expect(((await missing.json()) as { code: string }).code).toBe("relay/not-found");
+  });
+
+  test("each 413 names which limit refused it", async () => {
+    const { handle } = makeRelay({ maxBlobBytes: 10, maxAccountBlobBytes: 30 });
+    const { session } = await login(handle, "reader@example.com");
+    const codeOf = async (req: Request) => {
+      const res = await handle(req);
+      expect(res.status).toBe(413);
+      return ((await res.json()) as { code: string }).code;
+    };
+    expect(await codeOf(putBytes("/v1/blobs/bookfile%3Ab1", new Uint8Array(11), session))).toBe(
+      "relay/blob-too-large",
+    );
+    expect(
+      await codeOf(
+        putBytes(
+          "/v1/blobs/bookfile%3Ab1?part=0&parts=1",
+          new Uint8Array(12 * 1024 * 1024 + 1),
+          session,
+        ),
+      ),
+    ).toBe("relay/blob-part-too-large");
+    await handle(putBytes("/v1/blobs/bookfile%3Ab1?part=0&parts=1", new Uint8Array(25), session));
+    expect(
+      await codeOf(putBytes("/v1/blobs/bookfile%3Ab2?part=0&parts=1", new Uint8Array(6), session)),
+    ).toBe("relay/blob-quota-exceeded");
+  });
+
+  test("malformed percent-encoding in a blob key is a 400, not a crash", async () => {
+    const { handle } = makeRelay();
+    const { session } = await login(handle, "reader@example.com");
+    const res = await handle(get("/v1/blobs/bookfile%3A%E0%A4%A", session));
+    expect(res.status).toBe(400);
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect(((await res.json()) as { code: string }).code).toBe("relay/bad-request");
+  });
+});
+
 describe("account deletion", () => {
   test("wipes mailbox, blobs, and sessions; a fresh login starts clean", async () => {
     const { handle } = makeRelay();

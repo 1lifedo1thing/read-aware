@@ -68,11 +68,15 @@ function coreMailbox(core: MailboxCore, nowIso: () => string): Mailbox {
   };
 }
 
-function memoryBlobStore(): BlobStore {
+/** Injected shelf outages: a matching put rejects without storing anything. */
+type BlobFaults = { failPut: ((key: string) => boolean) | null };
+
+function memoryBlobStore(faults: BlobFaults): BlobStore {
   const objects = new Map<string, Uint8Array>();
   const path = (accountId: string, key: string) => `${accountId}/${key}`;
   return {
     async put(accountId, key, bytes) {
+      if (faults.failPut?.(key)) throw new Error(`injected blob put failure for ${key}`);
       objects.set(path(accountId, key), bytes);
     },
     async get(accountId, key) {
@@ -108,6 +112,7 @@ export function makeRelay(
   const mailboxes = new Map<string, Mailbox>();
   const reportPayloads = new Map<string, Uint8Array>();
   const background: Promise<unknown>[] = [];
+  const blobFaults: BlobFaults = { failPut: null };
   const ports: RelayPorts = {
     accounts: new SqlAccountStore(d1Over(db)),
     rateLimits: new SqlRateLimitStore(d1Over(db)),
@@ -126,7 +131,7 @@ export function makeRelay(
       }
       return mailbox;
     },
-    blobs: memoryBlobStore(),
+    blobs: memoryBlobStore(blobFaults),
     aiUsage: new SqlAiUsageStore(d1Over(db)),
     aiModels: ai.models ?? [],
     aiFetch: ai.fetch,
@@ -155,6 +160,10 @@ export function makeRelay(
       return Number(row.count);
     },
     reportPayloads,
+    /** Make blob puts whose key matches reject (null restores the shelf). */
+    failBlobPuts(matches: ((key: string) => boolean) | null) {
+      blobFaults.failPut = matches;
+    },
   };
 }
 

@@ -197,5 +197,44 @@ export type SnapshotMeta = {
 export type PublishSnapshotBody = Omit<SnapshotMeta, "createdAt">;
 export type SnapshotResponse = { snapshot: SnapshotMeta | null };
 
-/** Uniform error body for every non-2xx response. */
-export type RelayErrorResponse = { error: string };
+/**
+ * Stable machine codes on relay error bodies. Additive only — clients branch
+ * on them, so a code is never renamed or repurposed. The generic codes follow
+ * the HTTP status; the specific ones separate causes that share a status
+ * (every 413 says WHICH limit refused it: a per-file cap is final for that
+ * file, an account quota clears once room is made).
+ */
+export const RELAY_ERROR_CODES = [
+  "relay/bad-request",
+  "relay/unauthorized",
+  "relay/payment-required",
+  "relay/forbidden",
+  "relay/not-found",
+  "relay/method-not-allowed",
+  "relay/conflict",
+  "relay/rate-limited",
+  "relay/internal",
+  "relay/not-configured",
+  "relay/upstream-failed",
+  "relay/keys-already-set",
+  "relay/blob-too-large",
+  "relay/blob-part-too-large",
+  "relay/blob-quota-exceeded",
+  "relay/event-too-large",
+  "relay/batch-too-large",
+  "relay/event-quota-exceeded",
+  "relay/report-too-large",
+  "relay/ai-request-too-large",
+] as const;
+export type RelayErrorCode = (typeof RELAY_ERROR_CODES)[number];
+
+export const isRelayErrorCode = (value: unknown): value is RelayErrorCode =>
+  typeof value === "string" && (RELAY_ERROR_CODES as readonly string[]).includes(value);
+
+/**
+ * Uniform error body for every non-2xx response. `code` is the contract;
+ * `error` is human-readable wording for logs. Relays predating codes send
+ * `error` only, and clients predating codes matched on its wording, so an
+ * existing message keeps its text.
+ */
+export type RelayErrorResponse = { error: string; code?: RelayErrorCode };

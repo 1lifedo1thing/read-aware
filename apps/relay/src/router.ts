@@ -12,6 +12,8 @@ import {
   BLOB_HEAD_BYTES_HEADER,
   BLOB_HEAD_PARTS_HEADER,
   type HlcStamp,
+  type RelayErrorCode,
+  type RelayErrorResponse,
   type SealedEventWire,
   type SnapshotMeta,
   type SyncKeyMaterial,
@@ -130,7 +132,35 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-const failure = (status: number, error: string) => json(status, { error });
+/** The generic code for a status whose cause needs no finer distinction. */
+const STATUS_CODES = {
+  400: "relay/bad-request",
+  401: "relay/unauthorized",
+  402: "relay/payment-required",
+  403: "relay/forbidden",
+  404: "relay/not-found",
+  405: "relay/method-not-allowed",
+  409: "relay/conflict",
+  429: "relay/rate-limited",
+  500: "relay/internal",
+  501: "relay/not-configured",
+  502: "relay/upstream-failed",
+} as const satisfies Record<number, RelayErrorCode>;
+
+/**
+ * Every error body: `{ error, code }` with CORS (RelayErrorResponse). A
+ * status with one meaning takes its generic code; any other status — 413
+ * above all, whose causes the client must tell apart — names its code.
+ */
+function failure(status: keyof typeof STATUS_CODES, error: string): Response;
+function failure(status: number, error: string, code: RelayErrorCode): Response;
+function failure(status: number, error: string, code?: RelayErrorCode): Response {
+  const body: RelayErrorResponse = {
+    error,
+    code: code ?? STATUS_CODES[status as keyof typeof STATUS_CODES],
+  };
+  return json(status, body);
+}
 
 export function randomToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -235,7 +265,11 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
   async function handleReport(req: Request): Promise<Response> {
     const raw = await req.text();
     if (raw.length > config.maxReportBytes) {
-      return failure(413, `report exceeds ${config.maxReportBytes} bytes`);
+      return failure(
+        413,
+        `report exceeds ${config.maxReportBytes} bytes`,
+        "relay/report-too-large",
+      );
     }
     let body: unknown;
     try {
@@ -479,19 +513,25 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
         : undefined;
     if (!Array.isArray(events)) return failure(400, "events array is required");
     if (events.length > config.maxBatch) {
-      return failure(413, `batch exceeds ${config.maxBatch} events`);
+      return failure(413, `batch exceeds ${config.maxBatch} events`, "relay/batch-too-large");
     }
     for (const ev of events) {
       if (!isSealedEvent(ev)) return failure(400, "malformed sealed event");
       if (JSON.stringify(ev).length > config.maxEventBytes) {
-        return failure(413, `event exceeds ${config.maxEventBytes} bytes`);
+        return failure(
+          413,
+          `event exceeds ${config.maxEventBytes} bytes`,
+          "relay/event-too-large",
+        );
       }
     }
     const quota = quotasOf(account).maxAccountEvents;
     const seqs = await ports
       .mailboxFor(account.id)
       .append(events as SealedEventWire[], quota ?? Number.MAX_SAFE_INTEGER);
-    if (seqs === "full") return failure(413, "account event quota exceeded");
+    if (seqs === "full") {
+      return failure(413, "account event quota exceeded", "relay/event-quota-exceeded");
+    }
     return json(200, { seqs });
   }
 
@@ -525,7 +565,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
         : undefined;
     if (!Array.isArray(ids)) return failure(400, "ids array is required");
     if (ids.length > config.maxHaveIds) {
-      return failure(413, `batch exceeds ${config.maxHaveIds} ids`);
+      return failure(413, `batch exceeds ${config.maxHaveIds} ids`, "relay/batch-too-large");
     }
     for (const id of ids) {
       if (!isString(id) || id.length === 0 || id.length > 128) return failure(400, "malformed event id");
@@ -641,6 +681,98 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     return freed;
   }
 
+  /** Bytes held by `key`'s parts from `from` until a gap — sweepParts' read-only twin. */
+  async function partBytes(accountId: string, key: string, from: number): Promise<number> {
+    let total = 0;
+    for (let index = from; index < MAX_BLOB_PARTS; index += 1) {
+      const size = await blobs.head(accountId, partKey(key, index));
+      if (size === null) break;
+      total += size;
+    }
+    return total;
+  }
+
+  /**
+   * Put one object under the account's blob ledger, replacing whatever
+   * `storageKey` holds — and, with `supersedes`, the parts of `supersedes.key`
+   * from `supersedes.from` on (a whole blob replacing a chunked one, or a
+   * commit dropping a longer upload's tail).
+   *
+   * The ledger (a D1 row) and the shelf (R2) cannot commit together, so the
+   * order is chosen for its failure modes: nothing is removed before the
+   * quota admits the write, and an interruption at any step leaves the
+   * ledger at or above what the shelf holds — a crash can over-charge the
+   * account by the bytes it was about to release, never lose a stored
+   * object. (Two writes racing on the SAME key each account for the object
+   * they both displaced, so the ledger can drift by that object's size;
+   * stored data is unaffected either way.)
+   *
+   *  1. Read what the write displaces (the target's size, superseded parts).
+   *  2. Reserve the growth, max(0, new − old), in one atomic ledger add, so
+   *     concurrent uploads see each other's reservations. When the write
+   *     grows the account on net and the total would pass `quota`, release
+   *     the reservation and refuse — the old object and ledger untouched.
+   *  3. Put. R2 replaces the target in a single step. A failed put releases
+   *     the reservation and rethrows.
+   *  4. Sweep the superseded parts, then release the shrink and the swept
+   *     bytes in one ledger subtract.
+   *
+   * `quota: null` admits unconditionally (unmetered, or a commit whose parts
+   * were already admitted as they were staged).
+   */
+  async function putAccounted(
+    accountId: string,
+    storageKey: string,
+    bytes: Uint8Array,
+    quota: number | null,
+    supersedes?: { key: string; from: number },
+  ): Promise<{ admitted: true; bytesUsed: number } | { admitted: false }> {
+    const previous = (await blobs.head(accountId, storageKey)) ?? 0;
+    const superseded = supersedes
+      ? await partBytes(accountId, supersedes.key, supersedes.from)
+      : 0;
+    const grow = Math.max(0, bytes.length - previous);
+    const shrink = Math.max(0, previous - bytes.length);
+
+    let used: number | null = null;
+    if (grow > 0) {
+      used = await accounts.adjustBlobBytes(accountId, grow);
+      // grow > 0 means shrink is 0: the settled total is `used − superseded`.
+      if (quota !== null && grow > superseded && used - superseded > quota) {
+        await accounts.adjustBlobBytes(accountId, -grow);
+        return { admitted: false };
+      }
+    }
+
+    try {
+      await blobs.put(accountId, storageKey, bytes);
+    } catch (error) {
+      if (grow > 0) {
+        await accounts.adjustBlobBytes(accountId, -grow).catch((rollbackError: unknown) => {
+          // The ledger keeps the reservation: an over-charge, never lost data.
+          console.error(
+            "[relay] could not release a failed blob write's reservation",
+            rollbackError,
+          );
+        });
+      }
+      throw error;
+    }
+
+    const swept =
+      supersedes && superseded > 0
+        ? await sweepParts(accountId, supersedes.key, supersedes.from)
+        : 0;
+    if (shrink + swept > 0) used = await accounts.adjustBlobBytes(accountId, -(shrink + swept));
+    if (used === null) {
+      // A same-size overwrite moved no ledger bytes; report the standing total.
+      const current = await accounts.get(accountId);
+      if (!current) throw new Error("relay: account vanished during a blob write");
+      used = current.blobBytesUsed;
+    }
+    return { admitted: true, bytesUsed: used };
+  }
+
   async function handleBlob(account: Account, req: Request, key: string, url: URL): Promise<Response> {
     if (!BLOB_KEY_SHAPE.test(key)) return failure(400, "malformed blob key");
     const partParam = url.searchParams.get("part");
@@ -690,21 +822,26 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     }
 
     if (req.method === "PUT" && part !== null) {
-      // Stage one part of a chunked upload.
-      const quotas = quotasOf(account);
+      // Stage one part of a chunked upload (a re-staged index replaces its part).
       const bytes = new Uint8Array(await req.arrayBuffer());
       if (bytes.length === 0) return failure(400, "empty blob part");
       if (bytes.length > MAX_PART_BYTES) {
-        return failure(413, `blob part exceeds ${MAX_PART_BYTES} bytes`);
+        return failure(
+          413,
+          `blob part exceeds ${MAX_PART_BYTES} bytes`,
+          "relay/blob-part-too-large",
+        );
       }
-      const freed = await blobs.delete(account.id, partKey(key, part));
-      const used = await accounts.adjustBlobBytes(account.id, bytes.length - freed);
-      if (quotas.maxAccountBlobBytes !== null && used > quotas.maxAccountBlobBytes) {
-        await accounts.adjustBlobBytes(account.id, -bytes.length);
-        return failure(413, "account blob quota exceeded");
+      const written = await putAccounted(
+        account.id,
+        partKey(key, part),
+        bytes,
+        quotasOf(account).maxAccountBlobBytes,
+      );
+      if (!written.admitted) {
+        return failure(413, "account blob quota exceeded", "relay/blob-quota-exceeded");
       }
-      await blobs.put(account.id, partKey(key, part), bytes);
-      return json(200, { ok: true, bytesUsed: used });
+      return json(200, { ok: true, bytesUsed: written.bytesUsed });
     }
 
     if (req.method === "PUT" && url.searchParams.get("commit") !== null) {
@@ -721,38 +858,30 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
       const descriptor = new Uint8Array(5);
       descriptor[0] = 2;
       new DataView(descriptor.buffer).setUint32(1, parts, false);
-      const freedMain = await blobs.delete(account.id, key);
-      const freedStale = await sweepParts(account.id, key, parts);
-      const used = await accounts.adjustBlobBytes(
-        account.id,
-        descriptor.length - freedMain - freedStale,
-      );
-      await blobs.put(account.id, key, descriptor);
-      return json(200, { ok: true, bytesUsed: used });
+      // Unmetered: the parts were admitted against the quota as they were
+      // staged, and refusing their 5-byte descriptor would strand them.
+      const written = await putAccounted(account.id, key, descriptor, null, { key, from: parts });
+      if (!written.admitted) throw new Error("relay: an unmetered blob write was refused");
+      return json(200, { ok: true, bytesUsed: written.bytesUsed });
     }
 
     if (req.method === "PUT") {
-      // Legacy/small path: the whole sealed blob in one request.
+      // Legacy/small path: the whole sealed blob in one request. It replaces
+      // the key's previous blob, whole or chunked (descriptor and parts).
       const quotas = quotasOf(account);
       const bytes = new Uint8Array(await req.arrayBuffer());
       if (bytes.length === 0) return failure(400, "empty blob");
       if (quotas.maxBlobBytes !== null && bytes.length > quotas.maxBlobBytes) {
-        return failure(413, `blob exceeds ${quotas.maxBlobBytes} bytes`);
+        return failure(413, `blob exceeds ${quotas.maxBlobBytes} bytes`, "relay/blob-too-large");
       }
-      // Replacing a key frees its old bytes first, so re-uploads don't leak
-      // quota. The account row is the accountant; R2 is just the shelf.
-      const freed = await blobs.delete(account.id, key);
-      const freedParts = await sweepParts(account.id, key, 0);
-      const used = await accounts.adjustBlobBytes(
-        account.id,
-        bytes.length - freed - freedParts,
-      );
-      if (quotas.maxAccountBlobBytes !== null && used > quotas.maxAccountBlobBytes) {
-        await accounts.adjustBlobBytes(account.id, -bytes.length);
-        return failure(413, "account blob quota exceeded");
+      const written = await putAccounted(account.id, key, bytes, quotas.maxAccountBlobBytes, {
+        key,
+        from: 0,
+      });
+      if (!written.admitted) {
+        return failure(413, "account blob quota exceeded", "relay/blob-quota-exceeded");
       }
-      await blobs.put(account.id, key, bytes);
-      return json(200, { ok: true, bytesUsed: used });
+      return json(200, { ok: true, bytesUsed: written.bytesUsed });
     }
 
     if (req.method === "DELETE") {
@@ -916,7 +1045,11 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
     const raw = await req.text();
     if (raw.length > config.maxAiRequestBytes) {
-      return failure(413, `request exceeds ${config.maxAiRequestBytes} bytes`);
+      return failure(
+        413,
+        `request exceeds ${config.maxAiRequestBytes} bytes`,
+        "relay/ai-request-too-large",
+      );
     }
     let parsed: unknown;
     try {
@@ -1001,7 +1134,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     });
   }
 
-  return async function handle(req: Request): Promise<Response> {
+  async function route(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
@@ -1074,7 +1207,11 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
         // Not an error state the client can fix by retrying — hand back the
         // canonical material so it can re-verify the passphrase against it.
         const current = await accounts.get(account.id);
-        return json(409, { error: "key material is already published", keys: current?.keys });
+        return json(409, {
+          error: "key material is already published",
+          code: "relay/keys-already-set",
+          keys: current?.keys,
+        });
       }
       return json(200, { ok: true });
     }
@@ -1138,8 +1275,32 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
       return failure(405, "method not allowed");
     }
     if (path.startsWith("/v1/blobs/")) {
-      return handleBlob(account, req, decodeURIComponent(path.slice("/v1/blobs/".length)), url);
+      let key: string;
+      try {
+        key = decodeURIComponent(path.slice("/v1/blobs/".length));
+      } catch {
+        // decodeURIComponent throws only URIError: malformed percent-encoding
+        // is the caller's bad request, not a relay fault.
+        return failure(400, "malformed blob key encoding");
+      }
+      return handleBlob(account, req, key, url);
     }
     return failure(404, "no such route");
+  }
+
+  /**
+   * The one error boundary. Handlers answer every EXPECTED refusal
+   * themselves; anything thrown past them (a storage outage, a broken
+   * binding, a bug) is logged here and still answers as the relay — CORS
+   * headers and a coded body — instead of escaping to the runtime, whose
+   * bare 500 lacks CORS and reads to the webview as a network failure.
+   */
+  return async function handle(req: Request): Promise<Response> {
+    try {
+      return await route(req);
+    } catch (error) {
+      console.error(`[relay] unhandled error on ${req.method} ${new URL(req.url).pathname}`, error);
+      return failure(500, "internal relay error");
+    }
   };
 }
