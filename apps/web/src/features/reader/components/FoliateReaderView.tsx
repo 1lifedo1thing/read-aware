@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 import { useAtom, useSetAtom } from "jotai";
 import { Spinner, useToast } from "@read-aware/ui";
@@ -122,6 +122,9 @@ import { rememberReaderBookLanguage } from "../../settings/lib/reader-languages"
 import { getReaderPreferences, readerPreferencesForLanguage } from "../../settings/lib/reader-settings";
 import { getReaderOverrides } from "../../settings/lib/reader-overrides";
 import { prepareReaderChapterStarts, markReaderChapterStarts, normalizeReaderTextSizes } from "../lib/reader-document-layout";
+import { framePointAnchorInRoot, measureSectionToRoot, visibleFrameRectInRoot } from "../lib/frame-geometry";
+import type { ReaderEngineSession } from "../lib/reader-engine-session";
+import { useReaderEngineSession } from "../hooks/useReaderEngineSession";
 
 type FoliateReaderViewProps = {
   selectedBook?: LibraryBook | null;
@@ -270,42 +273,6 @@ type ShellTapIntent = {
   startY: number;
 };
 
-/**
- * A section iframe may be displayed scaled — the fixed-layout renderer fits a
- * page to the window with a CSS transform. Rects measured inside the iframe are
- * in its own unscaled coordinate space, so they need that factor applied before
- * they mean anything in the host. Reflowable sections render 1:1 and get 1.
- */
-function frameScaleOf(frameElement: Element, frameRect: DOMRect): number {
-  const layoutWidth = frameElement.clientWidth;
-  if (!layoutWidth || !frameRect.width) return 1;
-  return frameRect.width / layoutWidth;
-}
-
-/** The text the selection / annotation menus act on (copy, note, look up, AI). */
-function clampRectToViewport(
-  rect: SelectionOverlayRect,
-  frameRect: DOMRect,
-  viewportRect: DOMRect,
-  scale = 1,
-): SelectionOverlayRect | null {
-  const left = frameRect.left + rect.left * scale - viewportRect.left;
-  const top = frameRect.top + rect.top * scale - viewportRect.top;
-  const right = frameRect.left + (rect.left + rect.width) * scale - viewportRect.left;
-  const bottom = frameRect.top + (rect.top + rect.height) * scale - viewportRect.top;
-
-  const clippedLeft = Math.max(0, left);
-  const clippedTop = Math.max(0, top);
-  const clippedRight = Math.min(viewportRect.width, right);
-  const clippedBottom = Math.min(viewportRect.height, bottom);
-  const width = clippedRight - clippedLeft;
-  const height = clippedBottom - clippedTop;
-
-  if (width <= 0 || height <= 0) return null;
-
-  return { left: clippedLeft, top: clippedTop, width, height };
-}
-
 const INTERACTIVE_TAGS = new Set([
   "a",
   "button",
@@ -410,17 +377,6 @@ export function FoliateReaderView({
   const tocEntriesRef = useRef<TocEntry[]>([]);
   const currentChapterHrefRef = useRef<string | null>(null);
   const selectionRef = useRef<ReaderSelectionState | null>(null);
-  // Latest selection-menu actions, kept in a ref so the stable key handler can
-  // invoke them without depending on these per-render closures (which would
-  // re-subscribe the keydown listeners and tear down the engine).
-  const selectionActionsRef = useRef<{
-    copy: () => void;
-    highlight: () => void;
-    underline: () => void;
-    addNote: () => void;
-    lookUp: () => void;
-    askAI: () => void;
-  } | null>(null);
   const clearNativeSelectionRef = useRef<((origin: DomainActor) => void) | null>(null);
   const suppressContentClickRef = useRef(false);
   const suppressContentClickTimeoutRef = useRef<number | null>(null);
@@ -461,28 +417,34 @@ export function FoliateReaderView({
     if (shellVisible) resetShellScrollTravel();
   }, [shellVisible]);
 
-  const onContentClickRef = useRef(onContentClick);
+  // Parent callbacks are reached through effect events: engine and section-
+  // document listeners outlive the render that attached them, and must call
+  // the LATEST callback without the callback's identity ever re-opening the
+  // book. (`useReaderPagination` takes its shell-dismissal callback as a ref,
+  // so that one prop is still mirrored.)
   const onContentScrollRef = useRef(onContentScroll);
-  const onReadingActivityRef = useRef(onReadingActivity);
-  const sessionTimerActivityRef = useRef<(() => void) | null>(null);
-  const onPageChangeRef = useRef(onPageChange);
-  const onProgressChangeRef = useRef(onProgressChange);
-  const onFractionChangeRef = useRef(onFractionChange);
-  const onTocChangeRef = useRef(onTocChange);
-  const onCurrentChapterChangeRef = useRef(onCurrentChapterChange);
-  const onReadingCursorChangeRef = useRef(onReadingCursorChange);
-  const onBookReadyRef = useRef(onBookReady);
-
-  useEffect(() => { onContentClickRef.current = onContentClick; }, [onContentClick]);
   useEffect(() => { onContentScrollRef.current = onContentScroll; }, [onContentScroll]);
-  useEffect(() => { onReadingActivityRef.current = onReadingActivity; }, [onReadingActivity]);
-  useEffect(() => { onPageChangeRef.current = onPageChange; }, [onPageChange]);
-  useEffect(() => { onProgressChangeRef.current = onProgressChange; }, [onProgressChange]);
-  useEffect(() => { onFractionChangeRef.current = onFractionChange; }, [onFractionChange]);
-  useEffect(() => { onTocChangeRef.current = onTocChange; }, [onTocChange]);
-  useEffect(() => { onCurrentChapterChangeRef.current = onCurrentChapterChange; }, [onCurrentChapterChange]);
-  useEffect(() => { onReadingCursorChangeRef.current = onReadingCursorChange; }, [onReadingCursorChange]);
-  useEffect(() => { onBookReadyRef.current = onBookReady; }, [onBookReady]);
+  const sessionTimerActivityRef = useRef<(() => void) | null>(null);
+  const emitContentClick = useEffectEvent(() => onContentClick?.());
+  const emitReadingActivity = useEffectEvent(() => {
+    onReadingActivity?.();
+    sessionTimerActivityRef.current?.();
+  });
+  const emitLocation = useEffectEvent((location: {
+    current: number;
+    total: number;
+    fraction: number;
+    progress: ReaderProgress;
+    cursor: ReadingCursor;
+  }) => {
+    onPageChange?.(location.current, location.total);
+    onFractionChange?.(location.fraction);
+    onProgressChange?.(location.progress);
+    onReadingCursorChange?.(location.cursor);
+  });
+  const emitTocChange = useEffectEvent((entries: TocEntry[]) => onTocChange?.(entries));
+  const emitCurrentChapterChange = useEffectEvent((href: string | null) => onCurrentChapterChange?.(href));
+  const emitBookReady = useEffectEvent((book: FoliateBook) => onBookReady?.(book));
 
   /**
    * The completion screen crosses in and out rather than snapping. `mounted`
@@ -550,12 +512,8 @@ export function FoliateReaderView({
   // "Ask AI about this" hands a passage to the note panel's chat (a sibling
   // component) via this atom; the shell reveals the Chat tab and the chat panel
   // adopts the passage. Whether the action is offered follows the user's
-  // conversational-Q&A preference, mirrored to a ref for the stable key handler.
+  // conversational-Q&A preference, read at key time by the key handler.
   const askAiEnabled = useAskAiEnabled();
-  const askAiEnabledRef = useRef(askAiEnabled);
-  useEffect(() => {
-    askAiEnabledRef.current = askAiEnabled;
-  }, [askAiEnabled]);
 
   // Footnote popover: the engine loads + extracts the note into an off-screen
   // staging view; we read its text and show it in the popover.
@@ -572,35 +530,21 @@ export function FoliateReaderView({
   // 下划线/笔记/问 AI + 插件 lookup），代替伸到底部工具栏。移动端"够不着"
   // 的核心修复：动作长在句子上，工具栏只留导航。
   const [unitMenuAnchor, setUnitMenuAnchor] = useState<SelectionOverlayRect | null>(null);
-  const unitMenuToggleRef = useRef<(doc: Document, x: number, y: number) => void>(() => {});
-  unitMenuToggleRef.current = (doc, clientX, clientY) => {
-    const readerRoot = readerRootRef.current;
-    const frameElement = doc.defaultView?.frameElement;
-    if (!readerRoot || !(frameElement instanceof HTMLElement)) return;
-    setUnitMenuAnchor((open) =>
-      open
-        ? null
-        : clampRectToViewport(
-            { left: clientX, top: clientY, width: 1, height: 1 },
-            frameElement.getBoundingClientRect(),
-            readerRoot.getBoundingClientRect(),
-          ),
-    );
-  };
-  // Touch: the tap on the resting sentence opens the hold menu where the
-  // finger landed (set once the hold menu hook exists below).
-  const holdMenuOpenAtRef = useRef<(doc: Document, x: number, y: number) => void>(() => {});
+  /** Open or close the sentence menu at a click in section document `doc`. */
+  const toggleUnitMenuAt = useEffectEvent((doc: Document, clientX: number, clientY: number) => {
+    const mapping = measureSectionToRoot(doc, readerRootRef.current);
+    if (!mapping) return;
+    setUnitMenuAnchor((open) => open ? null : framePointAnchorInRoot({ x: clientX, y: clientY }, mapping));
+  });
 
   /** Map an in-book element's rect to reader-viewport coords for anchoring. */
   const anchorRectForElement = useCallback((el: Element): SelectionOverlayRect | null => {
-    const readerRoot = readerRootRef.current;
-    const frameElement = el.ownerDocument?.defaultView?.frameElement;
-    if (!readerRoot || !(frameElement instanceof HTMLElement)) return null;
+    const mapping = measureSectionToRoot(el.ownerDocument, readerRootRef.current);
+    if (!mapping) return null;
     const rect = el.getBoundingClientRect();
-    return clampRectToViewport(
+    return visibleFrameRectInRoot(
       { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-      frameElement.getBoundingClientRect(),
-      readerRoot.getBoundingClientRect(),
+      mapping,
     );
   }, []);
 
@@ -674,9 +618,9 @@ export function FoliateReaderView({
 
   useEffect(() => { loadedBookRef.current = initialBook; }, [initialBook]);
   useEffect(() => { tocEntriesRef.current = tocEntries; }, [tocEntries]);
-  useEffect(() => { onTocChangeRef.current?.(tocEntries); }, [tocEntries]);
+  useEffect(() => { emitTocChange(tocEntries); }, [tocEntries]);
   useEffect(() => { currentChapterHrefRef.current = currentChapterHref; }, [currentChapterHref]);
-  useEffect(() => { onCurrentChapterChangeRef.current?.(currentChapterHref); }, [currentChapterHref]);
+  useEffect(() => { emitCurrentChapterChange(currentChapterHref); }, [currentChapterHref]);
 
   useEffect(() => {
     lastLocationTargetRef.current = initialProgress?.cfi ?? initialProgress?.href ?? null;
@@ -732,6 +676,7 @@ export function FoliateReaderView({
     turnPage,
     resetShellScrollTravel,
     resetPageTurnQueue,
+    resetCrossing,
   } = useReaderPagination({
     viewRef,
     readingModeRef,
@@ -763,11 +708,10 @@ export function FoliateReaderView({
     // Check ownership before even clearing an invalid selection: an unloaded
     // iframe's late event must not dismiss the replacement reader's selection.
     if (!view?.renderer?.getContents().some(content => content.index === index && content.doc === doc)) return false;
-    const readerRoot = readerRootRef.current;
     const win = doc.defaultView;
     const selectionInDoc = win?.getSelection?.() ?? doc.getSelection?.() ?? null;
-    const frameElement = win?.frameElement;
-    if (!readerRoot || !(frameElement instanceof HTMLElement) || !selectionInDoc) {
+    const mapping = measureSectionToRoot(doc, readerRootRef.current);
+    if (!mapping || !selectionInDoc) {
       clearSelection(origin);
       return false;
     }
@@ -789,11 +733,8 @@ export function FoliateReaderView({
       acknowledgeReadingSelection(doc, origin);
     };
 
-    const viewportRect = readerRoot.getBoundingClientRect();
-    const frameRect = frameElement.getBoundingClientRect();
-    const frameScale = frameScaleOf(frameElement, frameRect);
     const rects = getSelectionOverlayRects(range)
-      .map((rect) => clampRectToViewport(rect, frameRect, viewportRect, frameScale))
+      .map((rect) => visibleFrameRectInRoot(rect, mapping))
       .filter((rect): rect is SelectionOverlayRect => rect != null);
 
     if (rects.length === 0) {
@@ -910,22 +851,14 @@ export function FoliateReaderView({
   const textUnitModeEngineActive = textUnitModeActive && textUnitMode !== null && !isFixedLayout;
   const textUnitModeSuspended = textUnitModeActive && textUnitMode === null;
 
-  const onFixedLayoutChangeRef = useRef(onFixedLayoutChange);
-  useEffect(() => { onFixedLayoutChangeRef.current = onFixedLayoutChange; }, [onFixedLayoutChange]);
-  useEffect(() => { onFixedLayoutChangeRef.current?.(isFixedLayout); }, [isFixedLayout]);
-
-  const onExitTextUnitModeRef = useRef(onExitTextUnitMode);
-  useEffect(() => { onExitTextUnitModeRef.current = onExitTextUnitMode; }, [onExitTextUnitMode]);
-  const onTextUnitModeStepRef = useRef(onTextUnitModeStep);
-  useEffect(() => { onTextUnitModeStepRef.current = onTextUnitModeStep; }, [onTextUnitModeStep]);
-  const textUnitModeActiveStateRef = useRef(textUnitModeEngineActive);
-  useEffect(() => {
-    textUnitModeActiveStateRef.current = textUnitModeEngineActive;
-  }, [textUnitModeEngineActive]);
+  const emitFixedLayoutChange = useEffectEvent((fixedLayout: boolean) => onFixedLayoutChange?.(fixedLayout));
+  useEffect(() => { emitFixedLayoutChange(isFixedLayout); }, [isFixedLayout]);
+  const emitTextUnitModeStep = useEffectEvent(() => onTextUnitModeStep?.());
 
   // Host behavior settings (step unit, tap-to-advance, scroll-to-step, bar
   // readouts) — stored in the mode plugin's own settings object, edited on
-  // its settings page. Read through refs by the stable doc listeners.
+  // its settings page. The section-document listeners read them at event time
+  // through `textUnitGestures`.
   const [textUnitModeSettings, patchTextUnitModeSettings] = useAtom(textUnitModeSettingsAtom);
   const persistedModeState = useMemo(
     () => (selectedBook ? readTextUnitModeState(selectedBook.id) : null),
@@ -949,12 +882,13 @@ export function FoliateReaderView({
       patchTextUnitModeSettings({ unitId: resolvedModeUnit.id });
     }
   }, [modeController, patchTextUnitModeSettings, resolvedModeUnit, textUnitMode, textUnitModeSettings.unitId]);
-  const tapToAdvanceRef = useRef(textUnitModeSettings.tapToAdvance);
-  const scrollToStepRef = useRef(textUnitModeSettings.scrollToStep);
-  useEffect(() => {
-    tapToAdvanceRef.current = textUnitModeSettings.tapToAdvance;
-    scrollToStepRef.current = textUnitModeSettings.scrollToStep;
-  }, [textUnitModeSettings.tapToAdvance, textUnitModeSettings.scrollToStep]);
+  /** The text-unit mode's gesture policy, as of now — for listeners that
+   *  outlive the render that attached them. */
+  const textUnitGestures = useEffectEvent(() => ({
+    active: textUnitModeEngineActive,
+    tapToAdvance: textUnitModeSettings.tapToAdvance,
+    scrollToStep: textUnitModeSettings.scrollToStep,
+  }));
 
   const textUnitNavigator = useTextUnitNavigator({
     configurationRevision: modeRequest?.revision,
@@ -988,8 +922,6 @@ export function FoliateReaderView({
     origin: modeRequest && modeRequest.revision !== textUnitNavigator.configurationRevision ? modeRequest.origin : textUnitNavigator.origin,
     peekNext: textUnitNavigator.peekNext,
   });
-  // The engine's mount-once effect and the stable key handler reach the
-  // navigator through this ref (its identity changes every render).
   const {
     copyTargetText,
     handleHighlight,
@@ -1019,8 +951,9 @@ export function FoliateReaderView({
     currentChapterHrefRef,
   });
 
-  const textUnitNavigatorRef = useRef(textUnitNavigator);
-  useEffect(() => { textUnitNavigatorRef.current = textUnitNavigator; });
+  // The engine's listeners outlive this render; they reach the navigator
+  // (whose identity changes every render) as of the moment they fire.
+  const currentTextUnitNavigator = useEffectEvent(() => textUnitNavigator);
 
   // 导航条的面板直达按钮：意图 atom 由 session（点亮 chrome）与
   // ReaderShellOverlay（打开目标面板）各自消费。
@@ -1058,7 +991,7 @@ export function FoliateReaderView({
       returnToCurrent: textUnitNavigator.returnToCurrent,
       unitChange: (unitId) => { if (onModeUnitChange) onModeUnitChange(unitId); else patchTextUnitModeSettings({ unitId }); },
       openPanel: openReaderPanel,
-      exit: () => onExitTextUnitModeRef.current?.(),
+      exit: () => onExitTextUnitMode?.(),
     },
   });
   const holdActionsRef = useRef(holdContent.actions);
@@ -1071,18 +1004,14 @@ export function FoliateReaderView({
     run: index => holdActionsRef.current[index]?.run(),
     itemCount: holdContent.actions.length + 1,
   });
-  const holdMenuRef = useRef(holdMenu);
-  holdMenuRef.current = holdMenu;
-  holdMenuOpenAtRef.current = (doc, clientX, clientY) => {
+  // Touch: the tap on the resting sentence opens the hold menu where the
+  // finger landed (or closes it when it is already open).
+  const toggleHoldMenuAt = useEffectEvent((doc: Document, clientX: number, clientY: number) => {
     if (holdMenu.isOpen()) { holdMenu.close(); return; }
-    const readerRoot = readerRootRef.current;
-    const frameElement = doc.defaultView?.frameElement;
-    if (!readerRoot || !(frameElement instanceof HTMLElement)) return;
-    const frameRect = frameElement.getBoundingClientRect();
-    const anchor = clampRectToViewport({ left: clientX, top: clientY, width: 1, height: 1 }, frameRect,
-      readerRoot.getBoundingClientRect(), frameScaleOf(frameElement, frameRect));
+    const mapping = measureSectionToRoot(doc, readerRootRef.current);
+    const anchor = mapping ? framePointAnchorInRoot({ x: clientX, y: clientY }, mapping) : null;
     if (anchor) holdMenu.openAt({ x: anchor.left, y: anchor.top });
-  };
+  });
 
   // A hidden gesture gets one introduction per device, the first time the
   // mode is entered on a touch screen.
@@ -1115,7 +1044,7 @@ export function FoliateReaderView({
     setFootnote(null);
     setActiveAnnotation(null);
     setUnitMenuAnchor(null);
-    onTextUnitModeStepRef.current?.();
+    emitTextUnitModeStep();
   }, [textUnitTargetKey]);
 
   // 句级菜单的其余关闭时机：拉出选区（选区菜单接管）、模式关闭、页移
@@ -1127,18 +1056,12 @@ export function FoliateReaderView({
     if (!textUnitModeEngineActive) setUnitMenuAnchor(null);
   }, [textUnitModeEngineActive]);
 
-  // Latest navigator actions for the stable key handler (see selectionActionsRef).
-  const textUnitModeActionsRef = useRef<{
-    hasTarget: boolean;
-    next: () => void;
-    prev: () => void;
-    copy: () => void;
-    highlight: () => void;
-    underline: () => void;
-    addNote: () => void;
-    lookUp: () => void;
-    askAI: () => void;
-  } | null>(null);
+  /** Step the text-unit mode's wash — the wheel, touch, tap and key gestures'
+   *  shared action, always against the current navigator. */
+  const stepTextUnit = useEffectEvent((direction: -1 | 1) => {
+    if (direction > 0) textUnitNavigator.next();
+    else textUnitNavigator.prev();
+  });
 
   // ----- wheel / touch navigation routing -----------------------------------
 
@@ -1204,7 +1127,7 @@ export function FoliateReaderView({
   //   pinch, never a page turn.
   // - Otherwise: scroll mode's shell-dismissal and section-crossing
   //   accumulators, as before.
-  const handleWheelEvent = useCallback((event: WheelEvent) => {
+  const handleWheelEvent = useEffectEvent((event: WheelEvent) => {
     const gestures = wheelGesturesRef.current;
     if (!gestures) return;
     if (
@@ -1224,10 +1147,10 @@ export function FoliateReaderView({
       }
       return;
     }
-    if (textUnitModeActiveStateRef.current && scrollToStepRef.current) {
+    if (textUnitModeEngineActive && textUnitModeSettings.scrollToStep) {
       if (event.cancelable) event.preventDefault();
       const stepped = gestures.step.feed(event.deltaY, wheelEventTime(event));
-      if (stepped !== 0) textUnitModeActionsRef.current?.[stepped > 0 ? "next" : "prev"]();
+      if (stepped !== 0) stepTextUnit(stepped > 0 ? 1 : -1);
       return;
     }
     if (readingModeRef.current !== "scroll" && !event.ctrlKey) {
@@ -1241,9 +1164,7 @@ export function FoliateReaderView({
     }
     dismissShellOnScrollDistanceRef.current(event.deltaY);
     handleWheelCrossingRef.current(event.deltaY);
-  }, [clearSelection, enqueuePageTurn, turnPage, wheelEventTime]);
-  const handleWheelEventRef = useRef(handleWheelEvent);
-  useEffect(() => { handleWheelEventRef.current = handleWheelEvent; }, [handleWheelEvent]);
+  });
 
   // Touch counterpart, one tracker per surface. A finger drag scrolls natively
   // inside a section, but at the top/bottom edge it moves nothing and emits no
@@ -1253,8 +1174,9 @@ export function FoliateReaderView({
   // navigator's scroll-to-step option is on, the swipe is claimed instead: no
   // native scroll, and one step per touch once the drag travels far enough and
   // is clearly vertical — mostly-horizontal drags stay with the paginator's
-  // own page-drag handling.
-  const createTouchNavHandlers = useCallback(() => {
+  // own page-drag handling. The returned handlers read the mode's gesture
+  // policy at event time, so a tracker outlives settings changes.
+  const createTouchNavHandlers = useEffectEvent(() => {
     let touch: { startX: number; startY: number; lastY: number; stepped: boolean } | null =
       null;
     return {
@@ -1269,7 +1191,8 @@ export function FoliateReaderView({
         const point = event.touches[0];
         const deltaY = touch.lastY - point.screenY;
         touch.lastY = point.screenY;
-        if (textUnitModeActiveStateRef.current && scrollToStepRef.current) {
+        const gestures = textUnitGestures();
+        if (gestures.active && gestures.scrollToStep) {
           if (event.cancelable) event.preventDefault();
           if (touch.stepped) return;
           const travelY = touch.startY - point.screenY;
@@ -1281,7 +1204,7 @@ export function FoliateReaderView({
             return;
           }
           touch.stepped = true;
-          textUnitModeActionsRef.current?.[travelY > 0 ? "next" : "prev"]();
+          stepTextUnit(travelY > 0 ? 1 : -1);
           return;
         }
         dismissShellOnScrollDistanceRef.current(deltaY);
@@ -1291,9 +1214,11 @@ export function FoliateReaderView({
         touch = null;
       },
     };
-  }, []);
+  });
 
-  const handleReaderKeyDown = useCallback((event: KeyboardEvent) => {
+  // Reads the latest props, selection actions and navigator at key time; the
+  // window and every section document listen through it.
+  const handleReaderKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return;
     // Foliate renders every section in an iframe, whose keyboard events never
     // reach app-global shortcuts. Forward them first, then leave claimed chords
@@ -1334,7 +1259,7 @@ export function FoliateReaderView({
     // controls shouldn't also advance your place.
     if (shortcut === "toggle-controls") {
       event.preventDefault();
-      onContentClickRef.current?.();
+      onContentClick?.();
       return;
     }
 
@@ -1342,47 +1267,46 @@ export function FoliateReaderView({
     // ahead of the hardcoded ArrowUp/Down page scroll below; the selection
     // action keys double as actions on the resting unit while no text is
     // selected (a live selection keeps first claim on them, further down).
-    const textUnitModeActions = textUnitModeActionsRef.current;
-    if (textUnitModeActiveStateRef.current && textUnitModeActions) {
+    if (textUnitModeEngineActive) {
       if (shortcut === "reader-mode-next-unit") {
         event.preventDefault();
-        textUnitModeActions.next();
+        textUnitNavigator.next();
         return;
       }
       if (shortcut === "reader-mode-prev-unit") {
         event.preventDefault();
-        textUnitModeActions.prev();
+        textUnitNavigator.prev();
         return;
       }
-      if (!selectionRef.current && textUnitModeActions.hasTarget) {
+      if (!selectionRef.current && textUnitNavigator.current) {
         if (shortcut === "selection-copy") {
           event.preventDefault();
-          textUnitModeActions.copy();
+          void copyTargetText(textUnitNavigator.current.text);
           return;
         }
         if (shortcut === "selection-highlight") {
           event.preventDefault();
-          textUnitModeActions.highlight();
+          void handleNavigatorMark("highlight");
           return;
         }
         if (shortcut === "selection-underline") {
           event.preventDefault();
-          textUnitModeActions.underline();
+          void handleNavigatorMark("underline");
           return;
         }
         if (shortcut === "selection-add-note") {
           event.preventDefault();
-          textUnitModeActions.addNote();
+          handleNavigatorAddNote();
           return;
         }
         if (shortcut === "selection-look-up") {
           event.preventDefault();
-          textUnitModeActions.lookUp();
+          handleNavigatorLookUp();
           return;
         }
-        if (askAiEnabledRef.current && shortcut === "selection-ask-ai") {
+        if (askAiEnabled && shortcut === "selection-ask-ai") {
           event.preventDefault();
-          textUnitModeActions.askAI();
+          handleNavigatorAskAI();
           return;
         }
       }
@@ -1393,36 +1317,39 @@ export function FoliateReaderView({
     // modifiers. Fixed-layout books (PDF, comics) annotate too: a selection can
     // only exist where the page has a text layer, and that is exactly where an
     // annotation can be anchored. Ask AI still needs AI configured.
-    const selectionActions = selectionActionsRef.current;
-    if (selectionRef.current && selectionActions) {
+    if (selectionRef.current) {
       if (shortcut === "selection-copy") {
         event.preventDefault();
-        selectionActions.copy();
+        // Copy also clears the selection so a keyboard copy gives the same
+        // "done" feedback (menu dismissed) the other actions do; the rest
+        // clear themselves.
+        void copyTargetText(selectionRef.current.text);
+        clearSelection();
         return;
       }
       if (shortcut === "selection-highlight") {
         event.preventDefault();
-        selectionActions.highlight();
+        void handleHighlight();
         return;
       }
       if (shortcut === "selection-underline") {
         event.preventDefault();
-        selectionActions.underline();
+        handleUnderline();
         return;
       }
       if (shortcut === "selection-add-note") {
         event.preventDefault();
-        selectionActions.addNote();
+        handleAddNote();
         return;
       }
       if (shortcut === "selection-look-up") {
         event.preventDefault();
-        selectionActions.lookUp();
+        handleLookUp();
         return;
       }
-      if (askAiEnabledRef.current && shortcut === "selection-ask-ai") {
+      if (askAiEnabled && shortcut === "selection-ask-ai") {
         event.preventDefault();
-        selectionActions.askAI();
+        handleAskAI();
         return;
       }
     }
@@ -1432,7 +1359,7 @@ export function FoliateReaderView({
 
     if (event.key === "Escape") {
       if (selectionRef.current) clearSelection();
-      else if (textUnitModeActiveStateRef.current) onExitTextUnitModeRef.current?.();
+      else if (textUnitModeEngineActive) onExitTextUnitMode?.();
     }
     // Vertical keys map to forward/back directly.
     if (event.key === "ArrowDown" || event.key === "PageDown") {
@@ -1443,56 +1370,138 @@ export function FoliateReaderView({
       event.preventDefault();
       void turnPage(-1);
     }
-  }, [clearSelection, enqueuePageTurn, goToAdjacentChapter, turnPage]);
-
-  // Keep the key handler's view of the selection actions current. These handlers
-  // are plain per-render closures over the live `selection`; refreshing the ref
-  // every render hands the stable key handler the latest ones with no staleness.
-  // Copy also clears the selection so a keyboard copy gives the same "done"
-  // feedback (menu dismissed) the other actions do; the rest clear themselves.
-  useEffect(() => {
-    selectionActionsRef.current = {
-      copy: () => {
-        void copyTargetText(selectionRef.current?.text ?? "");
-        clearSelection();
-      },
-      highlight: () => void handleHighlight(),
-      underline: handleUnderline,
-      addNote: handleAddNote,
-      lookUp: handleLookUp,
-      askAI: handleAskAI,
-    };
-    textUnitModeActionsRef.current = {
-      hasTarget: !!textUnitNavigator.current,
-      next: textUnitNavigator.next,
-      prev: textUnitNavigator.prev,
-      copy: () => void copyTargetText(textUnitNavigator.current?.text ?? ""),
-      highlight: () => void handleNavigatorMark("highlight"),
-      underline: () => void handleNavigatorMark("underline"),
-      addNote: handleNavigatorAddNote,
-      lookUp: handleNavigatorLookUp,
-      askAI: handleNavigatorAskAI,
-    };
   });
 
   // ----- per-section listeners (attached on each `load`) --------------------
 
-  const attachDocListeners = useCallback((doc: Document, index: number) => {
+  /** A click in a section document: hold-menu and mark taps, dismissals,
+   *  tap-to-advance, and the (double-click guarded) shell toggle. Runs with
+   *  the latest props and state however long ago the document was attached. */
+  const handleSectionClick = useEffectEvent((doc: Document, index: number, event: MouseEvent) => {
+    // The click a touch synthesizes after a hold gesture is not a tap; and
+    // while the hold menu rests open, a tap on the page only dismisses it.
+    if (holdMenu.consumeClick()) { cancelPendingShellOpen(); return; }
+    if (holdMenu.isOpen()) { holdMenu.close(); cancelPendingShellOpen(); return; }
+    // Tapping an existing mark opens its recolor menu (via `show-annotation`);
+    // skip the tap-to-toggle-shell handling so the two don't fight.
+    const hit = viewRef.current?.renderer
+      ?.getContents?.()
+      .find((content) => content.index === index)
+      ?.overlayer?.hitTest({ x: event.clientX, y: event.clientY });
+    if (hit && hit[0]) {
+      // hitTest 回的是绘制的 value（CFI），不是 overlayKey —— 与静息句的
+      // cfiRange 相等即命中导航 wash：在点击处开合句级动作菜单（用户标注的
+      // 命中仍走 show-annotation 的重着色菜单，互不相扰）。触屏点按即前进时
+      // 静息句可能走到手指下方，这一下会打断步进去开菜单——这是读者要的：
+      // 菜单就长在句子上，点菜单外再继续步进。
+      const tap = resolveDrawnRangeTap({
+        hitValue: hit[0],
+        restingCfi: textUnitNavigator.current?.cfiRange,
+        modeActive: textUnitModeEngineActive,
+      });
+      cancelPendingShellOpen();
+      if (tap === "unit-menu") {
+        // Touch has one sentence menu — the hold menu — opened by tap or hold alike.
+        if (hasCoarsePointer()) toggleHoldMenuAt(doc, event.clientX, event.clientY);
+        else toggleUnitMenuAt(doc, event.clientX, event.clientY);
+      }
+      return;
+    }
+    // A tap on empty content dismisses any open recolor menu.
+    setActiveAnnotation(null);
+    setUnitMenuAnchor(null);
+    if (suppressContentClickRef.current) {
+      suppressContentClickRef.current = false;
+      cancelPendingShellOpen();
+      return;
+    }
+    if (selectionRef.current) {
+      clearSelection();
+      return;
+    }
+    if (!shouldOpenShellOnClickRef.current) return;
+    shouldOpenShellOnClickRef.current = false;
+
+    // Let in-book links and controls handle their own taps. (Book content is
+    // XHTML, so match by localName rather than a `closest("a, …")` selector.)
+    if (isInteractiveTarget(event.target)) {
+      return;
+    }
+
+    // A tap on book content only toggles the reader shell — it never turns
+    // the page. Page turns use the wheel, swipe, keyboard or page controls, so a
+    // stray click while reading can't cost you your place.
+    cancelPendingShellToggle();
+
+    // Closing needs no double-click guard. The guard exists solely to stop a
+    // word-selecting double-click from flashing the shell *open* mid-select;
+    // dismissing it has no such hazard — the first click closes it as a smooth
+    // slide-out, and if the tap turns out to be a double-click, selecting the
+    // word underneath a dismissed shell is fine. Deferring the close would only
+    // make a single tap feel laggy, so close immediately.
+    if (shellVisibleRef.current) {
+      onContentClick?.();
+      return;
+    }
+
+    // Navigator tap-to-advance: while the mode is on, a quick tap on the
+    // page is the step-forward gesture (immediately — the double-click guard
+    // below would make rapid stepping feel laggy; word selection by double
+    // click is disarmed for the mode's duration in the mousedown listener).
+    // The dismissed-shell branch above still wins, so a tap with the chrome
+    // open closes it first and the next tap steps.
+    if (textUnitModeEngineActive && textUnitModeSettings.tapToAdvance) {
+      stepTextUnit(1);
+      return;
+    }
+
+    // Only a mouse double-clicks to select a word. A touch selects by holding
+    // (which never reaches here as a tap), and a quick second tap is just
+    // another tap, so the guard below would only make the shell slow to
+    // appear: a touch opens it at once.
+    if (shellTapPointerRef.current === "touch") {
+      onContentClick?.();
+      return;
+    }
+
+    // Opening is deferred: a double-click lands within the guard window
+    // (cancelled by the `dblclick` listener below) or leaves a selection
+    // behind, either of which suppresses the toggle so selecting a word no
+    // longer flashes the shell. A plain single tap toggles after the wait.
+    pendingShellToggleTimerRef.current = window.setTimeout(() => {
+      pendingShellToggleTimerRef.current = null;
+      if (selectionRef.current) return;
+      const liveSelection = doc.defaultView?.getSelection?.();
+      if (
+        liveSelection &&
+        liveSelection.rangeCount > 0 &&
+        !liveSelection.getRangeAt(0).collapsed
+      ) {
+        return;
+      }
+      emitContentClick();
+    }, SHELL_TOGGLE_DBLCLICK_GUARD_MS);
+  });
+
+  /**
+   * Wire a freshly loaded section document. Runs once per document (see the
+   * engine's `load` handler); its listeners live as long as the document and
+   * reach reactive values only through effect events and refs, never through
+   * this render's closure.
+   */
+  const attachDocListeners = useEffectEvent((doc: Document, index: number) => {
     // Desktop: kill the webview's native right-click menu inside book content too.
     suppressNativeContextMenu(doc);
     // Touch: a held finger opens the text-unit mode's action menu. Listeners
     // live as long as the section document does.
-    holdMenuRef.current.attach(doc);
+    holdMenu.attach(doc);
 
     // Reading-activity signal for the time tracker. Pointer movement, keys,
     // scrolling, and wheel inside the book all mean "still reading" — vital in
     // scroll mode, where there are no page turns and a reader can linger on one
     // screenful. These events never bubble out of the iframe, so they must be
     // observed on the section document; capture+passive keeps it unobtrusive.
-    const bumpReadingActivity = () => {
-      onReadingActivityRef.current?.();
-      sessionTimerActivityRef.current?.();
-    };
+    const bumpReadingActivity = () => emitReadingActivity();
     const activityOptions = { passive: true, capture: true } as const;
     doc.addEventListener("pointermove", bumpReadingActivity, activityOptions);
     doc.addEventListener("pointerdown", bumpReadingActivity, activityOptions);
@@ -1500,7 +1509,7 @@ export function FoliateReaderView({
     doc.addEventListener("wheel", bumpReadingActivity, activityOptions);
     doc.addEventListener("scroll", bumpReadingActivity, activityOptions);
 
-    doc.addEventListener("keydown", handleReaderKeyDown);
+    doc.addEventListener("keydown", event => handleReaderKeyDown(event));
 
     // Fixed-layout page turns by horizontal swipe. The refs are read at
     // gesture time, not attach time: layout detection can land after the
@@ -1603,7 +1612,8 @@ export function FoliateReaderView({
     // hit test routes them to menus), so double-click keeps selecting words
     // there. Drag and long-press selection still work everywhere.
     doc.addEventListener("mousedown", (event) => {
-      if (!textUnitModeActiveStateRef.current || !tapToAdvanceRef.current) return;
+      const gestures = textUnitGestures();
+      if (!gestures.active || !gestures.tapToAdvance) return;
       if (event.detail <= 1) return;
       const hit = viewRef.current?.renderer
         ?.getContents?.()
@@ -1705,112 +1715,7 @@ export function FoliateReaderView({
       true,
     );
 
-    doc.addEventListener("click", (event) => {
-      // The click a touch synthesizes after a hold gesture is not a tap; and
-      // while the hold menu rests open, a tap on the page only dismisses it.
-      const holdMenu = holdMenuRef.current;
-      if (holdMenu.consumeClick()) { cancelPendingShellOpen(); return; }
-      if (holdMenu.isOpen()) { holdMenu.close(); cancelPendingShellOpen(); return; }
-      // Tapping an existing mark opens its recolor menu (via `show-annotation`);
-      // skip the tap-to-toggle-shell handling so the two don't fight.
-      const hit = viewRef.current?.renderer
-        ?.getContents?.()
-        .find((content) => content.index === index)
-        ?.overlayer?.hitTest({ x: event.clientX, y: event.clientY });
-      if (hit && hit[0]) {
-        // hitTest 回的是绘制的 value（CFI），不是 overlayKey —— 与静息句的
-        // cfiRange 相等即命中导航 wash：在点击处开合句级动作菜单（用户标注的
-        // 命中仍走 show-annotation 的重着色菜单，互不相扰）。触屏点按即前进时
-        // 静息句可能走到手指下方，这一下会打断步进去开菜单——这是读者要的：
-        // 菜单就长在句子上，点菜单外再继续步进。
-        const tap = resolveDrawnRangeTap({
-          hitValue: hit[0],
-          restingCfi: textUnitNavigatorRef.current.current?.cfiRange,
-          modeActive: textUnitModeActiveStateRef.current,
-        });
-        cancelPendingShellOpen();
-        if (tap === "unit-menu") {
-          // Touch has one sentence menu — the hold menu — opened by tap or hold alike.
-          if (hasCoarsePointer()) holdMenuOpenAtRef.current(doc, event.clientX, event.clientY);
-          else unitMenuToggleRef.current(doc, event.clientX, event.clientY);
-        }
-        return;
-      }
-      // A tap on empty content dismisses any open recolor menu.
-      setActiveAnnotation(null);
-      setUnitMenuAnchor(null);
-      if (suppressContentClickRef.current) {
-        suppressContentClickRef.current = false;
-        cancelPendingShellOpen();
-        return;
-      }
-      if (selectionRef.current) {
-        clearSelection();
-        return;
-      }
-      if (!shouldOpenShellOnClickRef.current) return;
-      shouldOpenShellOnClickRef.current = false;
-
-      // Let in-book links and controls handle their own taps. (Book content is
-      // XHTML, so match by localName rather than a `closest("a, …")` selector.)
-      if (isInteractiveTarget(event.target)) {
-        return;
-      }
-
-      // A tap on book content only toggles the reader shell — it never turns
-      // the page. Page turns use the wheel, swipe, keyboard or page controls, so a
-      // stray click while reading can't cost you your place.
-      cancelPendingShellToggle();
-
-      // Closing needs no double-click guard. The guard exists solely to stop a
-      // word-selecting double-click from flashing the shell *open* mid-select;
-      // dismissing it has no such hazard — the first click closes it as a smooth
-      // slide-out, and if the tap turns out to be a double-click, selecting the
-      // word underneath a dismissed shell is fine. Deferring the close would only
-      // make a single tap feel laggy, so close immediately.
-      if (shellVisibleRef.current) {
-        onContentClickRef.current?.();
-        return;
-      }
-
-      // Navigator tap-to-advance: while the mode is on, a quick tap on the
-      // page is the step-forward gesture (immediately — the double-click guard
-      // below would make rapid stepping feel laggy; word selection by double
-      // click is disarmed for the mode's duration in the mousedown listener).
-      // The dismissed-shell branch above still wins, so a tap with the chrome
-      // open closes it first and the next tap steps.
-      if (textUnitModeActiveStateRef.current && tapToAdvanceRef.current) {
-        textUnitModeActionsRef.current?.next();
-        return;
-      }
-
-      // Only a mouse double-clicks to select a word. A touch selects by holding
-      // (which never reaches here as a tap), and a quick second tap is just
-      // another tap, so the guard below would only make the shell slow to
-      // appear: a touch opens it at once.
-      if (shellTapPointerRef.current === "touch") {
-        onContentClickRef.current?.();
-        return;
-      }
-
-      // Opening is deferred: a double-click lands within the guard window
-      // (cancelled by the `dblclick` listener below) or leaves a selection
-      // behind, either of which suppresses the toggle so selecting a word no
-      // longer flashes the shell. A plain single tap toggles after the wait.
-      pendingShellToggleTimerRef.current = window.setTimeout(() => {
-        pendingShellToggleTimerRef.current = null;
-        if (selectionRef.current) return;
-        const liveSelection = doc.defaultView?.getSelection?.();
-        if (
-          liveSelection &&
-          liveSelection.rangeCount > 0 &&
-          !liveSelection.getRangeAt(0).collapsed
-        ) {
-          return;
-        }
-        onContentClickRef.current?.();
-      }, SHELL_TOGGLE_DBLCLICK_GUARD_MS);
-    }, true);
+    doc.addEventListener("click", event => handleSectionClick(doc, index, event), true);
 
     // A double-click selects a word; cancel the toggle its first click queued so
     // the shell doesn't flash up while you're selecting.
@@ -1830,7 +1735,7 @@ export function FoliateReaderView({
     // scroll-distance dismissal. Non-passive: the first two must preventDefault.
     doc.addEventListener(
       "wheel",
-      (event) => handleWheelEventRef.current(event),
+      (event) => handleWheelEvent(event),
       { passive: false },
     );
 
@@ -1841,14 +1746,15 @@ export function FoliateReaderView({
     doc.addEventListener("touchstart", touchNav.onTouchStart, { passive: true });
     doc.addEventListener("touchmove", touchNav.onTouchMove, { passive: false });
     doc.addEventListener("touchend", touchNav.onTouchEnd);
-  }, [anchorRectForElement, armContentClickSuppression, captureSelectionFromDoc, cancelPendingShellOpen, cancelPendingShellToggle, clearSelection, createTouchNavHandlers, handleReaderKeyDown]);
+  });
 
   // ----- global keydown + viewport resize -----------------------------------
 
   useEffect(() => {
-    window.addEventListener("keydown", handleReaderKeyDown);
-    return () => window.removeEventListener("keydown", handleReaderKeyDown);
-  }, [handleReaderKeyDown]);
+    const onKeyDown = (event: KeyboardEvent) => handleReaderKeyDown(event);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Keep the renderer's `animated` flag in sync with the motion preference at
   // runtime (the Reduce-motion toggle flips `data-motion`; the OS pref can change
@@ -1895,7 +1801,7 @@ export function FoliateReaderView({
 
     const onWheel = (event: WheelEvent) => {
       if (!insideViewport(event)) return;
-      handleWheelEventRef.current(event);
+      handleWheelEvent(event);
     };
 
     // Touch parallel for the same dead zone, with its own per-surface tracker.
@@ -1920,15 +1826,16 @@ export function FoliateReaderView({
       }
       // Same tap-to-advance routing as clicks inside the book content: the
       // empty area below a short section is still "the page" to a reader.
-      if (textUnitModeActiveStateRef.current && tapToAdvanceRef.current) {
+      const gestures = textUnitGestures();
+      if (gestures.active && gestures.tapToAdvance) {
         if (shellVisibleRef.current) {
-          onContentClickRef.current?.();
+          emitContentClick();
           return;
         }
-        textUnitModeActionsRef.current?.next();
+        stepTextUnit(1);
         return;
       }
-      onContentClickRef.current?.();
+      emitContentClick();
     };
 
     root.addEventListener("wheel", onWheel, { passive: false });
@@ -1943,7 +1850,7 @@ export function FoliateReaderView({
       root.removeEventListener("touchend", onTouchEnd);
       root.removeEventListener("click", onClick);
     };
-  }, [clearSelection, createTouchNavHandlers]);
+  }, [clearSelection]);
 
   useEffect(() => {
     return () => {
@@ -1961,20 +1868,73 @@ export function FoliateReaderView({
     };
   }, [cancelPendingShellOpen, cancelPendingShellToggle]);
 
+  // Tapping a mark anchors the recolor/remove menu over it; tapping a note
+  // marker opens that note for reading/editing.
+  const showAnnotation = useEffectEvent((detail: FoliateShowAnnotationDetail) => {
+    const highlight = highlightsRef.current.find(
+      (item) => item.cfiRange === detail.value,
+    );
+    if (!highlight) {
+      const note = notesRef.current.find((item) => item.cfiRange === detail.value);
+      if (note) {
+        openExistingNote(note);
+        clearSelection();
+      }
+      setActiveAnnotation(null);
+      return;
+    }
+    const range = detail.range;
+    const mapping = measureSectionToRoot(range?.startContainer?.ownerDocument, readerRootRef.current);
+    if (!range || !mapping) {
+      setActiveAnnotation(null);
+      return;
+    }
+    const rects = getSelectionOverlayRects(range)
+      .map((rect) => visibleFrameRectInRoot(rect, mapping))
+      .filter((rect): rect is SelectionOverlayRect => rect != null);
+    if (rects.length === 0) {
+      setActiveAnnotation(null);
+      return;
+    }
+    clearSelection();
+    setActiveAnnotation({ highlight, anchorRect: rects[rects.length - 1] });
+  });
+
   // ----- open the book ------------------------------------------------------
 
-  useEffect(() => {
+  /**
+   * Open `session`'s book into a fresh foliate view. Runs once per engine
+   * session (see useReaderEngineSession): only the book, its library id and
+   * the reading mode re-open the engine. Everything the engine's listeners
+   * need later is reached through effect events and refs, never captured
+   * from this render.
+   */
+  const openEngine = (session: ReaderEngineSession<LoadedBook, DomainActor>) => {
     const container = viewportRef.current;
-    if (!initialBook || !container) return;
+    if (!container) return;
+    // The session's key, not this render's props: they are the same value
+    // here, and the key is what the session is for.
+    const { source: initialBook, readingMode } = session.key;
 
-    let cancelled = false;
     let view: FoliateView | null = null;
     let releaseBook: (() => Promise<void>) | undefined;
-    const cleanups: Array<(origin?: DomainActor) => void> = [];
     const runtimeSession = readingRuntime.snapshot();
     const sessionId = runtimeSession.bookId === selectedBook?.id ? runtimeSession.sessionId : null;
     const openingActor = engineLoadSource.current?.origin ?? (sessionId ? readingRuntime.openingActor(sessionId) : causalActor("system"));
     const openingContext = readingRenderContext(openingActor);
+    // Bindings are undone with the retiring actor, or the opening one when
+    // the retirement has no cause of its own.
+    const defer = (teardown: (origin: DomainActor) => void) =>
+      session.onClose(origin => teardown(origin ?? openingActor));
+    const retainParsedBook = (parsed: FoliateBook) => {
+      const release = retainBook(parsed);
+      releaseBook = release;
+      session.onRelease(() => { void release().catch(error => log.warn('Could not close parsed book', error)); });
+    };
+    session.onRelease(() => {
+      highlightsRef.current = [];
+      notesRef.current = [];
+    });
 
     clearSelection(openingActor);
     setIsLoading(true);
@@ -1987,12 +1947,19 @@ export function FoliateReaderView({
     prevReadingLocationRef.current = null;
     resetShellScrollTravel();
     resetPageTurnQueue();
+    resetCrossing();
 
     void (async () => {
       try {
         const invalidation = selectedBook ? contentInvalidationRevision(selectedBook.id) : "initial";
         view = await createFoliateView();
-        if (cancelled) return;
+        const createdView = view;
+        session.onRelease(() => {
+          void createdView.close().catch(error => log.warn('Could not close reader', error));
+          createdView.remove();
+          if (viewRef.current === createdView) viewRef.current = null;
+        });
+        if (session.closed) return;
         viewRef.current = view;
         view.style.display = "block";
         view.style.width = "100%";
@@ -2018,7 +1985,7 @@ export function FoliateReaderView({
           }
           contentProvider = provider;
           contentVersion = await virtualContentVersion(content);
-          if (cancelled) return;
+          if (session.closed) return;
           parsedBook = await buildVirtualFoliateBook(content);
         } else {
           const source = initialBook.file;
@@ -2030,16 +1997,16 @@ export function FoliateReaderView({
           // foliate builds its TOC progress (relocate's tocItem) from book.toc
           // at open time, so the synthesized map has to be in place already.
           parsedBook = await parseBookFile(file);
-          releaseBook = retainBook(parsedBook);
-          if (cancelled) { await releaseBook(); return; }
+          retainParsedBook(parsedBook);
+          if (session.closed) return;
           await ensureUsableToc(parsedBook);
           if (selectedBook && sessionId) contentVersion = await fileContentVersion(selectedBook.id);
         }
-        releaseBook ??= retainBook(parsedBook);
-        if (cancelled) { await releaseBook(); return; }
+        if (!releaseBook) retainParsedBook(parsedBook);
+        if (session.closed) return;
         if (selectedBook && !isFixedLayoutBook(parsedBook)) {
           const language = await detectBookLanguage(parsedBook);
-          if (cancelled) return;
+          if (session.closed) return;
           rememberReaderBookLanguage(selectedBook.id, language, openingActor);
           // Seed the very first stylesheet before React's shared-language update
           // arrives. Book overrides still win; opening must not flash the fallback font.
@@ -2049,12 +2016,12 @@ export function FoliateReaderView({
             readerSettingsRef.current = stampEventCause({ ...readerSettingsRef.current, fontFamily: font.fontFamily, fontWeight: font.fontWeight }, openingActor);
           }
         }
-        if (selectedBook && sessionId) cleanups.push(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
+        if (selectedBook && sessionId) defer(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
         const chapterStarts = await prepareReaderChapterStarts(parsedBook);
-        if (cancelled) return;
-        if (selectedBook) textUnitNavigatorRef.current.handleContentVersion(selectedBook.id, contentVersion, openingActor);
+        if (session.closed) return;
+        if (selectedBook) currentTextUnitNavigator().handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);
-        if (cancelled) return;
+        if (session.closed) return;
         if (view.renderer) view.renderer.inputBridge = readingNativeInput;
         if (view.renderer && "setChapterStarts" in view.renderer) view.renderer.setChapterStarts(chapterStarts);
 
@@ -2085,11 +2052,11 @@ export function FoliateReaderView({
           // stack prerenders around a scrolling reader.
           const rendererTarget = view.renderer;
           const onRendered = (event: Event) => {
-            if (!cancelled && sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "render" },
+            if (!session.closed && sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "render" },
               readingRenderActor((event as CustomEvent<object>).detail, openingActor));
           };
           rendererTarget.addEventListener("rendered", onRendered);
-          cleanups.push(() => rendererTarget.removeEventListener("rendered", onRendered));
+          defer(() => rendererTarget.removeEventListener("rendered", onRendered));
         }
         {
           // The margin preset drives the text measure and the paginator gap
@@ -2111,15 +2078,15 @@ export function FoliateReaderView({
         syncRendererAnimated(view.renderer);
 
         let entries = flattenToc(book?.toc ?? []);
-        if (!cancelled) setTocEntries(entries);
+        if (!session.closed) setTocEntries(entries);
         void attachTocFractions(view, entries).then(resolved => {
-          if (cancelled) return;
+          if (session.closed) return;
           entries = resolved;
           setTocEntries(resolved);
         }).catch(error => log.warn('Could not prepare chapter marks', error));
 
         const onRelocate = (event: Event) => {
-          if (!view || cancelled || sessionId && readingRuntime.snapshot().sessionId !== sessionId) return;
+          if (!view || session.closed || sessionId && readingRuntime.snapshot().sessionId !== sessionId) return;
           // Tell background pipelines (text extraction) the reader is busy —
           // the page being read must win the PDF worker and the blob channel.
           const detail = (event as CustomEvent<FoliateRelocateDetail>).detail;
@@ -2138,23 +2105,26 @@ export function FoliateReaderView({
           const visibleText = normalizeReadingCursorText(readingVisibleText(view).text);
           lastLocationTargetRef.current = cfi ?? href;
           const progressPercent = Math.round(fraction * 100);
-          onPageChangeRef.current?.(current, total);
-          onFractionChangeRef.current?.(fraction);
-          onProgressChangeRef.current?.({
-            currentLocation: current,
-            totalLocations: total,
-            progressPercent,
-            cfi,
-            href,
-          });
-          onReadingCursorChangeRef.current?.({
-            ...(cfi ? { anchor: cfi } : {}),
-            ...(href ? { chapter: href } : {}),
-            ...(chapterTitle ? { chapterTitle } : {}),
-            bookProgress: fraction,
-            ...(chapterProgress !== undefined ? { chapterProgress } : {}),
-            ...(total > 0 ? { location: { current, total } } : {}),
-            ...(visibleText ? { visibleText } : {}),
+          emitLocation({
+            current,
+            total,
+            fraction,
+            progress: {
+              currentLocation: current,
+              totalLocations: total,
+              progressPercent,
+              cfi,
+              href,
+            },
+            cursor: {
+              ...(cfi ? { anchor: cfi } : {}),
+              ...(href ? { chapter: href } : {}),
+              ...(chapterTitle ? { chapterTitle } : {}),
+              bookProgress: fraction,
+              ...(chapterProgress !== undefined ? { chapterProgress } : {}),
+              ...(total > 0 ? { location: { current, total } } : {}),
+              ...(visibleText ? { visibleText } : {}),
+            },
           });
           setCurrentChapterHref(href);
 
@@ -2183,11 +2153,11 @@ export function FoliateReaderView({
             setUnitMenuAnchor(null);
           }
           prevReadingLocationRef.current = { current, cfi };
-          textUnitNavigatorRef.current.handleRelocate(detail);
+          currentTextUnitNavigator().handleRelocate(detail);
         };
 
         const onLoad = (event: Event) => {
-          if (cancelled) return;
+          if (session.closed) return;
           const { doc, index } = (event as CustomEvent<FoliateLoadDetail>).detail;
           if (!fixedLayout) {
             markReaderChapterStarts(doc, index, chapterStarts);
@@ -2206,56 +2176,24 @@ export function FoliateReaderView({
         };
 
         const onCreateOverlay = () => {
-          if (!view || cancelled) return;
+          if (!view || session.closed) return;
           applyHighlights(view, highlightsRef.current);
           applyNotes(view, notesRef.current, highlightsRef.current);
-          textUnitNavigatorRef.current.handleOverlayReady();
+          currentTextUnitNavigator().handleOverlayReady();
         };
 
         // Tapping a mark anchors the recolor/remove menu over it; tapping a note
         // marker opens that note for reading/editing.
         const onShowAnnotation = (event: Event) => {
-          if (cancelled) return;
-          const detail = (event as CustomEvent<FoliateShowAnnotationDetail>).detail;
-          const highlight = highlightsRef.current.find(
-            (item) => item.cfiRange === detail.value,
-          );
-          if (!highlight) {
-            const note = notesRef.current.find((item) => item.cfiRange === detail.value);
-            if (note) {
-              openExistingNote(note);
-              clearSelection();
-            }
-            setActiveAnnotation(null);
-            return;
-          }
-          const range = detail.range;
-          const readerRoot = readerRootRef.current;
-          const win = range?.startContainer?.ownerDocument?.defaultView;
-          const frameElement = win?.frameElement;
-          if (!range || !readerRoot || !(frameElement instanceof HTMLElement)) {
-            setActiveAnnotation(null);
-            return;
-          }
-          const viewportRect = readerRoot.getBoundingClientRect();
-          const frameRect = frameElement.getBoundingClientRect();
-          const frameScale = frameScaleOf(frameElement, frameRect);
-          const rects = getSelectionOverlayRects(range)
-            .map((rect) => clampRectToViewport(rect, frameRect, viewportRect, frameScale))
-            .filter((rect): rect is SelectionOverlayRect => rect != null);
-          if (rects.length === 0) {
-            setActiveAnnotation(null);
-            return;
-          }
-          clearSelection();
-          setActiveAnnotation({ highlight, anchorRect: rects[rects.length - 1] });
+          if (session.closed) return;
+          showAnnotation((event as CustomEvent<FoliateShowAnnotationDetail>).detail);
         };
 
         // Footnote/endnote references open the popover; other links navigate.
         const nativeLinks = sessionId && selectedBook ? createNativeLinkNavigator(readingRuntime,
           { sessionId, bookId: selectedBook.id, contentVersion }, error => setError(describeReaderFailure(error)),
           () => { setError(null); clearSelection(); }) : null;
-        if (nativeLinks) cleanups.push(nativeLinks.dispose);
+        if (nativeLinks) defer(nativeLinks.dispose);
         const onLink = (event: Event) => {
           const detail = (event as CustomEvent<FoliateLinkDetail>).detail;
           if (detail?.a) footnoteAnchorRectRef.current = anchorRectForElement(detail.a);
@@ -2269,29 +2207,29 @@ export function FoliateReaderView({
         // the engine, so this is the only place that gesture can finish the
         // book; keyboard, wheel and tap turns already ask isAtEndOfBook first.
         const onEdge = (event: Event) => {
-          if (cancelled) return;
+          if (session.closed) return;
           const detail = (event as CustomEvent<FoliateEdgeDetail>).detail;
           if (detail?.dir === 1 && isAtEndOfBook(view)) openCompletion();
         };
         const renderer = view.renderer;
         renderer?.addEventListener("edge", onEdge);
-        cleanups.push(() => renderer?.removeEventListener("edge", onEdge));
+        defer(() => renderer?.removeEventListener("edge", onEdge));
 
         view.addEventListener("relocate", onRelocate);
         view.addEventListener("load", onLoad);
         view.addEventListener("create-overlay", onCreateOverlay);
         view.addEventListener("show-annotation", onShowAnnotation);
         view.addEventListener("link", onLink);
-        cleanups.push(() => view?.removeEventListener("relocate", onRelocate));
-        cleanups.push(() => view?.removeEventListener("load", onLoad));
-        cleanups.push(() => view?.removeEventListener("create-overlay", onCreateOverlay));
-        cleanups.push(() => view?.removeEventListener("show-annotation", onShowAnnotation));
-        cleanups.push(() => view?.removeEventListener("link", onLink));
+        defer(() => view?.removeEventListener("relocate", onRelocate));
+        defer(() => view?.removeEventListener("load", onLoad));
+        defer(() => view?.removeEventListener("create-overlay", onCreateOverlay));
+        defer(() => view?.removeEventListener("show-annotation", onShowAnnotation));
+        defer(() => view?.removeEventListener("link", onLink));
 
-        if (cancelled) return;
+        if (session.closed) return;
         if (selectedBook) {
           try {
-            cleanups.push(observeReaderAnnotations(selectedBook.id, view, highlightsRef, notesRef, items => {
+            defer(observeReaderAnnotations(selectedBook.id, view, highlightsRef, notesRef, items => {
               setActiveAnnotation(current => {
                 if (!current) return null;
                 const next = items.find(item => item.id === current.highlight.id);
@@ -2314,54 +2252,50 @@ export function FoliateReaderView({
         // A PDF iframe can load before its raster. Public readiness and metadata
         // enrichment must wait for the displayed page, not a background render.
         await waitForReadingPaint(view);
-        if (cancelled) return;
+        if (session.closed) return;
         if (selectedBook) assertContentNotInvalidated(selectedBook.id, invalidation);
         if (resetPosition) resetPositionSourceRef.current = initialBook;
         if (sessionId && selectedBook) {
           const emphasis = await createReadingEmphasisAdapter(view);
-          if (cancelled) { emphasis.retire(); return; }
-          cleanups.push(() => emphasis.retire());
+          if (session.closed) { emphasis.retire(); return; }
+          defer(() => emphasis.retire());
           assertContentNotInvalidated(selectedBook.id, invalidation);
           const sourceRevision = contentProvider ? virtualSourceRevision(selectedBook.id, contentProvider, initialBook.virtual!.key) : contentVersion;
-          if (!cancelled) cleanups.push(attachReadingEngine(view, sessionId, selectedBook.id, contentVersion, sourceRevision, openingActor));
+          if (!session.closed) defer(attachReadingEngine(view, sessionId, selectedBook.id, contentVersion, sourceRevision, openingActor));
           const identity = { view, sessionId, bookId: selectedBook.id, contentVersion };
           selectionContentRef.current = identity;
-          cleanups.push(readingRuntime.bindSelection(sessionId, createReadingSelectionAdapter(view,
+          defer(readingRuntime.bindSelection(sessionId, createReadingSelectionAdapter(view,
             () => selectionRef.current, (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }), clearSelection, selectionRender), openingActor));
-          cleanups.push(readingEmphasis.bind(sessionId, selectedBook.id, contentVersion, emphasis));
-          cleanups.push((origin = openingActor) => {
+          defer(readingEmphasis.bind(sessionId, selectedBook.id, contentVersion, emphasis));
+          defer((origin = openingActor) => {
             if (selectionContentRef.current !== identity) return;
             selectionContentRef.current = null;
             readingRuntime.selectionChanged(sessionId, null, origin);
           });
         }
-        if (book && !cancelled) onBookReadyRef.current?.(book);
+        if (book && !session.closed) emitBookReady(book);
       } catch (nextError) {
-        if (sessionId && !cancelled) readingRuntime.fail(sessionId, nextError, openingActor);
-        if (!cancelled) setError(describeReaderFailure(nextError, "load"));
+        if (sessionId && !session.closed) readingRuntime.fail(sessionId, nextError, openingActor);
+        if (!session.closed) setError(describeReaderFailure(nextError, "load"));
         await view?.close().catch(error => log.warn('Could not close failed reader', error));
         await releaseBook?.().catch(error => log.warn('Could not close failed book', error));
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!session.closed) setIsLoading(false);
       }
     })();
+  };
 
-    return () => {
-      cancelled = true;
-      const retiringActor = engineLoadSource.current?.origin ?? openingActor;
-      for (const cleanup of cleanups) cleanup(retiringActor);
-      highlightsRef.current = [];
-      notesRef.current = [];
-      void view?.close().catch(error => log.warn('Could not close reader', error));
-      void releaseBook?.().catch(error => log.warn('Could not close parsed book', error));
-      view?.remove();
-      if (viewRef.current === view) viewRef.current = null;
-    };
-    // Keyed on selectedBook?.id (not the object): progress saves replace the
-    // selectedBook object each tick, and re-running this effect would tear down
-    // and rebuild the engine in a loop. `readingMode` is included so switching
-    // layout re-initializes the engine, restoring position from the live CFI.
-  }, [attachDocListeners, captureSelectionFromDoc, clearSelection, initialBook, selectedBook?.id, readingMode, selectionRender]);
+  // Keyed on selectedBook?.id (not the object): progress saves replace the
+  // selectedBook object each tick. `readingMode` re-opens so switching layout
+  // re-initializes the engine, restoring position from the live CFI. No
+  // callback is part of the key: a new identity never re-parses the book.
+  useReaderEngineSession<LoadedBook, DomainActor>({
+    source: initialBook,
+    bookId: selectedBook?.id ?? null,
+    readingMode,
+    open: openEngine,
+    retiringOrigin: () => engineLoadSource.current?.origin,
+  });
 
   useEffect(() => {
     if (!chapterNavigationRequest?.href) return;
@@ -2483,7 +2417,7 @@ export function FoliateReaderView({
           onHighlight={() => { setUnitMenuAnchor(null); void handleNavigatorMark("highlight"); }}
           onUnderline={() => { setUnitMenuAnchor(null); void handleNavigatorMark("underline"); }}
           onAddNote={() => { setUnitMenuAnchor(null); handleNavigatorAddNote(); }}
-          onExit={() => onExitTextUnitModeRef.current?.()}
+          onExit={() => onExitTextUnitMode?.()}
           readAloudAvailable={readAloud.available}
           readAloudPlaying={readAloud.playing}
           readAloudCanStart={readAloud.snapshot.unavailableReason === null}
@@ -2582,7 +2516,7 @@ export function FoliateReaderView({
           onFinishedChange={setDeclaredFinished}
           onRevisit={revisitFromCompletion}
           onCloseReader={onCloseReader}
-          onTapPage={() => onContentClickRef.current?.()}
+          onTapPage={() => onContentClick?.()}
           lookBackAsked={lookBackAsked}
           onLookBackAsked={() => setLookBackAsked(true)}
           onDismiss={dismissCompletion}
