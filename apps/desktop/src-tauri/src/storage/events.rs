@@ -643,10 +643,7 @@ pub(crate) fn replay_projections(
     tx: &Transaction<'_>,
     data_dir: &Path,
 ) -> Result<Option<RebuildReport>, CommandError> {
-    loop {
-        let Some(base) = checkpoints::newest_checkpoint(tx)? else {
-            break;
-        };
+    while let Some(base) = checkpoints::newest_checkpoint(tx)? {
         match checkpoints::restore_checkpoint(tx, data_dir, &base) {
             Ok(()) => {
                 let after = checkpoints::hlc_key_of(&base.hlc);

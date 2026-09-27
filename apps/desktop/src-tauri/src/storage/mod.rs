@@ -410,7 +410,7 @@ pub(crate) fn set_kv_batch_with_preferences_inner(
     for event in events {
         let key = event.payload.get("key").and_then(Value::as_str);
         if event.event_type != "preference.changed"
-            || key.map_or(true, |key| !keys.contains(key))
+            || key.is_none_or(|key| !keys.contains(key))
             || event.aggregate_id.as_deref() != key
         {
             // A host wiring defect, never user input.
