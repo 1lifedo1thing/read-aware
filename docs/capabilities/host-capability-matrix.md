@@ -1196,6 +1196,7 @@
 | `storage::ai_chat_load_all` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::ai_chat_list` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::ai_chat_replace` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::ai_chat_commit` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::plugin_storage_usage::plugin_storage_usage` | [SYS05](#SYS05) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::plugin_docs_put` | [SYS02](#SYS02) [SYS03](#SYS03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::plugin_docs_get` | [SYS02](#SYS02) [SYS03](#SYS03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
@@ -1238,7 +1239,8 @@
 | `diagnostics::diagnostics_log_dir` | [SYS15](#SYS15) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `book_file_size` | [LIB06](#LIB06) [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `read_book_head` | [LIB06](#LIB06) [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
-| `write_export_file` | [SYS10](#SYS10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `export_file::export_choose_target` | [SYS10](#SYS10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `export_file::write_export_file` | [SYS10](#SYS10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::resource_open_file` | [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::external::resource_open_associated` | [SYS12](#SYS12) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::directories::resource_open_directory` | [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

@@ -7,7 +7,6 @@ import type { DomainActor } from "../../../platform/domain-actor";
  * empty states, writes throw instead of pretending to persist.
  */
 
-import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type BookTextRange } from "@read-aware/core";
 import type { Annotation, AnnotationFilters, Ask, Highlight, Note } from "./annotation-types";
