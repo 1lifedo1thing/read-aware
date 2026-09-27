@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReadAware · 架构与代码质量体检</title>
+<style>
+  :root {
+    --paper: #faf9f7; --paper-warm: #f5f3ef; --ink: #1c1917;
+    --stone-700: #44403c; --stone-600: #57534e; --stone-500: #78716c;
+    --stone-400: #a8a29e; --stone-300: #d6d3d1; --border: #e7e5e4;
+    --accent: #7c2d12; --amber: #a16207; --good: #3f6212;
+    --serif: Charter, "Iowan Old Style", "Source Serif 4", Georgia, "Songti SC", serif;
+    --sans: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 88px 32px 140px; }
+
+  .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+             color: var(--stone-500); font-weight: 500; margin: 0 0 20px; }
+  h1 { font-family: var(--serif); font-weight: 400; font-size: 46px; line-height: 1.08;
+       letter-spacing: -.02em; margin: 0 0 20px; }
+  .standfirst { font-family: var(--serif); font-size: 19px; line-height: 1.65;
+                color: var(--stone-600); margin: 0 0 28px; max-width: 62ch; }
+  .masthead-meta { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 12px;
+                   color: var(--stone-500); padding-top: 24px; border-top: 1px solid var(--border); }
+  .masthead-meta b { font-weight: 500; color: var(--stone-700); }
+
+  nav.toc { margin: 36px 0 0; font-size: 14px; }
+  nav.toc ol { padding-left: 20px; margin: 0; columns: 2; column-gap: 40px; }
+  nav.toc a { color: var(--stone-700); text-decoration: none; border-bottom: 1px solid var(--border); }
+  nav.toc a:hover { border-bottom-color: var(--stone-500); }
+
+  h2 { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.2;
+       letter-spacing: -.015em; margin: 76px 0 8px; padding-top: 30px; border-top: 1px solid var(--border); }
+  h2 .num { display: block; font-family: var(--sans); font-size: 11px; letter-spacing: .14em;
+            text-transform: uppercase; color: var(--stone-400); font-weight: 500; margin-bottom: 12px; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 16px; margin: 38px 0 10px; }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; max-width: 70ch; }
+  li { margin-bottom: 7px; } li::marker { color: var(--stone-400); }
+  code { font-family: var(--mono); font-size: .855em; background: var(--paper-warm);
+         border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; color: var(--stone-700);
+         overflow-wrap: anywhere; }
+  pre { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; background: var(--paper-warm);
+        border: 1px solid var(--border); border-radius: 4px; padding: 16px 18px; overflow-x: auto; margin: 16px 0 24px; }
+
+  .verdict { background: var(--paper-warm); border: 1px solid var(--border); border-radius: 4px;
+             padding: 28px 32px; margin: 40px 0 8px; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict .lede { font-family: var(--serif); font-size: 18px; line-height: 1.6; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+             background: var(--border); border: 1px solid var(--border); border-radius: 4px;
+             overflow: hidden; margin: 28px 0 36px; }
+  .metric { background: var(--paper); padding: 18px 16px; }
+  .metric .v { font-family: var(--serif); font-size: 26px; line-height: 1.1; letter-spacing: -.02em; display: block; }
+  .metric .l { font-size: 11.5px; color: var(--stone-500); margin-top: 5px; display: block; line-height: 1.45; }
+  .metric.bad .v { color: var(--accent); }
+  .metric.good .v { color: var(--good); }
+
+  .item { border: 1px solid var(--border); border-radius: 4px; padding: 24px 28px; margin: 0 0 18px; background: #fff; }
+  .item > :last-child { margin-bottom: 0; }
+  .item-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .item-head h3 { margin: 0; font-size: 16.5px; }
+  .item p, .item li { font-size: 15px; }
+  .fix { font-size: 14.5px; color: var(--stone-700); border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 4px; }
+  .fix b { color: var(--good); font-weight: 600; }
+  .badge { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+           padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+  .badge.p0 { background: var(--accent); color: #fff; }
+  .badge.p1 { background: var(--amber); color: #fff; }
+  .badge.p2 { background: var(--stone-500); color: #fff; }
+  .badge.ok { background: var(--good); color: #fff; }
+  .tag { font-size: 11px; color: var(--stone-500); border: 1px solid var(--border); padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+  .tag.verified { color: var(--good); border-color: #cbd5b5; }
+
+  .tbl-wrap { overflow-x: auto; margin: 20px 0 28px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+  th { text-align: left; font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+       color: var(--stone-500); padding: 0 14px 9px 0; border-bottom: 1px solid var(--stone-300); white-space: nowrap; }
+  td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  td.mono { font-family: var(--mono); font-size: 12px; }
+  td.n { font-family: var(--serif); font-size: 16px; white-space: nowrap; }
+
+  .note { border-left: 2px solid var(--stone-400); background: var(--paper-warm); padding: 16px 20px;
+          margin: 20px 0; border-radius: 0 4px 4px 0; font-size: 14.5px; color: var(--stone-700); }
+  .note > :last-child { margin-bottom: 0; }
+  .note b { color: var(--ink); }
+  .note.correction { border-left-color: var(--accent); }
+
+  .phase { display: grid; grid-template-columns: 92px 1fr; gap: 0 24px; padding: 22px 0; border-bottom: 1px solid var(--border); }
+  .phase:first-of-type { border-top: 1px solid var(--border); }
+  .phase .k { font-family: var(--serif); font-size: 22px; color: var(--stone-500); line-height: 1.2; }
+  .phase .k small { display: block; font-family: var(--sans); font-size: 11px; letter-spacing: .08em; color: var(--stone-400); margin-top: 6px; }
+  .phase h3 { margin: 0 0 8px; }
+  .phase ul { margin-bottom: 0; }
+  .phase li { font-size: 14.5px; }
+
+  .good-list li { font-size: 15px; }
+
+  footer { margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--border);
+           font-size: 12px; color: var(--stone-500); }
+  @media (max-width: 640px) {
+    .wrap { padding: 56px 16px 100px; } h1 { font-size: 34px; } h2 { font-size: 25px; }
+    .item { padding: 18px 16px; } .verdict { padding: 20px 18px; }
+    nav.toc ol { columns: 1; }
+    .phase { grid-template-columns: 1fr; } .phase .k { margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">ReadAware · 工程评审</p>
+<h1>快速迭代之后的架构与代码质量体检</h1>
+<p class="standfirst">
+对整个仓库（约 27 万行：web、Rust 原生端、agent、core、插件、relay）做了一次静态审计。
+结论是骨架健康，但缺少“守门人”：没有任何机制阻止架构继续变形，已经积累的变形也开始产生真实缺陷。
+</p>
+<div class="masthead-meta">
+  <span><b>日期</b> 2026-09-27</span>
+  <span><b>基线</b> main @ 10cdd803（v0.6.4 之后）</span>
+  <span><b>方法</b> 全局度量 + 六路并行深读（阅读器 / 分层 / 插件 / Rust / agent·core·relay / 工具链）+ 关键发现逐条人工复核</span>
+</div>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#verdict">总体判断</a></li>
+    <li><a href="#bugs">先修：审计中找到的真实缺陷</a></li>
+    <li><a href="#gates">守门缺失：CI、测试、lint</a></li>
+    <li><a href="#layers">结构问题 ①：web 分层倒挂</a></li>
+    <li><a href="#monoliths">结构问题 ②：几个巨型单体</a></li>
+    <li><a href="#contracts">结构问题 ③：契约没有单一来源</a></li>
+    <li><a href="#native">Rust 原生端</a></li>
+    <li><a href="#keep">做得好、应该保留的</a></li>
+    <li><a href="#roadmap">治理路线图</a></li>
+    <li><a href="#decide">需要你拍板的事</a></li>
+  </ol>
+</nav>
+
+<h2 id="verdict"><span class="num">01</span>总体判断</h2>
+
+<div class="verdict">
+  <p class="lede">
+  最难改的部分反而是对的：事件溯源、“追加事件与更新投影在同一事务”、同步的密文边界、插件 Worker 的消息协议，这些都扎实，而且有测试守着。
+  出问题的是它们外围的组织方式。domain 层的真正实现大多放在 <code>features/*/lib</code> 里；设置有三条并行的写入路径；
+  四个上千行的单体（阅读器视图、插件上下文、agent 回合、relay 路由）已经开始自己长出 bug。
+  </p>
+  <p>
+  根因只有一个：<b>没有守门</b>。PR 只跑一部分测试；完整的 web 测试套件现在是红的；rustfmt 和 clippy 都是红的；
+  没有 lint，也没有依赖边界规则；仓库里有 <code>lint:cycles</code> 脚本但没人跑，已经积累了 22 个循环依赖。
+  所以治理顺序是：先止血，再装守门，然后在守门的保护下逐块重构。不必推倒重来。
+  </p>
+</div>
+
+<div class="metrics">
+  <div class="metric bad"><span class="v">20 / 2051</span><span class="l">web 完整测试失败数；其中 3 个文件单独运行也失败</span></div>
+  <div class="metric bad"><span class="v">22</span><span class="l">madge 报告的循环依赖</span></div>
+  <div class="metric bad"><span class="v">139</span><span class="l">domain → features 的值导入（层级倒挂）</span></div>
+  <div class="metric bad"><span class="v">0</span><span class="l">TS lint / formatter 配置</span></div>
+  <div class="metric bad"><span class="v">771</span><span class="l">rustfmt 差异块；clippy 有 1 个 deny 级错误</span></div>
+  <div class="metric good"><span class="v">21 / 21</span><span class="l">typecheck 全绿（但 apps/web/tests 下 57 个测试文件不在任何 tsconfig 里）</span></div>
+  <div class="metric good"><span class="v">631</span><span class="l">TS 测试文件，以行为断言为主，mock 很少</span></div>
+</div>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>区域</th><th>规模</th><th>健康度</th><th>一句话</th></tr></thead>
+  <tbody>
+    <tr><td>apps/web</td><td class="n">14.2 万行</td><td><span class="badge p0">需治理</span></td><td>分层倒挂、设置三路写入、阅读器单体</td></tr>
+    <tr><td>apps/desktop（Rust）</td><td class="n">5.7 万行</td><td><span class="badge p1">局部</span></td><td>事务核心扎实；外围有绕过投影的旧命令，缺 lint</td></tr>
+    <tr><td>packages/agent</td><td class="n">4.5 万行</td><td><span class="badge p1">局部</span></td><td>测试充分；端口是服务定位器，持久化契约名不副实</td></tr>
+    <tr><td>插件系统</td><td class="n">≈1.2 万行</td><td><span class="badge p1">局部</span></td><td>协议扎实；plugin-context 巨型闭包，受限面已漂移</td></tr>
+    <tr><td>packages/core</td><td class="n">0.6 万行</td><td><span class="badge p2">轻度</span></td><td>本应是唯一来源，但错误码、事件名单与 Rust 端没有同步校验</td></tr>
+    <tr><td>apps/relay</td><td class="n">≈0.2 万行</td><td><span class="badge p1">局部</span></td><td>路由单体，有一个真实的数据丢失 bug</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="bugs"><span class="num">02</span>先修：审计中找到的真实缺陷</h2>
+<p>这些不是风格问题，是现在就会出错的行为。标了“已复核”的，我读过原代码或跑过验证；其余是审计 agent 读代码得出的结论，修之前要先复现。</p>
+
+<div class="item">
+  <div class="item-head"><span class="badge p0">P0</span><h3>relay：替换 blob 时先删旧数据，再检查配额</h3><span class="tag verified">已复核</span></div>
+  <p><code>apps/relay/src/router.ts:741-751</code>（整块上传）和 <code>:700-706</code>（分片上传）都是先 <code>blobs.delete</code>，再检查账户配额。只要配额超限就返回 413，而旧 blob 这时已经被删掉了：重新上传失败，原数据也跟着没了。另外 R2 和 D1 的记账不是原子的。</p>
+  <p class="fix"><b>修法</b>：先预留配额（adjust），再写入新对象，最后释放旧对象占用；失败时回滚预留。同时加一个顶层错误包装，给 5xx 响应补上 CORS 头和稳定错误码（现在任何抛错都会变成客户端看到的“网络错误”）。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p0">P0</span><h3>插件：受限授权下写全局设置，绕过了生命周期检查</h3><span class="tag verified">已复核</span></div>
+  <p>不受限的 <code>settings.commands.update/resetReading</code> 会调用 <code>lifecycle.assertActive</code>（<code>plugin-context.ts:506-513</code>）；受限面（current/book 授权）的全局分支 <code>:1124</code>、<code>:1134</code> 直接调用 domain，没有这个检查。结果是插件在 <code>activating</code>/<code>migrating</code> 阶段也能改全局设置。</p>
+  <p>根因是受限面把每个 domain 都手抄了一遍，还用了 10 处 <code>as typeof</code> 断言，把穷尽性检查也关掉了。以后 domain 新增方法时，受限模式会悄悄漏掉它，类型系统不会报错。</p>
+  <p class="fix"><b>修法</b>：先补上检查。长期做法是给每个 domain 写一张策略表 <code>{[K in keyof Api]: scoped | current | deny | passthrough}</code>，用 <code>satisfies</code> 约束，由同一个包装器统一施加生命周期、围栏和取消信号。这样新增方法不分类就编译不过。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p0">P0</span><h3>插件资源协议：一个插件能读到另一个插件的文件</h3><span class="tag verified">已复核</span></div>
+  <p><code>plugins.rs:533</code> 在用户目录分支里，拿整个 plugins 根目录当包含检查的基准，而不是 <code>&lt;root&gt;/&lt;id&gt;</code>。于是一个插件可以 import 其他插件的模块和资源，<code>.rollback/</code>、<code>.candidates/</code> 也能从这条路径访问到。这部分资源服务没有任何遍历测试。</p>
+  <p class="fix"><b>修法</b>：按插件 id 解析基准目录，拒绝以点开头的 id，补上路径遍历测试；顺便把这个文件里 16 个 <code>Result&lt;_, String&gt;</code> 换成 <code>CommandError</code>。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p1">P1</span><h3>旧版（v1）备份恢复直接写投影行，没有产生事件</h3><span class="tag verified">已复核</span></div>
+  <p><code>backup-io.ts:185-192</code> 仍然能从 UI 触发。它通过 <code>restoreLibraryBook → library_put_book</code>、<code>saveAnnotation → annotation_put</code> 直接 upsert 投影表，而这些表在 <code>apply.rs</code> 的 <code>DERIVED_TABLES</code> 里。<code>apply.rs</code> 头部注释写的是“apply_event 是唯一写投影的地方”，现在它依赖下次启动时的 genesis 对账来补救。这样恢复的数据在投影重建和跨设备同步时可能出问题。</p>
+  <p class="fix"><b>修法</b>：要么退役 v1 导入，要么改走原生的 full-backup 事件化恢复路径（选哪个需要你决定，见第 10 节）。之后把 <code>library_put_book</code>、<code>annotation_put</code>、<code>memory_put</code>、<code>reading_time_import</code> 这些原始投影写命令从 <code>generate_handler!</code> 里移除。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p1">P1</span><h3>会话保存分两次 IPC，不是原子的</h3><span class="tag verified">已复核</span></div>
+  <p><code>conversation-store.ts:208-216</code> 先 <code>commitDomainEvents</code>，再单独调用 <code>ai_chat_replace</code>，而后者会把 role、content、attachments 全部重写一遍。两次调用之间失败，展示列就会和事件不一致。与此同时，agent 的 <code>ConversationPort.append</code> 在产品里是空实现（<code>conversation-port.ts:49-50</code>）：测试和 eval 覆盖的是产品根本不走的写入路径，而 <code>adoptLegacyThread</code> 的“切掉最后两条”假设可能和 UI 保存发生竞态（这一点待复现）。</p>
+  <p class="fix"><b>修法</b>：只保留一个权威写入者。<code>ai_chat_replace</code> 只写 <code>parts_json/error/seq</code> 这些纯展示列，并和事件放进同一个原生事务；删掉端口上的 <code>append</code>，或者让 runtime 通过会话 domain 命令来持久化。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p1">P1</span><h3>阅读器：引擎的生命周期绑在回调的引用身份上</h3></div>
+  <p><code>FoliateReaderView.tsx</code> 里负责开书的 effect（<code>:1966-2364</code>）依赖 <code>attachDocListeners</code>，后者又依赖大约 8 个 callback。只要其中任何一个 callback 的引用变了，整本书就会被拆掉重新解析。<code>:500</code> 的注释记录过它已经触发过一次 “maximum update depth”。另外，<code>crossTo</code> 在一次跨章进行中直接 return，会把这期间的 <code>goToFraction</code> 拖动悄悄吞掉（疑似 bug）。</p>
+  <p class="fix"><b>修法</b>：见第 5 节。把引擎会话抽成纯 TS 对象，hook 只依赖 <code>(book, bookId, readingMode)</code>，事件处理函数用 React 19.2 的 <code>useEffectEvent</code>。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p2">P2</span><h3>零散但确定的问题</h3></div>
+  <ul>
+    <li><code>ai_chat_clear</code>（<code>chat.rs:229-245</code>）里的 DELETE 和 UPDATE 不在同一个事务中。</li>
+    <li><code>write_export_file</code>（<code>lib.rs:101</code>）会写入 webview 传来的任意路径，没有 dialog scope 校验。</li>
+    <li><code>diagnostics_read_logs</code> 把 <code>read_dir</code> 的错误转成空列表，违反了“读取失败要显示错误，不能显示空结果”的规则。</li>
+    <li>单一的全局 <code>Mutex&lt;Connection&gt;</code> 没有做中毒恢复：锁内任何 panic（例如 <code>library_put_book</code> 在持锁时解码封面）之后，所有存储命令都会失败，直到重启。</li>
+    <li>插件的 8 个同步命令（zip 解包、commit 候选版本等）在 Tauri 主线程上做文件 IO，<code>plugins_commit_candidate</code> 还会在主线程上拿数据库锁，遇到长备份时会冻结 UI。</li>
+    <li>roaming 偏好先写 KV，再 fire-and-forget 提交 <code>preference.changed</code> 事件（<code>roaming-preferences.ts:187-201</code>）；事件提交失败只记日志。</li>
+  </ul>
+</div>
+
+<h2 id="gates"><span class="num">03</span>守门缺失：CI、测试、lint</h2>
+<p>这是所有问题里杠杆最大的一项。其他问题能够积累下来，都是因为没有东西拦着。</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>检查</th><th>现状</th><th>PR 上是否运行</th></tr></thead>
+  <tbody>
+    <tr><td>typecheck</td><td>21/21 绿；<code>apps/web/tests</code> 和 <code>tests/runtime</code> 不在任何 tsconfig 里，用临时配置能扫出 36 个潜在错误</td><td>只查 5 个包</td></tr>
+    <tr><td>web 测试</td><td><b>红</b>：2031 通过、20 失败。3 个文件单独跑也失败；另外 17 个单独跑能过、一起跑就失败（happy-dom 全局或 <code>mock.module</code> 状态在文件之间泄漏）</td><td>只跑 domain、plugins/runtime 等子集，而且分进程跑，恰好把泄漏问题掩盖了</td></tr>
+    <tr><td>reader / settings / ai / library / sync 测试</td><td>存在</td><td><b>不运行</b></td></tr>
+    <tr><td><code>lint:cycles</code></td><td>22 个循环依赖</td><td><b>不运行</b></td></tr>
+    <tr><td>cargo fmt / clippy</td><td>74 个文件格式漂移；clippy deny 报错（<code>mobi_metadata.rs:242</code>）加 77 条警告</td><td><b>不运行</b></td></tr>
+    <tr><td>TS lint / 格式化</td><td>没有配置；885 行超过 200 字符（<code>plugin-context.ts</code> 占 49 行）</td><td>—</td></tr>
+    <tr><td>MSRV</td><td>声明 1.77.2，实际用到了 1.80–1.82 的 API</td><td>—</td></tr>
+  </tbody>
+</table></div>
+
+<p>当前失败、单独运行也复现的 3 个文件：<code>services/workspace-permissions.test.ts</code>、<code>features/settings/lib/backup-schedules.test.ts</code>、<code>features/ai/agent/ports/book-memory-source.test.ts</code>（已复核）。</p>
+
+<p>测试本身的质量不错：以行为断言为主，约 1.4 万个 <code>expect</code> 里只有 137 处 <code>toHaveBeenCalled</code>，<code>sync-engine</code> 有双设备、内存 relay 的行为测试。缺口集中在几个最大、最核心的文件：<code>FoliateReaderView.tsx</code>、<code>ReaderShellOverlay.tsx</code>、<code>wheel-gesture.ts</code>、<code>plugin-sandbox.worker.ts</code> 都没有直接测试；<code>plugin-context</code> 没有独立测试套件，只是被约 60 个文件当作测试 fixture 间接覆盖到。</p>
+
+<h2 id="layers"><span class="num">04</span>结构问题 ①：web 分层倒挂</h2>
+
+<p><code>CLAUDE.md</code> 描述的分层是 <code>platform → domain → features</code>。实际情况是：<b>domain 大多只是一层门面，真实实现放在 <code>features/*/lib</code> 里</b>。例如 <code>domain/library.ts</code> 包装了 <code>features/library/lib</code> 下的 10 个模块。于是下层反过来依赖上层：</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>方向</th><th>值导入数</th><th>主要去向</th></tr></thead>
+  <tbody>
+    <tr><td>domain → features</td><td class="n">139</td><td><code>library-db</code>、<code>reader-settings</code>、<code>plugin-store</code>、<code>conversation-store</code>、<code>ai-config</code>、各类 settings store</td></tr>
+    <tr><td>services → features</td><td class="n">25</td><td>plugins 的网络内部、library、update</td></tr>
+    <tr><td>state → features</td><td class="n">13</td><td>settings 的读写函数</td></tr>
+    <tr><td>platform → features</td><td class="n">6</td><td><code>shutdown-owners</code> 直接引用 plugin-host 和 reading-trace</td></tr>
+    <tr><td>feature ↔ feature</td><td class="n">≈300</td><td>settings→plugins 67，reader→plugins 48，reader→settings 35，library↔reader、library↔shelf 双向</td></tr>
+  </tbody>
+</table></div>
+
+<h3>这种倒挂带来的具体问题</h3>
+<ul>
+  <li><b>设置有三条并行写入路径。</b>UI 面板通过 <code>state/ui.ts</code> 的可写 atom 直接写 <code>localKV</code>，<b>不经过目录校验</b>（已复核：<code>state/ui.ts:144-151</code> → <code>app-settings.ts:50</code>）。Agent、插件和快捷键走的是经过校验的 <code>settings.commands.update</code>。<code>update-channel</code>、<code>annotation-prefs</code>、<code>menu-config</code> 则各自直接写。更糟的是，settings domain 反过来通过 <code>getDefaultStore()</code> 读 UI 的 Jotai atom 来构造快照。key 到 store 的映射在三个地方手工维护。</li>
+  <li><b>写入口不统一。</b>阅读器创建高亮和笔记时直接调用 <code>annotation-db</code>（<code>useReaderTextActions.ts:21</code>、<code>useReaderNoteEditor.ts:3</code>），跳过了 <code>domain/annotations.ts</code> 里的样式校验和来源准备。底层仍然走 <code>commit_events</code>，事件契约没有破，但 agent/插件和 UI 用的是两套校验。<code>annotation-db</code> 和 <code>conversation-store</code> 还各自手写了一份“mint 事件 + invoke commit_events + 广播”，没有复用 <code>commitDomainEvents</code>。</li>
+  <li><b>循环依赖靠懒加载掩盖。</b>例如 <code>domain/conversation-control → features/ai/agent/agent-runtime → ports → domain/book-graph-tasks → domain/index</code>。</li>
+  <li><b>共享引擎代码放在 reader feature 里。</b>library 引用 <code>reader/lib/foliate-engine</code> 14 次，domain 引用 parse-book、reading-stats；而阅读器的排版和 CSS（<code>settings/lib/reader-css.ts</code>，650 行）反而放在 settings 下面。</li>
+  <li><b>插件贡献注册表放在 Jotai atom 里</b>（<code>plugin-store.ts</code>），agent 和 settings domain 都要读它。这是 settings→plugins、reader→plugins 大量耦合的主要来源。</li>
+  <li><b>三种响应式范式并存</b>：Jotai、手写的 subscribe/snapshot store（17 处 <code>useSyncExternalStore</code>）、domain 的 <code>observe*</code>。23 个文件在 React 之外调用 <code>getDefaultStore()</code>。</li>
+  <li><code>platform/ipc</code> 只负责错误归一化，不是真正的网关：41 个 feature 文件直接用字符串命令名 <code>invoke</code>，deep-link <code>onOpenUrl</code> 在三处分别订阅。</li>
+</ul>
+
+<h3>目标分层</h3>
+<pre>app/          组合根：main、App、启动序列（从 local-store 移出）、shutdown owners、availability 装配
+features/*    UI + hooks → 只依赖 domain 公共 API、host、extensions、state、@read-aware/ui
+host/         （原 services/）给 UI / Agent / Worker 共用的宿主能力 → domain、infra
+extensions/   框架无关的贡献注册表（从 plugin-store 抽出），插件只是其中一个生产者
+state/        Jotai 适配层：对 domain / extensions 可观察对象的只读镜像
+domain/&lt;ctx&gt;/{index, commands, queries, repo, types}  → 只依赖 infra、core；不依赖 jotai、features
+infra/        （原 platform/）ipc、事件存储、kv、secrets、blob、sync、OS 壳 → 只依赖 core</pre>
+<p>可以强制执行的规则：只有 <code>app/</code> 和 <code>routes/</code> 可以 import <code>features/*</code>；feature 之间只能通过对方的 <code>index.ts</code> 引用；<code>invoke</code> 只能出现在 <code>infra/</code> 和 <code>domain/*/repo.ts</code>；<code>@tauri-apps/*</code> 只能出现在 <code>infra/</code>；<code>jotai</code> 不能进入 domain。</p>
+
+<div class="note">
+  <b>目录改名不是必需的。</b>真正起作用的是依赖规则，外加“基线只能减少”的棘轮机制，<code>services→host</code>、<code>platform→infra</code> 这类改名只是锦上添花。改名会造成大量无意义的 diff，建议放到最后，或者干脆不做。
+</div>
+
+<h2 id="monoliths"><span class="num">05</span>结构问题 ②：几个巨型单体</h2>
+
+<div class="item">
+  <div class="item-head"><span class="badge p1">P1</span><h3><code>FoliateReaderView.tsx</code> — 2594 行</h3></div>
+  <p>47 个 <code>useEffect</code>、65 个 <code>useRef</code>、39 个 <code>addEventListener</code>，另有 18 个 effect 只是把 props 抄进 ref。里面缠在一起的职责包括：引擎的创建、解析、打开和恢复；约 750 行没有测试的输入路由（滚轮、触摸、定长版式滑动、选区稳定、点击链、键盘）；两套翻页路径（章节跳转走 runtime，翻页直接调用 <code>view.next/prev</code>）；为 Storybook 保留在生产代码里的回退分支。</p>
+  <p>重复且已经出现漂移的代码：iframe→视口坐标映射有 3 种写法，其中一处漏乘了 frame scale；布局属性算了两遍，而且在定长版式上的行为不一致；同一组 6 个键盘动作写了两次。</p>
+  <p class="fix"><b>拆法</b>：<code>lib/reader-engine-session.ts</code>（纯 TS，负责引擎的完整生命周期）+ <code>useReaderEngine(book, bookId, mode)</code>；<code>lib/reader-input-routing.ts</code>（纯决策函数，可以单测）+ <code>useReaderDocumentInput</code>（每个 document 一个 AbortController）；把 <code>frame-geometry.ts</code> 和 <code>reader-layout.ts</code> 各收敛成一处；翻页统一走 runtime，stories 改用假 session。<code>useTextUnitNavigator</code>（919 行，27 个 ref，状态存了两份）改成 session 类 + <code>useSyncExternalStore</code>。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p1">P1</span><h3><code>plugin-context.ts</code> — 1944 行，其中一个闭包就有约 1540 行</h3></div>
+  <p><code>contextForActor</code>（<code>:399-1942</code>）里混着：授权和围栏管道（4 个几乎一样的 scoped 辅助函数）、14 个贡献点的注册、约 12 个服务 facet、85 行的 <code>if</code> 权限链，以及每个 domain 各一份的“不受限版本 + 受限版本”。拆分工作开过头但没做完：memory、conversations、workspace 已经是独立的文件，而且有测试。</p>
+  <p>另外有 4 张手工维护的方法路径表（<code>PLUGIN_CALL_OPTIONS</code> 有 67 条字符串路径，测试只校验了条数），和插件文档里“新增操作不需要改 Worker 方法列表”的说法相矛盾。</p>
+  <p class="fix"><b>拆法</b>：先构造一次 <code>PluginActorKit</code>，再拆出 <code>facets/{settings,library,reading,annotations,memory,conversations}.ts</code>、<code>contributions.ts</code>、<code>services/*.ts</code>；可用性检查改成“操作 → {权限, 检查}”表；RPC 元数据（options 下标、取消语义、编解码）随 facet 定义一起声明，<code>describeContext</code> 把它下发给 Worker，4 张字符串表随之消失。主文件缩到约 150 行，只负责组合。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p2">P2</span><h3>agent：<code>sendPermittedTurn</code> 约 515 行；<code>RuntimeDeps</code> 约 45 个成员</h3></div>
+  <p><code>thread.ts:457-971</code> 在一个方法里做了游标归一、剧透分类、grounding、章节会话与 prompt 缓存、事件翻译、重试检查点、剧透修复、持久化和后续管线调度。<code>RuntimeDeps</code> 实际上是服务定位器：只有 11 个是具名端口，其余是匿名的内联结构类型，另有约 150 处内联 <code>import("@read-aware/core").X</code>；每个工具构造器都拿到整个 <code>deps</code>，其中约 20 个成员只被用到一两次。这部分有约 4.6k 行 runtime 测试兜底，风险可控。</p>
+  <p class="fix"><b>拆法</b>：按顺序抽出 <code>TurnPolicy</code> → <code>ChapterSession</code> → <code>AgentEventTranslator</code> → <code>NarrativeGuard</code> → 回合后管线。端口按 domain 分文件具名，宿主控制类能力合并成一个 <code>HostPort</code>，工具族用 <code>Pick&lt;RuntimeDeps, …&gt;</code> 声明自己需要的切片。</p>
+</div>
+
+<div class="item">
+  <div class="item-head"><span class="badge p2">P2</span><h3>relay <code>router.ts</code> — 一个约 940 行的闭包加一串 if</h3></div>
+  <p class="fix"><b>拆法</b>：路由表 <code>{method, path, auth, handler}</code>，按领域分文件，统一的错误包装（CORS + 稳定错误码，客户端可以区分不同原因的 413），<code>decodeURIComponent</code> 要防御非法编码。</p>
+</div>
+
+<h2 id="contracts"><span class="num">06</span>结构问题 ③：契约没有单一来源</h2>
+<p>同一份事实在 TS、Rust、测试 fake 里各写一遍。现在它们碰巧一致，但没有任何东西保证下去。</p>
+<ul>
+  <li><b>错误码</b>：<code>error.rs</code> 说新增错误码要先加到 <code>core/errors.ts</code>，但 <code>annotations/conflict</code>、<code>changes/cursor-expired</code>、<code>memory/forgotten-suppressed</code> 等只作为 Rust 字面量存在；<code>error.rs</code> 只定义了 7 个常量，其余约 40 个散落在约 40 个本地 <code>fn invalid()</code> 里。另有 27 个命令还在返回 <code>Result&lt;_, String&gt;</code>，前端拿到的只是 <code>ipc/unknown</code>。</li>
+  <li><b>事件名单</b>：<code>core/events.ts</code> 的 43 个事件目前和 <code>apply.rs</code> 完全一致，但 Rust 读的是 <code>serde_json::Value</code>，未知类型会被静默忽略。domain 名单在 <code>web/domain/events.ts</code> 和 <code>plugin-types</code> 里各手写了一份。</li>
+  <li><b>记忆规则写了三份</b>：Rust 的 <code>memory_page.rs</code>、<code>agent/memory/query-page.ts</code>、测试 fixture 里的排序。初始 importance 在产品和 fixture 里取值不同（onboarding 类记忆在产品里是 0.5，eval 里是 0.35），也就是说 <b>eval 量到的不是产品的行为</b>。</li>
+  <li><b>plugin-types</b>：单文件 2672 行，173 个导出类型；能力版本只写在 JSDoc 里；市场仓库的 <code>.d.ts</code> 镜像有几段需要手工维护，而且没有 <code>--check</code> 模式。</li>
+  <li><b>settings 的 key</b> 被硬编码进 v48/v49 迁移的 SQL 触发器，和 TS 端的 key 之间没有任何关联。</li>
+</ul>
+<p class="fix" style="max-width:68ch"><b>做法</b>：沿用已有的好模式（context-bundle 的 golden JSON 被 Rust 测试 <code>include_bytes</code> 读取）。把错误码和事件名单都放进 core，生成一份清单，由 Rust 测试逐项比对；再为 agent 端口写一套一致性测试，同时跑在内存 fake 和桌面适配器上。</p>
+
+<h2 id="native"><span class="num">07</span>Rust 原生端</h2>
+<p>核心比体量所暗示的要好：约 19 个原生写入者都经过 <code>commit_events_in_transaction</code>；有一个基于 syn 的测试，强制存储命令必须是 async、在阻塞线程池上执行、不能在池外持锁；生产代码里的 <code>unwrap</code> 很少（<code>book_metadata.rs</code> 的 86 个全部在 <code>#[cfg(test)]</code> 里）。需要处理的是外围：</p>
+<ul>
+  <li>绕过投影的旧命令仍然注册着（见第 2 节）；<code>append_events</code> 是反方向的绕过：只追加事件，不应用。</li>
+  <li><code>lib.rs</code>（1263 行）里没有业务逻辑，只有约 20 个平台胶水命令和一张 250 项的 handler 表，胶水部分可以移到 <code>platform/{macos,windows,android}.rs</code>。</li>
+  <li><code>storage/</code> 是平铺的 150 多个文件，<code>mod.rs</code> 全部 <code>pub use x::*</code>，73 个文件 <code>use super::*</code>，没有内部边界。约 189 处重复写 <code>state::&lt;Db&gt;(); db.0.lock()?</code>，应该收敛成一个 <code>with_conn(app, "op", |c| …)</code>，中毒恢复也顺势在这一处实现。</li>
+  <li>schema 迁移循环里对 v33/35/36/37/38/54 调用了<b>当前版本</b>的 <code>apply_event</code>，所以回放旧迁移的结果会随着 apply 规则变化。应该把这些钩子显式声明在迁移条目上，并断言 <code>SCHEMA_VERSION</code> 与 <code>MIGRATIONS</code> 一致。</li>
+  <li>syn 守卫只覆盖了 <code>storage/</code> 等几个目录，扩展到所有 <code>#[tauri::command]</code>，就能一次性消灭“主线程阻塞 IO”这一整类问题。</li>
+  <li>vendor 的 <code>auto-launch</code> 补丁在 CI 里从来没有跑过测试，<code>tauri-plugin-autostart</code> 用的是插入号版本，升级后补丁可能静默失效，应锁定为 <code>=2.5.1</code>。</li>
+  <li>5 个已注册的命令前端没有任何引用（<code>read_events_since</code>、<code>checkpoint_list</code>、<code>library_duplicate_book_groups</code>、<code>annotation_delete</code>、<code>ai_chat_clear</code>）；rustc 已经报告了几个死函数和从未读取的字段。</li>
+</ul>
+
+<h2 id="keep"><span class="num">08</span>做得好、应该保留的</h2>
+<ul class="good-list">
+  <li><b>事件溯源核心</b>：追加事件和投影更新在同一事务，<code>apply.rs</code> 是共享的重建规则，还有 syn 执行守卫。</li>
+  <li><b>插件 Worker 协议</b>：严格的 key 白名单、字节预算、协议版本号；授权只遍历已授予上下文的自有属性。第一方插件只依赖 <code>@read-aware/plugin-types</code>。</li>
+  <li><b>同步引擎</b>：双设备、内存 relay、配额和损坏场景都有行为测试。</li>
+  <li><b><code>reading-session-controller.ts</code></b>：干净的适配器端口，是 domain 里值得复制的范本。</li>
+  <li><b>agent 与 web 的防腐层</b>：<code>pi-chat-transport.ts</code> 里 ThreadChunk → ChatStreamChunk 的映射。</li>
+  <li><b>发布产物干净</b>：eval、testing、spike 代码不会进入产品包。</li>
+  <li><b>UI 规范基本得到遵守</b>：没有原始错误文案直达用户，没有手绘 SVG，没有装饰性渐变；手写的 <code>&lt;button&gt;</code> 大多是可点击的卡片或行，真正违规的只有 4–5 处（<code>CollectionHeader</code> 的 input、<code>ShelfManagementMenu</code> 应该用 <code>ChoiceGroup</code> 等）。</li>
+  <li><b>依赖版本对齐</b>：react、TS、vite、jotai 在各 workspace 之间没有版本偏移；<code>check:docs</code> 的 3631 个链接全部有效。</li>
+</ul>
+
+<div class="note correction">
+  <b>对初始度量的两处更正。</b>我最初用 grep 统计出的“<code>plugin-context</code> 被 domain 引用 25 次”全部来自测试文件（它在生产代码里只被 <code>plugin-worker-host</code> 引用）；“full-backup 三个文件绕过 IPC 接缝”也不对，它们只 import 了 <code>Channel</code>，<code>invoke</code> 仍然走 <code>platform/ipc</code>。正确的修法是让 <code>platform/ipc</code> 重新导出 <code>Channel</code>。
+</div>
+
+<h2 id="roadmap"><span class="num">09</span>治理路线图</h2>
+<p>原则：每一步都是可以单独提交、单独验证的小单元；守门先于重构，因为有了棘轮，后面每一次重构的成果才不会倒退。</p>
+
+<div class="phase">
+  <div class="k">0<small>止血</small></div>
+  <div>
+    <h3>修真实缺陷</h3>
+    <ul>
+      <li>relay 配额顺序加顶层错误包装；插件受限设置补 <code>assertActive</code>；插件资源按 id 做包含检查并补遍历测试。</li>
+      <li><code>ai_chat_clear</code> 加事务；<code>write_export_file</code> 做 scope 校验；<code>diagnostics_read_logs</code> 如实报错。</li>
+      <li>修好 3 个单独运行也失败的测试，并找出测试文件之间的全局泄漏源。</li>
+      <li>数据库锁中毒恢复加 <code>with_conn</code> 辅助函数（一次改动同时解决两件事）。</li>
+    </ul>
+  </div>
+</div>
+<div class="phase">
+  <div class="k">1<small>守门</small></div>
+  <div>
+    <h3>装上 PR 闸门和棘轮</h3>
+    <ul>
+      <li>新增 <code>ci.yml</code>，在 PR 和 push 上跑全部 workspace 的 <code>typecheck + test</code>，外加 <code>lint:cycles</code>。</li>
+      <li>单独一次提交做 <code>cargo fmt</code>；修掉 clippy 的 deny 报错，之后以 <code>-D warnings</code> 进 CI；修正 MSRV 声明。</li>
+      <li>把 <code>apps/web/tests</code> 和 <code>tests/runtime</code> 纳入 tsconfig，修掉那 36 个潜在类型错误；<code>tests/runtime</code> 要有能直接运行的脚本。</li>
+      <li>引入 dependency-cruiser，写入第 4 节的规则，<b>把现有违规记为基线，CI 只允许基线数减少</b>。</li>
+      <li>引入 Biome 或 oxlint：先开启浮动 Promise 和空 catch 回调规则，再禁止 features 里直接写裸表单控件（保留 allow 注释作为例外出口），再加格式化和行宽限制。</li>
+      <li>syn 执行守卫扩展到所有 <code>#[tauri::command]</code>。</li>
+    </ul>
+  </div>
+</div>
+<div class="phase">
+  <div class="k">2<small>契约</small></div>
+  <div>
+    <h3>单一来源 + 一致性测试</h3>
+    <ul>
+      <li>错误码和事件名单统一放进 core，生成清单，由 Rust 测试逐项比对；27 个 <code>Result&lt;_, String&gt;</code> 命令迁到 <code>CommandError</code>。</li>
+      <li>为 agent 端口写一致性测试套件，同时跑在 fake 和桌面适配器上；初始 importance 等业务规则从适配器移回 agent 或 core。</li>
+      <li>会话只保留一个写入者；关闭原始投影写入命令（取决于 v1 备份的决定）。</li>
+      <li>给 <code>sync-plugin-dts</code> 增加 <code>--check</code> 并接入 <code>check:capabilities</code>。</li>
+    </ul>
+  </div>
+</div>
+<div class="phase">
+  <div class="k">3<small>结构</small></div>
+  <div>
+    <h3>在棘轮保护下逐块重构</h3>
+    <ul>
+      <li><b>设置统一写入路径</b>：一个 key 注册表，快照由 domain 持有，atom 只读，面板统一走 <code>settings.commands.update</code>（<code>useShortcutPreferences</code> 已经是这个写法）。</li>
+      <li>共享类型下沉到 <code>domain/&lt;ctx&gt;/types</code> 或 core；仓储类模块（<code>library-db</code>、<code>annotation-db</code>、<code>conversation-store</code> 等）移到 <code>domain/&lt;ctx&gt;/repo.ts</code>；UI 统一经过 domain 命令写入。</li>
+      <li>贡献注册表从 <code>plugin-store</code> 抽到 <code>extensions/</code>；foliate-engine、parse-book 等移到 <code>src/engine/</code>；阅读器的 CSS 和主题从 settings 移回 reader。</li>
+      <li><code>plugin-context</code> 拆成 facet 加策略表；<code>FoliateReaderView</code> 拆出引擎会话和输入路由；<code>thread.ts</code> 分阶段抽取；relay 改成路由表。</li>
+      <li>agent runtime 作为端口在 <code>app/</code> 注入 domain，取代现在的懒加载 import。</li>
+    </ul>
+  </div>
+</div>
+<div class="phase">
+  <div class="k">4<small>清理</small></div>
+  <div>
+    <h3>删减</h3>
+    <ul>
+      <li>写好 <code>knip.json</code>（声明入口）之后，清理确认无用的导出（knip 报告了 159 个导出和 97 个类型），以及 <code>stats-mock.ts</code>、两个 agent probe、<code>./spike</code>、Rust 死代码。</li>
+      <li>eval、eval-viewer、<code>*-run.ts</code> 移到独立的 <code>packages/agent-evals</code>；<code>translate-run.ts</code> 和 <code>scripts/translate-changelog.ts</code> 合并为一个。</li>
+      <li>更正 <code>CLAUDE.md</code> 里关于 foliate 的描述：源码在 <code>apps/web/foliate-js/src</code>，<code>public/foliate-js</code> 是 git 忽略的构建产物。</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="decide"><span class="num">10</span>需要你拍板的事</h2>
+<ol>
+  <li><b>旧版（v1）备份导入</b>：直接退役（只保留新的 full-backup），还是改走事件化恢复路径并继续支持？退役更干净；如果还有用户手里只有 v1 备份文件，就只能改造。</li>
+  <li><b>范围和节奏</b>：建议先把 0（止血）和 1（守门）一口气做完，这两段风险低、收益立竿见影；2 和 3 在守门就位后，按区域一块一块推进，每块单独提交。</li>
+  <li><b>目录改名</b>（<code>services→host</code>、<code>platform→infra</code>）：我倾向于不改，只加依赖规则。</li>
+</ol>
+
+<footer>
+  ReadAware 工程评审 · 2026-09-27 · 基线 main@10cdd803。本页是当时的快照，不代表之后的状态。<br>
+  审计证据（knip 输出、rustfmt 差异、未测试文件清单、测试目录的 tsconfig）是在审计会话的临时目录里生成的，没有入库。
+</footer>
+
+</div>
+</body>
+</html>
