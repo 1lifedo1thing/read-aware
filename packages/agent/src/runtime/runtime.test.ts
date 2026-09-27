@@ -16,6 +16,9 @@ function makeRuntime(fixture = createInMemoryDeps(), now?: () => number) {
     account: { kind: "api-key", provider: "openai", apiKey: "test-key" },
     models: { smart: "test-smart", fast: "test-fast" },
     now,
+    // Unit tests never reach a provider: a model call fails at once instead of depending on
+    // whether this machine can reach api.openai.com (without it the call hangs to the timeout).
+    fetch: async () => { throw new Error("Provider network is unavailable in unit tests"); },
   });
   return { runtime, stores, memoryLists: () => memoryLists };
 }
