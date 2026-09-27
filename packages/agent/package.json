@@ -26,7 +26,9 @@
     "eval:reading": "bun src/eval-run.ts reading",
     "eval:behavior": "bun src/eval-run.ts behavior",
     "eval:realbook": "bun src/eval-run.ts realbook",
-    "eval:ui": "vite --config eval-viewer/vite.config.ts --port 5199"
+    "eval:ui": "vite --config eval-viewer/vite.config.ts --port 5199",
+    "lint:deps": "bun ../../scripts/check-dependency-baseline.ts",
+    "lint:deps:baseline": "bun ../../scripts/check-dependency-baseline.ts --update"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.85.1",
@@ -41,6 +43,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "dependency-cruiser": "^18.4.0",
     "dompurify": "^3.4.14",
     "fflate": "^0.8.3",
     "marked": "^15.0.0",

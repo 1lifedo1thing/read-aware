@@ -1,6 +1,7 @@
 /**
- * The single seam for Tauri IPC calls. App code imports `invoke` from HERE,
- * never from `@tauri-apps/api/core` (enforced by convention + review; the
+ * The single seam for Tauri IPC calls. App code imports `invoke` (and the
+ * `Channel` streaming primitive) from HERE, never from `@tauri-apps/api/core`
+ * (enforced by the dependency-cruiser `tauri-core-only-in-ipc` rule; the
  * signature is identical so call sites don't change shape).
  *
  * Why the seam exists: a rejected raw `invoke()` throws whatever the Rust
@@ -20,6 +21,9 @@
  */
 import { invoke as tauriInvoke, type InvokeArgs, type InvokeOptions } from "@tauri-apps/api/core";
 import { AppError, ERR_DB_LOCKED, ERR_IPC_UNKNOWN } from "@read-aware/core";
+
+/** Native progress streams are passed as `invoke` arguments; failures still surface through `invoke`. */
+export { Channel } from "@tauri-apps/api/core";
 
 export class IpcError extends AppError {
   /** The Tauri command whose invocation failed. */

@@ -46,10 +46,7 @@
         "storybook-static/**"
       ]
     },
-    "lint:cycles": {
-      "dependsOn": [
-        "^build"
-      ],
+    "lint:deps": {
       "outputs": []
     }
   }

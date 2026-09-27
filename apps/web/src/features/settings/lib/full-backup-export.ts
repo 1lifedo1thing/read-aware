@@ -1,7 +1,6 @@
 import { AppError } from "@read-aware/core";
-import { Channel } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
-import { invoke } from "../../../platform/ipc";
+import { Channel, invoke } from "../../../platform/ipc";
 import { createLogger } from "../../../platform/logger";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
 import { withSyncBackup } from "../../../platform/sync/sync-scheduler";

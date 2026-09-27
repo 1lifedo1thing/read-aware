@@ -1,7 +1,6 @@
 import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { errorCode } from "@read-aware/core";
-import { Channel } from "@tauri-apps/api/core";
-import { invoke } from "../../../platform/ipc";
+import { Channel, invoke } from "../../../platform/ipc";
 import { createLogger } from "../../../platform/logger";
 import { withSyncBackup } from "../../../platform/sync/sync-scheduler";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
