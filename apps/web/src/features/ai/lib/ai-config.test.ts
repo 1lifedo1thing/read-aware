@@ -1,18 +1,11 @@
 import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
+import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 import { onLocalKVCommit } from "../../../platform/local-store";
 import { onSecretCommit } from "../../../platform/secret-store";
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-});
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 import {
   DEFAULT_CUSTOM_OPENAI_API,

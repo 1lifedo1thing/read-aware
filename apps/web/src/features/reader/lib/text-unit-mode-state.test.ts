@@ -1,16 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
-const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-});
-
 import {
   DEFAULT_TEXT_UNIT_MODE_SETTINGS,
   isTextUnitModeStateCompatible,
@@ -18,6 +7,10 @@ import {
   readTextUnitModeSettings,
   updateTextUnitModeSettings,
 } from "./text-unit-mode-state";
+import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
+
+const storage = new Map<string, string>();
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 const MODE_KEY = "sentence-reader:guided-reading";
 const PLUGIN_SETTINGS_KEY = "read-aware-plugin.sentence-reader.settings";

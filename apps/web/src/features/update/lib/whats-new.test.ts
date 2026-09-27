@@ -1,23 +1,16 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
-// bun test 没有 DOM——按仓库惯例给 localStorage 一个 Map stub
-const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-});
-
 import {
   WHATS_NEW_TTL_MS,
   changelogUrlForLocale,
   dismissWhatsNew,
   reconcileWhatsNew,
 } from "./whats-new";
+import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
+
+// bun test 没有 DOM——按仓库惯例给 localStorage 一个 Map stub
+const storage = new Map<string, string>();
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 const KEY = "read-aware-whats-new";
 

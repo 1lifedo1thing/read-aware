@@ -1,18 +1,11 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { installFileGlobals, memoryStorage } from "../../../../../tests/helpers/file-globals";
 import { localKV } from "../../../../platform/local-store";
 import { GLOBAL_CONVERSATION_ID } from "../../lib/conversation-store";
 import { clearStoredConversationInsights, createConversationPort } from "./conversation-port";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-});
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 const INSIGHTS_KEY = "read-aware-agent-insights";
 

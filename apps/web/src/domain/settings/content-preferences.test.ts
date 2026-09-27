@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-globals";
 import { getDefaultStore } from "jotai";
 import { createSettingsDomain } from "./domain";
 import { contentTypographyAtom, generalSettingsAtom, readerOverridesAtom, readerPreferencesAtom } from "../../state/ui";
@@ -9,13 +10,7 @@ import { getDefaultMarkColor, setDefaultMarkColor } from "../../features/annotat
 import { getUpdateChannel, setUpdateChannel, subscribeUpdateChannel } from "../../features/update/lib/update-channel";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
-  getItem: (key: string) => storage.get(key) ?? null,
-  setItem: (key: string, value: string) => storage.set(key, value),
-  removeItem: (key: string) => storage.delete(key),
-  key: (index: number) => [...storage.keys()][index] ?? null,
-  get length() { return storage.size; },
-} });
+installFileGlobals({ localStorage: memoryStorage(storage) });
 const store = getDefaultStore();
 beforeEach(async () => {
   storage.clear();

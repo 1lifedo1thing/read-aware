@@ -795,6 +795,12 @@ test.each(["ask", "askDetailed"])("LLM %s RPC cancellation injects the current r
   };
   const runtime = { ask: run, askDetailed: run } as unknown as AgentRuntime;
   const spy = spyOn(runtimeModule, "getAgentRuntime").mockReturnValue(runtime);
+  // This bridge check owns signal injection. Inference admission is covered by
+  // plugin-llm tests; without an explicit answer it would depend on whatever AI
+  // configuration the process happens to hold and never reach the runtime.
+  const admission = spyOn(operationConditions, "checkOperationAvailability").mockImplementation(async query => ({
+    operation: query.operation, state: "available", remoteChecked: false, conditions: [],
+  }));
   const { worker, close } = await hostFixture(["service:llm"]);
   try {
     const call = worker.deliver({ t: "call", id: 990, method: `services.llm.${method}`, args: worker.callbacks.encode([{ prompt: "p", signal: { fake: true } }]) });
@@ -806,7 +812,7 @@ test.each(["ask", "askDetailed"])("LLM %s RPC cancellation injects the current r
     expect(signal?.aborted).toBe(true);
     expect(signal?.reason).toMatchObject({ code: "ai/request-cancelled" });
     expect(worker.sent.find(message => message.t === "result" && message.id === 990)).toMatchObject({ ok: false, code: "plugin/cancelled" });
-  } finally { await close(); spy.mockRestore(); }
+  } finally { await close(); spy.mockRestore(); admission.mockRestore(); }
 });
 
 test("host releases denied and invalid call arguments without granting authority", async () => {

@@ -4,6 +4,9 @@ import { createSettingsDomain } from "./domain";
 import { systemFontOptions } from "./font-options";
 import { buildPluginContext } from "../../features/plugins/runtime/plugin-context";
 import { createSettingsPort } from "../../features/ai/agent/ports/settings-port";
+import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-globals";
+
+installFileGlobals({ localStorage: memoryStorage() });
 
 test("font options are searchable, paginated, copied and catalog-revision checked", () => {
   const all = systemFontOptions(["Alpha", "Beta", "Gamma"]);

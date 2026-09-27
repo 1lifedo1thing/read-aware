@@ -1,15 +1,12 @@
 import { afterEach, beforeAll, beforeEach, expect, spyOn, test } from "bun:test";
+import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 import { WEB_PROVIDERS, type WebProvider } from "@read-aware/agent";
 import { hydrateSecrets, deleteSecret, getSecret, setSecret } from "../../../platform/secret-store";
 import { agentWeb } from "../agent/ports/web-port";
 import { getSearchConfig, saveSearchConfig, SEARCH_CONFIG_KEY } from "./search-config";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
-  getItem: (key: string) => storage.get(key) ?? null,
-  setItem: (key: string, value: string) => storage.set(key, value),
-  removeItem: (key: string) => storage.delete(key),
-} });
+installFileGlobals({ localStorage: memoryStorage(storage) });
 beforeAll(() => hydrateSecrets());
 beforeEach(() => { storage.clear(); deleteSecret("ai-api-key.search.tinyfish"); });
 afterEach(() => { deleteSecret("ai-api-key.search.tinyfish"); deleteSecret("ai-api-key.search.fixture"); });

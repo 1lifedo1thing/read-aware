@@ -52,6 +52,7 @@ import {
 } from "../features/reader/lib/text-unit-mode-state";
 import { textUnitReaderModeAtom } from "../features/plugins/state/plugin-store";
 import { onAppEvent } from "../platform/app-events";
+import { createLogger } from "../platform/logger";
 import {
   SHELF_VIEW_KEY,
   getShelfView,
@@ -272,10 +273,13 @@ const readingStatsBaseAtom = atom<ReadingStatsStore>(getReadingStatsStore());
 // nothing about it — without this, a fresh device shows empty stats until
 // its next restart. Reload whenever merged events repaint the library.
 // (Momentarily un-flushed tracker minutes re-appear on the next tick.)
+// A failed reload keeps the last good snapshot; the next library change retries.
+const log = createLogger("reading-stats");
 onAppEvent("library-changed", () => {
-  void loadReadingStatsStore().then((store) => {
-    getDefaultStore().set(readingStatsBaseAtom, store);
-  });
+  void loadReadingStatsStore().then(
+    (store) => { getDefaultStore().set(readingStatsBaseAtom, store); },
+    (error: unknown) => { log.warn("Reading stats reload failed; keeping the previous snapshot", error); },
+  );
 });
 
 /**

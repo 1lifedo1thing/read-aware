@@ -21,7 +21,7 @@ test("workspace disclosure and navigation are gated separately, and leaving a re
     const runtime = actor(reading ? ["library:write", "reading:write"] : ["library:write"]);
     const command = runtime.context.services.ui.workspace!.navigate!;
     await expect(command({ surface: "stats" }, 12)).rejects.toThrow("probe");
-    expect(spy).toHaveBeenLastCalledWith({ surface: "stats" }, 12, runtime.lifecycle.signal, reading);
+    expect(spy).toHaveBeenLastCalledWith({ surface: "stats" }, 12, runtime.lifecycle.signal, reading, undefined, "plugin:workspace-permission");
     runtime.lifecycle.stop(); expect(() => command({ surface: "stats" })).toThrow();
     await expect(runtime.context.services.ui.workspace!.snapshot()).rejects.toThrow();
   }

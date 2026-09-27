@@ -79,6 +79,8 @@ test("unsupported and pre-aborted calls do not dispatch; incomplete logs and fai
 });
 
 test("settings diagnostics and actor diagnostics share the same native verification flight", async () => {
+  // The native flight stamps provenance onto the report it resolves; keep that off the shared fixture.
+  const flight: ProjectionReport = structuredClone(report);
   const gate = Promise.withResolvers<ProjectionReport>();
   const invoke = spyOn(ipc, "invoke").mockImplementation(async () => gate.promise as never);
   const service = new HostDiagnosticsService({ requestReport, supported: () => true, verify: verifyProjectionReport }, () => {});
@@ -88,9 +90,9 @@ test("settings diagnostics and actor diagnostics share the same native verificat
     await Promise.resolve();
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith("verify_projections");
-    gate.resolve(report);
-    expect(await settings).toBe(report);
+    gate.resolve(flight);
+    expect(await settings).toBe(flight);
     expect(await actor).toMatchObject({ onlyLiveRows: 2, onlyReplayedRows: 4 });
     expect(eventCause(await actor)).toEqual(actorCause(origin));
-  } finally { gate.resolve(report); await gate.promise; invoke.mockRestore(); }
+  } finally { gate.resolve(flight); await gate.promise; invoke.mockRestore(); }
 });

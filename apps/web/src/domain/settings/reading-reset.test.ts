@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, spyOn, test } from "bun:test";
+import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-globals";
 import { getDefaultStore } from "jotai";
 import { AppError } from "@read-aware/core";
 import { createSettingsDomain } from "./domain";
@@ -7,13 +8,7 @@ import { DEFAULT_READER_PREFERENCES } from "../../features/settings/lib/reader-s
 import { readerOverridesAtom, readerPreferencesAtom } from "../../state/ui";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
-  getItem: (key: string) => storage.get(key) ?? null,
-  setItem: (key: string, value: string) => storage.set(key, value),
-  removeItem: (key: string) => storage.delete(key),
-  key: (index: number) => [...storage.keys()][index] ?? null,
-  get length() { return storage.size; },
-} });
+installFileGlobals({ localStorage: memoryStorage(storage) });
 const store = getDefaultStore(), cleanups: Array<() => void> = [];
 beforeEach(() => {
   store.set(readerPreferencesAtom, { ...DEFAULT_READER_PREFERENCES, fontSize: "large" });

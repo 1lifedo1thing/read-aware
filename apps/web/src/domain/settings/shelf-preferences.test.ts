@@ -4,12 +4,10 @@ import { shelfSelectionAtom, shelfViewAtom } from "../../state/ui";
 import { DEFAULT_SHELF_VIEW, SHELF_VIEW_KEY, getShelfView } from "../../features/shelf/lib/shelf-view";
 import { localKV } from "../../platform/local-store";
 import { createSettingsDomain } from "./domain";
+import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-globals";
 
 const disk = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
-  getItem: (key: string) => disk.get(key) ?? null, setItem: (key: string, value: string) => disk.set(key, value),
-  removeItem: (key: string) => disk.delete(key), key: (index: number) => [...disk.keys()][index] ?? null, get length() { return disk.size; },
-} });
+installFileGlobals({ localStorage: memoryStorage(disk) });
 const store = getDefaultStore();
 beforeEach(async () => { await localKV.setItemAsync(SHELF_VIEW_KEY, JSON.stringify(DEFAULT_SHELF_VIEW)); });
 test("Agent and scoped plugin discover the same real shelf options", async () => {

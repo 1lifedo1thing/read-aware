@@ -2,10 +2,9 @@ import { resourceModelImage } from "../../../../services/model-image";
 import type { DomainActor } from "../../../../platform/domain-actor";
 /** Agent-specific chapter hrefs and spoiler bounds over shared library reads. */
 import { type BookTextPort, type ChapterRef } from "@read-aware/agent";
-import { getExtractedChapters } from "../../../../domain";
 import { getDigestContentVersion } from "../../../../domain/book-digest";
 import { getDigestChapterSource, getBookTextStatus } from "../../../library/lib/book-text-store";
-import { createLibraryDomain } from "../../../../domain/library";
+import { createLibraryDomain, getExtractedChapters } from "../../../../domain/library";
 import { openBookImageResource } from "../../../../domain/library-book-images";
 import { agentResources } from "../../../../services/resources";
 

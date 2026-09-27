@@ -32,6 +32,7 @@ import { DEFAULT_GENERAL_SETTINGS } from "../../../settings/lib/general-settings
 import { DEFAULT_READER_PREFERENCES } from "../../../settings/lib/reader-settings";
 import { clearAIConfig, getAIConfig, saveAIConfig } from "../../lib/ai-config";
 import { createSettingsPort } from "./settings-port";
+import { installFileGlobals, memoryStorage } from "../../../../../tests/helpers/file-globals";
 
 const GUTENBERG: RegisteredPluginTheme = {
   key: "editorial-themes:gutenberg",
@@ -69,19 +70,7 @@ const CHROME_ONLY: RegisteredPluginTheme = {
 };
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-    key: (index: number) => [...storage.keys()][index] ?? null,
-    get length() {
-      return storage.size;
-    },
-  },
-});
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 function setting(
   settings: AgentSettingDescriptor[],

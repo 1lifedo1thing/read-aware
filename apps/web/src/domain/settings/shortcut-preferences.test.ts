@@ -4,12 +4,10 @@ import { shortcutBindingsAtom } from "../../state/ui";
 import { localKV } from "../../platform/local-store";
 import { SHORTCUT_BINDINGS_KEY } from "../../features/settings/lib/shortcut-bindings";
 import { createSettingsDomain } from "./domain";
+import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-globals";
 
 const disk = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
-  getItem: (key: string) => disk.get(key) ?? null, setItem: (key: string, value: string) => disk.set(key, value),
-  removeItem: (key: string) => disk.delete(key), key: (index: number) => [...disk.keys()][index] ?? null, get length() { return disk.size; },
-} });
+installFileGlobals({ localStorage: memoryStorage(disk) });
 beforeEach(async () => { await localKV.setItemAsync(SHORTCUT_BINDINGS_KEY, "{}"); });
 test("both actors read current bindings but grants control actual writability", async () => {
   const plugin = createSettingsDomain("plugin:shortcuts", { read: ["shortcuts.search"] });

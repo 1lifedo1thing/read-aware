@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { deriveMasterKey } from "../sync-envelope";
 import {
   establishEncryption,
@@ -348,6 +348,8 @@ describe("connect flow", () => {
     string,
     { kdfSalt: string; kdfParams: typeof TEST_KDF; keyCheck: string }
   >();
+  // Each test starts from an empty relay account store, independent of test order.
+  beforeEach(() => material.clear());
   function fakeAuthRelay(accountId: string) {
     // Session enforcement mirrors production: publishKeys is an authed call,
     // and the session only exists AFTER verify — a connect flow that hands

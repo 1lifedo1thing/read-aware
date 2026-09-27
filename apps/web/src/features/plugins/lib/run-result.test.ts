@@ -1,19 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 import { getDefaultStore } from "jotai";
 import type { PluginView, PluginViewResult } from "./plugin-types";
 import { decodePluginCallbacks, PluginCallbackRegistry } from "../runtime/plugin-callback-wire";
 import { setPluginToastHandler } from "./plugin-toast";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-});
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 const { runPluginContribution } = await import("./run-result");
 const { closePluginDialog, openPluginDialog, pluginDialogAtom } = await import("../state/plugin-store");

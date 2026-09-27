@@ -3,20 +3,10 @@ import { getDefaultStore } from "jotai";
 import { appSettingsAtom } from "../../state/ui";
 import { DEFAULT_APP_SETTINGS } from "../../features/settings/lib/app-settings";
 import { createSettingsDomain } from "./domain";
+import { installFileGlobals, memoryStorage } from "../../../tests/helpers/file-globals";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-    key: (index: number) => [...storage.keys()][index] ?? null,
-    get length() {
-      return storage.size;
-    },
-  },
-});
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 beforeEach(() => {
   storage.clear();

@@ -1,18 +1,11 @@
 import { actorCause, assertReactionAllowed, causalActor, eventCause, reactionActor } from "../../../platform/domain-actor";
+import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 import { onAppEvent } from "../../../platform/app-events";
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { PluginManifest } from "./plugin-types";
 
 const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-  configurable: true,
-  writable: true,
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-});
+installFileGlobals({ localStorage: memoryStorage(storage) });
 
 import {
   buildPluginSettingsView,
