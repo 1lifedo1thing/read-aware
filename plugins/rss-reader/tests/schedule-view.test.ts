@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type {
   PluginContext,
   PluginDetailView,
@@ -172,14 +175,21 @@ test("compiled subscriptions command exposes schedule controls even with no feed
     },
   });
   Object.assign(f.ctx.services.schedules, { bind() {} });
-  const built = await Bun.build({
-    entrypoints: [new URL("../src/index.ts", import.meta.url).pathname],
-    target: "browser",
-  });
-  expect(built.success).toBe(true);
-  const module = (
-    await import(`data:text/javascript;base64,${Buffer.from(await built.outputs[0]!.text()).toString("base64")}`)
-  ).default as PluginModule;
+  // Import the bundle from a file: a base64 `data:` specifier exceeds the 255-byte
+  // file-name limit when Bun on Linux resolves it as a path (NameTooLong).
+  const outdir = mkdtempSync(join(tmpdir(), "rss-reader-bundle-"));
+  let module: PluginModule;
+  try {
+    const built = await Bun.build({
+      entrypoints: [new URL("../src/index.ts", import.meta.url).pathname],
+      target: "browser",
+      outdir,
+    });
+    expect(built.success).toBe(true);
+    module = ((await import(built.outputs[0]!.path)) as { default: PluginModule }).default;
+  } finally {
+    rmSync(outdir, { recursive: true, force: true });
+  }
   await module.activate(f.ctx);
   const root = (await run())!.view;
   if (root?.kind !== "list") throw Error("Expected subscriptions");
