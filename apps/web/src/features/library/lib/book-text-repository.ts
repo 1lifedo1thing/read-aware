@@ -7,7 +7,7 @@ import {
   type BookTextWaitReason,
   type BookTextSnapshot,
 } from "@read-aware/core";
-import type { FoliateBook } from "../../reader/lib/foliate-engine";
+import type { ChapterMap, FoliateBook } from "../../reader/lib/foliate-engine";
 import { extractBookText } from "./book-text-extraction";
 import {
   parseBookTextRecord,
@@ -33,7 +33,13 @@ export type BookTextDependencies = {
   read(bookId: string): Promise<unknown>;
   write(record: BookTextRecord): Promise<void>;
   remove(bookId: string): Promise<void>;
-  content<T>(bookId: string, version: string, signal: AbortSignal, read: (book: FoliateBook) => Promise<T>): Promise<T>;
+  /** The parsed book with its repaired TOC, and that book's chapter map. */
+  content<T>(
+    bookId: string,
+    version: string,
+    signal: AbortSignal,
+    read: (book: FoliateBook, chapters: ChapterMap) => Promise<T>,
+  ): Promise<T>;
   yieldToReader(signal: AbortSignal, waiting?: (value: boolean) => void): Promise<void>;
   warn(message: string, error: unknown): void;
   changed?(bookId: string, origin: DomainActor): void;
@@ -168,6 +174,15 @@ export class BookTextRepository {
     await this.checkSource(bookId, source.contentVersion, undefined, source.revision);
     if (this.jobs.has(bookId)) return null;
     return record && textComplete(record) ? record.chapters : null;
+  }
+
+  /** The outline recovered from a paged book's headings, once its text is complete. */
+  async persistedOutline(bookId: string): Promise<NonNullable<BookTextRecord["outline"]> | null> {
+    const source = await this.source(bookId);
+    if (!source.contentVersion) return null;
+    const record = await this.record(bookId, source.contentVersion);
+    await this.checkSource(bookId, source.contentVersion, undefined, source.revision);
+    return record && textComplete(record) ? (record.outline ?? null) : null;
   }
 
   async ensure(bookId: string, waitForPdf = false, origin?: DomainActor): Promise<ExtractedChapter[]> {
@@ -386,11 +401,12 @@ export class BookTextRepository {
             options.onRebuildReset?.();
             await current();
           });
-        const result = await this.deps.content(bookId, version, signal, (book) =>
+        const result = await this.deps.content(bookId, version, signal, (book, chapters) =>
           extractBookText(book, {
             bookId,
             contentVersion: version,
             prior: options.rebuild ? null : prior,
+            chapters,
             signal,
             yieldToReader: async () => {},
             readSection: (read) =>

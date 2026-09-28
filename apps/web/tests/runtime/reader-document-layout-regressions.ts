@@ -1,10 +1,11 @@
 import type { Book } from "../../foliate-js/src/book";
+import { buildChapterMap } from "../../foliate-js/src/chapter-map";
 import type { View } from "../../foliate-js/src/view";
 import type { LoadDetail } from "../../foliate-js/src/renderer";
 import {
   markReaderChapterStarts,
   normalizeReaderTextSizes,
-  prepareReaderChapterStarts,
+  readerChapterStarts,
 } from "../../src/features/reader/lib/reader-document-layout";
 import { buildReaderContentCss, readerLayoutSpacing } from "../../src/features/settings/lib/reader-css";
 import { DEFAULT_READER_SETTINGS } from "../../src/features/settings/lib/reader-settings";
@@ -55,7 +56,7 @@ export async function runDocumentLayoutRegressions(ViewClass: typeof View): Prom
       getTOCFragment: (doc, fragment) => (typeof fragment === "string" ? doc.getElementById(fragment) : null),
     };
     try {
-      const starts = await prepareReaderChapterStarts(book);
+      const starts = readerChapterStarts(book, await buildChapterMap(book));
       let cfiBefore = "";
       const quoteRange = (doc: Document) => {
         const range = doc.createRange();

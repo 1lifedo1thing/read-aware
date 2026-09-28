@@ -6,7 +6,7 @@ import { emitAppEvent, onAppEvent } from "../../../platform/app-events";
 import { actorFromEvent, type DomainActor } from "../../../platform/domain-actor";
 import { deleteDesktopBlob, getDesktopBlob, getDesktopBlobInfo, putDesktopBlob } from "../../../platform/blob-store";
 import { createLogger } from "../../../platform/logger";
-import type { FoliateBook } from "../../reader/lib/foliate-engine";
+import { chapterMapFor, type FoliateBook } from "../../reader/lib/foliate-engine";
 import { withBookContent } from "./book-content-source";
 import { getBookRecord, getStoredBookFile } from "./library-db";
 import { BookTextRepository } from "./book-text-repository";
@@ -58,7 +58,8 @@ const repository = new BookTextRepository({
     await putDesktopBlob(blobKey(record.bookId), new TextEncoder().encode(JSON.stringify(record)), "application/json");
   },
   remove: (bookId) => deleteDesktopBlob(blobKey(bookId)),
-  content: (bookId, version, signal, read) => withBookContent(bookId, version, signal, ({ book }) => read(book)),
+  content: (bookId, version, signal, read) =>
+    withBookContent(bookId, version, signal, async ({ book }) => read(book, await chapterMapFor(book))),
   yieldToReader: async (signal, waiting) => {
     while (readingRuntime.readerDemandDelay > 0) {
       signal.throwIfAborted();
@@ -112,6 +113,7 @@ export const getDigestChapterSource = (
   origin?: DomainActor,
 ) => repository.chapter(bookId, index, version, signal, origin);
 export const getPersistedBookText = (bookId: string) => repository.persisted(bookId);
+export const getPersistedBookOutline = (bookId: string) => repository.persistedOutline(bookId);
 // Borrow the active parser with its registered version, never attach a new hash to an old parser.
 export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook, origin?: DomainActor) =>
   repository.ensure(bookId, !!preopened, origin);

@@ -1,10 +1,8 @@
 import type { Book } from "../../foliate-js/src/book";
+import { buildChapterMap } from "../../foliate-js/src/chapter-map";
 import type { View } from "../../foliate-js/src/view";
 import type { LoadDetail } from "../../foliate-js/src/renderer";
-import {
-  prepareReaderChapterStarts,
-  markReaderChapterStarts,
-} from "../../src/features/reader/lib/reader-document-layout";
+import { readerChapterStarts, markReaderChapterStarts } from "../../src/features/reader/lib/reader-document-layout";
 import { readingVisibleText } from "../../src/features/reader/lib/reading-visible-text";
 
 type Result = { name: string; passed: boolean; details?: string };
@@ -63,7 +61,7 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
       await view.open(book);
       const renderer = view.renderer;
       if (!renderer || !("setChapterStarts" in renderer)) throw new Error("Missing paginator");
-      const starts = await prepareReaderChapterStarts(book);
+      const starts = readerChapterStarts(book, await buildChapterMap(book));
       assert(starts.size === urls.length, "Document-start TOC entries were discarded");
       renderer.setChapterStarts(starts);
       renderer.setLayoutAttributes({ flow: "scrolled", "max-inline-size": "700px" });
@@ -180,7 +178,7 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
       getTOCFragment: (doc, id) => (typeof id === "string" ? doc.getElementById(id) : null),
     };
     try {
-      const starts = await prepareReaderChapterStarts(book);
+      const starts = readerChapterStarts(book, await buildChapterMap(book));
       view.addEventListener("load", (event) => {
         const { doc, index } = (event as CustomEvent<LoadDetail>).detail;
         markReaderChapterStarts(doc, index, starts);

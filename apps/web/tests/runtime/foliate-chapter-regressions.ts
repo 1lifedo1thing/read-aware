@@ -1,10 +1,8 @@
 import type { Book } from "../../foliate-js/src/book";
+import { buildChapterMap } from "../../foliate-js/src/chapter-map";
 import type { View } from "../../foliate-js/src/view";
 import type { LoadDetail } from "../../foliate-js/src/renderer";
-import {
-  markReaderChapterStarts,
-  prepareReaderChapterStarts,
-} from "../../src/features/reader/lib/reader-document-layout";
+import { markReaderChapterStarts, readerChapterStarts } from "../../src/features/reader/lib/reader-document-layout";
 import { buildReaderContentCss } from "../../src/features/settings/lib/reader-css";
 import { DEFAULT_READER_SETTINGS } from "../../src/features/settings/lib/reader-settings";
 import { BUILTIN_READER_PALETTES } from "../../src/features/settings/lib/reader-theme";
@@ -56,7 +54,7 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         getTOCFragment: (doc, fragment) => (typeof fragment === "string" ? doc.getElementById(fragment) : null),
       };
       try {
-        const starts = await prepareReaderChapterStarts(book);
+        const starts = readerChapterStarts(book, await buildChapterMap(book));
         let originalCfi = "";
         view.addEventListener("load", (event) => {
           const { doc, index } = (event as CustomEvent<LoadDetail>).detail;

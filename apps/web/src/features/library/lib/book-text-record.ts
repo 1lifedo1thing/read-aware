@@ -15,9 +15,10 @@ export type TextPiece = {
 };
 export type TextFailure = { sectionIndex: number; code: string };
 
-/** v6 follows TOC anchor boundaries. Earlier records have incompatible chapter coordinates; rebuild lazily. */
+/** v7 follows the chapter map (reading order, chapter level; see foliate-js chapter-map.ts). Earlier
+ * records have incompatible chapter coordinates; rebuild lazily. */
 export type BookTextRecord = {
-  version: 6;
+  version: 7;
   bookId: string;
   contentVersion: string;
   extractedAt: string;
@@ -28,6 +29,8 @@ export type BookTextRecord = {
   failures: TextFailure[];
   unsupported: number[];
   chapters: ExtractedChapter[];
+  /** A paged book without an outline: the one recovered from its page headings (see page-headings.ts). */
+  outline?: { label: string; href: string }[];
 };
 
 export function textProgress(record: BookTextRecord): NonNullable<BookTextSnapshot["progress"]> {
@@ -76,7 +79,7 @@ const strings = (value: unknown): value is string[] =>
 export function parseBookTextRecord(value: unknown, bookId: string, contentVersion: string): BookTextRecord | null {
   if (
     !object(value) ||
-    value.version !== 6 ||
+    value.version !== 7 ||
     value.bookId !== bookId ||
     value.contentVersion !== contentVersion ||
     typeof value.extractedAt !== "string" ||
@@ -135,6 +138,14 @@ export function parseBookTextRecord(value: unknown, bookId: string, contentVersi
         (chapter.title === undefined || typeof chapter.title === "string") &&
         (chapter.hrefs === undefined || strings(chapter.hrefs)),
     )
+  )
+    return null;
+  if (
+    value.outline !== undefined &&
+    (!Array.isArray(value.outline) ||
+      !value.outline.every(
+        (entry) => object(entry) && typeof entry.label === "string" && typeof entry.href === "string",
+      ))
   )
     return null;
   if (

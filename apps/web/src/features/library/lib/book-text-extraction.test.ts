@@ -3,6 +3,7 @@ import { JSDOM } from "jsdom";
 import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { extractBookText } from "./book-text-extraction";
 import { parseBookTextRecord } from "./book-text-record";
+import { buildChapterMap } from "../../../../foliate-js/src/chapter-map";
 
 function book(html: string[], toc: FoliateBook["toc"]): FoliateBook {
   return {
@@ -17,11 +18,12 @@ function book(html: string[], toc: FoliateBook["toc"]): FoliateBook {
     },
   } as FoliateBook;
 }
-const extract = (source: FoliateBook) =>
+const extract = async (source: FoliateBook) =>
   extractBookText(source, {
     bookId: "b",
     contentVersion: "sha256:test",
     prior: null,
+    chapters: await buildChapterMap(source),
     signal: new AbortController().signal,
     yieldToReader: async () => {},
     save: async () => {},
@@ -52,7 +54,7 @@ test("TOC chapters cut within a file and continue across files, without previous
   ]);
   expect(record.chapters[2]!.hrefs).toEqual(["s0.html#five", "s1.html"]);
   expect(parseBookTextRecord(record, "b", "sha256:test")).not.toBeNull();
-  expect(parseBookTextRecord({ ...record, version: 5 }, "b", "sha256:test")).toBeNull();
+  expect(parseBookTextRecord({ ...record, version: 6 }, "b", "sha256:test")).toBeNull();
 });
 
 test("href-less volume names disambiguate repeated numbering; nested TOC entries are aliases", async () => {
@@ -106,4 +108,22 @@ test("an end-of-file chapter anchor belongs only to the chapter continuing in th
   expect(record.chapters.map((c) => c.text)).toEqual(["A第一章。", "第二章续文。"]);
   expect(record.chapters[0]!.hrefs).not.toContain("s0.html#b");
   expect(record.chapters[1]!.hrefs).toEqual(["s0.html#b", "s1.html"]);
+});
+
+test("a paged book without an outline recovers chapters and an outline from its page headings", async () => {
+  const pages = ["封面", "第 1 章 醒悟\n孰主孰仆。", "继续醒悟。", "12\n第 2 章 现实\n速成绝不可能。"];
+  const source = {
+    toc: [],
+    sections: pages.map((text, index) => ({ id: `page:${index + 1}`, getText: async () => text })),
+    resolveHref: (href: string) => ({ index: (JSON.parse(href) as number[])[0]! }),
+  } as unknown as FoliateBook;
+  const record = await extract(source);
+  expect(record.outline).toEqual([
+    { label: "第 1 章 醒悟", href: "[1]" },
+    { label: "第 2 章 现实", href: "[3]" },
+  ]);
+  expect(record.chapters.map((chapter) => chapter.title)).toEqual(["Page 1", "第 1 章 醒悟", "第 2 章 现实"]);
+  expect(record.chapters[2]!.text).toBe("第 2 章 现实 速成绝不可能。");
+  expect(parseBookTextRecord(record, "b", "sha256:test")).not.toBeNull();
+  expect(parseBookTextRecord({ ...record, outline: [{ label: 1 }] }, "b", "sha256:test")).toBeNull();
 });

@@ -57,6 +57,7 @@ import type { LibraryBook } from "../features/library/lib/library-types";
 import { observeLibraryInvalidation } from "./projection-invalidation";
 import {
   ensureBookTextExtracted,
+  getPersistedBookOutline,
   getPersistedBookText,
   getBookTextSnapshot,
   createBookTextTaskOwner,
@@ -90,6 +91,11 @@ export async function getExtractedChapters(bookId: string, origin?: DomainActor)
 
 export async function getPersistedChapters(bookId: string): Promise<ExtractedChapter[] | null> {
   return getPersistedBookText(bookId);
+}
+
+/** The outline a paged book's text extraction recovered from its page headings, if any. */
+export async function getRecoveredOutline(bookId: string): Promise<{ label: string; href: string }[] | null> {
+  return getPersistedBookOutline(bookId);
 }
 
 export type LibraryQueries = {

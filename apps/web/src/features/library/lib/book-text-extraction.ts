@@ -1,6 +1,7 @@
 import { AppError, errorCode, type BookTextSnapshot } from "@read-aware/core";
-import type { FoliateBook } from "../../reader/lib/foliate-engine";
-import { readerChapterBlock, readerChapterEntries } from "../../reader/lib/reader-document-layout";
+import { detectPageHeadings } from "./page-headings";
+import type { ChapterMap, FoliateBook } from "../../reader/lib/foliate-engine";
+import { readerChapterBlock } from "../../reader/lib/reader-document-layout";
 import type { ResolvedNavigation } from "../../../../foliate-js/src/book";
 import {
   sectionsComplete,
@@ -14,6 +15,8 @@ type ExtractionOptions = {
   bookId: string;
   contentVersion: string;
   prior: BookTextRecord | null;
+  /** The book's chapter map (`chapterMapFor`): the reader's chapters are the text's chapters. */
+  chapters: ChapterMap;
   signal: AbortSignal;
   yieldToReader(): Promise<void>;
   readSection?(read: () => Promise<string>): Promise<string>;
@@ -54,19 +57,30 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
       },
       ...(failures.size ? { errorCode: failures.values().next().value } : {}),
     });
+  // Every TOC target becomes an anchor into the text; the chapter map's starts
+  // cut it into chapters. Targets in skipped (non-linear) sections are dropped.
+  const place = (index: number, href: string) => `${index}\n${href}`;
+  const chapterTitles = new Map(
+    options.chapters.chapters.map((chapter) => [place(chapter.target.index, chapter.href), chapter.title]),
+  );
   const targets = new Map<number, { href: string; title?: string; start: boolean; target: ResolvedNavigation }[]>();
-  for (const entry of readerChapterEntries(book.toc ?? [])) {
-    for (const href of [entry.href, ...entry.aliases]) {
-      signal.throwIfAborted();
-      const target = await book.resolveHref?.(href);
-      if (!target || !required.includes(target.index)) continue;
-      const group = targets.get(target.index) ?? [];
-      group.push({ href, title: entry.title, start: href === entry.href, target });
-      targets.set(target.index, group);
-    }
+  for (const entry of options.chapters.entries) {
+    if (!required.includes(entry.target.index)) continue;
+    const key = place(entry.target.index, entry.href);
+    const start = chapterTitles.has(key);
+    const group = targets.get(entry.target.index) ?? [];
+    group.push({
+      href: entry.href,
+      title: start ? chapterTitles.get(key) || undefined : undefined,
+      start,
+      target: entry.target,
+    });
+    targets.set(entry.target.index, group);
+    // One TOC entry per place starts its chapter; a duplicate stays an anchor.
+    chapterTitles.delete(key);
   }
   const record = (): BookTextRecord => ({
-    version: 6,
+    version: 7,
     bookId,
     contentVersion,
     extractedAt: new Date().toISOString(),
@@ -156,10 +170,10 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
   // Partial chapters could renumber subsequent chapter references on retry.
   // Do not publish them into Agent/digest/index consumers before completion.
   if (sectionsComplete(result)) {
-    result.chapters = mergeTextChapters(
-      result,
-      sections.some((section) => typeof section.getText === "function"),
-    );
+    const pageText = sections.some((section) => typeof section.getText === "function");
+    // A paged book without an outline: recover one from its page headings.
+    if (pageText && !options.chapters.entries.length) applyPageHeadings(result);
+    result.chapters = mergeTextChapters(result, pageText);
     result.finalized = true;
   }
   await options.save(result);
@@ -168,8 +182,27 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
   return result;
 }
 
-/** Logical chapters follow TOC starts across spine files. A spine boundary is
- * never a chapter boundary when a navigable TOC exists. */
+/** Chapter starts and a navigable outline from headings found on the pages. PDF hrefs are
+ * explicit destinations: `[pageIndex]`. */
+function applyPageHeadings(record: BookTextRecord): void {
+  const pages: string[] = Array.from({ length: record.sectionCount }, () => "");
+  for (const piece of record.pieces) pages[piece.sectionIndex] = piece.text;
+  const headings = detectPageHeadings(pages);
+  if (!headings.length) return;
+  const pieces = new Map(record.pieces.map((piece) => [piece.sectionIndex, piece]));
+  record.outline = [];
+  for (const { page, offset, label } of headings) {
+    const piece = pieces.get(page);
+    if (!piece) continue;
+    const href = JSON.stringify([page]);
+    piece.starts.push({ offset, href, title: label });
+    piece.anchors.push({ offset, href });
+    record.outline.push({ label, href });
+  }
+}
+
+/** Logical chapters follow the chapter map's starts across spine files. A spine
+ * boundary is never a chapter boundary when a navigable TOC exists. */
 function mergeTextChapters(record: BookTextRecord, pageText: boolean): ExtractedChapter[] {
   const chapters: ExtractedChapter[] = [];
   const hasToc = record.pieces.some((piece) => piece.starts.length > 0);

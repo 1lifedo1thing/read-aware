@@ -1,52 +1,22 @@
-import type { Book, ResolvedNavigation, TOCItem } from "../../../../foliate-js/src/book";
-import { createLogger } from "../../../platform/logger";
+import type { Book, ResolvedNavigation } from "../../../../foliate-js/src/book";
+import type { ChapterMap } from "../../../../foliate-js/src/chapter-map";
 
-const log = createLogger("reader-document-layout");
 const chapterBlocks = "h1, h2, h3, h4, h5, h6, p, section, article, div";
 type ChapterStarts = ReadonlyMap<number, readonly ResolvedNavigation[]>;
-
-/** Href-less groups contribute their name, not a boundary. Nested sections stay
- * in their enclosing chapter, matching the reader's continuous scroll surface. */
-export function readerChapterEntries(
-  items: readonly TOCItem[],
-  parents: string[] = [],
-): { href: string; title?: string; aliases: string[] }[] {
-  const hrefs = (items: readonly TOCItem[]): string[] =>
-    items.flatMap((item) => [...(item.href ? [item.href] : []), ...hrefs(item.subitems ?? [])]);
-  return items.flatMap((item) => {
-    const path = [...parents, ...(item.label?.trim() ? [item.label.trim()] : [])];
-    return item.href
-      ? [{ href: item.href, title: path.join(" › ") || undefined, aliases: hrefs(item.subitems ?? []) }]
-      : readerChapterEntries(item.subitems ?? [], path);
-  });
-}
 
 export function readerChapterBlock(target: Node): Element | null {
   const element = target.nodeType === 1 ? (target as Element) : target.parentElement;
   return element?.closest(chapterBlocks) ?? element;
 }
 
-/** Navigation already resolves publisher anchors; use those same targets for
- * presentation, without splitting files or changing persisted CFI node paths. */
-export async function prepareReaderChapterStarts(book: Book): Promise<ChapterStarts> {
+/** The chapter map's starts, grouped by spine section for the paginator. Zero
+ * (and an omitted anchor) means the start of a source document; it is kept, or
+ * unrelated chapters merge into one ever-growing scroll view. Fixed layouts
+ * have pages, not chapter windows. */
+export function readerChapterStarts(book: Pick<Book, "rendition">, map: ChapterMap): ChapterStarts {
   const starts = new Map<number, ResolvedNavigation[]>();
-  if (book.rendition?.layout === "pre-paginated" || !book.resolveHref) return starts;
-  // A nested subsection is not a new chapter. Href-less grouping labels do not
-  // consume a level, so their chapter children still get boundaries.
-  const targets = await Promise.all(
-    [...new Set(readerChapterEntries(book.toc ?? []).map((entry) => entry.href))].map(async (href) => {
-      try {
-        return await book.resolveHref!(href);
-      } catch (error) {
-        log.warn("Could not resolve chapter boundary", { href, error });
-        return null;
-      }
-    }),
-  );
-  for (const target of targets) {
-    // Zero (and an omitted anchor) means the start of a source document.
-    // Dropping it merges unrelated chapters into one ever-growing scroll view.
-    if (!target || !book.sections[target.index]) continue;
+  if (book.rendition?.layout === "pre-paginated") return starts;
+  for (const { target } of map.chapters) {
     const group = starts.get(target.index) ?? [];
     group.push(target);
     starts.set(target.index, group);

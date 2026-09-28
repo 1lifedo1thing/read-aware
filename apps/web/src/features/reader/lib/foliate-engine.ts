@@ -7,6 +7,7 @@ import type { Book as FoliateBook, LanguageMap as FoliateLanguageMap } from "../
 import type { View as FoliateView, Renderer as FoliateRenderer } from "../../../../foliate-js/src/view";
 import type { EngineAPI } from "../../../../foliate-js/src/engine-api";
 import type { DrawFunction } from "../../../../foliate-js/src/overlayer";
+import { buildChapterMap, type ChapterMap } from "../../../../foliate-js/src/chapter-map";
 
 export type { FoliateBook, FoliateLanguageMap, FoliateView, FoliateRenderer };
 export type {
@@ -34,6 +35,7 @@ export type {
 } from "../../../../foliate-js/src/footnotes";
 import type { FootnoteHandler as FoliateFootnoteHandler } from "../../../../foliate-js/src/footnotes";
 export type { Overlayer as FoliateOverlayer } from "../../../../foliate-js/src/overlayer";
+export type { ChapterMap, ChapterMapEntry } from "../../../../foliate-js/src/chapter-map";
 export type FoliateHighlightFn = DrawFunction;
 export type FoliateDrawFns = Pick<EngineAPI["Overlayer"], "highlight" | "underline">;
 const FOLIATE_BASE = "/foliate-js";
@@ -108,6 +110,26 @@ export async function loadDrawFns(): Promise<FoliateDrawFns> {
 /** Parse a book file into a foliate book object (auto-detects the format). */
 export async function makeFoliateBook(file: BookFileSource): Promise<FoliateBook> {
   return (await loadEngine()).makeBook(file);
+}
+
+const chapterMaps = new WeakMap<FoliateBook, Promise<ChapterMap>>();
+
+/**
+ * The book's chapters (see `foliate-js/src/chapter-map.ts`), computed once per
+ * parsed book so the reader and the text extractor share one answer. Call it
+ * after `ensureUsableToc`: the map reads the repaired navigation. The module is
+ * a pure function over the parsed book, so it is imported directly rather than
+ * through the engine loader, which exists for the DOM/worker runtime.
+ */
+export function chapterMapFor(book: FoliateBook): Promise<ChapterMap> {
+  let map = chapterMaps.get(book);
+  if (!map) {
+    map = buildChapterMap(book);
+    chapterMaps.set(book, map);
+    // A failed build must not be served to the next caller.
+    map.catch(() => chapterMaps.delete(book));
+  }
+  return map;
 }
 
 /** Create a fresh `<foliate-view>` element (engine modules are loaded first). */

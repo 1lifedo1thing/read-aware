@@ -4,6 +4,7 @@ import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { BookTextRepository, type TextSource } from "./book-text-repository";
 import { parseBookTextRecord, type BookTextRecord } from "./book-text-record";
 import { actorCause, causalActor, reactionActor, type DomainActor } from "../../../platform/domain-actor";
+import { buildChapterMap } from "../../../../foliate-js/src/chapter-map";
 
 function deferred<T = void>() {
   let resolve!: (value: T) => void;
@@ -49,7 +50,7 @@ function harness(book = makeBook([async () => prose])) {
     content: async (_id, _version, signal, read) => {
       parses++;
       signals.push(signal);
-      return read(book);
+      return read(book, await buildChapterMap(book));
     },
     yieldToReader: async () => {},
     warn: (_message, error) => {
@@ -567,15 +568,15 @@ test("shared extraction inherits live consumer priority and cancellation downgra
     remove: async () => {},
     warn: () => {},
     yieldToReader: async () => {},
-    content: async (id, _version, _signal, read) =>
-      read(
-        makeBook([
-          async () => {
-            entered.push(id);
-            return gates.get(id)!.promise;
-          },
-        ]),
-      ),
+    content: async (id, _version, _signal, read) => {
+      const book = makeBook([
+        async () => {
+          entered.push(id);
+          return gates.get(id)!.promise;
+        },
+      ]);
+      return read(book, await buildChapterMap(book));
+    },
   });
   const requests: Promise<unknown>[] = [];
   const start = (id: string, priority: "normal" | "background", signal?: AbortSignal) => {

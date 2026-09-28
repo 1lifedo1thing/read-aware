@@ -19,7 +19,7 @@ import { AppError, CHAPTER_DIGEST_VERSION } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import type { ChapterDigest, DigestCharacter, DigestFlavor, DigestRelation } from "../ports";
 
-/** v3 invalidates digests attached to the former spine-based chapter coordinates. */
+/** Digests from an earlier chapter coordinate scheme are stale (see CHAPTER_DIGEST_VERSION). */
 export const DIGEST_VERSION = CHAPTER_DIGEST_VERSION;
 
 /** 交给 fast 模型的单章正文上限（超长章节截断——纪要不需要每个字）。 */

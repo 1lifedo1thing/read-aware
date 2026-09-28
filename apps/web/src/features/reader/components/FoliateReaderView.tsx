@@ -30,6 +30,7 @@ import { relocateDismissesShell } from "../lib/shell-dismissal";
 import type { LoadedBook, ReadingCursor, TocEntry } from "../lib/reader-types";
 import { retainBook } from "../lib/book-lifetime";
 import {
+  chapterMapFor,
   createFoliateView,
   createFootnoteHandler,
   isFixedLayout as isFixedLayoutBook,
@@ -92,6 +93,7 @@ import { restoreReadingPosition } from "../lib/restore-reading-position";
 import { buildVirtualFoliateBook } from "../lib/virtual-book";
 import { resolveContentProvider } from "../../plugins/lib/virtual-books";
 import { readingRuntime } from "../../../domain/reading-runtime";
+import { getRecoveredOutline } from "../../../domain/library";
 import { useReferencePreview } from "../hooks/useReferencePreview";
 import { attachReadingEngine, waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
@@ -122,11 +124,7 @@ import { detectBookLanguage } from "../lib/book-language";
 import { rememberReaderBookLanguage } from "../../settings/lib/reader-languages";
 import { getReaderPreferences, readerPreferencesForLanguage } from "../../settings/lib/reader-settings";
 import { getReaderOverrides } from "../../settings/lib/reader-overrides";
-import {
-  prepareReaderChapterStarts,
-  markReaderChapterStarts,
-  normalizeReaderTextSizes,
-} from "../lib/reader-document-layout";
+import { readerChapterStarts, markReaderChapterStarts, normalizeReaderTextSizes } from "../lib/reader-document-layout";
 import { framePointAnchorInRoot, measureSectionToRoot, visibleFrameRectInRoot } from "../lib/frame-geometry";
 import type { ReaderEngineSession } from "../lib/reader-engine-session";
 import { useReaderEngineSession } from "../hooks/useReaderEngineSession";
@@ -2087,6 +2085,17 @@ export function FoliateReaderView({
         }
         if (!releaseBook) retainParsedBook(parsedBook);
         if (session.closed) return;
+        // A paged book without an outline gets the one its text extraction
+        // recovered from page headings — before the view builds TOC progress
+        // and the chapter map reads it.
+        if (selectedBook && isFixedLayoutBook(parsedBook) && !parsedBook.toc?.length) {
+          const outline = await getRecoveredOutline(selectedBook.id).catch((error: unknown) => {
+            log.warn("Recovered outline unavailable", error);
+            return null;
+          });
+          if (session.closed) return;
+          if (outline?.length) parsedBook.toc = outline.map(({ label, href }) => ({ label, href }));
+        }
         if (selectedBook && !isFixedLayoutBook(parsedBook)) {
           const language = await detectBookLanguage(parsedBook);
           if (session.closed) return;
@@ -2119,7 +2128,7 @@ export function FoliateReaderView({
               initialBook.virtual?.key,
             ),
           );
-        const chapterStarts = await prepareReaderChapterStarts(parsedBook);
+        const chapterStarts = readerChapterStarts(parsedBook, await chapterMapFor(parsedBook));
         if (session.closed) return;
         if (selectedBook)
           // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
