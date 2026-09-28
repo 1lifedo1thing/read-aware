@@ -23,6 +23,7 @@ import { runMediaRegressions } from "./foliate-media-regressions";
 import { runMOBIRegressions } from "./foliate-mobi-regressions";
 import { runPaginatorRegressions } from "./foliate-paginator-regressions";
 import { runPDFRegressions } from "./foliate-pdf-regressions";
+import { runFitRegressions } from "./foliate-fit-regressions";
 import { runFoliateRegressions } from "./foliate-regressions";
 import { runScrollChapterRegressions } from "./foliate-scroll-chapter-regressions";
 import { runViewRegressions } from "./foliate-view-regressions";
@@ -77,6 +78,7 @@ async function run(report: RuntimeReport): Promise<void> {
     ["chapter", () => runChapterRegressions(view.View)],
     ["scroll-chapter", () => runScrollChapterRegressions(view.View)],
     ["document-layout", () => runDocumentLayoutRegressions(view.View)],
+    ["fit", () => runFitRegressions(view.View)],
   ];
   for (const [suite, execute] of suites) {
     setStatus(`Running ${suite}…`);

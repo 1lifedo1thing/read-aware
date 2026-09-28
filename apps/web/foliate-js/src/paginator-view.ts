@@ -3,6 +3,7 @@ import { getDirection, getBackground, setStylesImportant } from "./paginator-geo
 import { imageBlockSpacing, isImageOnlyDocument } from "./paginator-media.js";
 import type { Anchor, ResolvedNavigation } from "./book.js";
 import { ChapterRanges } from "./paginator-chapters.js";
+import { fitWideContent, flowBody } from "./paginator-fit.js";
 
 export type Layout = {
   width: number;
@@ -32,6 +33,8 @@ export class SectionView {
   #destroyed = false;
   #cancelLoad: (() => void) | undefined;
   #chapters: ChapterRanges | undefined;
+  /** The document this view finished loading; until then the iframe's may be a half-parsed one. */
+  #loaded: Document | null = null;
   // Source geometry stays independent of the visible chapter's extent.
   // contentSize excludes padding; fullSize includes the reader's margins.
   #contentSize = 0;
@@ -78,8 +81,10 @@ export class SectionView {
   get element() {
     return this.#element;
   }
+  /** The loaded section document; null while the iframe still holds a half-parsed or earlier one. */
   get document() {
-    return this.#iframe.contentDocument;
+    const doc = this.#iframe.contentDocument;
+    return doc && doc === this.#loaded ? doc : null;
   }
   get ready() {
     return !this.#destroyed && this.#layout !== undefined;
@@ -102,8 +107,10 @@ export class SectionView {
       };
       const onLoad = () => {
         try {
-          const doc = this.document;
+          const doc = this.#iframe.contentDocument;
           if (!doc) throw new Error("Page document is inaccessible");
+          if (!doc.body) throw new Error("Page document has no body");
+          this.#loaded = doc;
           doc.documentElement.toggleAttribute("data-foliate-image-page", isImageOnlyDocument(doc));
           afterLoad?.(doc);
           this.#chapters = new ChapterRanges(doc, this.chapterStarts);
@@ -143,9 +150,10 @@ export class SectionView {
   }
   render(layout: Layout | undefined) {
     if (!layout) return;
-    // READAWARE: a view whose iframe has no document yet (still loading)
-    // or no longer (torn down while the next book opens) has nothing to
-    // lay out; the load path renders once the document exists.
+    // READAWARE: a view whose document is not loaded yet (the iframe may
+    // hold a half-parsed document without a body while a resize arrives)
+    // or no longer (torn down while the next book opens) has nothing to lay
+    // out; the load path renders once its document is complete.
     if (this.#destroyed || !this.document) return;
     this.#column = layout.flow !== "scrolled";
     this.#layout = layout;
@@ -156,6 +164,7 @@ export class SectionView {
     const vertical = this.#vertical;
     const doc = this.document;
     if (!doc) return;
+    flowBody(doc);
     setStylesImportant(doc.documentElement, {
       "box-sizing": "border-box",
       padding: vertical ? `${gap}px 0` : `0 ${gap}px`,
@@ -168,6 +177,7 @@ export class SectionView {
       margin: "auto",
     });
     this.setImageSize();
+    fitWideContent(doc);
     this.expand();
   }
   columnize({ width, height, gap, columnWidth }: Layout) {
@@ -177,6 +187,7 @@ export class SectionView {
     const doc = this.document;
     if (!doc) return;
     this.#element.style.margin = "0";
+    flowBody(doc);
     setStylesImportant(doc.documentElement, {
       "box-sizing": "border-box",
       "column-width": `${Math.trunc(columnWidth)}px`,
@@ -204,6 +215,7 @@ export class SectionView {
       margin: "0",
     });
     this.setImageSize();
+    fitWideContent(doc);
     this.expand();
   }
   setImageSize() {
@@ -237,6 +249,8 @@ export class SectionView {
   refreshStyles() {
     if (this.#destroyed) return;
     this.setImageSize();
+    const doc = this.document;
+    if (doc && this.#layout) fitWideContent(doc);
     this.expand();
   }
   get contentOffset() {
