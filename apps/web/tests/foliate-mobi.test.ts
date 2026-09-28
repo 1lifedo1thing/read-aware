@@ -131,3 +131,77 @@ test.each([true, false])(
     })();
   },
 );
+
+test("KF8 reads any text range from the records that hold it, and from the ends when records are irregular", () =>
+  withDom(async () => {
+    for (const shortRecord of [undefined, 3]) {
+      const { file, raw } = makeKF8Fixture({ recordSize: 16, shortRecord });
+      const book = await new MOBI({ unzlib: unzlibSync }).open(file);
+      if (!(book instanceof KF8)) throw new Error("Expected KF8 parser");
+      try {
+        if (shortRecord === undefined) {
+          const read: number[] = [];
+          const loadText = book.mobi.loadText.bind(book.mobi);
+          book.mobi.loadText = (index: number) => {
+            read.push(index);
+            return loadText(index);
+          };
+          // Only the records holding the range, plus the last one that proves the records are uniform.
+          expect(await book.loadRaw(50, 60)).toEqual(raw.slice(50, 60));
+          expect(read.sort((a, b) => a - b)).toEqual([3, Math.ceil(raw.length / 16) - 1]);
+          for (const [start, end] of [
+            [0, 5],
+            [15, 17],
+            [40, 90],
+            [raw.length - 7, raw.length],
+          ] as const)
+            expect(await book.loadRaw(start, end)).toEqual(raw.slice(start, end));
+          expect(await book.loadRaw(30, 30)).toEqual(new Uint8Array());
+        } else {
+          // A short record makes offsets unreliable: the book is read sequentially, exactly as stored.
+          const stored = joinBytes(
+            ...Array.from({ length: Math.ceil(raw.length / 16) }, (_, index) =>
+              index === shortRecord ? raw.slice(index * 16, index * 16 + 15) : raw.slice(index * 16, index * 16 + 16),
+            ),
+          );
+          expect(await book.loadRaw(0, 40)).toEqual(stored.slice(0, 40));
+        }
+      } finally {
+        book.destroy();
+      }
+    }
+  }));
+
+test("KF8 without an FDST record reads its single flow and sections", () =>
+  withDom(async () => {
+    const { file, raw } = makeKF8Fixture({ fdst: false, recordSize: 32 });
+    const warnings: unknown[] = [];
+    const warn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+      const book = await new MOBI({ unzlib: unzlibSync }).open(file);
+      if (!(book instanceof KF8)) throw new Error("Expected KF8 parser");
+      try {
+        expect(await book.loadFlow(0)).toEqual(raw);
+        const doc = await book.sections[0].createDocument!();
+        expect(doc.querySelector("#chapter")?.textContent).toBe("Hello KF8 中文");
+      } finally {
+        book.destroy();
+      }
+    } finally {
+      console.warn = warn;
+    }
+    expect(warnings).toEqual([]);
+  }));
+
+test("KF8 index strings survive stray bytes after the last CNCX string", () =>
+  withDom(async () => {
+    const book = await new MOBI({ unzlib: unzlibSync }).open(makeKF8Fixture({ cncxGarbage: true }).file);
+    if (!(book instanceof KF8)) throw new Error("Expected KF8 parser");
+    try {
+      const doc = await book.sections[0].createDocument!();
+      expect(doc.querySelector("#chapter")?.textContent).toBe("Hello KF8 中文");
+    } finally {
+      book.destroy();
+    }
+  }));

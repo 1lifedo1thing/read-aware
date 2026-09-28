@@ -64,6 +64,11 @@ const tagValue = (tags: IndexEntry["tagMap"], tag: number, index = 0): number =>
   return value;
 };
 
+/** Header value meaning "this record does not exist". */
+const NO_RECORD = 0xffffffff;
+/** Decompressed text records kept for random access (4 KiB each). */
+const MAX_CACHED_RECORDS = 2048;
+
 export class KF8 implements Book {
   sections: BookSection[] = [];
   toc: TOCItem[] | undefined;
@@ -81,6 +86,7 @@ export class KF8 implements Book {
   #fragmentSelectors = new Map<number, Map<number, string | undefined>>();
   #flows: Array<[number, number]> | undefined;
   #sections: KF8Section[] = [];
+  #sectionByFID = new Map<number, number>();
   #fullRawLength: number | undefined;
   #rawHead = new Uint8Array();
   #rawTail = new Uint8Array();
@@ -91,6 +97,9 @@ export class KF8 implements Book {
   #urls = new Set<string>();
   #closed = false;
   #rawQueue = Promise.resolve();
+  /** Whether text records can be addressed by offset (undefined until checked). */
+  #randomAccess: boolean | undefined;
+  #records = new Map<number, Uint8Array>();
   constructor(readonly mobi: MOBI) {}
   get #header() {
     const header = this.mobi.headers.kf8;
@@ -101,21 +110,30 @@ export class KF8 implements Book {
     const loadRecord = this.mobi.loadRecord.bind(this.mobi);
     const kf8 = this.#header;
 
-    try {
-      const fdstBuffer = await loadRecord(kf8.fdst);
-      const fdst = getStruct(FDST_HEADER, fdstBuffer);
-      if (fdst.magic !== "FDST") throw new Error("Missing FDST record");
-      const fdstTable = Array.from({ length: fdst.numEntries }, (_, i) => 12 + i * 8).map(
-        (offset): [number, number] => [
-          getUint(fdstBuffer.slice(offset, offset + 4)),
-          getUint(fdstBuffer.slice(offset + 4, offset + 8)),
-        ],
-      );
-      this.#flows = fdstTable;
-      this.#fullRawLength = fdstTable.at(-1)?.[1];
-    } catch (error) {
-      console.warn("KF8 flow index unavailable; reading text from the beginning", error);
-    }
+    // READAWARE: 0xFFFFFFFF declares that there is no FDST record: the text
+    // is a single flow, as long as the PalmDOC header says the text is.
+    const { textLength } = this.mobi.headers.palmdoc;
+    if (kf8.fdst === NO_RECORD) {
+      if (textLength > 0) {
+        this.#flows = [[0, textLength]];
+        this.#fullRawLength = textLength;
+      }
+    } else
+      try {
+        const fdstBuffer = await loadRecord(kf8.fdst);
+        const fdst = getStruct(FDST_HEADER, fdstBuffer);
+        if (fdst.magic !== "FDST") throw new Error("Missing FDST record");
+        const fdstTable = Array.from({ length: fdst.numEntries }, (_, i) => 12 + i * 8).map(
+          (offset): [number, number] => [
+            getUint(fdstBuffer.slice(offset, offset + 4)),
+            getUint(fdstBuffer.slice(offset + 4, offset + 8)),
+          ],
+        );
+        this.#flows = fdstTable;
+        this.#fullRawLength = fdstTable.at(-1)?.[1];
+      } catch (error) {
+        console.warn("KF8 flow index unavailable; reading text from the beginning", error);
+      }
 
     const skelTable = (await getIndexData(kf8.skel, loadRecord)).table.map(({ name, tagMap }, index) => ({
       index,
@@ -133,15 +151,21 @@ export class KF8 implements Book {
       length: tagValue(tagMap, 6, 1),
     }));
 
-    this.#sections = skelTable.reduce<KF8Section[]>((arr, skel) => {
-      const last = arr[arr.length - 1];
+    this.#sections = [];
+    for (const skel of skelTable) {
+      const last = this.#sections.at(-1);
       const fragStart = last?.fragEnd ?? 0,
         fragEnd = fragStart + skel.numFrag;
       const frags = fragTable.slice(fragStart, fragEnd);
       const length = skel.length + frags.map((f) => f.length).reduce((a, b) => a + b, 0);
       const totalLength = (last?.totalLength ?? 0) + length;
-      return arr.concat({ skel, frags, fragEnd, length, totalLength });
-    }, []);
+      this.#sections.push({ skel, frags, fragEnd, length, totalLength });
+    }
+    // READAWARE: every TOC entry and link resolves a fragment id to its
+    // section; a scan per lookup was quadratic in large bundles.
+    for (const [index, section] of this.#sections.entries())
+      for (const frag of section.frags)
+        if (!this.#sectionByFID.has(frag.index)) this.#sectionByFID.set(frag.index, index);
 
     const resources = await this.getResourcesByMagic(["RESC", "PAGE"]);
     const pageSpreads = new Map<number, string | undefined>();
@@ -315,6 +339,11 @@ export class KF8 implements Book {
       (this.#fullRawLength != null && end > this.#fullRawLength)
     )
       throw new Error("Invalid KF8 text range");
+    if (end === start) return new Uint8Array();
+    if (await this.#canAddressRecords()) {
+      const text = await this.#loadRecordRange(start, end);
+      if (text) return text;
+    }
     // here we load either from the front or back until we have reached the
     // required offsets; at worst you'd have to load half the book at once
     const distanceHead = end - this.#rawHead.length;
@@ -343,6 +372,57 @@ export class KF8 implements Book {
     }
     const rawTailStart = this.#fullRawLength - this.#rawTail.length;
     return this.#rawTail.slice(start - rawTailStart, end - rawTailStart);
+  }
+  // READAWARE: random access to text. Every text record but the last holds
+  // exactly `recordSize` decompressed bytes in books written to the format,
+  // which puts offset n in record floor(n / recordSize). That is trusted only
+  // when the last record completes the known text length exactly, and each
+  // record is checked again as it loads; any mismatch returns to sequential
+  // reading from the ends.
+  async #canAddressRecords(): Promise<boolean> {
+    if (this.#randomAccess !== undefined) return this.#randomAccess;
+    const { numTextRecords, recordSize } = this.mobi.headers.palmdoc;
+    const total = this.#fullRawLength;
+    this.#randomAccess = false;
+    if (total == null || !recordSize || !numTextRecords) return false;
+    const last = await this.#textRecord(numTextRecords - 1);
+    this.#randomAccess =
+      last.length > 0 && last.length <= recordSize && total === (numTextRecords - 1) * recordSize + last.length;
+    return this.#randomAccess;
+  }
+  async #textRecord(index: number): Promise<Uint8Array> {
+    const cached = this.#records.get(index);
+    if (cached) {
+      this.#records.delete(index);
+      this.#records.set(index, cached);
+      return cached;
+    }
+    const data = await this.mobi.loadText(index);
+    if (this.#closed) throw new Error("KF8 was closed");
+    this.#records.set(index, data);
+    if (this.#records.size > MAX_CACHED_RECORDS) this.#records.delete(this.#records.keys().next().value!);
+    return data;
+  }
+  async #loadRecordRange(start: number, end: number): Promise<Uint8Array<ArrayBuffer> | null> {
+    const { numTextRecords, recordSize } = this.mobi.headers.palmdoc;
+    const first = Math.floor(start / recordSize),
+      last = Math.floor((end - 1) / recordSize);
+    const out = new Uint8Array(end - start);
+    for (let index = first; index <= last; index++) {
+      const data = await this.#textRecord(index);
+      const expected = index < numTextRecords - 1 ? recordSize : this.#fullRawLength! - index * recordSize;
+      if (data.length !== expected) {
+        console.warn("KF8 text records are not uniformly sized; reading text sequentially");
+        this.#randomAccess = false;
+        this.#records.clear();
+        return null;
+      }
+      const base = index * recordSize;
+      const from = Math.max(start, base) - base,
+        to = Math.min(end, base + recordSize) - base;
+      out.set(data.subarray(from, to), base + from - start);
+    }
+    return out;
   }
   loadFlow(index: number) {
     const range = this.#flows?.[index];
@@ -403,7 +483,7 @@ export class KF8 implements Book {
     return url;
   }
   getIndexByFID(fid: number) {
-    return this.#sections.findIndex((section) => section.frags.some((frag) => frag.index === fid));
+    return this.#sectionByFID.get(fid) ?? -1;
   }
   #setFragmentSelector(id: number, offset: number, selector: string | undefined) {
     const map = this.#fragmentSelectors.get(id);
@@ -465,5 +545,6 @@ export class KF8 implements Book {
     this.#fragmentSelectors.clear();
     this.#rawHead = new Uint8Array();
     this.#rawTail = new Uint8Array();
+    this.#records.clear();
   }
 }

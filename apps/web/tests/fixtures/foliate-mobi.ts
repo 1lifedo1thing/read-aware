@@ -76,7 +76,19 @@ const header = (
   compression: 1 | 2,
   encrypted: boolean,
   rawLength: number,
-  { trailingFlags = 0, kf8Boundary }: { trailingFlags?: number; kf8Boundary?: number } = {},
+  {
+    trailingFlags = 0,
+    kf8Boundary,
+    numTextRecords = 1,
+    recordSize = 4096,
+    kf8 = { fdst: 2, skel: 3, frag: 5 },
+  }: {
+    trailingFlags?: number;
+    kf8Boundary?: number;
+    numTextRecords?: number;
+    recordSize?: number;
+    kf8?: { fdst: number; skel: number; frag: number };
+  } = {},
 ) => {
   const size = version === 8 ? 264 : 248,
     title = encoder.encode("Fallback title");
@@ -101,19 +113,11 @@ const header = (
     size,
   );
   bytes.set(
-    writeStruct(
-      PALMDOC_HEADER,
-      { compression, numTextRecords: 1, recordSize: 4096, encryption: encrypted ? 2 : 0 },
-      16,
-    ),
+    writeStruct(PALMDOC_HEADER, { compression, numTextRecords, recordSize, encryption: encrypted ? 2 : 0 }, 16),
   );
   new DataView(bytes.buffer).setUint32(4, rawLength);
   if (version === 8) {
-    const fields = writeStruct(
-      KF8_HEADER,
-      { resourceStart, fdst: 2, numFdst: 2, skel: 3, frag: 5, guide: 0xffffffff },
-      264,
-    );
+    const fields = writeStruct(KF8_HEADER, { resourceStart, ...kf8, numFdst: 2, guide: 0xffffffff }, 264);
     for (const [offset, length] of Object.values(KF8_HEADER)) bytes.set(fields.slice(offset, offset + length), offset);
   }
   return joinBytes(bytes, metadata, title);
@@ -172,7 +176,12 @@ export const makeMOBI6Fixture = ({
   };
 };
 
-const indexRecords = (name: string, tags: Array<[number, number[]]>, cncx?: string): Uint8Array[] => {
+const indexRecords = (
+  name: string,
+  tags: Array<[number, number[]]>,
+  cncx?: string,
+  cncxGarbage = false,
+): Uint8Array[] => {
   const specs = tags.map(([tag, values], index) => Uint8Array.of(tag, values.length, 1 << index, 0));
   const tagx = joinBytes(
     writeStruct(TAGX_HEADER, { magic: "TAGX", length: 12 + specs.length * 4, numControlBytes: 1 }, 12),
@@ -206,15 +215,35 @@ const indexRecords = (name: string, tags: Array<[number, number[]]>, cncx?: stri
   if (cncx == null) return [main, data];
   const text = encoder.encode(cncx),
     strings = joinBytes(variableInteger(text.length), text);
-  return [main, data, joinBytes(strings, new Uint8Array(4 - (strings.length % 4)))];
+  // Some writers leave stray bytes of an unfinished string after the last one.
+  const tail = cncxGarbage ? Uint8Array.of(0, 76, 0, 101) : new Uint8Array(4 - (strings.length % 4));
+  return [main, data, joinBytes(strings, tail)];
 };
 
-export const makeKF8Fixture = () => {
+/**
+ * `recordSize` splits the text into records of that many bytes (the last one
+ * shorter); `shortRecord` makes one non-final record a byte short, as a
+ * malformed book would; `fdst: false` declares no FDST record (0xFFFFFFFF);
+ * `cncxGarbage` ends the CNCX string table with stray bytes.
+ */
+export const makeKF8Fixture = ({
+  recordSize = 4096,
+  shortRecord,
+  fdst: withFdst = true,
+  cncxGarbage = false,
+}: {
+  recordSize?: number;
+  shortRecord?: number;
+  fdst?: boolean;
+  cncxGarbage?: boolean;
+} = {}) => {
+  // Without an FDST the text is a single flow, so there is no stylesheet flow to link.
+  const stylesheet = withFdst ? '<link rel="stylesheet" href="kindle:flow:0001?mime=text/css"/>' : "";
   const skeleton = encoder.encode(
-    '<html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" href="kindle:flow:0001?mime=text/css"/></head><body></body></html>',
+    `<html xmlns="http://www.w3.org/1999/xhtml"><head>${stylesheet}</head><body></body></html>`,
   );
   const fragment = encoder.encode('<p id="chapter">Hello KF8 中文</p><img src="kindle:embed:0001?mime=image/png"/>');
-  const css = encoder.encode("p { color: rgb(23, 45, 67); }");
+  const css = withFdst ? encoder.encode("p { color: rgb(23, 45, 67); }") : new Uint8Array();
   const raw = joinBytes(skeleton, fragment, css);
   const htmlEnd = skeleton.length + fragment.length;
   const insert = new TextDecoder().decode(skeleton).indexOf("</body>");
@@ -225,29 +254,45 @@ export const makeKF8Fixture = () => {
     uint32(htmlEnd),
     uint32(raw.length),
   );
+  const text: Uint8Array[] = [];
+  for (let offset = 0; offset < raw.length; offset += recordSize) {
+    const record = raw.slice(offset, offset + recordSize);
+    text.push(text.length === shortRecord ? record.slice(0, -1) : record);
+  }
+  const fdstIndex = 1 + text.length;
+  const skel = fdstIndex + (withFdst ? 1 : 0);
+  const records = [
+    ...text,
+    ...(withFdst ? [fdst] : []),
+    ...indexRecords("skeleton", [
+      [1, [1]],
+      [6, [0, skeleton.length]],
+    ]),
+    ...indexRecords(
+      String(insert),
+      [
+        [2, [0]],
+        [4, [0]],
+        [6, [0, fragment.length]],
+      ],
+      "chapter",
+      cncxGarbage,
+    ),
+    image,
+  ];
   return {
     file: pack(
       [
-        header(8, 8, 1, false, raw.length),
-        raw,
-        fdst,
-        ...indexRecords("skeleton", [
-          [1, [1]],
-          [6, [0, skeleton.length]],
-        ]),
-        ...indexRecords(
-          String(insert),
-          [
-            [2, [0]],
-            [4, [0]],
-            [6, [0, fragment.length]],
-          ],
-          "chapter",
-        ),
-        image,
+        header(8, records.length, 1, false, raw.length, {
+          numTextRecords: text.length,
+          recordSize,
+          kf8: { fdst: withFdst ? fdstIndex : 0xffffffff, skel, frag: skel + 2 },
+        }),
+        ...records,
       ],
       "fixture.azw3",
     ),
     raw,
+    htmlEnd,
   };
 };

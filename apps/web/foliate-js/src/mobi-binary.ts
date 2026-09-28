@@ -15,6 +15,8 @@ export const PDB_HEADER = {
 
 export const PALMDOC_HEADER = {
   compression: [0, 2, "uint"],
+  /** Uncompressed length of all text records. */
+  textLength: [4, 4, "uint"],
   numTextRecords: [8, 2, "uint"],
   recordSize: [10, 2, "uint"],
   encryption: [12, 2, "uint"],
@@ -326,6 +328,18 @@ export const getStruct = <T extends StructDefinition>(def: T, buffer: ArrayBuffe
 
 export const getDecoder = (encoding: number) => new TextDecoder(MOBI_ENCODING[encoding]);
 
+/** Like `getVarLen`, but `null` where no complete value starts at `i`. */
+export const readVarLen = (byteArray: Uint8Array, i = 0): { value: number; length: number } | null => {
+  let value = 0,
+    length = 0;
+  for (const byte of byteArray.subarray(i, i + 4)) {
+    value = (value << 7) | ((byte & 0b111_1111) >>> 0);
+    length++;
+    if (byte & 0b1000_0000) return { value, length };
+  }
+  return null;
+};
+
 export const getVarLen = (byteArray: Uint8Array, i = 0) => {
   let value = 0,
     length = 0;
@@ -500,10 +514,14 @@ export const getIndexData = async (indxIndex: number, loadRecord: LoadRecord) =>
     const record = await loadRecord(indxIndex + indx.numRecords + i + 1);
     const array = new Uint8Array(record);
     for (let pos = 0; pos < array.byteLength; ) {
-      // CNCX records may end in zero alignment padding, not a string.
-      if (array[pos] === 0 && array.subarray(pos).every((byte) => byte === 0)) break;
+      // A CNCX record ends where no complete string fits: zero alignment
+      // padding, or — from some writers — stray bytes of a string that was
+      // never finished. Strings are addressed by offset; none point there.
+      const entry = readVarLen(array, pos);
+      if (!entry || (array[pos] === 0 && array.subarray(pos).every((byte) => byte === 0))) break;
+      const { value, length } = entry;
+      if (pos + length + value > array.byteLength) break;
       const index = pos;
-      const { value, length } = getVarLen(array, pos);
       pos += length;
       const result = record.slice(pos, pos + value);
       pos += value;
@@ -596,12 +614,20 @@ export const getNCX = async (indxIndex: number, loadRecord: LoadRecord): Promise
     firstChild: tagMap[22]?.[0],
     lastChild: tagMap[23]?.[0],
   }));
-  const getChildren = (item: NCXItem, parents: number[] = []): NCXItem => {
-    if (parents.includes(item.index)) throw new Error("Cyclic MOBI navigation index");
+  // READAWARE: index children by parent once; filtering the whole table per
+  // entry was quadratic, seconds for a 26 000-entry bundle.
+  const byParent = new Map<number, NCXItem[]>();
+  for (const item of items) {
+    if (item.parent == null) continue;
+    const siblings = byParent.get(item.parent);
+    if (siblings) siblings.push(item);
+    else byParent.set(item.parent, [item]);
+  }
+  const getChildren = (item: NCXItem, parents: ReadonlySet<number> = new Set()): NCXItem => {
+    if (parents.has(item.index)) throw new Error("Cyclic MOBI navigation index");
     if (item.firstChild == null) return item;
-    item.children = items
-      .filter((x) => x.parent === item.index)
-      .map((child) => getChildren(child, [...parents, item.index]));
+    const path = new Set(parents).add(item.index);
+    item.children = (byParent.get(item.index) ?? []).map((child) => getChildren(child, path));
     return item;
   };
   return items.filter((item) => item.headingLevel === 0).map((item) => getChildren(item));
