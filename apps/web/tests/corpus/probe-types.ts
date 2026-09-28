@@ -41,18 +41,18 @@ export type TocSummary = {
   emptyLabels: number;
   unresolved: number;
   unresolvedSamples: string[];
-  /** Top-level entries: the chapters the reader and the text extractor split by. */
+  /** Chapters of the chapter map: what the reader and the text extractor split by. */
   chapterEntries: number;
-  /** Chapter entries whose target is not a linear spine section (skipped by text extraction). */
-  nonLinear: number;
-  outOfOrder: string[];
+  /** Deepest TOC level the chapter map took chapters from. */
+  chapterDepth: number;
+  mapMs: number;
+  /** Differently numbered chapters that open the same section. */
   collapsed: string[][];
-  spilled: { label: string; outside: number; children: number; examples: string[] }[];
   labelChecked: number;
   labelMatched: number;
   /** Targets that open with a picture (image heading, title-page scan): not checkable against text. */
   labelPictured: number;
-  /** Nested TOC entries under each chapter entry, which chapter separation ignores. */
+  /** TOC entries inside each chapter's range: finer structure the chapter still holds. */
   chapterNested: { title: string; nested: number }[];
   mismatches: LabelMismatch[];
   ms: number;
@@ -69,6 +69,8 @@ export type ChapterSummary = {
   failureCodes: string[];
   chars: number;
   chapters: { title: string; chars: number }[];
+  /** Entries of the outline recovered from page headings (paged books without one). */
+  recoveredOutline: number;
   ms: number;
   slowestSectionMs: number;
   error: string | null;
@@ -76,7 +78,17 @@ export type ChapterSummary = {
 
 export type RenderTarget = { label: string; target: string | number; index: number };
 
-export type Overflow = { tag: string; width: number; limit: number };
+export type Overflow = {
+  tag: string;
+  width: number;
+  limit: number;
+  /** Diagnostics: why it cannot wrap or shrink. */
+  whiteSpace: string;
+  cssWidth: string;
+  /** display / position / min-width / float / marker the engine's fit left, for diagnosis. */
+  layout: string;
+  text: string;
+};
 
 export type RenderSample = {
   mode: string;

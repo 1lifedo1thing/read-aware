@@ -23,6 +23,7 @@ import { extractBookText } from "../../src/features/library/lib/book-text-extrac
 import { snapshotFromText, type BookTextRecord } from "../../src/features/library/lib/book-text-record";
 import { formatFromName } from "../../src/features/library/lib/import-format";
 import {
+  chapterMapFor,
   createFoliateView,
   foliateTitle,
   isFixedLayout,
@@ -36,8 +37,7 @@ import { parseBookFile } from "../../src/features/reader/lib/parse-book";
 import {
   markReaderChapterStarts,
   normalizeReaderTextSizes,
-  prepareReaderChapterStarts,
-  readerChapterEntries,
+  readerChapterStarts,
 } from "../../src/features/reader/lib/reader-document-layout";
 import { ensureUsableToc } from "../../src/features/reader/lib/toc-synthesis";
 import {
@@ -52,7 +52,7 @@ import {
   type ReadingMode,
 } from "../../src/features/settings/lib/reader-settings";
 import { resolveReaderPalette } from "../../src/features/settings/lib/reader-theme";
-import { chapterStructure, isCheckableLabel, labelMatches, type ChapterLayout, type Position } from "./chapter-checks";
+import { isCheckableLabel, labelMatches, NUMBERED_CHAPTER } from "./chapter-checks";
 import type {
   ChapterSummary,
   CorpusProbeApi,
@@ -81,7 +81,7 @@ let format: string | null = null;
 let view: FoliateView | null = null;
 let fixedLayout = false;
 let mode: ReadingMode = DEFAULT_READER_SETTINGS.readingMode;
-let chapterStarts: Awaited<ReturnType<typeof prepareReaderChapterStarts>> = new Map();
+let chapterStarts: ReturnType<typeof readerChapterStarts> = new Map();
 let sourceToc: { entries: number; depth: number } = { entries: 0, depth: 0 };
 
 const message = (error: unknown) => (error instanceof Error ? `${error.name}: ${error.message}` : String(error));
@@ -191,22 +191,6 @@ function anchorIn(target: FoliateResolved, doc: Document) {
   return (typeof target.anchor === "function" ? target.anchor(doc) : target.anchor) ?? null;
 }
 
-/** Characters from the section start to the target; 0 for a section start. */
-async function offsetOf(target: FoliateResolved, docs: SectionDocuments): Promise<number> {
-  if (target.anchor == null || target.anchor === 0) return 0;
-  const doc = await docs.get(target.index);
-  if (!doc?.body) return typeof target.anchor === "number" ? Math.round(target.anchor * 1e6) : 0;
-  const anchor = anchorIn(target, doc);
-  if (anchor == null) return 0;
-  const before = doc.createRange();
-  before.selectNodeContents(doc.body);
-  if (typeof anchor === "number") return Math.round(anchor * before.toString().length);
-  if ("startContainer" in anchor) before.setEnd(anchor.startContainer, anchor.startOffset);
-  else if (anchor === doc.body || anchor === doc.documentElement) return 0;
-  else before.setEndBefore(anchor);
-  return before.toString().length;
-}
-
 /**
  * The text a reader sees at the target — from the anchor on, or the whole page for page-text
  * sections — and whether it opens with a picture instead (an image heading or a title-page
@@ -255,83 +239,69 @@ async function toc(): Promise<TocSummary> {
   const repaired = tocShape(parsed.toc ?? []);
   const repair = !changed ? "none" : repaired.entries > sourceToc.entries ? "synthesized" : "relocated";
 
-  const resolveCache = new Map<string, Promise<FoliateResolved | null>>();
-  const resolve = (href: string) => {
-    let target = resolveCache.get(href);
-    if (!target) {
-      target = Promise.resolve()
-        .then(() => parsed.resolveHref?.(href))
-        .then((resolved) => (resolved && parsed.sections[resolved.index] ? resolved : null))
-        // A throwing resolver is an unresolvable entry, which the caller counts and reports.
-        .catch(() => null);
-      resolveCache.set(href, target);
-    }
-    return target;
-  };
   const labels = new Map<string, string>();
+  const hrefs: string[] = [];
   let emptyLabels = 0;
   const walk = (items: readonly FoliateTocItem[]) => {
     for (const item of items) {
       if (!item.label?.trim()) emptyLabels++;
-      else if (item.href && !labels.has(item.href)) labels.set(item.href, item.label.trim());
+      if (item.href) {
+        hrefs.push(item.href);
+        if (item.label?.trim() && !labels.has(item.href)) labels.set(item.href, item.label.trim());
+      }
       walk(item.subitems ?? []);
     }
   };
   walk(parsed.toc ?? []);
 
-  const entries = readerChapterEntries(parsed.toc ?? []);
-  const allHrefs = [...new Set(entries.flatMap((entry) => [entry.href, ...entry.aliases]))];
-  const unresolvedSamples: string[] = [];
-  let unresolved = 0;
-  for (const href of allHrefs)
-    if (!(await resolve(href))) {
-      unresolved++;
-      if (unresolvedSamples.length < 5) unresolvedSamples.push(`${labels.get(href) ?? ""} → ${href}`);
-    }
+  const mapStarted = performance.now();
+  const map = await chapterMapFor(parsed);
+  const mapMs = performance.now() - mapStarted;
+  const resolved = new Set(map.entries.map((entry) => entry.href));
+  const unresolvedHrefs = [...new Set(hrefs)].filter((href) => !resolved.has(href));
 
-  // Positions matter only where a chapter starts; other sections compare by index alone.
-  const docs = new SectionDocuments(parsed);
-  const startIndexes = new Set<number>();
-  for (const entry of entries) {
-    const target = await resolve(entry.href);
-    if (target) startIndexes.add(target.index);
+  // Differently numbered chapters opening one section: navigating to the later ones lands on the first.
+  const byStart = new Map<number, Set<string>>();
+  for (const entry of map.entries) {
+    const label = labels.get(entry.href);
+    if (!label || !NUMBERED_CHAPTER.test(label)) continue;
+    if (entry.target.anchor != null && entry.target.anchor !== 0) continue;
+    const group = byStart.get(entry.target.index) ?? new Set<string>();
+    group.add(label);
+    byStart.set(entry.target.index, group);
   }
-  const position = async (target: FoliateResolved): Promise<Position> => ({
-    index: target.index,
-    offset: startIndexes.has(target.index) ? await offsetOf(target, docs) : 0,
+  const collapsed = [...byStart.values()].filter((group) => group.size > 1).map((group) => [...group]);
+
+  // TOC entries inside each chapter: how much finer structure a long chapter still holds.
+  const chapterNested = map.chapters.map((chapter, index) => {
+    const next = map.chapters[index + 1];
+    const inside = map.entries.filter(
+      (entry) =>
+        entry.target.index >= chapter.target.index &&
+        (!next || entry.target.index < next.target.index) &&
+        entry.href !== chapter.href,
+    ).length;
+    return { title: chapter.title, nested: inside };
   });
-  const layouts: ChapterLayout[] = [];
-  let nonLinear = 0;
-  for (const entry of entries) {
-    const start = await resolve(entry.href);
-    if (start && parsed.sections[start.index]!.linear === "no") nonLinear++;
-    const children: ChapterLayout["children"] = [];
-    for (const alias of entry.aliases) {
-      const target = await resolve(alias);
-      if (target) children.push({ ...(await position(target)), label: labels.get(alias) ?? alias });
-    }
-    layouts.push({ label: entry.title ?? entry.href, start: start ? await position(start) : null, children });
-  }
-  const structure = chapterStructure(layouts);
 
+  const docs = new SectionDocuments(parsed);
   let labelChecked = 0,
     labelMatched = 0,
     labelPictured = 0;
   const mismatches: LabelMismatch[] = [];
-  const nested = entries.flatMap((entry) => entry.aliases);
+  const chapterHrefs = new Set(map.chapters.map((chapter) => chapter.href));
   const sample = [
+    ...evenly(map.chapters, LABEL_SAMPLE_CHAPTERS),
     ...evenly(
-      entries.map((entry) => entry.href),
-      LABEL_SAMPLE_CHAPTERS,
+      map.entries.filter((entry) => !chapterHrefs.has(entry.href)),
+      LABEL_SAMPLE_NESTED,
     ),
-    ...evenly(nested, LABEL_SAMPLE_NESTED),
   ];
-  for (const href of sample) {
-    const label = labels.get(href);
-    const target = await resolve(href);
-    if (!label || !target || !isCheckableLabel(label)) continue;
+  for (const entry of sample) {
+    const label = labels.get(entry.href);
+    if (!label || !isCheckableLabel(label)) continue;
     // A target that cannot be read counts as a mismatch: the reader lands on nothing.
-    const { text: found, pictured } = await textAt(target, docs).catch(() => ({ text: "", pictured: false }));
+    const { text: found, pictured } = await textAt(entry.target, docs).catch(() => ({ text: "", pictured: false }));
     if (pictured) {
       labelPictured++;
       continue;
@@ -348,16 +318,17 @@ async function toc(): Promise<TocSummary> {
     repair,
     repairMs,
     emptyLabels,
-    unresolved,
-    unresolvedSamples,
-    chapterEntries: entries.length,
-    nonLinear,
-    ...structure,
+    unresolved: unresolvedHrefs.length,
+    unresolvedSamples: unresolvedHrefs.slice(0, 5).map((href) => `${labels.get(href) ?? ""} → ${href}`),
+    chapterEntries: map.chapters.length,
+    chapterDepth: Math.max(0, ...map.chapters.map((chapter) => chapter.depth)),
+    mapMs,
+    collapsed,
     labelChecked,
     labelMatched,
     labelPictured,
     mismatches,
-    chapterNested: entries.slice(0, 2000).map((entry) => ({ title: entry.title ?? "", nested: entry.aliases.length })),
+    chapterNested: chapterNested.slice(0, 5000),
     ms: performance.now() - started,
   };
 }
@@ -374,6 +345,7 @@ async function chapters(budgetMs: number): Promise<ChapterSummary> {
       bookId: "corpus-probe",
       contentVersion: "corpus-probe",
       prior: null,
+      chapters: await chapterMapFor(opened()),
       signal: controller.signal,
       yieldToReader: async () => {},
       readSection: async (read) => {
@@ -406,6 +378,7 @@ async function chapters(budgetMs: number): Promise<ChapterSummary> {
     failed: record?.failures.length ?? 0,
     failureCodes: [...new Set(record?.failures.map((failure) => failure.code) ?? [])],
     chars: (record?.pieces ?? []).reduce((total, piece) => total + nonWhitespace(piece.text), 0),
+    recoveredOutline: record?.outline?.length ?? 0,
     chapters: (record?.chapters ?? []).map((chapter) => ({
       title: chapter.title ?? "",
       chars: nonWhitespace(chapter.text),
@@ -435,7 +408,7 @@ async function prepareRender(requested?: string): Promise<RenderSetup> {
       view.remove();
       view = null;
     }
-    chapterStarts = await prepareReaderChapterStarts(parsed);
+    chapterStarts = readerChapterStarts(parsed, await chapterMapFor(parsed));
     const stage = document.getElementById("stage")!;
     const next = await createFoliateView();
     next.style.cssText = "display:block;width:100%;height:100%";
@@ -483,17 +456,8 @@ async function prepareRender(requested?: string): Promise<RenderSetup> {
 async function renderTargets(parsed: FoliateBook): Promise<RenderTarget[]> {
   const linear = parsed.sections.flatMap((section, index) => (section.linear === "no" ? [] : [index]));
   const targets: RenderTarget[] = [];
-  for (const entry of readerChapterEntries(parsed.toc ?? []).slice(0, 3)) {
-    try {
-      const resolved = await parsed.resolveHref?.(entry.href);
-      if (resolved && parsed.sections[resolved.index]) {
-        targets.push({ label: "第一章", target: entry.href, index: resolved.index });
-        break;
-      }
-    } catch {
-      // An unresolvable entry is counted by the TOC step; try the next one.
-    }
-  }
+  const first = (await chapterMapFor(parsed)).chapters[0];
+  if (first) targets.push({ label: "第一章", target: first.href, index: first.target.index });
   if (!targets.length && linear.length) targets.push({ label: "开头", target: linear[0]!, index: linear[0]! });
   for (const [label, fraction] of [
     ["25%", 0.25],
@@ -526,29 +490,59 @@ async function settleImages(doc: Document): Promise<HTMLImageElement[]> {
   return images;
 }
 
-/** Outermost elements wider than the text column; their descendants are not reported again. */
+/**
+ * Outermost elements that leave their column: in paginated flow, a fragment reaching across the
+ * column gap into the neighbouring column (a hanging indent into the gap is fine); in scrolled
+ * flow, content past the document's width. Descendants of a reported element are not reported.
+ */
 function findOverflows(doc: Document, scrolled: boolean): Overflow[] {
   const win = doc.defaultView;
   if (!win || !doc.body) return [];
   const html = doc.documentElement;
   if (win.getComputedStyle(html).writingMode.startsWith("vertical")) return [];
-  const limit = scrolled
-    ? doc.body.getBoundingClientRect().width
-    : parseFloat(html.style.getPropertyValue("column-width")) || html.getBoundingClientRect().width;
+  const gap = parseFloat(html.style.getPropertyValue("column-gap")) || 0;
+  // The body's fragments are the columns as laid out: `column-width` is only the ideal width.
+  const columns = [...doc.body.getClientRects()];
+  const column = Math.max(0, ...columns.map((rect) => rect.width));
+  const leaves = (rect: DOMRect) => {
+    if (scrolled) return rect.right > html.clientWidth + 1 || rect.left < -1;
+    const overlap = (box: DOMRect) => Math.min(rect.right, box.right) - Math.max(rect.left, box.left);
+    const box = columns.reduce<DOMRect | undefined>(
+      (best, next) => (!best || overlap(next) > overlap(best) ? next : best),
+      undefined,
+    );
+    // Hanging indents and marginal speaker names sit in the gap by design; only
+    // reaching into the neighbouring column's text is a defect.
+    return !!box && (rect.left < box.left - gap - 1 || rect.right > box.right + gap + 1);
+  };
   const overflows: Overflow[] = [];
   const flagged: Element[] = [];
   let seen = 0;
   for (const element of doc.body.querySelectorAll("*")) {
     if (++seen > MAX_OVERFLOW_ELEMENTS) break;
     if (flagged.some((ancestor) => ancestor.contains(element))) continue;
-    // Per fragment: an element broken across columns has one client rect per column,
-    // and its bounding box spans them all.
-    let width = 0;
-    for (const rect of element.getClientRects()) width = Math.max(width, rect.width);
-    if (width <= limit + 2) continue;
+    const rects = [...element.getClientRects()];
+    if (!rects.some(leaves)) continue;
     flagged.push(element);
-    if (overflows.length < 5)
-      overflows.push({ tag: element.tagName.toLowerCase(), width: Math.round(width), limit: Math.round(limit) });
+    if (overflows.length < 5) {
+      const style = win.getComputedStyle(element);
+      overflows.push({
+        tag: element.tagName.toLowerCase(),
+        width: Math.round(Math.max(...rects.map((rect) => rect.width))),
+        limit: Math.round(scrolled ? html.clientWidth : column),
+        whiteSpace: style.whiteSpace,
+        cssWidth: (element as HTMLElement).style?.width || style.width,
+        layout: [
+          style.display,
+          style.position,
+          `min-width:${style.minWidth}`,
+          `max-width:${style.maxWidth}`,
+          `float:${style.float}`,
+          `fit:${element.getAttribute("data-foliate-fit") ?? "-"}`,
+        ].join(" "),
+        text: (element.textContent ?? "").replace(/\s+/gu, " ").trim().slice(0, 60),
+      });
+    }
   }
   return overflows;
 }

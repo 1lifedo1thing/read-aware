@@ -59,15 +59,13 @@ export const FINDING_LABELS: Record<string, string> = {
   "toc/none": "没有目录",
   "toc/unresolved": "目录项无法跳转",
   "toc/repaired": "目录经 app 修复/合成",
+  "toc/recovered": "目录从页首标题恢复",
   "toc/empty-labels": "目录项没有标题",
-  "chapters/single-root": "目录只有一个顶层节点，整本书成了一章",
-  "chapters/out-of-order": "章节入口顺序颠倒",
-  "chapters/spilled": "子目录落在别的章节里，章节边界错位",
-  "chapters/collapsed": "多个章节指向同一位置",
-  "chapters/collapsed-front": "前后相邻的目录项指向同一处",
+  "chapters/single": "有目录却只分出一章",
+  "chapters/collapsed": "多个编号章节指向同一位置",
   "chapters/label-mismatch": "跳转后看到的不是该章标题",
-  "chapters/top-level-only": "只按顶层目录分章，子目录被忽略",
-  "chapters/oversized": "目录本身只到卷/册一级",
+  "chapters/coarse": "章节过粗，更细的目录没用上",
+  "chapters/oversized": "章节很长，目录本身没有更细的划分",
   "chapters/extraction-failed": "章节文本抽取失败",
   "chapters/extraction-timeout": "章节抽取未在预算内完成",
   "chapters/textless": "没有文字层，无法按文本分章",
@@ -89,17 +87,10 @@ export const FINDING_LABELS: Record<string, string> = {
 const SEVERITY_RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 /** `read_chapter` windows a chapter into parts of this many characters (packages/agent book-text-tools). */
 const CHAPTER_PART_CHARS = 12_000;
-const NUMBERED_CHAPTER = /第\s*[0-9一二三四五六七八九十百零〇两]+\s*[章回节]|^chapter\s+\S+|^\d+$/iu;
 
 const percent = (value: number) => `${(value * 100).toFixed(value < 0.1 ? 1 : 0)}%`;
 export const seconds = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`);
 const megabytes = (bytes: number) => `${Math.round(bytes / (1 << 20))} MB`;
-const list = (items: string[], limit = 4) =>
-  items
-    .slice(0, limit)
-    .map((item) => `「${item}」`)
-    .join("") + (items.length > limit ? ` 等 ${items.length} 项` : "");
-
 /** Time from opening the view to the first chapter on screen, in the reader's default mode. */
 export function firstPageMs(book: CorpusBook): number | null {
   const setup = book.renders[0];
@@ -131,13 +122,16 @@ export function classifyBook(book: CorpusBook): Finding[] {
   // 1. TOC extraction
   const toc = book.toc;
   if (toc) {
-    if (toc.entries === 0 && summary.linearSections > 1)
+    const recovered = book.chapters?.recoveredOutline ?? 0;
+    if (toc.entries === 0 && recovered > 0)
+      add("toc", "info", "toc/recovered", `书里没有书签，已从页首章标题恢复 ${recovered} 项目录`);
+    else if (toc.entries === 0 && summary.linearSections > 1)
       add(
         "toc",
         "warning",
         "toc/none",
         pdf
-          ? "PDF 没有书签（outline），app 不会为 PDF 合成目录"
+          ? "PDF 没有书签，页首也找不到可识别的章标题"
           : summary.linearSections > 60
             ? `书里没有目录；${summary.linearSections} 个章节文件超过 app 合成目录的上限（60）`
             : "书里没有目录，app 也没能按标题合成",
@@ -165,58 +159,16 @@ export function classifyBook(book: CorpusBook): Finding[] {
 
   // 2. Chapter separation
   const chapters = book.chapters;
-  const structural = new Set<string>();
   if (toc) {
-    if (toc.chapterEntries === 1 && toc.entries >= 4) {
-      structural.add("single-root");
-      add(
-        "chapters",
-        "warning",
-        "chapters/single-root",
-        `顶层只有「${book.chapters?.chapters[0]?.title ?? "1 项"}」，其下 ${toc.entries - 1} 项子目录都不参与分章`,
-      );
-    }
-    if (toc.outOfOrder.length) {
-      structural.add("order");
-      add(
-        "chapters",
-        "error",
-        "chapters/out-of-order",
-        `${toc.outOfOrder.length} 个章节入口早于前一章：${list(toc.outOfOrder)}`,
-      );
-    }
-    if (toc.spilled.length) {
-      structural.add("spill");
-      const outside = toc.spilled.reduce((total, entry) => total + entry.outside, 0);
-      add(
-        "chapters",
-        "error",
-        "chapters/spilled",
-        `${toc.spilled.length} 章共 ${outside} 个子目录项不在本章范围内，正文会被算进别的章：${list(
-          toc.spilled.map((entry) => entry.label),
-        )}。例如「${toc.spilled[0]!.label}」下的 ${toc.spilled[0]!.examples.join("、")}`,
-      );
-    }
-    // Numbered chapters sharing one spot mean navigation lands on the wrong chapter. Other
-    // shared spots are usually a number/title pair or front matter in one file.
-    const numbered = toc.collapsed.filter((group) => group.filter((label) => NUMBERED_CHAPTER.test(label)).length >= 2);
-    if (numbered.length)
+    if (toc.chapterEntries === 1 && toc.entries >= 4)
+      add("chapters", "warning", "chapters/single", `目录有 ${toc.entries} 项，却只分出 1 章`);
+    if (toc.collapsed.length)
       add(
         "chapters",
         "warning",
         "chapters/collapsed",
-        `${numbered.length} 组编号章节落在同一位置，点后面的章会跳到前面那章：${numbered
+        `${toc.collapsed.length} 组编号章节指向同一文件开头，点后面的章会跳到前面那章：${toc.collapsed
           .slice(0, 3)
-          .map((group) => group.join(" / "))
-          .join("；")}`,
-      );
-    else if (toc.collapsed.length)
-      add(
-        "chapters",
-        "info",
-        "chapters/collapsed-front",
-        `${toc.collapsed.length} 组：${toc.collapsed
-          .slice(0, 2)
           .map((group) => group.join(" / "))
           .join("；")}`,
       );
@@ -253,22 +205,16 @@ export function classifyBook(book: CorpusBook): Finding[] {
     const largest = Math.max(0, ...sizes);
     const biggest = chapters.chapters[sizes.indexOf(largest)];
     const parts = Math.ceil(largest / CHAPTER_PART_CHARS);
-    if (parts >= 10 && !structural.size && biggest) {
+    if (parts >= 10 && biggest) {
       const nested = toc?.chapterNested.find((entry) => entry.title === biggest.title)?.nested ?? 0;
-      if (nested > 0)
-        add(
-          "chapters",
-          "warning",
-          "chapters/top-level-only",
-          `「${biggest.title}」被当成一章：${largest.toLocaleString()} 字（Agent 要翻 ${parts} 段），其下 ${nested} 项子目录没有参与分章`,
-        );
-      else
-        add(
-          "chapters",
-          "info",
-          "chapters/oversized",
-          `最长「${biggest.title}」${largest.toLocaleString()} 字，Agent 读一章要翻 ${parts} 段`,
-        );
+      add(
+        "chapters",
+        nested >= 3 ? "warning" : "info",
+        nested >= 3 ? "chapters/coarse" : "chapters/oversized",
+        `最长「${biggest.title}」${largest.toLocaleString()} 字（Agent 要翻 ${parts} 段）${
+          nested >= 3 ? `，其中还有 ${nested} 项更细的目录没有用来分章` : "，目录本身没有更细的划分"
+        }`,
+      );
     }
   }
 
@@ -459,7 +405,7 @@ function bookCard(book: CorpusBook, findings: Finding[]): string {
     ${section(
       "chapters",
       [
-        toc ? metric("章节入口", `${toc.chapterEntries}`) : "",
+        toc ? metric("章节", `${toc.chapterEntries} 个 · 取自第 ${toc.chapterDepth} 层`) : "",
         toc && toc.labelChecked ? metric("标题抽查", `${toc.labelMatched}/${toc.labelChecked}`) : "",
         toc && toc.labelPictured ? metric("图片标题", String(toc.labelPictured)) : "",
         chapters ? metric("抽出章节", `${chapters.chapters.length} 章 · ${chapters.chars.toLocaleString()} 字`) : "",
