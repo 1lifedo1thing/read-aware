@@ -84,9 +84,9 @@ import { useReaderTypography } from "../hooks/useReaderTypography";
 import { useReaderEngineLoadSource } from "../hooks/useReaderEngineLoadSource";
 import { useReaderPagination } from "../hooks/useReaderPagination";
 import { useReaderTextActions } from "../hooks/useReaderTextActions";
-import { computeReaderMaxInlineSize, readerLayoutSpacing } from "../../settings/lib/reader-css";
+import { computeReaderMaxInlineSize, layoutForReadingMode, readerLayoutSpacing } from "../../settings/lib/reader-css";
 import { useReaderPalette } from "../../settings/hooks/useReaderPalette";
-import type { ReaderSettings, ReadingMode } from "../../settings/lib/reader-settings";
+import type { ReaderSettings } from "../../settings/lib/reader-settings";
 import { DEFAULT_READER_SETTINGS } from "../../settings/lib/reader-settings";
 import { restoreReadingPosition } from "../lib/restore-reading-position";
 import { buildVirtualFoliateBook } from "../lib/virtual-book";
@@ -232,22 +232,6 @@ const FIXED_SWIPE_MIN_PX = 60;
 const FIXED_SWIPE_MAX_MS = 600;
 /** Device-local flag: the hold menu's one-time introduction has been shown. */
 const HOLD_MENU_HINT_KEY = "read-aware-hold-menu-hint";
-
-/** Map a reading mode to the foliate renderer's `flow` + column attributes. */
-function layoutForReadingMode(mode: ReadingMode): {
-  flow: "scrolled" | "paginated";
-  maxColumnCount: number;
-} {
-  switch (mode) {
-    case "paginated-single":
-      return { flow: "paginated", maxColumnCount: 1 };
-    case "paginated-double":
-      return { flow: "paginated", maxColumnCount: 2 };
-    case "scroll":
-    default:
-      return { flow: "scrolled", maxColumnCount: 1 };
-  }
-}
 
 /** Effective reduced-motion: the forced app setting (`data-motion="reduced"`) or
  *  the OS preference when motion is left on `system`. */

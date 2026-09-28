@@ -150,6 +150,22 @@ const READER_SPREAD_MARGIN_PRESETS = {
   wide: { gap: "3%", horizontalPadding: "0.75rem" },
 } as const satisfies Record<ReaderPageMargins, { gap: string; horizontalPadding: string }>;
 
+/** Map a reading mode to the foliate renderer's `flow` + column attributes. */
+export function layoutForReadingMode(mode: ReadingMode): {
+  flow: "scrolled" | "paginated";
+  maxColumnCount: number;
+} {
+  switch (mode) {
+    case "paginated-single":
+      return { flow: "paginated", maxColumnCount: 1 };
+    case "paginated-double":
+      return { flow: "paginated", maxColumnCount: 2 };
+    case "scroll":
+    default:
+      return { flow: "scrolled", maxColumnCount: 1 };
+  }
+}
+
 /** Keep the paginator's outer spacing and injected body padding in sync. */
 export function readerLayoutSpacing(margins: ReaderPageMargins, mode: ReadingMode) {
   const spread = mode === "paginated-double";

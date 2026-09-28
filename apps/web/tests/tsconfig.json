@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["./*.ts", "./*.tsx", "./fixtures/**/*.ts", "./helpers/**/*.ts", "./runtime/**/*.ts", "../scripts/**/*.ts", "../src/**/*.d.ts"],
+  "include": ["./*.ts", "./*.tsx", "./fixtures/**/*.ts", "./helpers/**/*.ts", "./runtime/**/*.ts", "./corpus/**/*.ts", "../scripts/**/*.ts", "../src/**/*.d.ts"],
   "references": [{ "path": "../tsconfig.node.json" }]
 }
