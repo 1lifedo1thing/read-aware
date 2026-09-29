@@ -39,7 +39,7 @@ import {
   normalizeReaderTextSizes,
   readerChapterStarts,
 } from "../../src/features/reader/lib/reader-document-layout";
-import { ensureUsableToc } from "../../src/features/reader/lib/toc-synthesis";
+import { ensureUsableToc, navigationState } from "../../src/features/reader/lib/toc-synthesis";
 import {
   buildReaderContentCss,
   computeReaderMaxInlineSize,
@@ -316,6 +316,8 @@ async function toc(): Promise<TocSummary> {
     sourceDepth: sourceToc.depth,
     entries: repaired.entries,
     repair,
+    navigation: navigationState(parsed),
+    shape: outlineShape(parsed.toc ?? []).slice(0, 40),
     repairMs,
     emptyLabels,
     unresolved: unresolvedHrefs.length,
@@ -332,6 +334,15 @@ async function toc(): Promise<TocSummary> {
     ms: performance.now() - started,
   };
 }
+
+type OutlineItem = { label?: string; subitems?: readonly OutlineItem[] | null };
+
+/** An outline as indented lines, for reading its nesting at a glance. */
+const outlineShape = (items: readonly OutlineItem[], depth = 0): string[] =>
+  items.flatMap((item) => [
+    `${"  ".repeat(depth)}${item.label?.trim() ?? ""}`,
+    ...outlineShape(item.subitems ?? [], depth + 1),
+  ]);
 
 async function chapters(budgetMs: number): Promise<ChapterSummary> {
   const started = performance.now();
@@ -379,6 +390,7 @@ async function chapters(budgetMs: number): Promise<ChapterSummary> {
     failureCodes: [...new Set(record?.failures.map((failure) => failure.code) ?? [])],
     chars: (record?.pieces ?? []).reduce((total, piece) => total + nonWhitespace(piece.text), 0),
     recoveredOutline: record?.outline?.length ?? 0,
+    recoveredShape: outlineShape(record?.outline ?? []).slice(0, 40),
     chapters: (record?.chapters ?? []).map((chapter) => ({
       title: chapter.title ?? "",
       chars: nonWhitespace(chapter.text),

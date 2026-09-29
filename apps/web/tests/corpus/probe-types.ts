@@ -37,6 +37,10 @@ export type TocSummary = {
   /** After `ensureUsableToc`: repaired collapsed targets or synthesized missing entries. */
   entries: number;
   repair: "none" | "relocated" | "synthesized";
+  /** What `ensureUsableToc` did: kept, repaired, synthesized now, or deferred to text extraction. */
+  navigation: string;
+  /** The navigation's first entries as an indented outline, to see its shape. */
+  shape: string[];
   repairMs: number;
   emptyLabels: number;
   unresolved: number;
@@ -71,6 +75,8 @@ export type ChapterSummary = {
   chapters: { title: string; chars: number }[];
   /** Entries of the outline recovered from page headings (paged books without one). */
   recoveredOutline: number;
+  /** The rebuilt outline as indented lines (first 40), when navigation was stored. */
+  recoveredShape: string[];
   ms: number;
   slowestSectionMs: number;
   error: string | null;
