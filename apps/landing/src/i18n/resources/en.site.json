@@ -171,6 +171,77 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.5",
+        "date": "2026-09-30",
+        "codename": "Cambria",
+        "summary": "This Cambria patch lets you zoom into PDF and comic pages, lock a zoomed view while you turn pages, and rebuilds the contents of books that barely have one.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Zoom for PDFs and comics",
+                "body": "Pinch on the trackpad or touch screen, or press ⌘= and ⌘− (Ctrl on Windows and Linux). The spot under your fingers stays put, and a zoomed page scrolls in every direction. Reading appearance lets you choose whether 100% fits the page's width or the whole page."
+              },
+              {
+                "title": "One click back to the fit",
+                "body": "The percentage shows while you zoom, and while the reader's controls are up a zoomed page keeps it on screen with a button back to 100%. ⌘0 does the same."
+              },
+              {
+                "title": "Lock a zoomed view",
+                "body": "In single- and two-page modes, lock the view from the zoom indicator or with ⌘L. The wheel, arrow keys and swipes turn pages again, and every page opens on the same part — one column of a research paper, page after page."
+              },
+              {
+                "title": "Contents for books that barely have one",
+                "body": "Book sets whose contents list only their volumes, and PDFs without an outline, get a nested contents list recovered from their headings."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Your place on a zoomed page",
+                "body": "Each book remembers its zoom and where on the page you were reading, so it reopens on the same passage."
+              },
+              {
+                "title": "Sharp at any zoom",
+                "body": "Past the render budget, the part of a PDF page on screen is drawn again at full resolution."
+              },
+              {
+                "title": "Chapter summaries that follow the real chapters",
+                "body": "Chapters are worked out once for the reader and the assistant, so multi-part books and book sets are summarized chapter by chapter."
+              },
+              {
+                "title": "Large Kindle books",
+                "body": "Big or slightly damaged KF8/AZW3 files open reliably, and jumps inside them take milliseconds instead of seconds."
+              },
+              {
+                "title": "Publisher layouts stay in the column",
+                "body": "Covers, code, wide tables and positioned blocks no longer render blank or spill onto the next page."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Missing covers",
+                "body": "EPUB covers named by file path now appear, and a cover that never reached this device is taken again from the book file."
+              },
+              {
+                "title": "Progress bar jumps",
+                "body": "Jumping with the progress bar while a chapter change is still animating no longer gets lost."
+              },
+              {
+                "title": "Old backups",
+                "body": "Backups now use the encrypted archive only; an old v1 JSON backup is recognized and explained instead of reported as a wrong password."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.4",
         "date": "2026-09-25",
         "codename": "Cambria",

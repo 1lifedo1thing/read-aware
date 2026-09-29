@@ -171,6 +171,77 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.5",
+        "date": "2026-09-30",
+        "codename": "Cambria",
+        "summary": "Ce correctif de Cambria permet de zoomer dans les pages des PDF et des bandes dessinées, de verrouiller une vue zoomée pendant que vous tournez les pages, et reconstruit le sommaire des livres qui en ont à peine un.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Le zoom dans les PDF et les bandes dessinées",
+                "body": "Pincez sur le pavé tactile ou l’écran tactile, ou appuyez sur ⌘= et ⌘− (Ctrl sous Windows et Linux). Le point sous vos doigts reste en place, et une page zoomée défile dans toutes les directions. L’apparence de lecture permet de choisir si 100 % s’ajuste à la largeur de la page ou à la page entière."
+              },
+              {
+                "title": "Un clic pour revenir à la vue ajustée",
+                "body": "Le pourcentage s’affiche pendant que vous zoomez, et lorsque les commandes du lecteur sont visibles, une page zoomée le garde à l’écran avec un bouton de retour à 100 %. ⌘0 fait de même."
+              },
+              {
+                "title": "Verrouiller une vue zoomée",
+                "body": "Dans les modes une et deux pages, verrouillez la vue depuis l’indicateur de zoom ou avec ⌘L. La molette, les touches fléchées et les balayages tournent à nouveau les pages, et chaque page s’ouvre sur la même partie — la même colonne d’un article scientifique, page après page."
+              },
+              {
+                "title": "Un sommaire pour les livres qui n’en ont presque pas",
+                "body": "Les intégrales dont le sommaire ne liste que les tomes, et les PDF sans signets, obtiennent un sommaire hiérarchique reconstitué à partir de leurs titres."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Votre position sur une page zoomée",
+                "body": "Chaque livre mémorise son zoom et l’endroit de la page où vous en étiez, et se rouvre ainsi sur le même passage."
+              },
+              {
+                "title": "Net à tout niveau de zoom",
+                "body": "Au-delà du budget de rendu, la partie d’une page de PDF présente à l’écran est redessinée à pleine résolution."
+              },
+              {
+                "title": "Des résumés de chapitres qui suivent les vrais chapitres",
+                "body": "Les chapitres sont déterminés une seule fois pour le lecteur et l’assistant ; les livres en plusieurs parties et les intégrales sont ainsi résumés chapitre par chapitre."
+              },
+              {
+                "title": "Les livres Kindle volumineux",
+                "body": "Les fichiers KF8/AZW3 volumineux ou légèrement endommagés s’ouvrent de manière fiable, et les sauts à l’intérieur prennent des millisecondes au lieu de secondes."
+              },
+              {
+                "title": "Les mises en page de l’éditeur restent dans la colonne",
+                "body": "Les couvertures, le code, les tableaux larges et les blocs positionnés ne s’affichent plus vides et ne débordent plus sur la page suivante."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Les couvertures manquantes",
+                "body": "Les couvertures d’EPUB désignées par leur chemin de fichier apparaissent désormais, et une couverture qui n’est jamais parvenue jusqu’à cet appareil est reprise depuis le fichier du livre."
+              },
+              {
+                "title": "Les sauts avec la barre de progression",
+                "body": "Un saut avec la barre de progression pendant qu’un changement de chapitre s’anime encore n’est plus perdu."
+              },
+              {
+                "title": "Les anciennes sauvegardes",
+                "body": "Les sauvegardes utilisent désormais uniquement l’archive chiffrée ; une ancienne sauvegarde JSON v1 est reconnue et expliquée, au lieu d’être signalée comme un mot de passe erroné."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.4",
         "date": "2026-09-25",
         "codename": "Cambria",

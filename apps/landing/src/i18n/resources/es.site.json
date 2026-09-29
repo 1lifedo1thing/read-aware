@@ -171,6 +171,77 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.5",
+        "date": "2026-09-30",
+        "codename": "Cambria",
+        "summary": "Este parche de Cambria permite hacer zoom en las páginas de PDF y de cómics, bloquear una vista ampliada mientras pasas las páginas y reconstruye el índice de los libros que apenas tienen uno.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Zoom en PDF y cómics",
+                "body": "Pellizca en el trackpad o la pantalla táctil, o pulsa ⌘= y ⌘− (Ctrl en Windows y Linux). El punto bajo tus dedos se queda fijo, y una página ampliada se desplaza en todas las direcciones. La apariencia de lectura permite elegir si el 100% se ajusta al ancho de la página o a la página completa."
+              },
+              {
+                "title": "Un clic para volver al ajuste",
+                "body": "El porcentaje se muestra mientras haces zoom y, con los controles del lector a la vista, una página ampliada lo mantiene en pantalla con un botón para volver al 100%. ⌘0 hace lo mismo."
+              },
+              {
+                "title": "Bloquear una vista ampliada",
+                "body": "En los modos de una y dos páginas, bloquea la vista desde el indicador de zoom o con ⌘L. La rueda, las flechas y los deslizamientos vuelven a pasar páginas, y cada página se abre en la misma parte — la misma columna de un artículo académico, página tras página."
+              },
+              {
+                "title": "Índice para los libros que apenas tienen uno",
+                "body": "Las colecciones de libros cuyo índice solo enumera sus volúmenes, y los PDF sin esquema, obtienen un índice anidado recuperado a partir de sus encabezados."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Tu lugar en una página ampliada",
+                "body": "Cada libro recuerda su zoom y en qué parte de la página estabas leyendo, de modo que se vuelve a abrir en el mismo pasaje."
+              },
+              {
+                "title": "Nítido a cualquier zoom",
+                "body": "Superado el presupuesto de renderizado, la parte de la página de PDF que está en pantalla se vuelve a dibujar a resolución completa."
+              },
+              {
+                "title": "Resúmenes de capítulos que siguen los capítulos reales",
+                "body": "Los capítulos se calculan una sola vez para el lector y el asistente, de modo que los libros de varias partes y las colecciones se resumen capítulo a capítulo."
+              },
+              {
+                "title": "Libros de Kindle grandes",
+                "body": "Los archivos KF8/AZW3 grandes o ligeramente dañados se abren de forma fiable, y los saltos dentro de ellos tardan milisegundos en lugar de segundos."
+              },
+              {
+                "title": "Las maquetaciones de la editorial se quedan en la columna",
+                "body": "Las portadas, el código, las tablas anchas y los bloques posicionados ya no aparecen en blanco ni se desbordan hacia la página siguiente."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Portadas que faltan",
+                "body": "Las portadas de EPUB indicadas por ruta de archivo ahora aparecen, y una portada que nunca llegó a este dispositivo se extrae de nuevo del archivo del libro."
+              },
+              {
+                "title": "Saltos con la barra de progreso",
+                "body": "Un salto con la barra de progreso mientras un cambio de capítulo sigue animándose ya no se pierde."
+              },
+              {
+                "title": "Copias de seguridad antiguas",
+                "body": "Las copias de seguridad usan ahora únicamente el archivo cifrado; una copia antigua en JSON v1 se reconoce y se explica en lugar de informar de una contraseña incorrecta."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.4",
         "date": "2026-09-25",
         "codename": "Cambria",

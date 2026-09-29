@@ -171,6 +171,77 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.5",
+        "date": "2026-09-30",
+        "codename": "Cambria",
+        "summary": "Dieser Cambria-Patch lässt dich in PDF- und Comic-Seiten hineinzoomen, eine vergrößerte Ansicht beim Umblättern sperren und stellt Inhaltsverzeichnisse für Bücher wieder her, die kaum eines haben.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Zoom für PDFs und Comics",
+                "body": "Ziehe auf dem Trackpad oder Touchscreen zusammen oder auseinander, oder drücke ⌘= und ⌘− (Strg unter Windows und Linux). Die Stelle unter deinen Fingern bleibt, wo sie ist, und eine vergrößerte Seite lässt sich in alle Richtungen scrollen. Im Erscheinungsbild wählst du, ob 100 % die Seitenbreite oder die ganze Seite füllen."
+              },
+              {
+                "title": "Mit einem Klick zurück zum Einpassen",
+                "body": "Beim Zoomen wird der Prozentsatz angezeigt, und solange die Bedienelemente des Readers offen sind, behält eine vergrößerte Seite ihn mit einer Schaltfläche zurück auf 100 % auf dem Bildschirm. ⌘0 macht dasselbe."
+              },
+              {
+                "title": "Eine vergrößerte Ansicht sperren",
+                "body": "Sperre im Ein- und Zweiseitenmodus die Ansicht über die Zoomanzeige oder mit ⌘L. Mausrad, Pfeiltasten und Wischgesten blättern wieder um, und jede Seite öffnet sich an derselben Stelle — etwa dieselbe Spalte eines Fachartikels, Seite für Seite."
+              },
+              {
+                "title": "Inhaltsverzeichnis für Bücher, die kaum eines haben",
+                "body": "Buchsammlungen, deren Inhaltsverzeichnis nur die Bände auflistet, und PDFs ohne Gliederung erhalten ein verschachteltes Inhaltsverzeichnis, das aus ihren Überschriften rekonstruiert wird."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Deine Stelle auf einer vergrößerten Seite",
+                "body": "Jedes Buch merkt sich seinen Zoom und die Stelle auf der Seite, an der du gelesen hast, und öffnet sich wieder an derselben Textstelle."
+              },
+              {
+                "title": "Scharf bei jeder Zoomstufe",
+                "body": "Überschreitet das Rendern sein Budget, wird der auf dem Bildschirm sichtbare Teil einer PDF-Seite in voller Auflösung neu gezeichnet."
+              },
+              {
+                "title": "Kapitelzusammenfassungen, die den echten Kapiteln folgen",
+                "body": "Kapitel werden einmal für Reader und Assistenten ermittelt, sodass mehrteilige Bücher und Buchsammlungen Kapitel für Kapitel zusammengefasst werden."
+              },
+              {
+                "title": "Große Kindle-Bücher",
+                "body": "Große oder leicht beschädigte KF8/AZW3-Dateien öffnen sich zuverlässig, und Sprünge innerhalb dieser Bücher dauern Millisekunden statt Sekunden."
+              },
+              {
+                "title": "Verlagslayouts bleiben in der Spalte",
+                "body": "Cover, Code, breite Tabellen und positionierte Blöcke werden nicht mehr leer gerendert und laufen nicht mehr auf die nächste Seite über."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Fehlende Cover",
+                "body": "EPUB-Cover, die per Dateipfad angegeben sind, erscheinen jetzt, und ein Cover, das dieses Gerät nie erreicht hat, wird erneut aus der Buchdatei geholt."
+              },
+              {
+                "title": "Sprünge über die Fortschrittsleiste",
+                "body": "Ein Sprung über die Fortschrittsleiste geht nicht mehr verloren, wenn ein Kapitelwechsel noch animiert wird."
+              },
+              {
+                "title": "Alte Backups",
+                "body": "Backups verwenden jetzt nur noch das verschlüsselte Archiv; ein altes v1-JSON-Backup wird erkannt und erklärt, statt als falsches Passwort gemeldet zu werden."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.4",
         "date": "2026-09-25",
         "codename": "Cambria",
