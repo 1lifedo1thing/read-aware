@@ -390,12 +390,19 @@ const render = async (
   // = raster × transform, the display target being the layout scale — the
   // latest one presented, should a live zoom have moved on meanwhile. The
   // old text layer follows `--scale-factor` until its replacement renders.
+  const previousRaster = presentations.get(doc)?.raster;
   presentations.set(doc, { raster: scale, display: presentations.get(doc)?.display ?? zoom });
   doc.documentElement.style.setProperty("--scale-factor", String(scale));
   applyPresentation(doc);
-  // Replacing the container's children also drops any sharp overlay drawn
-  // over the previous raster (see renderDetail).
-  canvasContainer.replaceChildren(doc.adoptNode(canvas));
+  // A sharp overlay drawn over the previous raster (see renderDetail) stays
+  // until its replacement is ready — dropping it would flash the page soft
+  // after every settled zoom. Its box is in raster pixels, so it follows the
+  // new raster's scale; one drawn in other page colors goes.
+  const detail = canvasContainer.querySelector<HTMLCanvasElement>(DETAIL_SELECTOR);
+  const mark = detail ? detailMarks.get(detail) : undefined;
+  const keep = detail && mark?.colors === pageColorsKey(pageColors) && previousRaster ? detail : null;
+  if (keep) placeDetail(keep, scale);
+  canvasContainer.replaceChildren(doc.adoptNode(canvas), ...(keep ? [keep] : []));
 
   // READAWARE: `TextLayer.render()` APPENDS. Every zoom/resize re-renders the
   // page, so without clearing first the spans stack up — text selects twice
@@ -459,10 +466,27 @@ const render = async (
 
 // READAWARE: the sharp overlay over a capped raster (see pdf-detail.ts). It
 // sits inside `#canvas`, above the page raster and below the text layer, in
-// the document's raster-pixel coordinates; a new page raster replaces it.
+// the document's raster-pixel coordinates, and outlives page re-rasters
+// until a detail pass replaces or releases it.
 const DETAIL_SELECTOR = "canvas[data-detail]";
-type DetailMark = { scale: number; colors: string; region: PageRegion };
+/** What an overlay shows: `region` of a `page`-sized page (units at scale 1), drawn at `scale`. */
+type DetailMark = { scale: number; colors: string; region: PageRegion; page: { width: number; height: number } };
 const detailMarks = new WeakMap<HTMLCanvasElement, DetailMark>();
+
+/** Lay an overlay over its region of a page rastered at `raster`. */
+const placeDetail = (canvas: HTMLCanvasElement, raster: number) => {
+  const mark = detailMarks.get(canvas);
+  if (!mark) return;
+  const width = mark.page.width * raster;
+  const height = mark.page.height * raster;
+  Object.assign(canvas.style, {
+    position: "absolute",
+    left: `${mark.region.left * width}px`,
+    top: `${mark.region.top * height}px`,
+    width: `${(mark.region.right - mark.region.left) * width}px`,
+    height: `${(mark.region.bottom - mark.region.top) * height}px`,
+  });
+};
 
 const renderDetail = async (page: PDFPage, options: PageDetailOptions): Promise<void> => {
   const { doc, scale: zoom, pageColors, signal, visible } = options;
@@ -501,14 +525,6 @@ const renderDetail = async (page: PDFPage, options: PageDetailOptions): Promise<
   // raster it shows now.
   const now = presentations.get(doc)?.raster;
   if (!now || scale <= now || !container.isConnected) return;
-  const ratio = now / scale;
-  Object.assign(canvas.style, {
-    position: "absolute",
-    left: `${x0 * ratio}px`,
-    top: `${y0 * ratio}px`,
-    width: `${(x1 - x0) * ratio}px`,
-    height: `${(y1 - y0) * ratio}px`,
-  });
   canvas.dataset.detail = "";
   detailMarks.set(canvas, {
     scale,
@@ -519,7 +535,9 @@ const renderDetail = async (page: PDFPage, options: PageDetailOptions): Promise<
       right: x1 / viewport.width,
       bottom: y1 / viewport.height,
     },
+    page: { width: viewport.width / scale, height: viewport.height / scale },
   });
+  placeDetail(canvas, now);
   container.querySelector(DETAIL_SELECTOR)?.remove();
   container.append(doc.adoptNode(canvas));
 };

@@ -47,7 +47,8 @@
     "original": "保持原樣"
   },
   "pageZoom": "縮放",
-  "pageZoomHint": "縮放與適配只對這本書生效，僅儲存在本裝置。",
+  "pageZoomReset": "縮放還原為適配",
+  "pageZoomHint": "縮放、適配和頁面上的閱讀位置只對這本書生效，僅儲存在本裝置。",
   "pageFit": "適配",
   "pageFitOption": {
     "width": "頁面寬度",

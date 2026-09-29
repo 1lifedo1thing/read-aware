@@ -17,3 +17,11 @@ test("each report reaches subscribers as a new snapshot, even at an unchanged pe
   expect(seen).toHaveLength(2);
   expect(feedback.getSnapshot()).toEqual({ percent: 200, serial: 3 });
 });
+
+test("a quiet report updates the percentage without announcing it", () => {
+  const feedback = createZoomFeedback();
+  feedback.publish(1.5, { announce: false });
+  expect(feedback.getSnapshot()).toEqual({ percent: 150, serial: 0 });
+  feedback.publish(2);
+  expect(feedback.getSnapshot()).toEqual({ percent: 200, serial: 1 });
+});

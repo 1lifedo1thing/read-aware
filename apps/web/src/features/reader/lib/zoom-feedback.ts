@@ -9,12 +9,13 @@ import { zoomPercent } from "./fixed-layout-zoom";
 export type ZoomFeedbackSnapshot = {
   /** The zoom as a percentage of its fit. */
   percent: number;
-  /** Bumped on every report, so a repeat of the same percent still re-shows it. */
+  /** Bumped on every announced report, so a repeat of the same percent still re-shows it. */
   serial: number;
 } | null;
 
 export type ZoomFeedback = {
-  publish: (factor: number) => void;
+  /** Report the zoom; `announce: false` updates it without showing the indicator (a book opening). */
+  publish: (factor: number, options?: { announce?: boolean }) => void;
   subscribe: (listener: () => void) => () => void;
   getSnapshot: () => ZoomFeedbackSnapshot;
 };
@@ -23,8 +24,9 @@ export function createZoomFeedback(): ZoomFeedback {
   let snapshot: ZoomFeedbackSnapshot = null;
   const listeners = new Set<() => void>();
   return {
-    publish: (factor) => {
-      snapshot = { percent: zoomPercent(factor), serial: (snapshot?.serial ?? 0) + 1 };
+    publish: (factor, { announce = true } = {}) => {
+      const serial = snapshot?.serial ?? 0;
+      snapshot = { percent: zoomPercent(factor), serial: announce ? serial + 1 : serial };
       for (const listener of [...listeners]) listener();
     },
     subscribe: (listener) => {

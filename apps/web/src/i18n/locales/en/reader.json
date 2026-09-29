@@ -47,7 +47,8 @@
     "original": "Original"
   },
   "pageZoom": "Zoom",
-  "pageZoomHint": "Zoom and fit are remembered for this book on this device.",
+  "pageZoomReset": "Reset zoom to fit",
+  "pageZoomHint": "Zoom, fit and your place on the page are remembered for this book on this device.",
   "pageFit": "Fit",
   "pageFitOption": {
     "width": "Page width",

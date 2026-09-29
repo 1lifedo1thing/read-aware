@@ -45,19 +45,6 @@ export function stepZoomFactor(factor: number, direction: 1 | -1): number {
 }
 
 /**
- * A continuous zoom lands on exactly 100% when released within this of it:
- * "back to fit" is the one factor a reader aims for by hand, and 98% is
- * never what they meant.
- */
-const SNAP_TO_FIT = 0.04;
-
-/** Clamp a continuous factor, snapping to the fit when it lands close to it. */
-export function settleZoomFactor(factor: number): number {
-  const clamped = clampZoomFactor(factor);
-  return Math.abs(clamped - 1) <= SNAP_TO_FIT ? 1 : clamped;
-}
-
-/**
  * The factor a ctrl+wheel event scales by. Chromium reports a trackpad pinch
  * as ctrl+wheel with `deltaY = -100·ln(scale)`, which this inverts exactly;
  * a mouse wheel turned with the zoom chord held reports ~100 a notch, which

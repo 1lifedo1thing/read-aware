@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useAtomValue } from "jotai";
-import { fixedLayoutZoomsAtom } from "../../../state/ui";
+import { fixedLayoutViewsAtom } from "../../../state/ui";
 import type { DomainActor } from "../../../platform/domain-actor";
 import { saveFixedLayoutZoom } from "../../../domain/reading-zoom";
 import { DEFAULT_FIXED_LAYOUT_ZOOM, type FixedLayoutFit, type FixedLayoutZoom } from "../lib/fixed-layout-zoom";
@@ -18,7 +18,7 @@ export type FixedLayoutZoomSetting = {
  * (see `useFixedLayoutZoom`), wherever the change was made.
  */
 export function useFixedLayoutZoomSetting(bookId: string): FixedLayoutZoomSetting {
-  const zoom = useAtomValue(fixedLayoutZoomsAtom)[bookId] ?? DEFAULT_FIXED_LAYOUT_ZOOM;
+  const zoom = useAtomValue(fixedLayoutViewsAtom)[bookId] ?? DEFAULT_FIXED_LAYOUT_ZOOM;
   const setFit = useCallback(
     (fit: FixedLayoutFit, origin: DomainActor = "user") => saveFixedLayoutZoom(bookId, { fit, factor: 1 }, origin),
     [bookId],

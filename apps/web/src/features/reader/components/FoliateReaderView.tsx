@@ -2452,6 +2452,9 @@ export function FoliateReaderView({
           applyHighlights(view, highlightsRef.current);
           applyNotes(view, notesRef.current, highlightsRef.current);
         }
+        // A zoomed fixed-layout page reopens on the passage it was read at,
+        // not at its corner; the place is followed from here on.
+        if (fixedLayout) defer(fixedLayoutZoom.restoreFocus(view.renderer));
         // A PDF iframe can load before its raster. Public readiness and metadata
         // enrichment must wait for the displayed page, not a background render.
         await waitForReadingPaint(view);
@@ -2560,7 +2563,13 @@ export function FoliateReaderView({
         onPrev={() => void turnPage(-1)}
         onNext={() => void turnPage(1)}
       />
-      {isFixedLayout && <ReaderZoomIndicator feedback={fixedLayoutZoom.feedback} />}
+      {isFixedLayout && (
+        <ReaderZoomIndicator
+          feedback={fixedLayoutZoom.feedback}
+          controlsVisible={shellVisible}
+          onReset={() => fixedLayoutZoom.resetZoom()}
+        />
+      )}
       {isIOS() && <ReaderSelectionHighlight selection={selection} />}
       <ReaderSelectionMenu
         selection={selection}

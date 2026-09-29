@@ -1,11 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  ZOOM_FACTOR_MAX,
-  ZOOM_FACTOR_MIN,
-  settleZoomFactor,
-  stepZoomFactor,
-  wheelZoomRatio,
-} from "./fixed-layout-zoom";
+import { ZOOM_FACTOR_MAX, ZOOM_FACTOR_MIN, stepZoomFactor, wheelZoomRatio } from "./fixed-layout-zoom";
 
 describe("zoom steps", () => {
   test("step along the ladder, and from between steps to the nearest one that way", () => {
@@ -20,14 +14,6 @@ describe("zoom steps", () => {
   test("stop at the ends of the range", () => {
     expect(stepZoomFactor(ZOOM_FACTOR_MAX, 1)).toBe(ZOOM_FACTOR_MAX);
     expect(stepZoomFactor(ZOOM_FACTOR_MIN, -1)).toBe(ZOOM_FACTOR_MIN);
-  });
-
-  test("a released continuous zoom clamps, and snaps to the fit when it lands near it", () => {
-    expect(settleZoomFactor(0.97)).toBe(1);
-    expect(settleZoomFactor(1.03)).toBe(1);
-    expect(settleZoomFactor(1.2)).toBe(1.2);
-    expect(settleZoomFactor(40)).toBe(ZOOM_FACTOR_MAX);
-    expect(settleZoomFactor(Number.NaN)).toBe(1);
   });
 });
 

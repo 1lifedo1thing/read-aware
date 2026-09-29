@@ -1,26 +1,50 @@
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { IconButton } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import type { ZoomFeedback } from "../lib/zoom-feedback";
 import { useZoomIndicator } from "../hooks/useZoomIndicator";
 
+type Props = {
+  feedback: ZoomFeedback;
+  /** The reader controls are showing; a zoom off the fit then stays up with them. */
+  controlsVisible: boolean;
+  onReset: () => void;
+};
+
 /**
- * The zoom of a fixed-layout page, shown briefly while it changes — the only
- * place the percentage appears. Same surface as the progress readout; it
- * never takes pointer input, so a pinch or a click passes through to the page.
+ * The zoom of a fixed-layout page: shown briefly while it changes, and —
+ * while the reader controls are up and the page is zoomed — kept up with a
+ * one-click way back to the fit. Same surface as the progress readout; only
+ * the reset button takes pointer input, so pinches pass through to the page.
  */
-export function ReaderZoomIndicator({ feedback }: { feedback: ZoomFeedback }) {
+export function ReaderZoomIndicator({ feedback, controlsVisible, onReset }: Props) {
   const { t } = useTranslation("reader");
-  const indicator = useZoomIndicator(feedback);
+  const indicator = useZoomIndicator(feedback, controlsVisible);
   return (
-    <div role="status" className="pointer-events-none absolute inset-x-0 bottom-16 z-20 flex justify-center">
+    <div
+      role="status"
+      className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--ra-safe-bottom)+5rem)] z-20 flex justify-center"
+    >
       {indicator?.visible && (
-        <span
-          // Fades in when it comes up; while it stays up (a live pinch) only
-          // the number changes.
-          className="ra-motion-fade-in rounded-md bg-[var(--ra-main-surface-color)] px-3 py-1.5 font-sans text-sm tabular-nums text-fg shadow-[0_6px_20px_-6px_rgba(28,25,23,0.35)]"
-        >
-          <span className="sr-only">{t("pageZoom")} </span>
-          {indicator.percent}%
-        </span>
+        // Fades in when it comes up; while it stays up (a live pinch) only
+        // the number changes.
+        <div className="ra-motion-fade-in flex items-center gap-0.5 rounded-md bg-[var(--ra-main-surface-color)] py-1 pr-1 pl-3 shadow-[0_6px_20px_-6px_rgba(28,25,23,0.35)]">
+          <span className="font-sans text-sm tabular-nums text-fg">
+            <span className="sr-only">{t("pageZoom")} </span>
+            {indicator.percent}%
+          </span>
+          {indicator.resettable ? (
+            <IconButton
+              label={t("pageZoomReset")}
+              size="sm"
+              onClick={onReset}
+              className="pointer-events-auto"
+              icon={<ArrowCounterClockwise size={14} aria-hidden="true" />}
+            />
+          ) : (
+            <span aria-hidden="true" className="w-2" />
+          )}
+        </div>
       )}
     </div>
   );

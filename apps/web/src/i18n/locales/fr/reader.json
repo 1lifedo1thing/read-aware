@@ -47,7 +47,8 @@
     "original": "Original"
   },
   "pageZoom": "Zoom",
-  "pageZoomHint": "Le zoom et l’ajustement sont mémorisés pour ce livre sur cet appareil.",
+  "pageZoomReset": "Réinitialiser le zoom",
+  "pageZoomHint": "Le zoom, l’ajustement et votre position sur la page sont mémorisés pour ce livre sur cet appareil.",
   "pageFit": "Ajuster",
   "pageFitOption": {
     "width": "Largeur de page",

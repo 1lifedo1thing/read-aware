@@ -215,6 +215,123 @@ export async function runZoomRegressions(modules: Modules): Promise<Result[]> {
     }
   });
 
+  await check("a page that arrives mid-pinch rasters without waiting for the pinch to end", async () => {
+    const book = await modules.pdf.makePDF(file);
+    const view = new modules.view.View();
+    view.style.cssText = `display:block;position:fixed;left:0;top:0;width:${WIDTH}px;height:${HEIGHT}px;opacity:0;pointer-events:none;z-index:-1`;
+    document.body.append(view);
+    let pinching = true;
+    try {
+      await view.open(book);
+      const renderer = view.renderer as FixedLayout;
+      renderer.setLayout("scrolled", 1);
+      // A pinch in progress: live steps every 50 ms, never settling.
+      let factor = 1;
+      const pinch = async () => {
+        while (pinching) {
+          factor = factor >= 1.5 ? 1.2 : factor + 0.02;
+          renderer.setZoom({ fit: "auto", factor }, { live: true });
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      };
+      const steps = pinch();
+      await view.goTo(1);
+      const page = () => renderer.getContents().find((content) => content.index === 1)?.doc;
+      await waitFor("a first raster during the pinch", () => !!page()?.querySelector("#canvas > canvas"), 5000);
+      pinching = false;
+      await steps;
+    } finally {
+      pinching = false;
+      await view.close();
+      view.remove();
+      await book.destroy();
+    }
+  });
+
+  await check("a settled zoom keeps the sharp overlay until its replacement is drawn", async () => {
+    const reader = await open("scrolled");
+    try {
+      const { renderer } = reader;
+      const doc = reader.page()!;
+      renderer.setZoom({ fit: "auto", factor: 4 });
+      const detail = () => doc.querySelector<HTMLCanvasElement>("canvas[data-detail]");
+      await waitFor("the sharp overlay", () => !!detail());
+      const base = doc.querySelector("#canvas > canvas:not([data-detail])");
+      let lost = false;
+      const observer = new MutationObserver(() => {
+        if (!detail()) lost = true;
+      });
+      observer.observe(doc.querySelector("#canvas")!, { childList: true });
+      renderer.setZoom({ fit: "auto", factor: 4.5 });
+      await waitFor("the page re-rastered", () => doc.querySelector("#canvas > canvas:not([data-detail])") !== base);
+      await waitFor("the overlay redrawn for the new zoom", () => {
+        const canvas = detail();
+        return !!canvas && Math.abs(canvas.width / canvas.getBoundingClientRect().width - devicePixelRatio) < 0.02;
+      });
+      observer.disconnect();
+      assert(!lost, "The page showed without its sharp overlay between rasters");
+    } finally {
+      await reader.close();
+    }
+  });
+
+  await check("a zoom never names a page the reader is not on", async () => {
+    const reader = await open("scrolled");
+    try {
+      const { renderer } = reader;
+      const reported: number[] = [];
+      renderer.addEventListener("relocate", (event) =>
+        reported.push((event as CustomEvent<{ index: number }>).detail.index),
+      );
+      for (const [factor, live] of [
+        [2.5, true],
+        [3, true],
+        [3, false],
+        [1.2, false],
+      ] as const) {
+        renderer.setZoom({ fit: "auto", factor }, { live });
+        // Decided from the restored scroll position, not the one before it.
+        if (renderer.index !== 1) throw new Error(`At ${factor}×, the current page read as ${renderer.index}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      assert(
+        reported.every((index) => index === 1),
+        `Reported pages ${JSON.stringify(reported)} while zooming page 1`,
+      );
+    } finally {
+      await reader.close();
+    }
+  });
+
+  await check("the place a zoomed page was read at comes back", async () => {
+    for (const flow of ["scrolled", "paginated"] as const) {
+      const first = await open(flow);
+      let saved: NonNullable<FixedLayout["viewFocus"]>;
+      try {
+        first.renderer.setZoom({ fit: "width", factor: 2.5 });
+        first.renderer.scrollLeft += 200;
+        first.renderer.scrollTop += flow === "scrolled" ? 300 : 150;
+        const focus = first.renderer.viewFocus;
+        if (!focus) throw new Error(`${flow}: no focus`);
+        saved = focus;
+      } finally {
+        await first.close();
+      }
+      assert(saved.index === 1, `${flow}: focus names page ${saved.index}`);
+      const second = await open(flow);
+      try {
+        second.renderer.setZoom({ fit: "width", factor: 2.5 });
+        assert(second.renderer.showFocus(saved), `${flow}: focus was not shown`);
+        const shown = second.renderer.viewFocus!;
+        near(shown.x, saved.x, `${flow} focus x`, 0.005);
+        near(shown.y, saved.y, `${flow} focus y`, 0.005);
+        assert(!second.renderer.showFocus({ ...saved, index: 0 }), `${flow}: another page's focus was shown`);
+      } finally {
+        await second.close();
+      }
+    }
+  });
+
   await check("a zoomed paged spread pans, and page turns open it at their reading edge", async () => {
     const reader = await open("paginated", 1);
     try {

@@ -47,7 +47,8 @@
     "original": "そのまま"
   },
   "pageZoom": "ズーム",
-  "pageZoomHint": "ズームとフィットはこの本だけに、この端末で記憶されます。",
+  "pageZoomReset": "ズームをフィットに戻す",
+  "pageZoomHint": "ズーム、フィット、ページ上の読んでいた位置は、この本だけに、この端末で記憶されます。",
   "pageFit": "フィット",
   "pageFitOption": {
     "width": "ページ幅",

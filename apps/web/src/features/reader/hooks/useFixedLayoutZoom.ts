@@ -5,25 +5,28 @@
  * wheel with the zoom chord, and a two-finger pinch on touch screens.
  *
  * Continuous input zooms the renderer live (it re-presents the pages at every
- * step and rasters once they hold still) and is committed — snapped, and
- * remembered for the book — when the gesture ends. Discrete input goes
- * straight to the book's memory, which the renderer follows like any other
- * change to it (the appearance controls write there too).
+ * step and rasters once they hold still) and is remembered for the book when
+ * the gesture ends. Discrete input zooms the renderer at once and is
+ * remembered straight away; a change made elsewhere (the fit control, another
+ * window) reaches the renderer through the book's memory.
+ *
+ * It also keeps where on the page the reader was looking (`viewFocus`), so a
+ * zoomed page reopens on the same passage rather than at its corner.
  */
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import { useAtomValue } from "jotai";
-import { fixedLayoutZoomsAtom } from "../../../state/ui";
+import { fixedLayoutViewsAtom } from "../../../state/ui";
 import type { DomainActor } from "../../../platform/domain-actor";
 import { createLogger } from "../../../platform/logger";
 import type { FoliateRenderer, FoliateView } from "../lib/foliate-engine";
 import { readingRenderContext } from "../lib/reading-render-context";
 import { createZoomFeedback, type ZoomFeedback } from "../lib/zoom-feedback";
-import { saveFixedLayoutZoom } from "../../../domain/reading-zoom";
+import { saveFixedLayoutFocus, saveFixedLayoutZoom } from "../../../domain/reading-zoom";
+import type { ViewFocus } from "../../../../foliate-js/src/fixed-layout";
 import {
   DEFAULT_FIXED_LAYOUT_ZOOM,
   clampZoomFactor,
   sameFixedLayoutZoom,
-  settleZoomFactor,
   stepZoomFactor,
   wheelZoomRatio,
   type FixedLayoutZoom,
@@ -35,6 +38,8 @@ const log = createLogger("reader-zoom");
 const WHEEL_COMMIT_MS = 250;
 /** A keyboard pan moves a zoomed page by this share of the viewport. */
 const KEY_PAN_SHARE = 0.85;
+/** Where the reader is looking is remembered once the view has rested this long. */
+const FOCUS_SAVE_MS = 600;
 
 type ZoomAnchor = { x: number; y: number };
 type ZoomRenderer = Extract<FoliateRenderer, { setZoom: unknown }>;
@@ -55,6 +60,12 @@ export type FixedLayoutZoomInput = {
   feedback: ZoomFeedback;
   /** Set the book's zoom on a renderer before its first page is shown. */
   prepareRenderer: (renderer: FoliateRenderer | undefined, context: object) => void;
+  /**
+   * Once the reading position is restored, bring back where on that page the
+   * reader was looking, and from then on keep track of it. The returned
+   * function stops tracking, remembering the latest place.
+   */
+  restoreFocus: (renderer: FoliateRenderer | undefined) => () => void;
   /** A ctrl+wheel in the reader; true when it zoomed (the caller stops routing it). */
   handleZoomWheel: (event: WheelEvent) => boolean;
   /** Pan a zoomed paged spread by a wheel event; true when the spread moved. */
@@ -78,7 +89,7 @@ export function useFixedLayoutZoom({
   readerRootRef,
   viewportRef,
 }: Options): FixedLayoutZoomInput {
-  const stored = useAtomValue(fixedLayoutZoomsAtom)[bookId ?? ""] ?? DEFAULT_FIXED_LAYOUT_ZOOM;
+  const stored = useAtomValue(fixedLayoutViewsAtom)[bookId ?? ""] ?? DEFAULT_FIXED_LAYOUT_ZOOM;
   const storedRef = useRef(stored);
   storedRef.current = stored;
   const feedback = useMemo(() => createZoomFeedback(), []);
@@ -89,9 +100,16 @@ export function useFixedLayoutZoom({
     return isFixedLayoutRef.current && renderer && "setZoom" in renderer ? renderer : null;
   }, [viewRef, isFixedLayoutRef]);
 
-  const prepareRenderer = useCallback((renderer: FoliateRenderer | undefined, context: object) => {
-    if (renderer && "setZoom" in renderer) renderer.setZoom(storedRef.current, { context });
-  }, []);
+  const prepareRenderer = useCallback(
+    (renderer: FoliateRenderer | undefined, context: object) => {
+      if (!renderer || !("setZoom" in renderer)) return;
+      const { fit, factor } = storedRef.current;
+      renderer.setZoom({ fit, factor }, { context });
+      // Known to the reset control, without announcing a change.
+      feedback.publish(factor, { announce: false });
+    },
+    [feedback],
+  );
 
   // The book's memory changed somewhere else — the appearance controls, or
   // another window — so the pages follow. Input handled here applies to the
@@ -100,7 +118,7 @@ export function useFixedLayoutZoom({
   useEffect(() => {
     const renderer = zoomRenderer();
     if (!renderer || sameFixedLayoutZoom(renderer.zoom, stored)) return;
-    renderer.setZoom(stored, { context: readingRenderContext("user") });
+    renderer.setZoom({ fit: stored.fit, factor: stored.factor }, { context: readingRenderContext("user") });
     feedback.publish(stored.factor);
   }, [feedback, stored, zoomRenderer]);
 
@@ -133,6 +151,10 @@ export function useFixedLayoutZoom({
 
   // ---- Continuous zoom -----------------------------------------------------
 
+  // Pinch state shared by every surface: one gesture at a time. `touch` is
+  // set while two fingers pinch, so the gesture events iOS fires alongside
+  // the same touches are not counted twice.
+  const pinch = useRef<{ kind: "gesture" | "touch"; startFactor: number; startDistance: number } | null>(null);
   const wheelCommitTimer = useRef<number | null>(null);
   const lastAnchor = useRef<ZoomAnchor | undefined>(undefined);
 
@@ -151,17 +173,13 @@ export function useFixedLayoutZoom({
     [feedback, zoomRenderer],
   );
 
-  /** End a continuous zoom: snap it, raster it, and remember it. */
+  /** End a continuous zoom: raster it and remember it, exactly where the fingers left it. */
   const commitLive = useCallback(() => {
     if (wheelCommitTimer.current != null) window.clearTimeout(wheelCommitTimer.current);
     wheelCommitTimer.current = null;
     const renderer = zoomRenderer();
     if (!renderer) return;
-    applyAndRemember(
-      renderer,
-      { fit: renderer.zoom.fit, factor: settleZoomFactor(renderer.zoom.factor) },
-      lastAnchor.current,
-    );
+    applyAndRemember(renderer, renderer.zoom, lastAnchor.current);
   }, [applyAndRemember, zoomRenderer]);
 
   useEffect(
@@ -175,6 +193,9 @@ export function useFixedLayoutZoom({
     (event: WheelEvent): boolean => {
       if (!event.ctrlKey || !zoomRenderer()) return false;
       if (event.cancelable) event.preventDefault();
+      // One pinch, one source: while WebKit's gesture events drive a pinch,
+      // a ctrl+wheel stream for the same fingers would zoom it twice over.
+      if (pinch.current) return true;
       zoomLive(wheelZoomRatio(event.deltaY, event.deltaMode), topLevelPoint(event));
       if (wheelCommitTimer.current != null) window.clearTimeout(wheelCommitTimer.current);
       wheelCommitTimer.current = window.setTimeout(commitLive, WHEEL_COMMIT_MS);
@@ -182,11 +203,6 @@ export function useFixedLayoutZoom({
     },
     [commitLive, zoomLive, zoomRenderer],
   );
-
-  // Pinch state shared by every surface: one gesture at a time. `touch` is
-  // set while two fingers pinch, so the gesture events iOS fires alongside
-  // the same touches are not counted twice.
-  const pinch = useRef<{ kind: "gesture" | "touch"; startFactor: number; startDistance: number } | null>(null);
 
   /** Pinch listeners on one surface; the returned function removes them. */
   const listen = useCallback(
@@ -327,6 +343,46 @@ export function useFixedLayoutZoom({
     [zoomRenderer],
   );
 
+  // ---- Where on the page ---------------------------------------------------
+
+  const restoreFocus = useCallback(
+    (renderer: FoliateRenderer | undefined) => {
+      if (!bookId || !renderer || !("showFocus" in renderer)) return () => {};
+      const saved = storedRef.current.focus;
+      if (saved) renderer.showFocus(saved);
+      // Followed through scrolls (pans, zooms, a stack's scrolling) and page
+      // turns (which need not scroll at all), and remembered once it rests.
+      let latest: ViewFocus | null = null;
+      let timer: number | null = null;
+      const save = () => {
+        timer = null;
+        if (!latest) return;
+        try {
+          saveFixedLayoutFocus(bookId, latest, "user");
+        } catch (error) {
+          // The KV queue reports failed writes itself; a throw here is a bug.
+          log.error("Could not remember where the book was being read", error);
+        }
+      };
+      const observe = () => {
+        latest = renderer.viewFocus ?? latest;
+        if (timer != null) window.clearTimeout(timer);
+        timer = window.setTimeout(save, FOCUS_SAVE_MS);
+      };
+      renderer.addEventListener("scroll", observe, { passive: true });
+      renderer.addEventListener("relocate", observe);
+      return () => {
+        renderer.removeEventListener("scroll", observe);
+        renderer.removeEventListener("relocate", observe);
+        if (timer != null) {
+          window.clearTimeout(timer);
+          save();
+        }
+      };
+    },
+    [bookId],
+  );
+
   const panEdges = useCallback(() => {
     const renderer = zoomRenderer();
     return renderer && !renderer.scrolled ? renderer.panEdges : ALL_EDGES;
@@ -335,6 +391,7 @@ export function useFixedLayoutZoom({
   return {
     feedback,
     prepareRenderer,
+    restoreFocus,
     handleZoomWheel,
     panByWheel,
     panByKey,
