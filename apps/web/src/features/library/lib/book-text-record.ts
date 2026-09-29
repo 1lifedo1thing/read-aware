@@ -15,10 +15,11 @@ export type TextPiece = {
 };
 export type TextFailure = { sectionIndex: number; code: string };
 
-/** v7 follows the chapter map (reading order, chapter level; see foliate-js chapter-map.ts). Earlier
- * records have incompatible chapter coordinates; rebuild lazily. */
+/** v8 follows the chapter map (reading order, chapter level; see foliate-js chapter-map.ts) over
+ * navigation repaired by toc-synthesis.ts, which also synthesizes chapters for sets whose nav lists
+ * only their volumes. Earlier records have incompatible chapter coordinates; rebuild lazily. */
 export type BookTextRecord = {
-  version: 7;
+  version: 8;
   bookId: string;
   contentVersion: string;
   extractedAt: string;
@@ -79,7 +80,7 @@ const strings = (value: unknown): value is string[] =>
 export function parseBookTextRecord(value: unknown, bookId: string, contentVersion: string): BookTextRecord | null {
   if (
     !object(value) ||
-    value.version !== 7 ||
+    value.version !== 8 ||
     value.bookId !== bookId ||
     value.contentVersion !== contentVersion ||
     typeof value.extractedAt !== "string" ||

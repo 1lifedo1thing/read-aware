@@ -54,7 +54,7 @@ test("TOC chapters cut within a file and continue across files, without previous
   ]);
   expect(record.chapters[2]!.hrefs).toEqual(["s0.html#five", "s1.html"]);
   expect(parseBookTextRecord(record, "b", "sha256:test")).not.toBeNull();
-  expect(parseBookTextRecord({ ...record, version: 6 }, "b", "sha256:test")).toBeNull();
+  expect(parseBookTextRecord({ ...record, version: 7 }, "b", "sha256:test")).toBeNull();
 });
 
 test("href-less volume names disambiguate repeated numbering; nested TOC entries are aliases", async () => {

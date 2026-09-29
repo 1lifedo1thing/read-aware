@@ -80,7 +80,7 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
     chapterTitles.delete(key);
   }
   const record = (): BookTextRecord => ({
-    version: 7,
+    version: 8,
     bookId,
     contentVersion,
     extractedAt: new Date().toISOString(),

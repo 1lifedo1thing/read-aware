@@ -1,10 +1,11 @@
 /**
  * Chapter coordinates a digest is valid for. v3 digests used TOC-delimited
- * chapters rather than EPUB spine file indices; v4 follows the chapter map
- * (reading order, chapter level — see foliate-js chapter-map.ts), which moves
- * chapter indices wherever the top TOC level was not the chapter level.
+ * chapters rather than EPUB spine file indices; v5 follows the chapter map
+ * (reading order, chapter level — see foliate-js chapter-map.ts) over the
+ * repaired navigation, which moves chapter indices wherever the top TOC level
+ * was not the chapter level. (v4 was an unreleased step of the same change.)
  */
-export const CHAPTER_DIGEST_VERSION = 4;
+export const CHAPTER_DIGEST_VERSION = 5;
 
 /** Read-only chapter memory contracts. These are distilled evidence, never verbatim source text. */
 export type DigestFlavor = "narrative" | "expository";
