@@ -1055,6 +1055,7 @@
 | `web_image_cache::web_image_cache_put` | [SYS13](#SYS13) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `covers::library_put_cover` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `covers::library_cover_backlog` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `covers::library_restore_local_cover` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::append_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::commit_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_agent_job_owners` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

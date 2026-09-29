@@ -91,13 +91,13 @@ pub struct StagedImport {
 
 /// What each format can get natively. `None` = the format carries no cover
 /// at all (plain text, HTML), so the outcome is decided without any parsing.
-enum Extractor {
+pub(crate) enum Extractor {
     Native(fn(&Path) -> Result<BookMetadata, String>),
     NoCover,
     EngineOnly,
 }
 
-fn extractor_for(format: &str) -> Extractor {
+pub(crate) fn extractor_for(format: &str) -> Extractor {
     match format {
         "epub" => Extractor::Native(crate::book_metadata::extract_epub_metadata_from_path),
         "mobi" | "azw3" => Extractor::Native(crate::mobi_metadata::extract_mobi_metadata_from_path),

@@ -13,9 +13,9 @@
 //! bounded JPEG (or the original bytes when they are already small enough).
 
 use std::io::Cursor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use rusqlite::Connection;
+use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::CommandError;
 use crate::metadata::{image_mime, CoverImage};
@@ -278,6 +278,121 @@ pub async fn library_cover_backlog(
     .await
 }
 
+/// What restoring a cover that is on record but missing here did.
+#[derive(Debug, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LocalCoverRestore {
+    /// Extracted again from this device's copy of the book and stored under
+    /// the book's cover key.
+    Restored,
+    /// The book file is here, but only the reading engine extracts its cover
+    /// (PDFs without a native render, RAR comics, containers the native
+    /// parser rejects): the webview's engine job takes over.
+    Engine,
+    /// Nothing to restore locally: no cover on record, its bytes are already
+    /// here, the book file is not, or the file yields no cover.
+    Unavailable,
+}
+
+/// The local file of a book whose cover is on record (`ready`) but whose
+/// cover bytes are not on this device — a cover the relay never delivered, a
+/// restore that brought the book but not its artwork. The cover is content
+/// derived from that file, so it can be derived again here instead of waiting
+/// on sync; the verdict itself does not change, so no event is written.
+pub fn local_cover_source(
+    conn: &Connection,
+    data_dir: &Path,
+    book_id: &str,
+) -> Result<Option<(PathBuf, String)>, CommandError> {
+    let row: Option<(String, bool)> = conn
+        .query_row(
+            "SELECT b.format, bo.storage_uri IS NOT NULL FROM books b
+               LEFT JOIN blob_objects bo ON bo.key = b.cover_blob_key AND bo.deleted_at IS NULL
+              WHERE b.id = ?1 AND b.cover_status = 'ready' AND b.cover_blob_key IS NOT NULL",
+            params![book_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let Some((format, present)) = row else {
+        return Ok(None);
+    };
+    if present {
+        return Ok(None);
+    }
+    Ok(
+        get_blob_record_inner(conn, data_dir, &format!("bookfile:{book_id}"))?
+            .map(|(path, _)| (path, format)),
+    )
+}
+
+/// A cover extracted again from a book file, with the import's extractors.
+#[derive(Debug, PartialEq)]
+pub enum DerivedCover {
+    Cover(NormalizedCover),
+    Engine,
+    None,
+}
+
+pub fn derive_cover_from_file(path: &Path, format: &str) -> DerivedCover {
+    match crate::import::extractor_for(format) {
+        crate::import::Extractor::NoCover => DerivedCover::None,
+        crate::import::Extractor::EngineOnly => DerivedCover::Engine,
+        crate::import::Extractor::Native(extract) => match extract(path) {
+            Ok(metadata) => match metadata.cover.as_ref().and_then(normalize_cover) {
+                Some(cover) => DerivedCover::Cover(cover),
+                // As at import: page one of a PDF is still the engine's to render.
+                None if format == "pdf" => DerivedCover::Engine,
+                None => DerivedCover::None,
+            },
+            Err(error) => {
+                log::warn!(
+                    "native {format} cover extraction failed for {}: {error}",
+                    path.display()
+                );
+                DerivedCover::Engine
+            }
+        },
+    }
+}
+
+/// Restore a cover that is on record but missing on this device from the
+/// book's local file. The database lock is not held while the file is parsed.
+#[tauri::command]
+pub async fn library_restore_local_cover(
+    book_id: String,
+    app: tauri::AppHandle,
+) -> Result<LocalCoverRestore, CommandError> {
+    crate::storage::blocking("library_restore_local_cover", move || {
+        let db = tauri::Manager::state::<crate::storage::Db>(&app);
+        let data_dir = tauri::Manager::state::<crate::storage::DataDir>(&app);
+        let source = {
+            let conn = db.0.lock()?;
+            local_cover_source(&conn, &data_dir.0, &book_id)?
+        };
+        let Some((path, format)) = source else {
+            return Ok(LocalCoverRestore::Unavailable);
+        };
+        match derive_cover_from_file(&path, &format) {
+            DerivedCover::Cover(cover) => {
+                let conn = db.0.lock()?;
+                // Settled meanwhile (the relay delivered it, or the book left):
+                // nothing to overwrite.
+                if local_cover_source(&conn, &data_dir.0, &book_id)?.is_none() {
+                    return Ok(LocalCoverRestore::Unavailable);
+                }
+                store_cover(&conn, &data_dir.0, &book_id, &cover)?;
+                Ok(LocalCoverRestore::Restored)
+            }
+            DerivedCover::Engine => Ok(LocalCoverRestore::Engine),
+            DerivedCover::None => {
+                log::warn!("book {book_id} has a cover on record but its local file yields none");
+                Ok(LocalCoverRestore::Unavailable)
+            }
+        }
+    })
+    .await
+}
+
 /// Store a cover the webview produced (the engine cover job: PDFs off macOS,
 /// RAR comics, anything the native extractors could not read). Raw IPC body
 /// = the image bytes; the book id rides in a header. Returns the stored
@@ -331,6 +446,121 @@ pub struct StoredCover {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn library(dir: &Path) -> Connection {
+        let mut conn = Connection::open_in_memory().unwrap();
+        crate::storage::register_sql_functions(&conn).unwrap();
+        crate::storage::run_migrations(&mut conn).unwrap();
+        conn.execute(
+            "INSERT INTO books(id,title,author,format,file_name,file_size,created_at,updated_at,cover_status,cover_blob_key)
+             VALUES ('b','Refactoring','Martin Fowler','epub','refactoring.epub',1,'now','now','ready','cover:b')",
+            [],
+        )
+        .unwrap();
+        // The verdict arrived; the bytes never did (a manifest-only row).
+        conn.execute(
+            "INSERT INTO blob_objects(key,kind,sync_required,created_at) VALUES ('cover:b','cover_image',1,'now')",
+            [],
+        )
+        .unwrap();
+        crate::storage::put_blob_inner(
+            &conn,
+            dir,
+            "bookfile:b",
+            None,
+            &refactoring_shaped_epub(dir),
+        )
+        .unwrap();
+        conn
+    }
+
+    /// Refactoring's package: the EPUB 2 meta names the cover image by path,
+    /// and the guide's cover reference is the page that shows it.
+    fn refactoring_shaped_epub(dir: &Path) -> Vec<u8> {
+        use std::io::Write;
+        let path = dir.join("source.epub");
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        let files: [(&str, Vec<u8>); 4] = [
+            ("META-INF/container.xml", br#"<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>"#.to_vec()),
+            ("OEBPS/content.opf", br#"<package><metadata><dc:title xmlns:dc="dc">Refactoring</dc:title><meta name="cover" content="Images/front.png"/></metadata><manifest><item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/><item id="img_front" href="Images/front.png" media-type="image/png"/></manifest><spine><itemref idref="cover"/></spine><guide><reference type="cover" title="Cover" href="cover.xhtml"/></guide></package>"#.to_vec()),
+            ("OEBPS/cover.xhtml", br#"<html xmlns="http://www.w3.org/1999/xhtml"><body><div id="Cover"><img src="Images/front.png"/></div></body></html>"#.to_vec()),
+            ("OEBPS/Images/front.png", png(300, 450)),
+        ];
+        for (name, bytes) in files {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(&bytes).unwrap();
+        }
+        writer.finish().unwrap();
+        std::fs::read(&path).unwrap()
+    }
+
+    #[test]
+    fn a_cover_on_record_but_missing_here_is_derived_again_from_the_local_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = library(dir.path());
+        let (path, format) = local_cover_source(&conn, dir.path(), "b")
+            .unwrap()
+            .expect("restorable");
+        let DerivedCover::Cover(cover) = derive_cover_from_file(&path, &format) else {
+            panic!("the local file yields its cover");
+        };
+        assert_eq!(cover.mime, "image/png");
+        store_cover(&conn, dir.path(), "b", &cover).unwrap();
+        // Restored: the shelf's backlog no longer lists it, nor does a second pass.
+        assert!(cover_backlog_inner(&conn).unwrap().is_empty());
+        assert_eq!(local_cover_source(&conn, dir.path(), "b").unwrap(), None);
+    }
+
+    #[test]
+    fn only_a_ready_cover_with_absent_bytes_and_a_local_file_is_restorable() {
+        let dir = tempfile::tempdir().unwrap();
+        let conn = library(dir.path());
+        assert!(local_cover_source(&conn, dir.path(), "b")
+            .unwrap()
+            .is_some());
+        conn.execute(
+            "UPDATE blob_objects SET deleted_at='now' WHERE key='bookfile:b'",
+            [],
+        )
+        .unwrap();
+        assert_eq!(
+            local_cover_source(&conn, dir.path(), "b").unwrap(),
+            None,
+            "no local file"
+        );
+        conn.execute(
+            "UPDATE blob_objects SET deleted_at=NULL WHERE key='bookfile:b'",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE books SET cover_status='none', cover_blob_key=NULL WHERE id='b'",
+            [],
+        )
+        .unwrap();
+        assert_eq!(
+            local_cover_source(&conn, dir.path(), "b").unwrap(),
+            None,
+            "no cover on record"
+        );
+        assert_eq!(
+            local_cover_source(&conn, dir.path(), "missing").unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn formats_without_a_native_cover_defer_to_the_engine_or_have_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("book");
+        std::fs::write(&path, b"not a container").unwrap();
+        assert_eq!(derive_cover_from_file(&path, "cbr"), DerivedCover::Engine);
+        assert_eq!(derive_cover_from_file(&path, "txt"), DerivedCover::None);
+        // A container the native parser rejects is still the engine's to try.
+        assert_eq!(derive_cover_from_file(&path, "epub"), DerivedCover::Engine);
+    }
 
     fn png(width: u32, height: u32) -> Vec<u8> {
         let mut out = Cursor::new(Vec::new());

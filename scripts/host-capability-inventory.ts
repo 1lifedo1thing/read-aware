@@ -409,7 +409,7 @@ const nativeMap = pairs([
   ["local_api_token local_api_rotate_token", "SYS04"],
   ["local_api_attach local_api_complete", "SYS06 CON03"],
   ["library_begin_import library_stage_import library_finish_import", "LIB06"],
-  ["library_put_cover library_cover_backlog", "LIB09 LIB10"],
+  ["library_put_cover library_cover_backlog library_restore_local_cover", "LIB09 LIB10"],
   ["library_duplicate_groups library_merge_preview library_merge_commit library_resolve_book", "LIB11"],
   [
     "resource_store_plugin_asset resource_open_plugin_asset plugin_asset_get plugin_asset_list plugin_asset_policy plugin_asset_delete",

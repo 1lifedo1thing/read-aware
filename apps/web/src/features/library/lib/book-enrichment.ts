@@ -80,18 +80,56 @@ export function metadataNeedsEnrichment(book: LibraryBook): boolean {
 }
 
 /**
+ * A cover on record whose bytes are not on this device: the relay never
+ * delivered it, or a restore brought the book back without its artwork. The
+ * cover derives from the book file, so where that file is here the cover is
+ * extracted again locally instead of waiting on sync. The verdict stands, so
+ * restoring it writes no event.
+ */
+export function coverMissingHere(book: LibraryBook): boolean {
+  return book.coverStatus === "ready" && !book.coverLocal;
+}
+
+/** Cover work a job can do: settle an open verdict, or restore missing bytes. */
+const coverNeedsWork = (book: LibraryBook) => book.coverStatus === "unchecked" || coverMissingHere(book);
+
+type LocalCoverRestore = "restored" | "engine" | "unavailable";
+/** Serial: each restore may parse a whole book file natively. */
+let localCoverRestores: Promise<void> = Promise.resolve();
+/** Books this session already tried to restore a cover for (their file may not be here). */
+const restoreTried = new Set<string>();
+
+/**
  * Boot / reload pass: every shelf book with an open question whose file is
  * here gets a job — a missing cover verdict, or PDF metadata never filled.
  * Legacy rows (imported before verdicts were recorded) and interrupted
- * imports are caught up this way.
+ * imports are caught up this way; so are covers on record but missing here,
+ * first with the import's native extractors and then, for the formats only
+ * the engine reads, with an engine job.
  */
 export function scheduleCatchUpEnrichment(books: readonly LibraryBook[]): void {
   for (const book of books) {
+    if (coverMissingHere(book) && !restoreTried.has(book.id)) {
+      restoreTried.add(book.id);
+      localCoverRestores = localCoverRestores.then(() => restoreLocalCover(book));
+    }
     if (!ENRICHMENT_FORMATS.has(book.format)) continue;
     if (attempted.has(book.id)) continue;
     const cover = book.coverStatus === "unchecked";
     const metadata = metadataStillFromFileName(book);
     if (cover || metadata) scheduleBookEnrichment({ bookId: book.id, cover, metadata });
+  }
+}
+
+async function restoreLocalCover(book: LibraryBook): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const outcome = await invoke<LocalCoverRestore>("library_restore_local_cover", { bookId: book.id });
+    if (outcome === "restored") emitAppEvent("book-changed", { bookId: book.id }, "system");
+    else if (outcome === "engine" && ENRICHMENT_FORMATS.has(book.format))
+      scheduleBookEnrichment({ bookId: book.id, cover: true, metadata: false });
+  } catch (error) {
+    log.warn(`Could not restore the missing cover of ${book.id}`, error);
   }
 }
 
@@ -120,7 +158,7 @@ async function runJob(request: EnrichmentRequest): Promise<EnrichmentOutcome> {
   attempted.add(request.bookId);
   const book = await getBookRecord(request.bookId);
   if (!book) return { reason: "book-removed" };
-  const needsCover = request.cover && book.coverStatus === "unchecked";
+  const needsCover = request.cover && coverNeedsWork(book);
   const needsMetadata = request.metadata;
   if (!needsCover && !needsMetadata) return { reason: "not-needed" };
   if (!ENRICHMENT_FORMATS.has(book.format)) return { reason: "unsupported-format" };
@@ -142,13 +180,12 @@ async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook):
   const observed = await getBookRecord(request.bookId);
   if (!observed) return { reason: "book-removed" };
   const cover =
-    request.cover && observed.coverStatus === "unchecked"
-      ? await prepareParsedCover(request.bookId, parsed)
-      : undefined;
+    request.cover && coverNeedsWork(observed) ? await prepareParsedCover(request.bookId, parsed) : undefined;
   return runDomainWrite(async () => {
     const current = await getBookRecord(request.bookId);
     if (!current) return { reason: "book-removed" };
     const events = [];
+    let restored = false;
 
     if (request.metadata) {
       const title = foliateTitle(parsed);
@@ -195,7 +232,17 @@ async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook):
       );
     }
 
-    if (events.length === 0) return { reason: "not-needed" };
+    // Bytes for a verdict already on record: store them, no new verdict.
+    if (cover && request.cover && coverMissingHere(current))
+      restored = !!(await invoke<StoredCover>("library_put_cover", cover.bytes, {
+        headers: { "x-book-id": request.bookId, ...(cover.mimeType ? { "x-blob-mime": cover.mimeType } : {}) },
+      }));
+
+    if (events.length === 0) {
+      if (!restored) return { reason: "not-needed" };
+      emitAppEvent("book-changed", { bookId: request.bookId }, request.origin);
+      return { reason: null };
+    }
     await commitDomainEvents(...events);
     emitAppEvent("book-changed", { bookId: request.bookId }, request.origin);
     return { reason: null };

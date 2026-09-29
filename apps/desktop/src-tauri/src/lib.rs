@@ -965,6 +965,7 @@ pub fn run() {
             web_image_cache::web_image_cache_put,
             covers::library_put_cover,
             covers::library_cover_backlog,
+            covers::library_restore_local_cover,
             storage::append_events,
             storage::commit_events,
             storage::durable_agent_job_owners,

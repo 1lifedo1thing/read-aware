@@ -5,7 +5,15 @@ import { AppError } from "@read-aware/core";
 import * as library from "./library-db";
 import * as events from "../../../platform/domain-events";
 import { pendingImportPlaceholder } from "./book-import";
-import { enrichFromOpenBook, enrichmentQueue, metadataNeedsEnrichment } from "./book-enrichment";
+import * as environment from "../../../platform/environment";
+import { onAppEvent } from "../../../platform/app-events";
+import * as parsing from "../../reader/lib/parse-book";
+import {
+  enrichFromOpenBook,
+  enrichmentQueue,
+  metadataNeedsEnrichment,
+  scheduleCatchUpEnrichment,
+} from "./book-enrichment";
 import type { FoliateBook } from "../../reader/lib/foliate-engine";
 
 const restore: Array<() => void> = [];
@@ -117,4 +125,71 @@ test("a book removed during cover preparation is rechecked before writing any co
   expect(invoke).not.toHaveBeenCalled();
   expect(f.commit).not.toHaveBeenCalled();
   expect(enrichmentQueue.snapshot(f.book.id)).toMatchObject({ phase: "skipped", reason: "book-removed" });
+});
+
+/** A cover on record whose bytes never reached this device, on a book whose file is here. */
+function missingCover(format: "epub" | "cbr" = "epub") {
+  const f = fixture();
+  Object.assign(f.book, { format, coverStatus: "ready", coverBlobKey: `cover:${f.book.id}`, coverLocal: false });
+  const tauri = spyOn(environment, "isTauri").mockReturnValue(true);
+  const changed: string[] = [];
+  const stop = onAppEvent("book-changed", ({ bookId }) => changed.push(bookId));
+  restore.push(
+    () => tauri.mockRestore(),
+    () => stop(),
+  );
+  return { ...f, changed };
+}
+
+async function settled(until: () => boolean) {
+  for (let turn = 0; turn < 200 && !until(); turn++) await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(until()).toBe(true);
+}
+
+test("a cover on record but missing here is restored from the local file once, with no new verdict", async () => {
+  const f = missingCover();
+  const invoke = spyOn(ipc, "invoke").mockImplementation(async <T>(command: string) => {
+    expect(command).toBe("library_restore_local_cover");
+    return "restored" as T;
+  });
+  restore.push(() => invoke.mockRestore());
+  scheduleCatchUpEnrichment([f.book]);
+  await settled(() => f.changed.includes(f.book.id));
+  expect(invoke).toHaveBeenCalledTimes(1);
+  expect(invoke.mock.calls[0]?.[1]).toEqual({ bookId: f.book.id });
+  // A shelf reload before the repaint lands does not ask again.
+  scheduleCatchUpEnrichment([f.book]);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(invoke).toHaveBeenCalledTimes(1);
+  expect(f.commit).not.toHaveBeenCalled();
+});
+
+test("a missing cover only the engine can read is extracted by the engine job and stored without a verdict", async () => {
+  const f = missingCover("cbr");
+  const file = spyOn(library, "openLocalBookFile").mockResolvedValue(new File(["comic"], "book.cbr"));
+  const destroyed = { value: false };
+  const parse = spyOn(parsing, "parseBookFile").mockResolvedValue({
+    metadata: {},
+    sections: [],
+    getCover: async () => new Blob(["cover"], { type: "image/png" }),
+    destroy: async () => {
+      destroyed.value = true;
+    },
+  } as unknown as FoliateBook);
+  const invoke = spyOn(ipc, "invoke").mockImplementation(async <T>(command: string) => {
+    if (command === "library_restore_local_cover") return "engine" as T;
+    expect(command).toBe("library_put_cover");
+    return { coverBlobKey: `cover:${f.book.id}`, sha256: "hash" } as T;
+  });
+  restore.push(
+    () => file.mockRestore(),
+    () => parse.mockRestore(),
+    () => invoke.mockRestore(),
+  );
+  scheduleCatchUpEnrichment([f.book]);
+  await settled(() => enrichmentQueue.snapshot(f.book.id).phase === "completed");
+  expect(invoke.mock.calls.map(([command]) => command)).toEqual(["library_restore_local_cover", "library_put_cover"]);
+  expect(f.changed).toContain(f.book.id);
+  expect(f.commit).not.toHaveBeenCalled();
+  expect(destroyed.value).toBe(true);
 });
