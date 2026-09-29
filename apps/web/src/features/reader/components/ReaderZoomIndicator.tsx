@@ -1,4 +1,4 @@
-import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, LockSimple, LockSimpleOpen } from "@phosphor-icons/react";
 import { IconButton } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import type { ZoomFeedback } from "../lib/zoom-feedback";
@@ -6,20 +6,26 @@ import { useZoomIndicator } from "../hooks/useZoomIndicator";
 
 type Props = {
   feedback: ZoomFeedback;
-  /** The reader controls are showing; a zoom off the fit then stays up with them. */
+  /** The reader controls are showing; a zoomed or locked view then stays up with them. */
   controlsVisible: boolean;
+  /** Paged flows can lock a zoomed view for page turns; a continuous scroll cannot. */
+  canLock: boolean;
+  locked: boolean;
+  onToggleLock: () => void;
   onReset: () => void;
 };
 
 /**
  * The zoom of a fixed-layout page: shown briefly while it changes, and —
- * while the reader controls are up and the page is zoomed — kept up with a
- * one-click way back to the fit. Same surface as the progress readout; only
- * the reset button takes pointer input, so pinches pass through to the page.
+ * while the reader controls are up and the page is zoomed or its view
+ * locked — kept up with a lock for page turns and a one-click way back to
+ * the fit. Same surface as the progress readout; only its buttons take
+ * pointer input, so pinches pass through to the page.
  */
-export function ReaderZoomIndicator({ feedback, controlsVisible, onReset }: Props) {
+export function ReaderZoomIndicator({ feedback, controlsVisible, canLock, locked, onToggleLock, onReset }: Props) {
   const { t } = useTranslation("reader");
-  const indicator = useZoomIndicator(feedback, controlsVisible);
+  const indicator = useZoomIndicator(feedback, controlsVisible, canLock && locked);
+  const showLock = canLock && (indicator?.resettable || locked);
   return (
     <div
       role="status"
@@ -33,6 +39,22 @@ export function ReaderZoomIndicator({ feedback, controlsVisible, onReset }: Prop
             <span className="sr-only">{t("pageZoom")} </span>
             {indicator.percent}%
           </span>
+          {showLock && (
+            <IconButton
+              label={t(locked ? "pageZoomUnlock" : "pageZoomLock")}
+              aria-pressed={locked}
+              size="sm"
+              onClick={onToggleLock}
+              className="pointer-events-auto"
+              icon={
+                locked ? (
+                  <LockSimple size={14} weight="fill" aria-hidden="true" />
+                ) : (
+                  <LockSimpleOpen size={14} aria-hidden="true" />
+                )
+              }
+            />
+          )}
           {indicator.resettable ? (
             <IconButton
               label={t("pageZoomReset")}
@@ -42,7 +64,7 @@ export function ReaderZoomIndicator({ feedback, controlsVisible, onReset }: Prop
               icon={<ArrowCounterClockwise size={14} aria-hidden="true" />}
             />
           ) : (
-            <span aria-hidden="true" className="w-2" />
+            !showLock && <span aria-hidden="true" className="w-2" />
           )}
         </div>
       )}

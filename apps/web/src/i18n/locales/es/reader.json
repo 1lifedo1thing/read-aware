@@ -48,6 +48,8 @@
   },
   "pageZoom": "Zoom",
   "pageZoomReset": "Restablecer el zoom",
+  "pageZoomLock": "Fijar esta vista al pasar páginas",
+  "pageZoomUnlock": "Liberar la vista",
   "pageZoomHint": "El zoom, el ajuste y tu posición en la página se recuerdan para este libro en este dispositivo.",
   "pageFit": "Ajuste",
   "pageFitOption": {

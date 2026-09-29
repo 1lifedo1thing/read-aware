@@ -2,7 +2,8 @@
  * How each fixed-layout book (PDF, comics) was last viewed on this device:
  * its zoom — a fit and a factor over it (see `foliate-js/src/fixed-zoom.ts`)
  * — and where on the page being read the viewport's center rested
- * (`FixedLayout.viewFocus`). The reading position itself names only the page
+ * (`FixedLayout.viewFocus`) — and whether that view is locked for page turns
+ * (`FixedLayout.setViewLocked`). The reading position itself names only the page
  * and roams with the library; this is the rest of the view, which answers to
  * this screen and window and so stays on this device.
  *
@@ -21,7 +22,7 @@ import { localKV } from "../platform/local-store";
 import type { DomainActor } from "../platform/domain-actor";
 
 export const FIXED_LAYOUT_ZOOM_KEY = "read-aware-fixed-layout-zoom";
-export type FixedLayoutView = FixedLayoutZoom & { focus?: ViewFocus };
+export type FixedLayoutView = FixedLayoutZoom & { focus?: ViewFocus; locked?: true };
 export type FixedLayoutViews = Record<string, FixedLayoutView>;
 
 function normalizeFocus(value: unknown): ViewFocus | undefined {
@@ -34,8 +35,9 @@ function normalizeFocus(value: unknown): ViewFocus | undefined {
 
 function normalizeView(value: unknown): FixedLayoutView {
   const zoom = normalizeFixedLayoutZoom(value);
-  const focus = normalizeFocus((value as { focus?: unknown } | null)?.focus);
-  return focus ? { ...zoom, focus } : zoom;
+  const record = value as { focus?: unknown; locked?: unknown } | null;
+  const focus = normalizeFocus(record?.focus);
+  return { ...zoom, ...(focus ? { focus } : {}), ...(record?.locked === true ? { locked: true as const } : {}) };
 }
 
 export function getFixedLayoutViews(): FixedLayoutViews {
@@ -51,21 +53,30 @@ export function getFixedLayoutViews(): FixedLayoutViews {
 function saveView(bookId: string, view: FixedLayoutView, origin: DomainActor) {
   const views = getFixedLayoutViews();
   const next = { ...views };
-  // A default zoom with no place to return to needs no entry.
-  if (sameFixedLayoutZoom(view, DEFAULT_FIXED_LAYOUT_ZOOM) && !view.focus) delete next[bookId];
+  // A default zoom with no place to return to, unlocked, needs no entry.
+  if (sameFixedLayoutZoom(view, DEFAULT_FIXED_LAYOUT_ZOOM) && !view.focus && !view.locked) delete next[bookId];
   else next[bookId] = view;
   if (JSON.stringify(next[bookId]) === JSON.stringify(views[bookId])) return;
   localKV.setItem(FIXED_LAYOUT_ZOOM_KEY, JSON.stringify(next), "local", origin);
 }
 
-/** Remember a book's zoom, keeping where it was being read. */
-export function saveFixedLayoutZoom(bookId: string, zoom: FixedLayoutZoom, origin: DomainActor): void {
-  const focus = getFixedLayoutViews()[bookId]?.focus;
-  saveView(bookId, { fit: zoom.fit, factor: zoom.factor, ...(focus ? { focus } : {}) }, origin);
+/** Change one part of a book's view record, keeping the rest. */
+function updateView(bookId: string, change: Partial<FixedLayoutView>, origin: DomainActor) {
+  const { fit, factor, focus, locked } = { ...DEFAULT_FIXED_LAYOUT_ZOOM, ...getFixedLayoutViews()[bookId], ...change };
+  saveView(bookId, { fit, factor, ...(focus ? { focus } : {}), ...(locked ? { locked } : {}) }, origin);
 }
 
-/** Remember where on its page a book was being read, keeping its zoom. */
+/** Remember a book's zoom, keeping where it was being read and its lock. */
+export function saveFixedLayoutZoom(bookId: string, zoom: FixedLayoutZoom, origin: DomainActor): void {
+  updateView(bookId, { fit: zoom.fit, factor: zoom.factor }, origin);
+}
+
+/** Remember where on its page a book was being read, keeping its zoom and lock. */
 export function saveFixedLayoutFocus(bookId: string, focus: ViewFocus, origin: DomainActor): void {
-  const view = getFixedLayoutViews()[bookId] ?? DEFAULT_FIXED_LAYOUT_ZOOM;
-  saveView(bookId, { fit: view.fit, factor: view.factor, focus: normalizeFocus(focus) }, origin);
+  updateView(bookId, { focus: normalizeFocus(focus) }, origin);
+}
+
+/** Remember whether a book's zoomed view is locked for page turns. */
+export function saveFixedLayoutLock(bookId: string, locked: boolean, origin: DomainActor): void {
+  updateView(bookId, { locked: locked ? true : undefined }, origin);
 }

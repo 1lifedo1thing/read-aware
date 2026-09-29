@@ -160,6 +160,7 @@ export class FixedLayout extends HTMLElement {
   // rastered; `#zoomSettleTimer` ends it.
   #zoomLive = false;
   #zoomSettleTimer: ReturnType<typeof setTimeout> | 0 = 0;
+  #viewLocked = false;
   #detailTimer: ReturnType<typeof setTimeout> | 0 = 0;
   #flow: string | null = null;
   #maxColumnCount: number | undefined;
@@ -229,6 +230,9 @@ export class FixedLayout extends HTMLElement {
         :host([flow="scrolled"]) {
             flex-direction: column;
             overscroll-behavior: contain;
+        }
+        :host([view-locked]:not([flow="scrolled"])) {
+            overflow: hidden;
         }`);
 
     this.#observer.observe(this);
@@ -629,14 +633,21 @@ export class FixedLayout extends HTMLElement {
     for (const frame of [frames?.left, frames?.right, frames?.center]) if (frame) fn(frame);
   }
   #showFrames(frames: SpreadFrames, side: Side, context: object) {
+    const previous = [this.#left, this.#right, this.#center];
     const next = new Set([frames.left, frames.right, frames.center]);
-    for (const frame of [this.#left, this.#right, this.#center])
-      if (frame && !next.has(frame)) this.#setFrameHidden(frame, true);
     this.#left = frames.left ?? null;
     this.#right = frames.right ?? null;
     this.#center = frames.center ?? null;
-    this.#eachFrame(frames, (frame) => this.#setFrameHidden(frame, false));
     this.#side = frames.center ? "center" : this.#left?.blank ? "right" : this.#right?.blank ? "left" : side;
+    // READAWARE: size the new spread while it is still hidden and the old
+    // one still holds the layout, then swap them in one step. Laying out in
+    // between — `#render` measures the host, and so may any 'load' listener
+    // — would find the old spread gone and the new one not yet sized: the
+    // content collapses for that instant and the browser clamps the scroll
+    // position to it, throwing a zoomed view back to its top-left corner.
+    this.#render(this.#side, context);
+    for (const frame of previous) if (frame && !next.has(frame)) this.#setFrameHidden(frame, true);
+    this.#eachFrame(frames, (frame) => this.#setFrameHidden(frame, false));
     // READAWARE: announce the spread's documents on every show — the same
     // per-navigation 'load' consumers always got, now decoupled from
     // iframe creation so cached spreads keep the contract. Listeners that
@@ -649,7 +660,6 @@ export class FixedLayout extends HTMLElement {
           }),
         );
     });
-    this.#render(this.#side, context);
   }
   #touchLRU(spreadIndex: number) {
     const at = this.#lru.indexOf(spreadIndex);
@@ -1248,19 +1258,35 @@ export class FixedLayout extends HTMLElement {
     const frame = [this.#left, this.#center, this.#right].find((frame) => frame?.index === index && !frame.hidden);
     return frame?.element.getBoundingClientRect() ?? null;
   }
+  // READAWARE: a locked view (paged flows only). The reader froze a zoomed
+  // spread on the part of the page they read, so every page turned to shows
+  // that same part: nothing pans it — not the wheel, a drag, a key or a
+  // swipe, all of which turn pages as at the fit — and a page turn keeps the
+  // scroll position rather than opening at the page's start. A zoom still
+  // moves it (programmatic scrolling survives `overflow: hidden`), and the
+  // view stays locked at the new zoom. A continuous scroll has no lock: it is
+  // read by scrolling.
+  get viewLocked() {
+    return this.#viewLocked;
+  }
+  setViewLocked(locked: boolean) {
+    this.#viewLocked = locked;
+    this.toggleAttribute("view-locked", locked);
+  }
   // READAWARE: a zoomed paged spread is panned inside the viewport. The
   // host scrolls natively, but the reader claims the wheel in paged flows to
   // turn pages, so it asks here first: a pan that moves the spread wins.
-  /** Pan a zoomed paged spread; true when it moved. Scrolled flows scroll natively. */
+  /** Pan a zoomed paged spread; true when it moved. Scrolled flows scroll natively; a locked view never pans. */
   panBy(dx: number, dy: number): boolean {
-    if (this.scrolled) return false;
+    if (this.scrolled || this.#viewLocked) return false;
     const { scrollLeft, scrollTop } = this;
     this.scrollLeft = scrollLeft + dx;
     this.scrollTop = scrollTop + dy;
     return this.scrollLeft !== scrollLeft || this.scrollTop !== scrollTop;
   }
-  /** Which edges of a paged spread the viewport rests against — all four when it fits. */
+  /** Which edges of a paged spread the viewport rests against — all four when it fits, or is locked. */
   get panEdges(): PanEdges {
+    if (this.#viewLocked && !this.scrolled) return { left: true, top: true, right: true, bottom: true };
     const slack = 1;
     return {
       left: this.scrollLeft <= slack,
@@ -1271,7 +1297,8 @@ export class FixedLayout extends HTMLElement {
   }
   /** Show a newly turned-to spread from its reading start, or — turning back — its end. */
   #revealEdge(edge: PageEdge) {
-    if (this.scrolled) return;
+    // A locked view keeps showing the same part of every page.
+    if (this.scrolled || this.#viewLocked) return;
     const start = edge === "start";
     const inlineStart = this.rtl ? this.scrollWidth : 0;
     const inlineEnd = this.rtl ? 0 : this.scrollWidth;

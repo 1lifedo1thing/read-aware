@@ -11,7 +11,9 @@
  * window) reaches the renderer through the book's memory.
  *
  * It also keeps where on the page the reader was looking (`viewFocus`), so a
- * zoomed page reopens on the same passage rather than at its corner.
+ * zoomed page reopens on the same passage rather than at its corner, and
+ * whether that view is locked, so page turns keep showing the same part of
+ * every page (`setViewLocked`; paged flows only).
  */
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import { useAtomValue } from "jotai";
@@ -21,7 +23,7 @@ import { createLogger } from "../../../platform/logger";
 import type { FoliateRenderer, FoliateView } from "../lib/foliate-engine";
 import { readingRenderContext } from "../lib/reading-render-context";
 import { createZoomFeedback, type ZoomFeedback } from "../lib/zoom-feedback";
-import { saveFixedLayoutFocus, saveFixedLayoutZoom } from "../../../domain/reading-zoom";
+import { saveFixedLayoutFocus, saveFixedLayoutLock, saveFixedLayoutZoom } from "../../../domain/reading-zoom";
 import type { ViewFocus } from "../../../../foliate-js/src/fixed-layout";
 import {
   DEFAULT_FIXED_LAYOUT_ZOOM,
@@ -77,7 +79,11 @@ export type FixedLayoutZoomInput = {
   /** Pinch listeners for a section document, for as long as it lives. */
   attachDocument: (doc: Document) => void;
   stepZoom: (direction: 1 | -1, origin?: DomainActor) => void;
+  /** Back to the fit, which also releases a locked view. */
   resetZoom: (origin?: DomainActor) => void;
+  /** The book's zoomed view is locked for page turns. */
+  locked: boolean;
+  toggleLock: (origin?: DomainActor) => void;
 };
 
 const ALL_EDGES = { left: true, right: true, top: true, bottom: true };
@@ -103,8 +109,9 @@ export function useFixedLayoutZoom({
   const prepareRenderer = useCallback(
     (renderer: FoliateRenderer | undefined, context: object) => {
       if (!renderer || !("setZoom" in renderer)) return;
-      const { fit, factor } = storedRef.current;
+      const { fit, factor, locked } = storedRef.current;
       renderer.setZoom({ fit, factor }, { context });
+      renderer.setViewLocked(!!locked);
       // Known to the reset control, without announcing a change.
       feedback.publish(factor, { announce: false });
     },
@@ -117,7 +124,9 @@ export function useFixedLayoutZoom({
   // finds it already in place.
   useEffect(() => {
     const renderer = zoomRenderer();
-    if (!renderer || sameFixedLayoutZoom(renderer.zoom, stored)) return;
+    if (!renderer) return;
+    if (renderer.viewLocked !== !!stored.locked) renderer.setViewLocked(!!stored.locked);
+    if (sameFixedLayoutZoom(renderer.zoom, stored)) return;
     renderer.setZoom({ fit: stored.fit, factor: stored.factor }, { context: readingRenderContext("user") });
     feedback.publish(stored.factor);
   }, [feedback, stored, zoomRenderer]);
@@ -311,13 +320,42 @@ export function useFixedLayoutZoom({
     [applyAndRemember, zoomRenderer],
   );
 
+  const rememberLock = useCallback(
+    (locked: boolean, origin: DomainActor) => {
+      if (!bookId) return;
+      try {
+        saveFixedLayoutLock(bookId, locked, origin);
+      } catch (error) {
+        // The KV queue reports failed writes itself; a throw here is a bug.
+        log.error("Could not remember the book's view lock", error);
+      }
+    },
+    [bookId],
+  );
+
   const resetZoom = useCallback(
     (origin: DomainActor = "user") => {
       const renderer = zoomRenderer();
       if (!renderer) return;
+      // At the fit there is nothing left to hold still.
+      if (renderer.viewLocked) {
+        renderer.setViewLocked(false);
+        rememberLock(false, origin);
+      }
       applyAndRemember(renderer, { fit: renderer.zoom.fit, factor: 1 }, undefined, origin);
     },
-    [applyAndRemember, zoomRenderer],
+    [applyAndRemember, rememberLock, zoomRenderer],
+  );
+
+  const toggleLock = useCallback(
+    (origin: DomainActor = "user") => {
+      const renderer = zoomRenderer();
+      if (!renderer) return;
+      const locked = !renderer.viewLocked;
+      renderer.setViewLocked(locked);
+      rememberLock(locked, origin);
+    },
+    [rememberLock, zoomRenderer],
   );
 
   const panByWheel = useCallback(
@@ -399,6 +437,8 @@ export function useFixedLayoutZoom({
     attachDocument,
     stepZoom,
     resetZoom,
+    locked: !!stored.locked,
+    toggleLock,
   };
 }
 

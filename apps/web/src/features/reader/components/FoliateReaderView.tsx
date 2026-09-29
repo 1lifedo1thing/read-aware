@@ -2567,6 +2567,9 @@ export function FoliateReaderView({
         <ReaderZoomIndicator
           feedback={fixedLayoutZoom.feedback}
           controlsVisible={shellVisible}
+          canLock={readingMode !== "scroll"}
+          locked={fixedLayoutZoom.locked}
+          onToggleLock={() => fixedLayoutZoom.toggleLock()}
           onReset={() => fixedLayoutZoom.resetZoom()}
         />
       )}

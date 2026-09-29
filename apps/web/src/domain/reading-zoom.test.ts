@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { DEFAULT_FIXED_LAYOUT_ZOOM, ZOOM_FACTOR_MAX, normalizeFixedLayoutZoom } from "../../foliate-js/src/fixed-zoom";
-import { FIXED_LAYOUT_ZOOM_KEY, getFixedLayoutViews, saveFixedLayoutFocus, saveFixedLayoutZoom } from "./reading-zoom";
+import {
+  FIXED_LAYOUT_ZOOM_KEY,
+  getFixedLayoutViews,
+  saveFixedLayoutFocus,
+  saveFixedLayoutLock,
+  saveFixedLayoutZoom,
+} from "./reading-zoom";
 
 describe("per-book memory", () => {
   const store = new Map<string, string>();
@@ -54,7 +60,26 @@ describe("per-book memory", () => {
   });
 
   test("drops a damaged place and keeps the zoom", () => {
-    store.set(FIXED_LAYOUT_ZOOM_KEY, JSON.stringify({ a: { fit: "page", factor: 2, focus: { index: -1, x: 0, y: 0 } } }));
+    store.set(
+      FIXED_LAYOUT_ZOOM_KEY,
+      JSON.stringify({ a: { fit: "page", factor: 2, focus: { index: -1, x: 0, y: 0 } } }),
+    );
+    expect(getFixedLayoutViews()).toEqual({ a: { fit: "page", factor: 2 } });
+  });
+
+  test("remembers a locked view alongside the zoom and place, and forgets the lock when released", () => {
+    saveFixedLayoutZoom("book", { fit: "page", factor: 2.5 }, "user");
+    saveFixedLayoutLock("book", true, "user");
+    saveFixedLayoutFocus("book", { index: 3, x: 0.2, y: 0.3 }, "user");
+    expect(getFixedLayoutViews().book).toEqual({
+      fit: "page",
+      factor: 2.5,
+      focus: { index: 3, x: 0.2, y: 0.3 },
+      locked: true,
+    });
+    saveFixedLayoutLock("book", false, "user");
+    expect(getFixedLayoutViews().book).toEqual({ fit: "page", factor: 2.5, focus: { index: 3, x: 0.2, y: 0.3 } });
+    store.set(FIXED_LAYOUT_ZOOM_KEY, JSON.stringify({ a: { fit: "page", factor: 2, locked: "yes" } }));
     expect(getFixedLayoutViews()).toEqual({ a: { fit: "page", factor: 2 } });
   });
 });

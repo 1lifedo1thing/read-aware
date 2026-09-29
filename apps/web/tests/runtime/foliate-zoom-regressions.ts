@@ -332,6 +332,35 @@ export async function runZoomRegressions(modules: Modules): Promise<Result[]> {
     }
   });
 
+  await check("a locked view never pans, and every page turned to shows the same part", async () => {
+    const reader = await open("paginated", 1);
+    try {
+      const { renderer } = reader;
+      renderer.setZoom({ fit: "page", factor: 3 });
+      renderer.scrollLeft = 150;
+      renderer.scrollTop = 200;
+      renderer.setViewLocked(true);
+      assert(!renderer.panBy(40, 40), "A locked view panned");
+      const edges = renderer.panEdges;
+      assert(edges.left && edges.right && edges.top && edges.bottom, "A locked view reports room to pan");
+      await renderer.next();
+      await waitFor("next page", () => renderer.index === 2);
+      near(renderer.scrollLeft, 150, "locked horizontal position after a turn");
+      near(renderer.scrollTop, 200, "locked vertical position after a turn");
+      await renderer.prev();
+      await waitFor("previous page", () => renderer.index === 1);
+      near(renderer.scrollTop, 200, "locked position turning back");
+      // A zoom still moves it, and it stays locked there.
+      renderer.setZoom({ fit: "page", factor: 3.5 });
+      assert(renderer.viewLocked, "A zoom released the lock");
+      assert(Math.abs(renderer.scrollTop - 200) > 1, "A zoom could not move a locked view");
+      renderer.setViewLocked(false);
+      assert(renderer.panBy(0, 30), "An unlocked view did not pan");
+    } finally {
+      await reader.close();
+    }
+  });
+
   await check("a zoomed paged spread pans, and page turns open it at their reading edge", async () => {
     const reader = await open("paginated", 1);
     try {

@@ -6,7 +6,7 @@ const INDICATOR_HOLD_MS = 900;
 
 export type ZoomIndicatorState = {
   percent: number;
-  /** Showing: the zoom just changed, or it is off the fit while the reader controls are up. */
+  /** Showing: the zoom just changed, or — while the reader controls are up — it is off the fit or locked. */
   visible: boolean;
   /** The zoom is off the fit, so there is something to reset. */
   resettable: boolean;
@@ -15,9 +15,14 @@ export type ZoomIndicatorState = {
 /**
  * What the zoom indicator shows. It comes up whenever the zoom changes and
  * goes once the zoom has held still for a moment; while the reader controls
- * are showing, a zoom off the fit stays up with them, offering its reset.
+ * are showing, a zoom off the fit or a locked view stays up with them,
+ * offering its reset and lock.
  */
-export function useZoomIndicator(feedback: ZoomFeedback, controlsVisible: boolean): ZoomIndicatorState | null {
+export function useZoomIndicator(
+  feedback: ZoomFeedback,
+  controlsVisible: boolean,
+  locked: boolean,
+): ZoomIndicatorState | null {
   const snapshot = useSyncExternalStore(feedback.subscribe, feedback.getSnapshot, feedback.getSnapshot);
   const [hiddenSerial, setHiddenSerial] = useState(0);
   useEffect(() => {
@@ -29,7 +34,7 @@ export function useZoomIndicator(feedback: ZoomFeedback, controlsVisible: boolea
   const resettable = snapshot.percent !== 100;
   return {
     percent: snapshot.percent,
-    visible: snapshot.serial !== hiddenSerial || (controlsVisible && resettable),
+    visible: snapshot.serial !== hiddenSerial || (controlsVisible && (resettable || locked)),
     resettable,
   };
 }
