@@ -53,7 +53,7 @@ export function PluginPageHost({ navKey, onExit }: PluginPageHostProps) {
       // A page scrolls as a page: content flows in the app scroll viewport
       // (title included), so the scrollbar lives at the window edge like on
       // every other full-page surface. Windowed lists virtualize against
-      // that same viewport (PluginVirtualRows).
+      // that same viewport (VirtualRows).
       className="mx-auto w-full max-w-5xl px-6 py-8 pb-[calc(2rem+var(--ra-safe-bottom))]"
     >
       {viewDepth <= 1 && (

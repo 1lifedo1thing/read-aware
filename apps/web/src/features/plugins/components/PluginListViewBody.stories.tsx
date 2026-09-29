@@ -201,7 +201,7 @@ export const AccessoryKinds: Story = {
   },
 };
 
-/** A thousand rows — the case PluginVirtualRows windows. */
+/** A thousand rows — the case VirtualRows windows. */
 export const LongList: Story = {
   args: {
     view: {

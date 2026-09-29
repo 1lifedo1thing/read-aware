@@ -1,7 +1,7 @@
 /**
- * Windowed rendering for plugin list bodies: only the rows near the viewport
- * are mounted. A saved-word notebook with thousands of entries would
- * otherwise put every row in the DOM at once.
+ * Windowed rendering for long lists: only the rows near the viewport are
+ * mounted. A saved-word notebook, or a table of contents with tens of
+ * thousands of entries, would otherwise put every row in the DOM at once.
  *
  * The list does NOT own a scroll region. It virtualizes against the nearest
  * host `.ra-scrollarea` — the app viewport on a plugin page, the bounded
@@ -9,7 +9,7 @@
  * surface and its scrollbar sits at that surface's edge, never on a floating
  * inner box in the middle of the page.
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 export type VirtualRow = {
@@ -19,7 +19,12 @@ export type VirtualRow = {
   content: ReactNode;
 };
 
-export function PluginVirtualRows({ rows }: { rows: VirtualRow[] }) {
+export type VirtualRowsHandle = {
+  /** Bring a row into view — mounted or not — e.g. the current chapter of a contents list. */
+  scrollToIndex(index: number, align?: "start" | "center" | "end" | "auto"): void;
+};
+
+export const VirtualRows = forwardRef<VirtualRowsHandle, { rows: VirtualRow[] }>(function VirtualRows({ rows }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
   // The list's offset within the scroller's CONTENT (viewport-invariant), so
@@ -68,6 +73,16 @@ export function PluginVirtualRows({ rows }: { rows: VirtualRow[] }) {
     scrollMargin,
   });
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToIndex: (index, align = "auto") => {
+        if (index >= 0 && index < rows.length) virtualizer.scrollToIndex(index, { align });
+      },
+    }),
+    [virtualizer, rows.length],
+  );
+
   return (
     <div ref={containerRef}>
       <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
@@ -90,4 +105,6 @@ export function PluginVirtualRows({ rows }: { rows: VirtualRow[] }) {
       </div>
     </div>
   );
-}
+});
+
+VirtualRows.displayName = "VirtualRows";

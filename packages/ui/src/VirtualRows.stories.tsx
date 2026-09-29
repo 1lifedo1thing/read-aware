@@ -1,6 +1,6 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
-import { ScrollArea } from "@read-aware/ui";
-import { PluginVirtualRows, type VirtualRow } from "./PluginVirtualRows";
+import { ScrollArea } from "./ScrollArea";
+import { VirtualRows, type VirtualRow } from "./VirtualRows";
 
 /** A saved-word row, the shape this list was built to window. */
 function row(index: number): VirtualRow {
@@ -19,7 +19,7 @@ function row(index: number): VirtualRow {
 }
 
 /**
- * Windowed rows for plugin list bodies.
+ * Windowed rows for long lists (plugin list bodies, the reader's contents).
  *
  * The component deliberately owns no scroll region — it virtualizes against
  * the nearest `.ra-scrollarea` ancestor, so the scrollbar belongs to the host
@@ -34,10 +34,10 @@ const scrolled: Decorator = (Story) => (
 );
 
 const meta = {
-  title: "Interface/Plugins/PluginVirtualRows",
-  component: PluginVirtualRows,
+  title: "Interface/VirtualRows",
+  component: VirtualRows,
   parameters: { layout: "padded" },
-} satisfies Meta<typeof PluginVirtualRows>;
+} satisfies Meta<typeof VirtualRows>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

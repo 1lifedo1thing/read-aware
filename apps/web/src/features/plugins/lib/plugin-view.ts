@@ -28,7 +28,7 @@ import { bindPluginImageOwner } from "./plugin-image-owner";
 
 const MAX_DEPTH = 6;
 const MAX_BLOCKS = 120;
-// List bodies render windowed (PluginVirtualRows), so a large list is a memory
+// List bodies render windowed (VirtualRows), so a large list is a memory
 // bound, not a DOM one — a saved-word notebook legitimately holds thousands.
 // The cap stays only as a runaway sanity limit.
 const MAX_LIST_ITEMS = 50_000;

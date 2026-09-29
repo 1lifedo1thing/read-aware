@@ -52,4 +52,5 @@ export { ChoiceGroup } from "./ChoiceGroup";
 export { Stepper } from "./Stepper";
 export { SwatchGroup, type SwatchColors } from "./SwatchGroup";
 export { ScrollArea } from "./ScrollArea";
+export { VirtualRows, type VirtualRow, type VirtualRowsHandle } from "./VirtualRows";
 export { SearchSelect, type SearchSelectProps } from "./SearchSelect";

@@ -1,12 +1,23 @@
 import { ListBullets } from "@phosphor-icons/react";
 import { Fragment, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Caption, EmptyState, Eyebrow, ItemList, SearchField, Stack, Tabs, Tag, Tooltip } from "@read-aware/ui";
+import {
+  Caption,
+  EmptyState,
+  Eyebrow,
+  ItemList,
+  SearchField,
+  Stack,
+  Tabs,
+  Tag,
+  Tooltip,
+  VirtualRows,
+  type VirtualRow,
+} from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useLocale, useTranslation } from "../../../i18n";
 import { localKV } from "../../../platform/local-store";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { renderPluginIcon } from "../lib/plugin-icons";
-import { PluginVirtualRows, type VirtualRow } from "./PluginVirtualRows";
 import { filterPluginTimelineItems, groupPluginTimelineItems, type PluginTimelineRange } from "../lib/plugin-timeline";
 import type { PluginListAccessory, PluginListItem, PluginListView } from "../lib/plugin-types";
 import { PluginActionGroup } from "./PluginActionGroup";
@@ -189,7 +200,7 @@ export function PluginListViewBody({
                 className="py-10"
               />
             ) : (
-              <PluginVirtualRows rows={rows} />
+              <VirtualRows rows={rows} />
             ),
         };
       })
@@ -260,7 +271,7 @@ export function PluginListViewBody({
           className={cn("transition-opacity", settling && "opacity-60")}
         >
           {listActions}
-          <PluginVirtualRows rows={plainRows} />
+          <VirtualRows rows={plainRows} />
         </Stack>
       )}
       <PluginViewPagination pagination={view.pagination} busy={busy} onResult={onResult} />

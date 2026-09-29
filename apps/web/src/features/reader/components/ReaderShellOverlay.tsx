@@ -1,12 +1,22 @@
 import type { DomainActor } from "../../../platform/domain-actor";
-import { useEffect, useId, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
 import { useReaderFocusTarget } from "../hooks/useReaderFocusTarget";
 import { useAtomValue } from "jotai";
 import type { ReadingModeSnapshot } from "@read-aware/core";
 import { CaretLeft, ChatCircle, ListBullets, ListChecks, Notebook, TextAa } from "@phosphor-icons/react";
 import { cn } from "@read-aware/ui/cn";
 import { useReaderResponsiveLayout } from "../hooks/useReaderResponsiveLayout";
-import { Body, Dialog, IconButton, ScrollArea, Tooltip, useToast } from "@read-aware/ui";
+import {
+  Body,
+  Dialog,
+  IconButton,
+  ScrollArea,
+  Tooltip,
+  VirtualRows,
+  useToast,
+  type VirtualRow,
+  type VirtualRowsHandle,
+} from "@read-aware/ui";
 import { describeError, formatPercent, useLocale, useTranslation } from "../../../i18n";
 import { createLogger } from "../../../platform/logger";
 import { ChatPanel } from "../../ai/components/ChatPanel";
@@ -509,15 +519,63 @@ export function ReaderShellOverlay({
 
   // Reveal the current chapter when the contents panel opens (or the chapter
   // changes while it's open), centering it so it's easy to find.
+  // The list is windowed (a set's contents can run to tens of thousands of
+  // entries), so the current row may not be mounted: scroll by index.
   const tocListRef = useRef<HTMLDivElement | null>(null);
+  const tocRowsRef = useRef<VirtualRowsHandle | null>(null);
   useReaderFocusTarget(bookId, "toc", tocListRef);
   useEffect(() => {
-    if (!visible || !tocOpen) return;
-    const frame = window.requestAnimationFrame(() => {
-      tocListRef.current?.querySelector('[aria-current="location"]')?.scrollIntoView({ block: "center" });
-    });
+    if (!visible || !tocOpen || activeTocIndex < 0) return;
+    const frame = window.requestAnimationFrame(() => tocRowsRef.current?.scrollToIndex(activeTocIndex, "center"));
     return () => window.cancelAnimationFrame(frame);
-  }, [visible, tocOpen, currentChapterHref]);
+  }, [visible, tocOpen, activeTocIndex]);
+  // Rows are rebuilt only when the entries or the current chapter change; the
+  // click handler reads the latest callbacks through a ref.
+  const selectTocEntry = useRef<(href: string) => void>(() => {});
+  useLayoutEffect(() => {
+    selectTocEntry.current = (href) => {
+      onChapterSelect?.(href);
+      // A full-screen sheet would hide the jump it just made.
+      if (isPhone) setTocOpen(false);
+    };
+  });
+  const tocRows = useMemo<VirtualRow[]>(
+    () =>
+      tocEntries.map((entry, index) => {
+        // A single resolved index (fragment-aware) — per-entry loose
+        // matching lit up every chapter sharing the current spine file.
+        const isActive = index === activeTocIndex;
+        return {
+          key: entry.id,
+          // One line of text-sm/leading-6 plus the row's vertical padding.
+          size: 36,
+          content: (
+            // oxlint-disable-next-line react/forbid-elements -- table-of-contents entry row with depth indentation and aria-current
+            <button
+              type="button"
+              onClick={() => selectTocEntry.current(entry.href)}
+              aria-current={isActive ? "location" : undefined}
+              className={cn(
+                "w-full border-l-2 py-1.5 pr-6 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg",
+                isActive ? "border-fg bg-fill text-fg" : "border-transparent text-fg-muted hover:text-fg",
+              )}
+              // The row's own inset (what the list used to pad), so the
+              // text sits where it always did while the row runs edge to
+              // edge. Nesting adds to it.
+              style={{ paddingLeft: `${1.75 + entry.depth * 0.85}rem` }}
+            >
+              <Body
+                as="span"
+                className={cn("block min-w-0 text-sm leading-6", isActive ? "font-semibold text-fg" : "text-inherit")}
+              >
+                {entry.label}
+              </Body>
+            </button>
+          ),
+        };
+      }),
+    [tocEntries, activeTocIndex],
+  );
 
   return (
     // overflow-clip (not -hidden): clips the off-screen panels the same way, but
@@ -727,43 +785,7 @@ export function ReaderShellOverlay({
             >
               {tocEntries.length === 0 && <Body className="px-5 py-2 text-sm text-fg-muted">{t("noToc")}</Body>}
 
-              {tocEntries.map((entry, index) => {
-                // A single resolved index (fragment-aware) — per-entry loose
-                // matching lit up every chapter sharing the current spine file.
-                const isActive = index === activeTocIndex;
-
-                return (
-                  // oxlint-disable-next-line react/forbid-elements -- table-of-contents entry row with depth indentation and aria-current
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => {
-                      onChapterSelect?.(entry.href);
-                      // A full-screen sheet would hide the jump it just made.
-                      if (isPhone) setTocOpen(false);
-                    }}
-                    aria-current={isActive ? "location" : undefined}
-                    className={cn(
-                      "w-full border-l-2 py-1.5 pr-6 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg",
-                      isActive ? "border-fg bg-fill text-fg" : "border-transparent text-fg-muted hover:text-fg",
-                    )}
-                    // The row's own inset (what the list used to pad), so the
-                    // text sits where it always did while the row runs edge to
-                    // edge. Nesting adds to it.
-                    style={{ paddingLeft: `${1.75 + entry.depth * 0.85}rem` }}
-                  >
-                    <Body
-                      as="span"
-                      className={cn(
-                        "block min-w-0 text-sm leading-6",
-                        isActive ? "font-semibold text-fg" : "text-inherit",
-                      )}
-                    >
-                      {entry.label}
-                    </Body>
-                  </button>
-                );
-              })}
+              <VirtualRows ref={tocRowsRef} rows={tocRows} />
             </div>
           </ScrollArea>
           {!isPhone && (
