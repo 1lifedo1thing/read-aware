@@ -21,6 +21,7 @@ import { usePluginReaderThemeOptions } from "../../settings/hooks/usePluginReade
 import { pluginFontsAtom, pluginThemesAtom } from "../../plugins/state/plugin-store";
 import { FontList } from "../../settings/components/FontList";
 import { useReaderAppearance } from "../hooks/useReaderAppearance";
+import { FixedLayoutFitChoice } from "./FixedLayoutZoomControls";
 
 type ReaderAppearanceCompactProps = {
   bookId: string;
@@ -170,19 +171,34 @@ export function ReaderAppearanceCompact({ bookId, fixedLayout = false }: ReaderA
           }
         />
         {fixedLayout ? (
-          <ItemList.Item
-            title={t("fixedLayoutColor")}
-            disclosure="none"
-            accessories={
-              <ChoiceGroup
-                ariaLabel={t("fixedLayoutColor")}
-                value={prefs.fixedLayoutColor}
-                options={fixedLayoutColorOptions(t)}
-                onChange={(fixedLayoutColor) => updatePrefs({ ...prefs, fixedLayoutColor })}
-                className="pt-1.5 [&>div]:gap-x-4"
-              />
-            }
-          />
+          <>
+            <ItemList.Item
+              title={t("pageFit")}
+              subtitle={t("pageZoomHint")}
+              disclosure="none"
+              accessories={
+                <FixedLayoutFitChoice
+                  bookId={bookId}
+                  scrolled={prefs.fixedLayoutReadingMode === "scroll"}
+                  inline
+                  className="pt-1.5 [&>div]:gap-x-4"
+                />
+              }
+            />
+            <ItemList.Item
+              title={t("fixedLayoutColor")}
+              disclosure="none"
+              accessories={
+                <ChoiceGroup
+                  ariaLabel={t("fixedLayoutColor")}
+                  value={prefs.fixedLayoutColor}
+                  options={fixedLayoutColorOptions(t)}
+                  onChange={(fixedLayoutColor) => updatePrefs({ ...prefs, fixedLayoutColor })}
+                  className="pt-1.5 [&>div]:gap-x-4"
+                />
+              }
+            />
+          </>
         ) : (
           <>
             <ItemList.Item

@@ -13,6 +13,13 @@ import type { Overlayer } from "./overlayer.js";
 import type { Content, RelocateReason, NativeInputBridge } from "./renderer.js";
 import { RendererResizeObserver } from "./resize-observer.js";
 import { getViewport, parseViewport, type Dimensions } from "./viewport.js";
+import {
+  DEFAULT_FIXED_LAYOUT_ZOOM,
+  normalizeFixedLayoutZoom,
+  resolveFixedLayoutFit,
+  sameFixedLayoutZoom,
+  type FixedLayoutZoom,
+} from "./fixed-zoom.js";
 
 // READAWARE: rendering budgets, canvas-memory driven. A PDF page rastered at
 // fit-width on a Retina display runs ~12–17 MB of RGBA; a dozen live pages
@@ -36,6 +43,31 @@ const STACK_BEHIND_VIEWPORTS = 1.5;
 const STACK_KEEP_AHEAD_VIEWPORTS = 5;
 const STACK_KEEP_BEHIND_VIEWPORTS = 3;
 
+// READAWARE: zoom rastering. A live zoom (a pinch, a ctrl+wheel stream)
+// re-presents the pages' current rasters at every step and rasters anew only
+// once the zoom has held still this long — rastering at every step would
+// start and cancel a page-sized draw per event. A discrete zoom (a key, a
+// button) rasters at once.
+const ZOOM_SETTLE_MS = 160;
+// The sharp overlay of a zoomed page follows the viewport once scrolling or
+// panning has paused this long (see pdf-detail.ts).
+const DETAIL_SETTLE_MS = 120;
+
+/** A point in client coordinates the zoom keeps still. */
+export type ZoomAnchor = { x: number; y: number };
+export type SetZoomOptions = {
+  /** Kept under the same page point; the viewport's center by default. */
+  anchor?: ZoomAnchor;
+  /** Part of a live gesture: present now, raster once it settles. */
+  live?: boolean;
+  context?: object;
+};
+/** Which edges of a zoomed paged spread the viewport rests against. */
+export type PanEdges = { left: boolean; right: boolean; top: boolean; bottom: boolean };
+/** Where a page arrived at by a page turn is first shown. */
+type PageEdge = "start" | "end";
+type ZoomHold = { point: ZoomAnchor; fx: number; fy: number; slot: HTMLElement | null };
+
 type FrameBase = {
   hidden: boolean;
   element: HTMLDivElement;
@@ -50,6 +82,7 @@ type FrameBase = {
   renderAbort?: AbortController | null;
   renderPromise?: Promise<void>;
   renderError?: unknown;
+  detailAbort?: AbortController | null;
 };
 type FixedFrame = FrameBase &
   (
@@ -59,6 +92,8 @@ type FixedFrame = FrameBase &
         width?: never;
         height?: never;
         onZoom?: never;
+        onPresent?: never;
+        onDetail?: never;
       }
     | {
         blank?: false;
@@ -66,6 +101,8 @@ type FixedFrame = FrameBase &
         width: number;
         height: number;
         onZoom?: PageSource["onZoom"] | null;
+        onPresent?: PageSource["onPresent"] | null;
+        onDetail?: PageSource["onDetail"] | null;
       }
   );
 type Side = "left" | "right" | "center";
@@ -87,7 +124,7 @@ export class FixedLayout extends HTMLElement {
   book: Book | undefined;
   rtl = false;
 
-  static observedAttributes = ["zoom", "flow", "max-column-count"];
+  static observedAttributes = ["flow", "max-column-count"];
   #root = this.attachShadow({ mode: "closed" });
   #observer = new RendererResizeObserver(
     () => this.inputBridge,
@@ -111,7 +148,15 @@ export class FixedLayout extends HTMLElement {
   #right: FixedFrame | null = null;
   #center: FixedFrame | null = null;
   #side: Side | undefined;
-  #zoom: number | "fit-width" | "fit-page" | undefined;
+  // READAWARE: replaces upstream's `zoom` attribute (a number or a fit
+  // keyword, which nothing set) with a fit and a factor over it — see
+  // fixed-zoom.ts — applied through `setZoom`.
+  #zoom: FixedLayoutZoom = DEFAULT_FIXED_LAYOUT_ZOOM;
+  // While a live zoom is in progress, frames are re-presented but not
+  // rastered; `#zoomSettleTimer` ends it.
+  #zoomLive = false;
+  #zoomSettleTimer: ReturnType<typeof setTimeout> | 0 = 0;
+  #detailTimer: ReturnType<typeof setTimeout> | 0 = 0;
   #flow: string | null = null;
   #maxColumnCount: number | undefined;
   // READAWARE: `{ background, foreground? }`, or null to render as authored.
@@ -133,6 +178,12 @@ export class FixedLayout extends HTMLElement {
   // while the reader is near it. `#stack` entries:
   // { slot, frame, framePromise, width, height, sized }.
   #stack: StackEntry[] | null = null;
+  // READAWARE: the stack's slots live in this column rather than directly on
+  // the host: at least as wide as the viewport and as wide as the widest
+  // page, it centers every page against the widest one, and a page zoomed
+  // past the viewport overflows to the right, where scrolling reaches it
+  // (flex centering on the host would push it off the left edge for good).
+  #stackColumn: HTMLDivElement | null = null;
   #stackCurrent = 0;
   #stackLive = new Set<number>();
   #stackWanted = new Set<number>();
@@ -151,37 +202,39 @@ export class FixedLayout extends HTMLElement {
       this.#updateStackWindow("scroll", feedback?.position === this.scrollTop ? feedback.context : {});
     }, 32);
   };
+  // A zoomed page's sharp overlay follows the viewport, in either flow.
+  #onScrollDetail = () => this.#scheduleDetail();
   constructor() {
     super();
 
     const sheet = new CSSStyleSheet();
     this.#root.adoptedStyleSheets = [sheet];
+    // READAWARE: pages are centered with auto margins (set per frame in
+    // `#render`, and by the stack column), not by the host's own centering.
+    // Auto margins collapse to zero once a zoomed page outgrows the
+    // viewport, so it overflows where scrolling reaches it; `center` would
+    // split the overflow and strand its left and top beyond reach.
     sheet.replaceSync(`:host {
             width: 100%;
             height: 100%;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            justify-content: flex-start;
+            align-items: flex-start;
             overflow: auto;
         }
         :host([flow="scrolled"]) {
             flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
             overscroll-behavior: contain;
         }`);
 
     this.#observer.observe(this);
     this.addEventListener("scroll", this.#onStackScroll, { passive: true });
+    this.addEventListener("scroll", this.#onScrollDetail, { passive: true });
     for (const name of ["wheel", "touchstart", "keydown"])
       this.addEventListener(name, this.#clearScrollFeedback, { capture: true, passive: true });
   }
   attributeChangedCallback(name: string, _: string | null, value: string | null) {
     switch (name) {
-      case "zoom":
-        this.#zoom = value !== "fit-width" && value !== "fit-page" ? parseFloat(value ?? "") : value;
-        this.#onResize();
-        break;
       case "flow":
         if (value === this.#flow) break;
         this.#flow = value;
@@ -207,6 +260,8 @@ export class FixedLayout extends HTMLElement {
     const srcOptionIsString = typeof srcOption === "string";
     const src = srcOptionIsString ? srcOption : srcOption?.src;
     const onZoom = srcOptionIsString ? null : srcOption?.onZoom;
+    const onPresent = srcOptionIsString ? null : srcOption?.onPresent;
+    const onDetail = srcOptionIsString ? null : srcOption?.onDetail;
     const element = document.createElement("div");
     element.setAttribute("dir", "ltr");
     // READAWARE: annotation overlays are positioned against this box.
@@ -260,7 +315,8 @@ export class FixedLayout extends HTMLElement {
           doc.addEventListener(
             "wheel",
             (event) => {
-              if (!this.scrolled) return;
+              // ctrl+wheel is a pinch (or a zoom chord), never a scroll.
+              if (!this.scrolled || event.ctrlKey) return;
               event.preventDefault();
               this.scrollBy({ top: event.deltaY, left: event.deltaX });
             },
@@ -283,6 +339,8 @@ export class FixedLayout extends HTMLElement {
             width,
             height,
             onZoom,
+            onPresent,
+            onDetail,
           };
           // READAWARE: a lazily rendered page (PDF) has no text layer at
           // load time — there would be nothing for a CFI to anchor to.
@@ -325,6 +383,8 @@ export class FixedLayout extends HTMLElement {
   // is cancelled rather than raced.
   #renderFrameAt(frame: FixedFrame | null | undefined, scale: number, context = this.#positionContext) {
     if (!frame?.onZoom) return;
+    // A live zoom rasters nothing until it settles (see `setZoom`).
+    if (this.#zoomLive) return;
     if (frame.renderedScale === scale || frame.renderingScale === scale) return;
     // Two strikes at one scale and the page stops hammering a render that
     // cannot succeed; a scale change resets the count.
@@ -351,6 +411,8 @@ export class FixedLayout extends HTMLElement {
         // The render rebuilt the text layer, so the overlayer's
         // ranges are detached — start it over.
         this.#createOverlayer(frame, context);
+        // A zoom past the raster budget sharpens what is on screen.
+        if (frame.onDetail) this.#scheduleDetail();
       })
       .catch((error: unknown) => {
         // A cancelled older render no longer owns this frame's verdict.
@@ -376,11 +438,42 @@ export class FixedLayout extends HTMLElement {
    *  corpse. */
   #cancelFrameRender(frame: FixedFrame | null | undefined) {
     if (!frame) return;
+    // A sharp overlay belongs to the raster under it.
+    this.#cancelFrameDetail(frame);
     const controller = frame?.renderAbort;
     if (!controller) return;
     frame.renderAbort = null;
     frame.renderingScale = null;
     controller.abort();
+  }
+  #cancelFrameDetail(frame: FixedFrame) {
+    frame.detailAbort?.abort();
+    frame.detailAbort = null;
+  }
+  // READAWARE: size a frame's iframe and overlay box for `scale` and show
+  // it there at once. An image page scales by transform; a lazily rastered
+  // page (PDF) has its current raster re-presented at the new scale until
+  // `#renderFrameAt` rasters it anew, its highlights following along.
+  #presentFrame(frame: FixedFrame, scale: number, blankWidth = 0, blankHeight = 0) {
+    const { iframe, overlay, width, height, blank, onZoom } = frame;
+    const iframeScale = onZoom ? scale : 1;
+    Object.assign(iframe.style, {
+      width: `${(width ?? blankWidth) * iframeScale}px`,
+      height: `${(height ?? blankHeight) * iframeScale}px`,
+      transform: onZoom ? "none" : `scale(${scale})`,
+      transformOrigin: "top left",
+      display: blank ? "none" : "block",
+    });
+    // READAWARE: keep the overlay box in lock-step with the iframe.
+    Object.assign(overlay.style, {
+      width: `${(width ?? blankWidth) * iframeScale}px`,
+      height: `${(height ?? blankHeight) * iframeScale}px`,
+      transform: onZoom ? "none" : `scale(${scale})`,
+    });
+    if (frame.doc && onZoom && frame.onPresent) frame.onPresent(frame.doc, scale);
+    // A frame about to raster rebuilds its overlayer when that finishes;
+    // every other one only needs its ranges drawn at the new geometry.
+    if (!onZoom || frame.renderedScale !== scale) frame.overlayer?.redraw();
   }
   // READAWARE: cached spreads stay in the DOM; only the current one
   // participates in layout and paints. `visibility` (not `display`) so the
@@ -412,20 +505,16 @@ export class FixedLayout extends HTMLElement {
     const blankWidth = l.width ?? r.width ?? 0;
     const blankHeight = l.height ?? r.height ?? 0;
 
-    const scale = this.scrolled
+    // READAWARE: the fit is the zoom's 100%; the factor scales from it.
+    const single = portrait || center;
+    const fitWidth = single
       ? width / (target.width ?? blankWidth)
-      : typeof this.#zoom === "number" && !isNaN(this.#zoom)
-        ? this.#zoom
-        : (this.#zoom === "fit-width"
-            ? portrait || center
-              ? width / (target.width ?? blankWidth)
-              : width / ((l.width ?? blankWidth) + (r.width ?? blankWidth))
-            : portrait || center
-              ? Math.min(width / (target.width ?? blankWidth), height / (target.height ?? blankHeight))
-              : Math.min(
-                  width / ((l.width ?? blankWidth) + (r.width ?? blankWidth)),
-                  height / Math.max(l.height ?? blankHeight, r.height ?? blankHeight),
-                )) || 1;
+      : width / ((l.width ?? blankWidth) + (r.width ?? blankWidth));
+    const fitHeight = single
+      ? height / (target.height ?? blankHeight)
+      : height / Math.max(l.height ?? blankHeight, r.height ?? blankHeight);
+    const fit = resolveFixedLayoutFit(this.#zoom.fit, this.scrolled);
+    const scale = ((fit === "width" ? fitWidth : Math.min(fitWidth, fitHeight)) || 1) * this.#zoom.factor;
     return { scale, portrait, target, blankWidth, blankHeight };
   }
   #render(side = this.#side, context = this.#positionContext) {
@@ -441,50 +530,38 @@ export class FixedLayout extends HTMLElement {
     );
     this.#portrait = portrait;
 
-    const transform = (frame: FixedFrame | null) => {
+    // READAWARE: the spread is centered by auto margins on its outer edges —
+    // a lone page takes both — which collapse to zero once zoom outgrows the
+    // viewport (see the host stylesheet).
+    const transform = (frame: FixedFrame | null, edges: "both" | "left" | "right") => {
       if (!frame) return;
-      let { element, iframe, overlay, width, height, blank, onZoom } = frame;
+      const { element, iframe, width, height } = frame;
       if (!iframe) return;
+      this.#presentFrame(frame, scale, blankWidth, blankHeight);
       // READAWARE: re-render only when the scale actually changed. A
       // ResizeObserver tick that leaves the scale alone would otherwise
       // redraw the whole page and rebuild its overlayer for nothing.
       this.#renderFrameAt(frame, scale, context);
-      const iframeScale = onZoom ? scale : 1;
-      Object.assign(iframe.style, {
-        width: `${(width ?? blankWidth) * iframeScale}px`,
-        height: `${(height ?? blankHeight) * iframeScale}px`,
-        transform: onZoom ? "none" : `scale(${scale})`,
-        transformOrigin: "top left",
-        display: blank ? "none" : "block",
-      });
+      const alone = edges === "both" || portrait;
       Object.assign(element.style, {
         width: `${(width ?? blankWidth) * scale}px`,
         height: `${(height ?? blankHeight) * scale}px`,
         overflow: "hidden",
         display: "block",
         flexShrink: "0",
-        marginBlock: this.scrolled ? "0" : "auto",
+        marginBlock: "auto",
+        marginLeft: alone || edges === "left" ? "auto" : "0",
+        marginRight: alone || edges === "right" ? "auto" : "0",
       });
-      // READAWARE: keep the overlay box in lock-step with the iframe.
-      if (overlay) {
-        Object.assign(overlay.style, {
-          width: `${(width ?? blankWidth) * iframeScale}px`,
-          height: `${(height ?? blankHeight) * iframeScale}px`,
-          transform: onZoom ? "none" : `scale(${scale})`,
-        });
-        // A re-rendered frame rebuilds its overlayer above; the others
-        // keep their ranges and only need the new geometry drawn.
-        if (!onZoom) frame.overlayer?.redraw();
-      }
       if (portrait && frame !== target) {
         element.style.display = "none";
       }
     };
     if (this.#center) {
-      transform(this.#center);
+      transform(this.#center, "both");
     } else {
-      transform(left);
-      transform(right);
+      transform(left, "left");
+      transform(right, "right");
     }
   }
   // READAWARE: create (or reuse) the frames of one spread. Creations are
@@ -658,9 +735,20 @@ export class FixedLayout extends HTMLElement {
   // `clientWidth` forces a synchronous reflow, and doing that once per slot
   // while appending thousands of slots is O(n²) layout (9 s of the open
   // time of a 3,246-page book, measured).
-  #stackScale(entry: StackEntry, width = this.clientWidth) {
+  #stackScale(entry: StackEntry, viewport = this.#stackViewport()) {
     const dims = this.#stackDims(entry);
-    return width / dims.width || 1;
+    // READAWARE: each page fits on its own terms — a stack may mix sizes —
+    // and the zoom factor scales from that fit.
+    const fitWidth = viewport.width / dims.width;
+    const fit =
+      resolveFixedLayoutFit(this.#zoom.fit, true) === "width"
+        ? fitWidth
+        : Math.min(fitWidth, viewport.height / dims.height);
+    return (fit || 1) * this.#zoom.factor;
+  }
+  /** The reading area the stack fits pages to. Each read forces layout — see `#stackScale`'s batch callers. */
+  #stackViewport(): Dimensions {
+    return { width: this.clientWidth, height: this.clientHeight };
   }
   #buildStack() {
     this.#teardownStack();
@@ -674,8 +762,18 @@ export class FixedLayout extends HTMLElement {
       pixelHeight: 0,
       top: 0,
     }));
-    // One width read and one DOM insertion for the whole stack.
-    const width = this.clientWidth;
+    const column = document.createElement("div");
+    Object.assign(column.style, {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      flexShrink: "0",
+      minWidth: "100%",
+      width: "max-content",
+    });
+    this.#stackColumn = column;
+    // One viewport read and one DOM insertion for the whole stack.
+    const viewport = this.#stackViewport();
     const fragment = document.createDocumentFragment();
     for (const entry of this.#stack) {
       Object.assign(entry.slot.style, {
@@ -683,15 +781,16 @@ export class FixedLayout extends HTMLElement {
         flexShrink: "0",
         overflow: "hidden",
       });
-      this.#sizeSlot(entry, width);
+      this.#sizeSlot(entry, viewport);
       fragment.append(entry.slot);
     }
-    this.#root.append(fragment);
+    column.append(fragment);
+    this.#root.append(column);
     this.#restackTops();
   }
-  #sizeSlot(entry: StackEntry, width = this.clientWidth) {
+  #sizeSlot(entry: StackEntry, viewport = this.#stackViewport()) {
     const dims = this.#stackDims(entry);
-    const scale = this.#stackScale(entry, width);
+    const scale = this.#stackScale(entry, viewport);
     entry.pixelHeight = dims.height * scale;
     entry.slot.style.width = `${dims.width * scale}px`;
     entry.slot.style.height = `${entry.pixelHeight}px`;
@@ -713,6 +812,8 @@ export class FixedLayout extends HTMLElement {
     if (!this.#stack) return;
     for (const i of [...this.#stackLive]) this.#demoteStackFrame(i);
     for (const entry of this.#stack) entry.slot.remove();
+    this.#stackColumn?.remove();
+    this.#stackColumn = null;
     this.#stack = null;
     this.#stackLive.clear();
     this.#stackWanted.clear();
@@ -796,25 +897,12 @@ export class FixedLayout extends HTMLElement {
     });
     return promise;
   }
-  #layoutStackFrame(entry: StackEntry, context: object) {
+  #layoutStackFrame(entry: StackEntry, context: object, viewport = this.#stackViewport()) {
     const frame = entry.frame;
     if (!frame || frame.blank) return;
-    const scale = this.#stackScale(entry);
+    const scale = this.#stackScale(entry, viewport);
+    this.#presentFrame(frame, scale);
     this.#renderFrameAt(frame, scale, context);
-    const iframeScale = frame.onZoom ? scale : 1;
-    Object.assign(frame.iframe.style, {
-      width: `${frame.width * iframeScale}px`,
-      height: `${frame.height * iframeScale}px`,
-      transform: frame.onZoom ? "none" : `scale(${scale})`,
-      transformOrigin: "top left",
-      display: "block",
-    });
-    Object.assign(frame.overlay.style, {
-      width: `${frame.width * iframeScale}px`,
-      height: `${frame.height * iframeScale}px`,
-      transform: frame.onZoom ? "none" : `scale(${scale})`,
-    });
-    if (!frame.onZoom) frame.overlayer?.redraw();
   }
   #demoteStackFrame(entryIndex: number) {
     const entry = this.#stack?.[entryIndex];
@@ -830,12 +918,12 @@ export class FixedLayout extends HTMLElement {
   }
   #layoutStack(context = this.#positionContext) {
     if (!this.#stack) return;
-    const width = this.clientWidth;
-    for (const entry of this.#stack) this.#sizeSlot(entry, width);
+    const viewport = this.#stackViewport();
+    for (const entry of this.#stack) this.#sizeSlot(entry, viewport);
     this.#restackTops();
     for (const i of this.#stackLive) {
       const entry = this.#stack[i];
-      if (entry) this.#layoutStackFrame(entry, context);
+      if (entry) this.#layoutStackFrame(entry, context, viewport);
     }
     this.#updateStackWindow("layout", context);
   }
@@ -948,6 +1036,9 @@ export class FixedLayout extends HTMLElement {
     // the shared creation promise and then kicks the render.
     if (!frame) return true;
     if (frame.blank || !frame.onZoom) return false;
+    // A live zoom rasters nothing (see `#renderFrameAt`); its settling
+    // wakes the drain again.
+    if (this.#zoomLive) return false;
     const scale = this.#stackScale(entry);
     if (frame.renderedScale === scale || frame.renderingScale === scale) return false;
     if (frame.failedScale === scale && (frame.failCount ?? 0) >= 2) return false;
@@ -972,6 +1063,187 @@ export class FixedLayout extends HTMLElement {
     this.#reportLocation(reason, null, context);
     await this.#ensureStackFrame(clamped, context);
   }
+  // ─── Zoom ────────────────────────────────────────────────────────────────
+  get zoom(): FixedLayoutZoom {
+    return this.#zoom;
+  }
+  /**
+   * READAWARE: zoom the pages (see fixed-zoom.ts), keeping the page point
+   * under `anchor` where it is. A `live` step — one of many in a pinch —
+   * re-presents the current rasters at once and rasters only when the zoom
+   * has held still; anything else rasters now, settling any live zoom.
+   */
+  setZoom(zoom: FixedLayoutZoom, { anchor, live = false, context = {} }: SetZoomOptions = {}) {
+    const next = normalizeFixedLayoutZoom(zoom);
+    if (sameFixedLayoutZoom(next, this.#zoom)) {
+      if (!live && this.#zoomLive) this.#settleZoom(context);
+      return;
+    }
+    const held = this.#captureZoomAnchor(anchor);
+    this.#zoom = next;
+    this.#positionContext = context;
+    if (live && !this.#zoomLive) {
+      // Rasters started for the old scale are no longer wanted.
+      this.#zoomLive = true;
+      this.#eachLiveFrame((frame) => this.#cancelFrameRender(frame));
+    }
+    if (this.scrolled) this.#layoutStack(context);
+    else this.#render(this.#side, context);
+    this.#restoreZoomAnchor(held);
+    if (this.#zoomSettleTimer) clearTimeout(this.#zoomSettleTimer);
+    this.#zoomSettleTimer = 0;
+    if (live) this.#zoomSettleTimer = setTimeout(() => this.#settleZoom(context), ZOOM_SETTLE_MS);
+    else this.#settleZoom(context);
+  }
+  #settleZoom(context: object) {
+    if (this.#zoomSettleTimer) clearTimeout(this.#zoomSettleTimer);
+    this.#zoomSettleTimer = 0;
+    const wasLive = this.#zoomLive;
+    this.#zoomLive = false;
+    if (!wasLive) return;
+    // Raster what the reader now sees, then rewarm the neighbours.
+    if (this.scrolled) this.#layoutStack(context);
+    else {
+      this.#render(this.#side, context);
+      this.#schedulePreload(context);
+    }
+  }
+  #eachLiveFrame(fn: (frame: FixedFrame) => void) {
+    for (const frames of this.#liveFrames.values()) this.#eachFrame(frames, fn);
+    for (const entry of this.#stack ?? []) if (entry.frame) fn(entry.frame);
+  }
+  // A zoom holds a page point still: the point's place within the box it
+  // falls in — one page's slot in a stack, the whole spread when paged — is
+  // read before the zoom and scrolled back under the anchor after it.
+  #zoomBox(slot: HTMLElement | null): DOMRect | null {
+    return slot ? slot.getBoundingClientRect() : this.#spreadBox();
+  }
+  #captureZoomAnchor(anchor?: ZoomAnchor): ZoomHold | null {
+    const host = this.getBoundingClientRect();
+    const point = anchor ?? { x: host.left + this.clientWidth / 2, y: host.top + this.clientHeight / 2 };
+    let slot: HTMLElement | null = null;
+    if (this.scrolled) {
+      if (!this.#stack?.length) return null;
+      slot = this.#stack[this.#stackIndexAt(this.scrollTop + point.y - host.top)]?.slot ?? null;
+      if (!slot) return null;
+    }
+    const box = this.#zoomBox(slot);
+    if (!box?.width || !box.height) return null;
+    return { point, fx: (point.x - box.left) / box.width, fy: (point.y - box.top) / box.height, slot };
+  }
+  #restoreZoomAnchor(held: ZoomHold | null) {
+    if (!held) return;
+    const box = this.#zoomBox(held.slot);
+    if (!box) return;
+    this.scrollLeft += box.left + held.fx * box.width - held.point.x;
+    this.scrollTop += box.top + held.fy * box.height - held.point.y;
+    if (this.scrolled) this.#stackScrollFeedback = { position: this.scrollTop, context: this.#positionContext };
+  }
+  /** Client box of the paged spread on screen. */
+  #spreadBox(): DOMRect | null {
+    let box: DOMRect | null = null;
+    for (const frame of [this.#left, this.#center, this.#right]) {
+      if (!frame || frame.hidden || frame.element.style.display === "none") continue;
+      const rect = frame.element.getBoundingClientRect();
+      box = box
+        ? new DOMRect(
+            Math.min(box.left, rect.left),
+            Math.min(box.top, rect.top),
+            Math.max(box.right, rect.right) - Math.min(box.left, rect.left),
+            Math.max(box.bottom, rect.bottom) - Math.min(box.top, rect.top),
+          )
+        : rect;
+    }
+    return box;
+  }
+  // READAWARE: a zoomed paged spread is panned inside the viewport. The
+  // host scrolls natively, but the reader claims the wheel in paged flows to
+  // turn pages, so it asks here first: a pan that moves the spread wins.
+  /** Pan a zoomed paged spread; true when it moved. Scrolled flows scroll natively. */
+  panBy(dx: number, dy: number): boolean {
+    if (this.scrolled) return false;
+    const { scrollLeft, scrollTop } = this;
+    this.scrollLeft = scrollLeft + dx;
+    this.scrollTop = scrollTop + dy;
+    return this.scrollLeft !== scrollLeft || this.scrollTop !== scrollTop;
+  }
+  /** Which edges of a paged spread the viewport rests against — all four when it fits. */
+  get panEdges(): PanEdges {
+    const slack = 1;
+    return {
+      left: this.scrollLeft <= slack,
+      top: this.scrollTop <= slack,
+      right: this.scrollLeft + this.clientWidth >= this.scrollWidth - slack,
+      bottom: this.scrollTop + this.clientHeight >= this.scrollHeight - slack,
+    };
+  }
+  /** Show a newly turned-to spread from its reading start, or — turning back — its end. */
+  #revealEdge(edge: PageEdge) {
+    if (this.scrolled) return;
+    const start = edge === "start";
+    const inlineStart = this.rtl ? this.scrollWidth : 0;
+    const inlineEnd = this.rtl ? 0 : this.scrollWidth;
+    this.scrollTop = start ? 0 : this.scrollHeight;
+    this.scrollLeft = start ? inlineStart : inlineEnd;
+  }
+  // READAWARE: keep each zoomed page's sharp overlay over what is on screen
+  // (see pdf-detail.ts), once the viewport has paused.
+  #scheduleDetail() {
+    if (this.#detailTimer) clearTimeout(this.#detailTimer);
+    this.#detailTimer = setTimeout(() => {
+      this.#detailTimer = 0;
+      this.#refreshDetail();
+    }, DETAIL_SETTLE_MS);
+  }
+  #refreshDetail() {
+    if (this.#zoomLive) return;
+    const host = this.getBoundingClientRect();
+    const view = {
+      left: host.left,
+      top: host.top,
+      right: host.left + this.clientWidth,
+      bottom: host.top + this.clientHeight,
+    };
+    this.#eachLiveFrame((frame) => {
+      if (!frame.doc || !frame.onDetail || frame.renderedScale == null) return;
+      // Only a frame rastered at the scale it is shown at can be sharpened;
+      // one mid-raster schedules this again when it finishes.
+      if (frame.renderingScale != null) return;
+      const rect = frame.element.getBoundingClientRect();
+      const shown = !frame.hidden && frame.element.style.display !== "none" && rect.width > 0 && rect.height > 0;
+      const left = Math.max(rect.left, view.left);
+      const top = Math.max(rect.top, view.top);
+      const right = Math.min(rect.right, view.right);
+      const bottom = Math.min(rect.bottom, view.bottom);
+      const visible =
+        shown && right > left && bottom > top
+          ? {
+              left: (left - rect.left) / rect.width,
+              top: (top - rect.top) / rect.height,
+              right: (right - rect.left) / rect.width,
+              bottom: (bottom - rect.top) / rect.height,
+            }
+          : null;
+      this.#cancelFrameDetail(frame);
+      const controller = new AbortController();
+      frame.detailAbort = controller;
+      frame
+        .onDetail({
+          doc: frame.doc,
+          scale: frame.renderedScale,
+          pageColors: this.#pageColors,
+          signal: controller.signal,
+          visible,
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Error && error.name === "RenderCancelledError") return;
+          console.error(error);
+        })
+        .finally(() => {
+          if (frame.detailAbort === controller) frame.detailAbort = null;
+        });
+    });
+  }
   #onResize(context = this.#positionContext) {
     this.#positionContext = context;
     if (this.scrolled && this.#stack) {
@@ -993,6 +1265,13 @@ export class FixedLayout extends HTMLElement {
       clearTimeout(this.#stackScrollTimer);
       this.#stackScrollTimer = 0;
     }
+    // A live zoom's deferred raster and the detail pass belong to the
+    // frames being dropped; the new layout rasters at the zoom as it stands.
+    if (this.#zoomSettleTimer) clearTimeout(this.#zoomSettleTimer);
+    this.#zoomSettleTimer = 0;
+    this.#zoomLive = false;
+    if (this.#detailTimer) clearTimeout(this.#detailTimer);
+    this.#detailTimer = 0;
     this.#frameGeneration++;
     this.#preloadToken++;
     for (const frames of this.#liveFrames.values())
@@ -1010,20 +1289,22 @@ export class FixedLayout extends HTMLElement {
     this.#stackDefaultDims = null;
     this.#root.replaceChildren();
   }
-  #goLeft(context: object) {
+  #goLeft(context: object, edge: PageEdge) {
     if (this.#center || this.#left?.blank) return;
     if (this.#portrait && this.#left?.element?.style?.display === "none") {
       this.#side = "left";
       this.#render(this.#side, context);
+      this.#revealEdge(edge);
       this.#reportLocation("page", null, context);
       return true;
     }
   }
-  #goRight(context: object) {
+  #goRight(context: object, edge: PageEdge) {
     if (this.#center || this.#right?.blank) return;
     if (this.#portrait && this.#right?.element?.style?.display === "none") {
       this.#side = "right";
       this.#render(this.#side, context);
+      this.#revealEdge(edge);
       this.#reportLocation("page", null, context);
       return true;
     }
@@ -1111,13 +1392,13 @@ export class FixedLayout extends HTMLElement {
         frame.renderedScale = null;
       });
     if (this.#stack) {
-      const width = this.clientWidth;
+      const viewport = this.#stackViewport();
       for (const entry of this.#stack) {
         if (entry.frame) {
           this.#cancelFrameRender(entry.frame);
           entry.frame.renderedScale = null;
         }
-        this.#sizeSlot(entry, width);
+        this.#sizeSlot(entry, viewport);
       }
     }
     this.#render();
@@ -1169,7 +1450,14 @@ export class FixedLayout extends HTMLElement {
   goToSpread(index: number, side: Side, reason: RelocateReason = "navigation", context: object = {}) {
     return this.#goToSpread(index, side, reason, context, ++this.#navigation);
   }
-  async #goToSpread(index: number, side: Side, reason: RelocateReason, context: object, navigation: number) {
+  async #goToSpread(
+    index: number,
+    side: Side,
+    reason: RelocateReason,
+    context: object,
+    navigation: number,
+    edge: PageEdge = "start",
+  ) {
     if (index < 0 || index > this.#spreads.length - 1) return;
     if (this.scrolled) return this.#goToStack(index, reason, context);
     if (index === this.#index && index === this.#displayedIndex) {
@@ -1185,6 +1473,9 @@ export class FixedLayout extends HTMLElement {
     if (this.#index !== index || this.#navigation !== navigation) return;
     this.#displayedIndex = index;
     this.#showFrames(frames, side, context);
+    // A zoomed spread opens where reading it begins — or, turned back to,
+    // where it ends.
+    this.#revealEdge(edge);
     if (this.#navigation !== navigation) return;
     this.#reportLocation(reason, null, context);
     this.#touchLRU(index);
@@ -1243,14 +1534,14 @@ export class FixedLayout extends HTMLElement {
   async next(_distance?: number, context: object = {}) {
     const navigation = ++this.#navigation;
     if (this.scrolled) return this.#goToStack(this.#stackCurrent + 1, "page", context);
-    const s = this.rtl ? this.#goLeft(context) : this.#goRight(context);
-    if (!s) await this.#goToSpread(this.#index + 1, this.rtl ? "right" : "left", "page", context, navigation);
+    const s = this.rtl ? this.#goLeft(context, "start") : this.#goRight(context, "start");
+    if (!s) await this.#goToSpread(this.#index + 1, this.rtl ? "right" : "left", "page", context, navigation, "start");
   }
   async prev(_distance?: number, context: object = {}) {
     const navigation = ++this.#navigation;
     if (this.scrolled) return this.#goToStack(this.#stackCurrent - 1, "page", context);
-    const s = this.rtl ? this.#goRight(context) : this.#goLeft(context);
-    if (!s) await this.#goToSpread(this.#index - 1, this.rtl ? "left" : "right", "page", context, navigation);
+    const s = this.rtl ? this.#goRight(context, "end") : this.#goLeft(context, "end");
+    if (!s) await this.#goToSpread(this.#index - 1, this.rtl ? "left" : "right", "page", context, navigation, "end");
   }
   /** Wait for the displayed page, not background preloads or the iframe load. */
   async waitForCurrentRender(): Promise<void> {
@@ -1311,6 +1602,7 @@ export class FixedLayout extends HTMLElement {
     this.#observer.disconnect();
     this.inputBridge = undefined;
     this.removeEventListener("scroll", this.#onStackScroll);
+    this.removeEventListener("scroll", this.#onScrollDetail);
     this.#clearFrameCache();
   }
 }

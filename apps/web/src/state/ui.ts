@@ -51,6 +51,7 @@ import {
   type TextUnitModeSettings,
 } from "../features/reader/lib/text-unit-mode-state";
 import { textUnitReaderModeAtom } from "../features/plugins/state/plugin-store";
+import { FIXED_LAYOUT_ZOOM_KEY, getFixedLayoutZooms } from "../domain/reading-zoom";
 import { onAppEvent } from "../platform/app-events";
 import { createLogger } from "../platform/logger";
 import { SHELF_VIEW_KEY, getShelfView, saveShelfView, type ShelfView } from "../features/shelf/lib/shelf-view";
@@ -171,6 +172,10 @@ const readerPreferencesBaseAtom = atom<ReaderSettingsPreferences>(stampEventCaus
 const readerBookLanguagesBaseAtom = atom(stampEventCause(getReaderBookLanguages()));
 export const readerBookLanguagesAtom = atom((get) => get(readerBookLanguagesBaseAtom));
 
+/** Per-book fixed-layout zoom (see `fixed-layout-zoom.ts`); written through `saveFixedLayoutZoom`. */
+const fixedLayoutZoomsBaseAtom = atom(stampEventCause(getFixedLayoutZooms()));
+export const fixedLayoutZoomsAtom = atom((get) => get(fixedLayoutZoomsBaseAtom));
+
 export const readerPreferencesAtom = atom(
   (get) => get(readerPreferencesBaseAtom),
   (_get, set, next: ReaderSettingsPreferences) => {
@@ -265,6 +270,9 @@ onLocalKVChange((key, _value, origin) => {
       break;
     case READER_LANGUAGES_KEY:
       store.set(readerBookLanguagesBaseAtom, stampEventCause(getReaderBookLanguages(), origin));
+      break;
+    case FIXED_LAYOUT_ZOOM_KEY:
+      store.set(fixedLayoutZoomsBaseAtom, stampEventCause(getFixedLayoutZooms(), origin));
       break;
     case READER_OVERRIDES_KEY:
       store.set(readerOverridesBaseAtom, stampEventCause(getReaderOverrides(), origin));

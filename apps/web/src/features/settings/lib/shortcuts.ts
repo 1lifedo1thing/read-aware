@@ -21,6 +21,9 @@ export type BuiltinShortcutId =
   | "next-chapter"
   | "prev-chapter"
   | "toggle-controls"
+  | "zoom-in"
+  | "zoom-out"
+  | "zoom-reset"
   | "reader-mode-next-unit"
   | "reader-mode-prev-unit"
   | "selection-copy"
@@ -48,6 +51,13 @@ export type EditableShortcut = {
   id: BuiltinShortcutId;
   category: ShortcutCategory;
   defaultBinding: KeyChord;
+  /**
+   * Further chords the default also answers to: the same keys as typed on
+   * other layouts or with Shift (⌘+ is ⌘⇧= on a US keyboard and its own key
+   * on a German one). They stand only while the action is not rebound; the
+   * settings show the default binding alone.
+   */
+  defaultAlternates?: KeyChord[];
 };
 
 /** A reference-only row whose action isn't a rebindable key chord. Action labels
@@ -95,6 +105,25 @@ export const EDITABLE_SHORTCUTS: EditableShortcut[] = [
   { id: "next-chapter", category: "Reading", defaultBinding: { key: "]" } },
   { id: "prev-chapter", category: "Reading", defaultBinding: { key: "[" } },
   { id: "toggle-controls", category: "Reading", defaultBinding: { key: " " } },
+  // Page zoom for fixed-layout books (PDF, comics): the platform's own zoom
+  // chords, which the webview itself leaves unbound.
+  {
+    id: "zoom-in",
+    category: "Reading",
+    defaultBinding: { mod: true, key: "=" },
+    defaultAlternates: [
+      { mod: true, key: "+" },
+      { mod: true, shift: true, key: "+" },
+    ],
+  },
+  { id: "zoom-out", category: "Reading", defaultBinding: { mod: true, key: "-" } },
+  {
+    id: "zoom-reset",
+    category: "Reading",
+    defaultBinding: { mod: true, key: "0" },
+    // AZERTY types its digits with Shift.
+    defaultAlternates: [{ mod: true, shift: true, key: "0" }],
+  },
   // Unit steps fire only while a plugin-defined reader mode is on; they take
   // the arrow keys over the page-scroll fallback for the mode's duration.
   {
@@ -168,6 +197,15 @@ export function defaultBinding(id: BuiltinShortcutId): KeyChord {
 /** The live binding for a built-in action: the user's override, or the default. */
 export function resolveBinding(id: BuiltinShortcutId, bindings: ShortcutBindings): KeyChord {
   return bindings[id] ?? defaultBinding(id);
+}
+
+const DEFAULT_ALTERNATES = new Map<BuiltinShortcutId, KeyChord[]>(
+  EDITABLE_SHORTCUTS.map((shortcut) => [shortcut.id, shortcut.defaultAlternates ?? []]),
+);
+
+/** The default's alternate chords while `id` is not rebound — none once it is. */
+export function resolveAlternates(id: BuiltinShortcutId, bindings: ShortcutBindings): KeyChord[] {
+  return bindings[id] ? [] : (DEFAULT_ALTERNATES.get(id) ?? []);
 }
 
 /**

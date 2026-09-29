@@ -46,6 +46,13 @@
     "theme": "跟隨頁面顏色",
     "original": "保持原樣"
   },
+  "pageZoom": "縮放",
+  "pageZoomHint": "縮放與適配只對這本書生效，僅儲存在本裝置。",
+  "pageFit": "適配",
+  "pageFitOption": {
+    "width": "頁面寬度",
+    "page": "整頁"
+  },
   "scope": {
     "global": "所有書籍",
     "book": "這本書"

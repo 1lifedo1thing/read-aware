@@ -46,6 +46,13 @@
     "theme": "ページカラーに合わせる",
     "original": "そのまま"
   },
+  "pageZoom": "ズーム",
+  "pageZoomHint": "ズームとフィットはこの本だけに、この端末で記憶されます。",
+  "pageFit": "フィット",
+  "pageFitOption": {
+    "width": "ページ幅",
+    "page": "ページ全体"
+  },
   "scope": {
     "global": "すべての本",
     "book": "この本"

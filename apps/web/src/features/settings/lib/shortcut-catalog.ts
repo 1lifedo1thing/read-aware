@@ -3,6 +3,7 @@ import {
   EDITABLE_SHORTCUTS,
   chordSignature,
   pluginShortcutId,
+  resolveAlternates,
   resolveBinding,
   resolvePluginBinding,
   type KeyChord,
@@ -21,9 +22,16 @@ export type ShortcutRow = {
   label: string;
   defaultBinding?: KeyChord;
   binding?: KeyChord;
+  /** Chords the unrebound default also answers to (see `EditableShortcut.defaultAlternates`). */
+  alternates?: KeyChord[];
   available: boolean;
   overridden: boolean;
 };
+
+/** Every chord a row answers to: its binding, then its alternates. */
+export function shortcutRowChords(row: ShortcutRow): KeyChord[] {
+  return row.binding ? [row.binding, ...(row.alternates ?? [])] : [];
+}
 
 /** Encode the opaque contribution key as one path segment, never a wildcard. */
 export function shortcutSettingPath(id: ShortcutId): string {
@@ -44,6 +52,7 @@ export function shortcutRows(bindings: ShortcutBindings, env: ShortcutEnvironmen
       label: shortcut.id,
       defaultBinding: shortcut.defaultBinding,
       binding: resolveBinding(shortcut.id, bindings),
+      alternates: resolveAlternates(shortcut.id, bindings),
       overridden: bindings[shortcut.id] !== undefined,
       available:
         (shortcut.category !== "TextUnitMode" || env.modeAvailable) &&
@@ -71,9 +80,12 @@ export function shortcutRows(bindings: ShortcutBindings, env: ShortcutEnvironmen
 
 export function shortcutConflicts(row: ShortcutRow, rows: ShortcutRow[]): ShortcutRow[] {
   if (!row.available || !row.binding) return [];
-  const signature = chordSignature(row.binding);
+  const signatures = new Set(shortcutRowChords(row).map(chordSignature));
   return rows.filter(
-    (other) => other.id !== row.id && other.available && other.binding && chordSignature(other.binding) === signature,
+    (other) =>
+      other.id !== row.id &&
+      other.available &&
+      shortcutRowChords(other).some((chord) => signatures.has(chordSignature(chord))),
   );
 }
 

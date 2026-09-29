@@ -76,7 +76,29 @@ export type PageRenderOptions = {
   pageColors?: PageColors;
   signal?: AbortSignal;
 };
-export type PageSource = { src: string; onZoom?: (options: PageRenderOptions) => Promise<void> };
+/** A region of a page, as fractions (0–1) of its width and height. */
+export type PageRegion = { left: number; top: number; right: number; bottom: number };
+export type PageDetailOptions = PageRenderOptions & {
+  /** The part of the page on screen; null when none of it is. */
+  visible: PageRegion | null;
+};
+export type PageSource = {
+  src: string;
+  /** Raster the page for a display scale (CSS px per page unit). */
+  onZoom?: (options: PageRenderOptions) => Promise<void>;
+  /**
+   * READAWARE: show the raster the page already has at another display
+   * scale, synchronously and without drawing — what keeps a page steady
+   * under a live zoom until `onZoom` rasters it at the settled scale.
+   */
+  onPresent?: (doc: Document, scale: number) => void;
+  /**
+   * READAWARE: sharpen the visible part of a page the full raster cannot
+   * afford at this scale (see pdf.ts). Resolves once the page is as sharp as
+   * the budget allows; a null `visible` releases what an earlier call drew.
+   */
+  onDetail?: (options: PageDetailOptions) => Promise<void>;
+};
 export type SectionReference = {
   kind: "link" | "inline-note";
   label: string;

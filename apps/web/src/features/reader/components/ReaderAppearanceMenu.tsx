@@ -19,6 +19,7 @@ import { usePluginReaderThemeOptions } from "../../settings/hooks/usePluginReade
 import { pluginThemesAtom } from "../../plugins/state/plugin-store";
 import { FontField } from "../../settings/components/FontField";
 import { useReaderAppearance, type ReaderAppearanceScope } from "../hooks/useReaderAppearance";
+import { FixedLayoutFitChoice } from "./FixedLayoutZoomControls";
 
 type ReaderAppearanceMenuProps = {
   bookId: string;
@@ -94,9 +95,18 @@ export function ReaderAppearanceFields({
             changes nothing. Offering them reads as "this book just ignores my
             settings" rather than "this book has none", so they are gone, with a
             line saying why. Page Color and Reading Mode stay: both still do
-            visible work on a fixed-layout page. */}
+            visible work on a fixed-layout page, and so does the fit its zoom
+            measures from. */}
       {fixedLayout ? (
         <>
+          {/* The fit belongs to this book on this device whatever the scope
+                above says — a zoom answers to one window and one document.
+                The zoom itself is set by pinch or the zoom keys, and shows
+                its percentage over the page while it changes. */}
+          <div>
+            <FixedLayoutFitChoice bookId={bookId} scrolled={prefs.fixedLayoutReadingMode === "scroll"} />
+            <Caption className="mt-1.5 block text-fg-subtle">{t("pageZoomHint")}</Caption>
+          </div>
           <div>
             <ChoiceGroup
               label={t("fixedLayoutColor")}

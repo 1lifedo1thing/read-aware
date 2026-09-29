@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { JSDOM } from "jsdom";
-import { shortcutRows } from "./shortcut-catalog";
+import { shortcutConflicts, shortcutRows } from "./shortcut-catalog";
 import { isAppSurfaceShortcut, resolveShortcutDispatch } from "./shortcut-dispatch";
 
 const dom = new JSDOM("<!doctype html><input><div contenteditable><span></span></div>");
@@ -95,4 +95,31 @@ test("typing, composition, reserved Escape and claimed events do not run command
       globalConflict,
     ),
   ).toMatchObject({ kind: "conflict" });
+});
+
+test("the zoom keys answer as typed on any layout until they are rebound", () => {
+  const rows = shortcutRows({}, env);
+  // US ⌘=, US ⌘⇧= (reports "+"), German ⌘+ (its own key).
+  for (const init of [{ key: "=" }, { key: "+", shiftKey: true }, { key: "+" }])
+    expect(resolveShortcutDispatch(rows, event(init.key, { metaKey: true, shiftKey: init.shiftKey }))).toEqual({
+      kind: "command",
+      id: "zoom-in",
+    });
+  // AZERTY types its digits with Shift.
+  expect(resolveShortcutDispatch(rows, event("0", { ctrlKey: true, shiftKey: true }))).toEqual({
+    kind: "command",
+    id: "zoom-reset",
+  });
+  const rebound = shortcutRows({ "zoom-in": { mod: true, key: "i" } }, env);
+  expect(resolveShortcutDispatch(rebound, event("+", { metaKey: true }))).toEqual({ kind: "none" });
+  expect(resolveShortcutDispatch(rebound, event("i", { metaKey: true }))).toEqual({ kind: "command", id: "zoom-in" });
+});
+
+test("a binding that takes a default's alternate chord conflicts with it", () => {
+  const commands = [{ key: "one:plus", title: "Plus", defaultShortcut: { mod: true, key: "+" } }];
+  const rows = shortcutRows({}, { ...env, commands });
+  expect(shortcutConflicts(rows.find((row) => row.id === "zoom-in")!, rows).map((row) => row.id)).toEqual([
+    "plugin:one:plus",
+  ]);
+  expect(resolveShortcutDispatch(rows, event("+", { metaKey: true }))).toMatchObject({ kind: "conflict" });
 });

@@ -1,8 +1,9 @@
-import type { Book, BookFile, PageColors, PageSource } from "./book.js";
+import type { Book, BookFile, PageColors, PageDetailOptions, PageRegion, PageSource } from "./book.js";
 import * as pdfjsLib from "./vendor/pdfjs/pdf.mjs";
 import type { PDFPage, PDFDestination, LoadingTask } from "./vendor/pdfjs/pdf.mjs";
 import { pdfImageCandidates, readPDFImage } from "./pdf-images.js";
 import { readPDFReferences, readPDFPageText } from "./pdf-content.js";
+import { detailRegion, regionCovers } from "./pdf-detail.js";
 import { getPDFMetadata } from "./pdf-metadata.js";
 import { BookRangeTransport } from "./pdf-transport.js";
 import { createPDFPageListLoader, makePDFTOCItem, resolvePDFHref } from "./pdf-navigation.js";
@@ -263,6 +264,35 @@ const bindSelectionFixes = (doc: Document, container: HTMLElement, endOfContent:
 // transform upscales the difference; at typical window sizes the budget is
 // never hit and rendering is pixel-exact as before.
 const MAX_RENDER_PIXELS = 12 * 1024 * 1024;
+// READAWARE: the sharp overlay drawn over a capped raster's visible part
+// (see pdf-detail.ts) — about one Retina 5K screen.
+const MAX_DETAIL_PIXELS = 16 * 1024 * 1024;
+
+// READAWARE: what a page document shows. `raster` is the scale its canvas was
+// drawn at (device px per page unit), `display` the scale the renderer lays
+// the page out at (CSS px per page unit); the document transform maps one to
+// the other. Kept apart so a live zoom can re-present the existing raster at
+// once (`presentPage`) while the new one is drawn — and so a finished raster
+// swaps in with the transform that matches it, never the old canvas under
+// the new transform.
+type Presentation = { raster: number; display: number };
+const presentations = new WeakMap<Document, Presentation>();
+
+const applyPresentation = (doc: Document) => {
+  const state = presentations.get(doc);
+  if (!state?.raster) return;
+  doc.documentElement.style.transformOrigin = "top left";
+  doc.documentElement.style.transform = `scale(${state.display / state.raster})`;
+};
+
+const presentPage = (doc: Document, scale: number) => {
+  const state = presentations.get(doc);
+  if (state) state.display = scale;
+  else presentations.set(doc, { raster: 0, display: scale });
+  applyPresentation(doc);
+};
+
+const pageColorsKey = (pageColors?: PageColors) => `${pageColors?.background ?? ""}|${pageColors?.foreground ?? ""}`;
 
 // READAWARE: renders are cancellable (see the fixed-layout scheduler): a page
 // scrolled out of the window before its raster finished must release the main
@@ -278,41 +308,26 @@ class RenderCancelledError extends Error {
   }
 }
 
-const render = async (
+type PageViewport = ReturnType<PDFPage["getViewport"]>;
+
+// Draw `viewport` into a new `width` × `height` canvas in the page colors.
+// `beforeColors` sees the page as authored, before a dark remap.
+const rasterize = async (
   page: PDFPage,
-  doc: Document,
-  zoom: number,
-  onRendered?: (canvas: HTMLCanvasElement) => void,
+  viewport: PageViewport,
+  width: number,
+  height: number,
   pageColors?: PageColors,
   signal?: AbortSignal,
-): Promise<void> => {
-  const throwIfAborted = () => {
-    if (signal?.aborted) throw new RenderCancelledError();
-  };
-  throwIfAborted();
-  const textStatus = doc.querySelector<HTMLElement>(".textLayer");
-  if (textStatus) textStatus.dataset.readawareTextState = "loading";
-  const natural = page.getViewport({ scale: 1 });
-  let scale = zoom * devicePixelRatio;
-  const maxScale = Math.sqrt(MAX_RENDER_PIXELS / (natural.width * natural.height));
-  if (scale > maxScale) scale = maxScale;
-  // Generalized from `1 / devicePixelRatio`: displayed size = raster × t,
-  // and the display target is the layout size (zoom).
-  doc.documentElement.style.transform = `scale(${zoom / scale})`;
-  doc.documentElement.style.transformOrigin = "top left";
-  doc.documentElement.style.setProperty("--scale-factor", String(scale));
-  const viewport = page.getViewport({ scale });
-
+  beforeColors?: (canvas: HTMLCanvasElement) => void,
+): Promise<HTMLCanvasElement> => {
   // the canvas must be in the `PDFDocument`'s `ownerDocument`
   // (`globalThis.document` by default); that's where the fonts are loaded
   const canvas = document.createElement("canvas");
-  canvas.height = viewport.height;
-  canvas.width = viewport.width;
+  canvas.width = width;
+  canvas.height = height;
   const canvasContext = canvas.getContext("2d");
   if (!canvasContext) throw new Error("Could not create PDF page context");
-  // READAWARE: paint the page document to match, so the moment between the
-  // old canvas being replaced and the new one appearing does not flash white.
-  doc.documentElement.style.background = pageColors?.background ?? "";
   const task = page.render({
     canvas,
     viewport,
@@ -332,15 +347,54 @@ const render = async (
   } finally {
     signal?.removeEventListener("abort", abortRaster);
   }
+  beforeColors?.(canvas);
+  applyPageColors(canvasContext, canvas, pageColors);
+  if (signal?.aborted) throw new RenderCancelledError();
+  return canvas;
+};
+
+const render = async (
+  page: PDFPage,
+  doc: Document,
+  zoom: number,
+  onRendered?: (canvas: HTMLCanvasElement) => void,
+  pageColors?: PageColors,
+  signal?: AbortSignal,
+): Promise<void> => {
+  const throwIfAborted = () => {
+    if (signal?.aborted) throw new RenderCancelledError();
+  };
+  throwIfAborted();
+  const textStatus = doc.querySelector<HTMLElement>(".textLayer");
+  if (textStatus) textStatus.dataset.readawareTextState = "loading";
+  const natural = page.getViewport({ scale: 1 });
+  let scale = zoom * devicePixelRatio;
+  const maxScale = Math.sqrt(MAX_RENDER_PIXELS / (natural.width * natural.height));
+  if (scale > maxScale) scale = maxScale;
+  // Until the new raster lands, the current one stands in at this scale.
+  presentPage(doc, zoom);
+  const viewport = page.getViewport({ scale });
+
+  // READAWARE: paint the page document to match, so the moment between the
+  // old canvas being replaced and the new one appearing does not flash white.
+  doc.documentElement.style.background = pageColors?.background ?? "";
   // The cover thumbnail reuses this canvas, so hand it over before the remap
   // — a cover should look like the book.
-  onRendered?.(canvas);
-  applyPageColors(canvasContext, canvas, pageColors);
-  throwIfAborted();
+  const canvas = await rasterize(page, viewport, viewport.width, viewport.height, pageColors, signal, onRendered);
   const canvasContainer = doc.querySelector("#canvas");
   const container = doc.querySelector<HTMLDivElement>(".textLayer");
   const annotationContainer = doc.querySelector<HTMLDivElement>(".annotationLayer");
   if (!canvasContainer || !container || !annotationContainer) throw new Error("PDF page template is incomplete");
+  // The new raster, its scale factor and the transform that presents it
+  // land together. Generalized from `1 / devicePixelRatio`: displayed size
+  // = raster × transform, the display target being the layout scale — the
+  // latest one presented, should a live zoom have moved on meanwhile. The
+  // old text layer follows `--scale-factor` until its replacement renders.
+  presentations.set(doc, { raster: scale, display: presentations.get(doc)?.display ?? zoom });
+  doc.documentElement.style.setProperty("--scale-factor", String(scale));
+  applyPresentation(doc);
+  // Replacing the container's children also drops any sharp overlay drawn
+  // over the previous raster (see renderDetail).
   canvasContainer.replaceChildren(doc.adoptNode(canvas));
 
   // READAWARE: `TextLayer.render()` APPENDS. Every zoom/resize re-renders the
@@ -403,6 +457,73 @@ const render = async (
   container.dataset.readawareTextState = "ready";
 };
 
+// READAWARE: the sharp overlay over a capped raster (see pdf-detail.ts). It
+// sits inside `#canvas`, above the page raster and below the text layer, in
+// the document's raster-pixel coordinates; a new page raster replaces it.
+const DETAIL_SELECTOR = "canvas[data-detail]";
+type DetailMark = { scale: number; colors: string; region: PageRegion };
+const detailMarks = new WeakMap<HTMLCanvasElement, DetailMark>();
+
+const renderDetail = async (page: PDFPage, options: PageDetailOptions): Promise<void> => {
+  const { doc, scale: zoom, pageColors, signal, visible } = options;
+  if (signal?.aborted) throw new RenderCancelledError();
+  const container = doc.querySelector("#canvas");
+  const current = container?.querySelector<HTMLCanvasElement>(DETAIL_SELECTOR) ?? null;
+  const raster = presentations.get(doc)?.raster;
+  const scale = zoom * devicePixelRatio;
+  // Off screen, not rastered yet, or rastered exactly at this scale: no
+  // overlay. The page raster reaches `scale` whenever the budget allows it,
+  // computed the same way, so equality is exact.
+  if (!visible || !container || !raster || scale <= raster) {
+    current?.remove();
+    return;
+  }
+  const colors = pageColorsKey(pageColors);
+  const mark = current ? detailMarks.get(current) : undefined;
+  if (mark && mark.scale === scale && mark.colors === colors && regionCovers(mark.region, visible)) return;
+
+  const viewport = page.getViewport({ scale });
+  const region = detailRegion(visible, viewport.width, viewport.height, MAX_DETAIL_PIXELS);
+  const x0 = Math.floor(region.left * viewport.width);
+  const y0 = Math.floor(region.top * viewport.height);
+  const x1 = Math.ceil(region.right * viewport.width);
+  const y1 = Math.ceil(region.bottom * viewport.height);
+  if (x1 <= x0 || y1 <= y0) return;
+  const canvas = await rasterize(
+    page,
+    page.getViewport({ scale, offsetX: -x0, offsetY: -y0 }),
+    x1 - x0,
+    y1 - y0,
+    pageColors,
+    signal,
+  );
+  // The page may have been rastered anew meanwhile; place against the
+  // raster it shows now.
+  const now = presentations.get(doc)?.raster;
+  if (!now || scale <= now || !container.isConnected) return;
+  const ratio = now / scale;
+  Object.assign(canvas.style, {
+    position: "absolute",
+    left: `${x0 * ratio}px`,
+    top: `${y0 * ratio}px`,
+    width: `${(x1 - x0) * ratio}px`,
+    height: `${(y1 - y0) * ratio}px`,
+  });
+  canvas.dataset.detail = "";
+  detailMarks.set(canvas, {
+    scale,
+    colors,
+    region: {
+      left: x0 / viewport.width,
+      top: y0 / viewport.height,
+      right: x1 / viewport.width,
+      bottom: y1 / viewport.height,
+    },
+  });
+  container.querySelector(DETAIL_SELECTOR)?.remove();
+  container.append(doc.adoptNode(canvas));
+};
+
 const renderPage = async (page: PDFPage, onRendered?: (canvas: HTMLCanvasElement) => void): Promise<PageSource> => {
   const [textLayerBuilderCSS, annotationLayerBuilderCSS] = await loadLayerStyles();
   const viewport = page.getViewport({ scale: 1 });
@@ -441,7 +562,7 @@ const renderPage = async (page: PDFPage, onRendered?: (canvas: HTMLCanvasElement
   );
   const onZoom: NonNullable<PageSource["onZoom"]> = ({ doc, scale, pageColors, signal }) =>
     render(page, doc, scale, onRendered, pageColors, signal);
-  return { src, onZoom };
+  return { src, onZoom, onPresent: presentPage, onDetail: (options) => renderDetail(page, options) };
 };
 
 export const makePDF = async (file: BookFile) => {

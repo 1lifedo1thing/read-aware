@@ -1,7 +1,7 @@
 import { getDefaultStore } from "jotai";
 import { isEditableKeyTarget } from "../../../platform/app-keydown";
 import { shortcutRowsAtom } from "../state/shortcut-state";
-import type { ShortcutRow } from "./shortcut-catalog";
+import { shortcutRowChords, type ShortcutRow } from "./shortcut-catalog";
 import { chordMatchesEvent, type ShortcutId } from "./shortcuts";
 
 export type ShortcutDispatch =
@@ -18,7 +18,9 @@ export function isAppSurfaceShortcut(id: ShortcutId | undefined): boolean {
 /** Same conservative conflict space as settings: no registration-order winner. */
 export function resolveShortcutDispatch(rows: readonly ShortcutRow[], event: KeyboardEvent): ShortcutDispatch {
   if (event.defaultPrevented || event.isComposing || event.key === "Escape") return { kind: "none" };
-  const matches = rows.filter((row) => row.available && row.binding && chordMatchesEvent(row.binding, event));
+  const matches = rows.filter(
+    (row) => row.available && shortcutRowChords(row).some((chord) => chordMatchesEvent(chord, event)),
+  );
   // Typing must remain possible even when bare-letter bindings conflict. Global
   // shortcuts remain global, but never acquire priority over a conflicting row.
   if (isEditableKeyTarget(event.target) && !matches.some((row) => GLOBAL_IDS.has(row.id))) return { kind: "none" };

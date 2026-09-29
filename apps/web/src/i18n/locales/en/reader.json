@@ -46,6 +46,13 @@
     "theme": "Follow page color",
     "original": "Original"
   },
+  "pageZoom": "Zoom",
+  "pageZoomHint": "Zoom and fit are remembered for this book on this device.",
+  "pageFit": "Fit",
+  "pageFitOption": {
+    "width": "Page width",
+    "page": "Whole page"
+  },
   "scope": {
     "global": "All books",
     "book": "This book"

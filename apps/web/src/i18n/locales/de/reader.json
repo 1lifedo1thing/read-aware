@@ -46,6 +46,13 @@
     "theme": "Seitenfarbe folgen",
     "original": "Original"
   },
+  "pageZoom": "Zoom",
+  "pageZoomHint": "Zoom und Einpassen werden für dieses Buch auf diesem Gerät gespeichert.",
+  "pageFit": "Einpassen",
+  "pageFitOption": {
+    "width": "Seitenbreite",
+    "page": "Ganze Seite"
+  },
   "scope": {
     "global": "Alle Bücher",
     "book": "Dieses Buch"

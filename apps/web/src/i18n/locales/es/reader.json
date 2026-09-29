@@ -46,6 +46,13 @@
     "theme": "Seguir el color de página",
     "original": "Original"
   },
+  "pageZoom": "Zoom",
+  "pageZoomHint": "El zoom y el ajuste se recuerdan para este libro en este dispositivo.",
+  "pageFit": "Ajuste",
+  "pageFitOption": {
+    "width": "Ancho de página",
+    "page": "Página completa"
+  },
   "scope": {
     "global": "Todos los libros",
     "book": "Este libro"

@@ -24,6 +24,7 @@ import { runMOBIRegressions } from "./foliate-mobi-regressions";
 import { runPaginatorRegressions } from "./foliate-paginator-regressions";
 import { runPDFRegressions } from "./foliate-pdf-regressions";
 import { runFitRegressions } from "./foliate-fit-regressions";
+import { runZoomRegressions } from "./foliate-zoom-regressions";
 import { runFoliateRegressions } from "./foliate-regressions";
 import { runScrollChapterRegressions } from "./foliate-scroll-chapter-regressions";
 import { runViewRegressions } from "./foliate-view-regressions";
@@ -71,6 +72,7 @@ async function run(report: RuntimeReport): Promise<void> {
     ["epub", () => runEPUBRegressions({ epub, view })],
     ["layout", () => runLayoutRegressions({ view, fixed, fb2 })],
     ["pdf", () => runPDFRegressions({ pdf, view, fixed })],
+    ["zoom", () => runZoomRegressions({ pdf, view, fixed })],
     ["mobi", () => runMOBIRegressions({ view })],
     ["view", () => runViewRegressions({ view, footnotes, media })],
     ["paginator", () => runPaginatorRegressions(paginator.Paginator)],

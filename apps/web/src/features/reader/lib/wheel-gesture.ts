@@ -52,6 +52,13 @@ export type WheelGestureStep = -1 | 0 | 1;
 export type WheelGesture = {
   /** Feed one event's delta; returns the step to take now (0 = none). */
   feed: (delta: number, timeMs: number) => WheelGestureStep;
+  /**
+   * Record an event whose delta was spent elsewhere — a zoomed page panned
+   * by it. The gesture counts as having fired that way: the rest of it can
+   * no longer step, so a swipe that pans to a page's edge stops there, and
+   * only a new gesture at the edge turns the page.
+   */
+  claim: (delta: number, timeMs: number) => void;
   /** Feed one host-reported gesture phase edge; switches the machine to
    *  phase mode permanently (the source, once present, keeps reporting). */
   notifyPhase: (edge: WheelPhaseEdge) => void;
@@ -181,7 +188,7 @@ export function createWheelGesture({ threshold, quietMs = DEFAULT_QUIET_MS }: Wh
     return step;
   };
 
-  const feed = (delta: number, timeMs: number): WheelGestureStep => {
+  const observe = (timeMs: number) => {
     if (timeMs - lastEventAt > quietMs) {
       // A gap in the stream ends the gesture in every state that trusts
       // timing. Momentum is exempt: fingers are off the pad, only a real
@@ -194,11 +201,30 @@ export function createWheelGesture({ threshold, quietMs = DEFAULT_QUIET_MS }: Wh
       else if (stream !== "momentum") reset();
     }
     lastEventAt = timeMs;
+  };
+
+  const feed = (delta: number, timeMs: number): WheelGestureStep => {
+    observe(timeMs);
     const magnitude = Math.abs(delta);
     if (magnitude === 0) return 0;
     const direction: WheelGestureStep = delta > 0 ? 1 : -1;
     return stream === null ? feedHeuristic(delta, direction, magnitude) : feedPhased(delta, direction, magnitude);
   };
 
-  return { feed, notifyPhase, reset };
+  const claim = (delta: number, timeMs: number) => {
+    observe(timeMs);
+    const magnitude = Math.abs(delta);
+    if (magnitude === 0) return;
+    // Latched as a fired gesture is. Heuristic mode tracks the claim's own
+    // magnitude as the peak, so its re-swipe detector still sees a new
+    // swipe once this one's tail has decayed.
+    accum = 0;
+    peak = firedDirection === 0 ? magnitude : Math.max(peak, magnitude);
+    firedDirection = delta > 0 ? 1 : -1;
+    lastMagnitude = magnitude;
+    armed = false;
+    risingStreak = 0;
+  };
+
+  return { feed, claim, notifyPhase, reset };
 }

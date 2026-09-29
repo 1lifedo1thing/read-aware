@@ -1,0 +1,245 @@
+import type { FixedLayout } from "../../foliate-js/src/fixed-layout";
+import { makePDFFixture } from "../fixtures/foliate-pdf";
+
+type Modules = {
+  pdf: typeof import("../../foliate-js/src/pdf");
+  view: typeof import("../../foliate-js/src/view");
+  fixed: typeof import("../../foliate-js/src/fixed-layout");
+};
+type Result = { name: string; passed: boolean; details?: string };
+
+const WIDTH = 900;
+const HEIGHT = 600;
+// Fixture pages are 600 × 800 page units.
+const PAGE = { width: 600, height: 800 };
+
+/** Fixed-layout zoom: fit and factor, overflow reach, anchoring, live presentation and the sharp overlay. */
+export async function runZoomRegressions(modules: Modules): Promise<Result[]> {
+  if (!("__TAURI_INTERNALS__" in window)) throw new Error("Run this suite inside Tauri");
+  const results: Result[] = [];
+  const check = async (name: string, run: () => Promise<void>) => {
+    try {
+      await run();
+      results.push({ name, passed: true });
+    } catch (error) {
+      results.push({
+        name,
+        passed: false,
+        details: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      });
+    }
+  };
+  const near = (actual: number, expected: number, what: string, tolerance = 1.5) => {
+    if (Math.abs(actual - expected) > tolerance) throw new Error(`${what}: expected ${expected}, received ${actual}`);
+  };
+  const assert = (value: boolean, message: string) => {
+    if (!value) throw new Error(message);
+  };
+  const waitFor = async (stage: string, condition: () => boolean, timeout = 10000) => {
+    const deadline = Date.now() + timeout;
+    while (!condition()) {
+      if (Date.now() > deadline) throw new Error(`Timed out waiting for ${stage} (window hidden: ${document.hidden})`);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  };
+  const bytes = await makePDFFixture();
+  const file = new File([bytes], "fixture.pdf", { type: "application/pdf" });
+
+  const open = async (flow: "scrolled" | "paginated", index = 1) => {
+    const book = await modules.pdf.makePDF(file);
+    const view = new modules.view.View();
+    view.style.cssText = `display:block;position:fixed;left:0;top:0;width:${WIDTH}px;height:${HEIGHT}px;opacity:0;pointer-events:none;z-index:-1`;
+    document.body.append(view);
+    await view.open(book);
+    const renderer = view.renderer;
+    if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
+    renderer.setLayout(flow, 1);
+    await view.goTo(index);
+    const page = (i = index) => renderer.getContents().find((content) => content.index === i)?.doc;
+    await waitFor("first raster", () => !!page()?.querySelector(".textLayer span"));
+    return {
+      renderer: renderer as FixedLayout,
+      page,
+      /** The page's box on screen, in client coordinates. */
+      box: (i = index) => {
+        const frame = page(i)?.defaultView?.frameElement;
+        if (!frame) throw new Error(`Page ${i} is not live`);
+        return frame.getBoundingClientRect();
+      },
+      host: () => renderer.getBoundingClientRect(),
+      close: async () => {
+        await view.close();
+        view.remove();
+        await book.destroy();
+      },
+    };
+  };
+  const pageScale = (doc: Document | undefined) => {
+    const canvas = doc?.querySelector<HTMLCanvasElement>("#canvas > canvas:not([data-detail])");
+    const frame = doc?.defaultView?.frameElement;
+    if (!canvas || !frame) return 0;
+    // The raster presented at the frame's layout size, in CSS px per page unit.
+    return canvas.getBoundingClientRect().width / PAGE.width;
+  };
+
+  await check("scrolled fit-width pages zoom by the factor and stay reachable from their left edge", async () => {
+    const reader = await open("scrolled");
+    try {
+      const { renderer } = reader;
+      const width = renderer.clientWidth;
+      near(reader.box().width, width, "fit-width page width");
+      renderer.setZoom({ fit: "auto", factor: 2 });
+      near(reader.box().width, width * 2, "zoomed page width");
+      assert(renderer.scrollWidth >= width * 2 - 1, `Host cannot scroll across the page (${renderer.scrollWidth})`);
+      renderer.scrollLeft = 0;
+      near(reader.box().left, reader.host().left, "page left edge at scroll start");
+      renderer.scrollLeft = renderer.scrollWidth;
+      near(reader.box().right, reader.host().left + width, "page right edge at scroll end");
+      await waitFor(
+        "raster at the zoomed scale",
+        () => Math.abs(pageScale(reader.page()) - (width * 2) / PAGE.width) < 0.01,
+      );
+    } finally {
+      await reader.close();
+    }
+  });
+
+  await check("scrolled fit-page fits the whole page in the viewport", async () => {
+    const reader = await open("scrolled");
+    try {
+      const { renderer } = reader;
+      renderer.setZoom({ fit: "page", factor: 1 });
+      near(reader.box().height, renderer.clientHeight, "fit-page height");
+      near(reader.box().width, (renderer.clientHeight * PAGE.width) / PAGE.height, "fit-page width");
+      // Narrower than the viewport: centered, nothing to scroll sideways.
+      near(reader.box().left - reader.host().left, (renderer.clientWidth - reader.box().width) / 2, "centered page");
+      assert(renderer.scrollWidth <= renderer.clientWidth + 1, "A fitting page overflowed sideways");
+    } finally {
+      await reader.close();
+    }
+  });
+
+  await check("a zoom keeps the page point under its anchor still", async () => {
+    for (const flow of ["scrolled", "paginated"] as const) {
+      const reader = await open(flow);
+      try {
+        const { renderer } = reader;
+        renderer.setZoom({ fit: "width", factor: 1.5 });
+        const host = reader.host();
+        const anchor = { x: host.left + 300, y: host.top + 200 };
+        const before = reader.box();
+        const fx = (anchor.x - before.left) / before.width;
+        const fy = (anchor.y - before.top) / before.height;
+        renderer.setZoom({ fit: "width", factor: 3 }, { anchor });
+        const after = reader.box();
+        near(after.left + fx * after.width, anchor.x, `${flow} anchor x`);
+        near(after.top + fy * after.height, anchor.y, `${flow} anchor y`);
+      } finally {
+        await reader.close();
+      }
+    }
+  });
+
+  await check("a live zoom presents the current raster and rasters once it settles", async () => {
+    const reader = await open("scrolled");
+    try {
+      const { renderer } = reader;
+      const doc = reader.page()!;
+      const canvas = doc.querySelector("#canvas > canvas");
+      const width = renderer.clientWidth;
+      renderer.setZoom({ fit: "auto", factor: 1.25 }, { live: true });
+      renderer.setZoom({ fit: "auto", factor: 1.5 }, { live: true });
+      // Shown at the new size at once, from the raster it already had.
+      assert(doc.querySelector("#canvas > canvas") === canvas, "A live step rastered the page");
+      near(canvas!.getBoundingClientRect().width, width * 1.5, "live-presented raster width");
+      await waitFor("the settled raster", () => doc.querySelector("#canvas > canvas") !== canvas);
+      near(pageScale(doc), (width * 1.5) / PAGE.width, "settled raster scale", 0.01);
+    } finally {
+      await reader.close();
+    }
+  });
+
+  await check("a zoom past the raster budget sharpens the visible part, and releases it zoomed out", async () => {
+    const reader = await open("scrolled");
+    try {
+      const { renderer } = reader;
+      const doc = reader.page()!;
+      renderer.setZoom({ fit: "auto", factor: 4 });
+      const detail = () => doc.querySelector<HTMLCanvasElement>("canvas[data-detail]");
+      await waitFor("the sharp overlay", () => !!detail());
+      const scale = (renderer.clientWidth * 4 * devicePixelRatio) / PAGE.width;
+      const base = doc.querySelector<HTMLCanvasElement>("#canvas > canvas:not([data-detail])")!;
+      assert(base.width < PAGE.width * scale - 1, "The page raster was not capped at this zoom");
+      // The overlay is drawn at the full scale and covers the viewport. Its
+      // rect is in the page document's coordinates; the frame places those.
+      const inPage = detail()!.getBoundingClientRect();
+      const frame = reader.box();
+      const overlay = new DOMRect(frame.left + inPage.left, frame.top + inPage.top, inPage.width, inPage.height);
+      near(detail()!.width / overlay.width, devicePixelRatio, "overlay device pixels per CSS px", 0.02);
+      const host = reader.host();
+      assert(
+        overlay.left <= host.left + 1 &&
+          overlay.top <= host.top + 1 &&
+          overlay.right >= host.left + renderer.clientWidth - 1 &&
+          overlay.bottom >= host.top + renderer.clientHeight - 1,
+        "The overlay does not cover the viewport",
+      );
+      // Bring the fixture's black square (page units 30–230 × 200–400 from
+      // the top) to the middle; the redrawn overlay must show it there, and
+      // white paper beside it.
+      const display = (renderer.clientWidth * 4) / PAGE.width;
+      const previous = detail();
+      renderer.scrollLeft += reader.box().left + 130 * display - (host.left + renderer.clientWidth / 2);
+      renderer.scrollTop += reader.box().top + 300 * display - (host.top + renderer.clientHeight / 2);
+      await waitFor("the overlay to follow the viewport", () => !!detail() && detail() !== previous);
+      const sample = (x: number, y: number) => {
+        const canvas = detail()!;
+        const rect = canvas.getBoundingClientRect();
+        const ratio = canvas.width / rect.width;
+        const [r] = canvas
+          .getContext("2d")!
+          .getImageData(
+            Math.round((x * display - rect.left) * ratio),
+            Math.round((y * display - rect.top) * ratio),
+            1,
+            1,
+          ).data;
+        return r;
+      };
+      assert(sample(130, 300) < 40, `The overlay missed the square (${sample(130, 300)})`);
+      assert(sample(245, 300) > 215, `The overlay shows ink beside the square (${sample(245, 300)})`);
+      renderer.setZoom({ fit: "auto", factor: 1 });
+      await waitFor("the overlay released", () => !detail());
+    } finally {
+      await reader.close();
+    }
+  });
+
+  await check("a zoomed paged spread pans, and page turns open it at their reading edge", async () => {
+    const reader = await open("paginated", 1);
+    try {
+      const { renderer } = reader;
+      renderer.setZoom({ fit: "page", factor: 1 });
+      assert(!renderer.panBy(0, 50), "A fitting page panned");
+      const edges = renderer.panEdges;
+      assert(edges.top && edges.bottom && edges.left && edges.right, "A fitting page is not at every edge");
+      renderer.setZoom({ fit: "page", factor: 3 });
+      renderer.scrollTop = 0;
+      renderer.scrollLeft = 0;
+      near(reader.box().left, reader.host().left, "zoomed page left edge");
+      near(reader.box().top, reader.host().top, "zoomed page top edge");
+      assert(renderer.panBy(0, 120), "A zoomed page did not pan");
+      near(renderer.scrollTop, 120, "panned distance");
+      await renderer.next();
+      await waitFor("next page", () => renderer.index === 2);
+      assert(renderer.panEdges.top && renderer.panEdges.left, "The next page did not open at its start");
+      await renderer.prev();
+      await waitFor("previous page", () => renderer.index === 1);
+      assert(renderer.panEdges.bottom && renderer.panEdges.right, "Turning back did not open the page at its end");
+    } finally {
+      await reader.close();
+    }
+  });
+
+  return results;
+}

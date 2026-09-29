@@ -65,6 +65,7 @@ import { ReaderImageLightbox } from "./ReaderImageLightbox";
 import { TextUnitNavigatorBar } from "./TextUnitNavigatorBar";
 import { TextUnitReadoutChip } from "./TextUnitReadoutChip";
 import { ReaderPageTurnControls } from "./ReaderPageTurnControls";
+import { ReaderZoomIndicator } from "./ReaderZoomIndicator";
 import { ReaderSelectionHighlight } from "./ReaderSelectionHighlight";
 import { ReaderSelectionMenu } from "./ReaderSelectionMenu";
 import { ReaderCompletionScreen } from "./ReaderCompletionScreen";
@@ -82,6 +83,7 @@ import { forwardKeyDownToApp, isEditableKeyTarget } from "../../../platform/app-
 import { subscribeWheelPhaseEdges } from "../../../platform/wheel-phase";
 import { useDelayedFlag } from "../hooks/useDelayedFlag";
 import { useReaderTypography } from "../hooks/useReaderTypography";
+import { useFixedLayoutZoom } from "../hooks/useFixedLayoutZoom";
 import { useReaderEngineLoadSource } from "../hooks/useReaderEngineLoadSource";
 import { useReaderPagination } from "../hooks/useReaderPagination";
 import { useReaderTextActions } from "../hooks/useReaderTextActions";
@@ -604,6 +606,16 @@ export function FoliateReaderView({
     isFixedLayoutRef,
     readingModeRef,
     layoutForReadingMode,
+  });
+
+  // Page zoom for fixed-layout books: the book's remembered zoom, and the
+  // keys, pinches and zoom wheels that change it.
+  const fixedLayoutZoom = useFixedLayoutZoom({
+    bookId: selectedBook?.id,
+    viewRef,
+    isFixedLayoutRef,
+    readerRootRef,
+    viewportRef,
   });
 
   useEffect(() => {
@@ -1199,10 +1211,19 @@ export function FoliateReaderView({
   //   pinch, never a page turn.
   // - Otherwise: scroll mode's shell-dismissal and section-crossing
   //   accumulators, as before.
+  // Fixed-layout books come first: ctrl+wheel zooms their pages, and a page
+  // zoomed past the viewport pans before it turns — a gesture that moved the
+  // page is spent on that, so only a new one at the edge turns it.
   const handleWheelEvent = useEffectEvent((event: WheelEvent) => {
     const gestures = wheelGesturesRef.current;
     if (!gestures) return;
-    if (readingModeRef.current !== "scroll" && Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+    if (fixedLayoutZoom.handleZoomWheel(event)) return;
+    const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    if (readingModeRef.current !== "scroll" && !event.ctrlKey && fixedLayoutZoom.panByWheel(event)) {
+      gestures.pageTurn.claim(horizontal ? event.deltaX : event.deltaY, wheelEventTime(event));
+      return;
+    }
+    if (readingModeRef.current !== "scroll" && horizontal) {
       // Without preventDefault the webview may read the swipe as overscroll
       // or a history-navigation gesture.
       if (event.cancelable) event.preventDefault();
@@ -1298,13 +1319,25 @@ export function FoliateReaderView({
     // (RTL-correct).
     const shortcut = appShortcutForEvent(event);
     if (event.defaultPrevented) return;
+    // Page zoom is a fixed-layout control; a reflowable book sizes its text
+    // through the appearance settings instead.
+    if (isFixedLayoutRef.current && (shortcut === "zoom-in" || shortcut === "zoom-out" || shortcut === "zoom-reset")) {
+      event.preventDefault();
+      if (shortcut === "zoom-reset") fixedLayoutZoom.resetZoom();
+      else fixedLayoutZoom.stepZoom(shortcut === "zoom-in" ? 1 : -1);
+      return;
+    }
+    // A zoomed fixed-layout page pans a screenful toward the turn before it
+    // turns (see handleWheelEvent).
     if (shortcut === "next-page") {
       event.preventDefault();
+      if (fixedLayoutZoom.panByKey("x", 1)) return;
       advancePage(() => viewRef.current?.goRight?.());
       return;
     }
     if (shortcut === "prev-page") {
       event.preventDefault();
+      if (fixedLayoutZoom.panByKey("x", -1)) return;
       enqueuePageTurn(() => viewRef.current?.goLeft?.());
       return;
     }
@@ -1424,14 +1457,15 @@ export function FoliateReaderView({
       if (selectionRef.current) clearSelection();
       else if (textUnitModeEngineActive) onExitTextUnitMode?.();
     }
-    // Vertical keys map to forward/back directly.
+    // Vertical keys map to forward/back directly, a zoomed fixed-layout page
+    // panning through first.
     if (event.key === "ArrowDown" || event.key === "PageDown") {
       event.preventDefault();
-      void turnPage(1);
+      if (!fixedLayoutZoom.panByKey("y", 1)) void turnPage(1);
     }
     if (event.key === "ArrowUp" || event.key === "PageUp") {
       event.preventDefault();
-      void turnPage(-1);
+      if (!fixedLayoutZoom.panByKey("y", -1)) void turnPage(-1);
     }
   });
 
@@ -1577,19 +1611,26 @@ export function FoliateReaderView({
 
     doc.addEventListener("keydown", (event) => handleReaderKeyDown(event));
 
+    // Fixed-layout page zoom: trackpad and two-finger pinches over the page.
+    fixedLayoutZoom.attachDocument(doc);
+
     // Fixed-layout page turns by horizontal swipe. The refs are read at
     // gesture time, not attach time: layout detection can land after the
     // first section loads, and the reading mode may change over the doc's
     // lifetime. Short + decisively horizontal keeps long-press selection
-    // and vertical scrolling (scroll mode) untouched.
+    // and vertical scrolling (scroll mode) untouched. A page zoomed past the
+    // viewport is dragged around instead, turning only for a swipe that
+    // started at its edge on that side.
     {
-      let swipeStart: { x: number; y: number; at: number } | null = null;
+      let swipeStart: { x: number; y: number; at: number; edges: { left: boolean; right: boolean } } | null = null;
       doc.addEventListener(
         "touchstart",
         (event) => {
           const touch = event.touches[0];
           swipeStart =
-            event.touches.length === 1 && touch ? { x: touch.screenX, y: touch.screenY, at: Date.now() } : null;
+            event.touches.length === 1 && touch
+              ? { x: touch.screenX, y: touch.screenY, at: Date.now(), edges: fixedLayoutZoom.panEdges() }
+              : null;
         },
         { passive: true },
       );
@@ -1608,6 +1649,7 @@ export function FoliateReaderView({
           if (Math.abs(dx) < FIXED_SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5) {
             return;
           }
+          if (!(dx < 0 ? start.edges.right : start.edges.left)) return;
           // Visual direction: swiping the content leftwards reveals the page
           // on the right, and vice versa — correct under RTL too.
           const view = viewRef.current;
@@ -2152,6 +2194,9 @@ export function FoliateReaderView({
         // Before the first navigation, so the opening render already draws the
         // page in the reader's palette instead of flashing white and redrawing.
         if (fixedLayout) applyReaderPageColors(readerSettingsRef.current, view.renderer, openingActor);
+        // Likewise the book's zoom, so the first page is laid out and
+        // rastered at it once.
+        if (fixedLayout) fixedLayoutZoom.prepareRenderer(view.renderer, openingContext);
         if (fixedLayout && view.renderer && "setLayout" in view.renderer) {
           // WebKit may defer custom-element attribute reactions until after the
           // first navigation. Configure fixed layout atomically so that first
@@ -2515,6 +2560,7 @@ export function FoliateReaderView({
         onPrev={() => void turnPage(-1)}
         onNext={() => void turnPage(1)}
       />
+      {isFixedLayout && <ReaderZoomIndicator feedback={fixedLayoutZoom.feedback} />}
       {isIOS() && <ReaderSelectionHighlight selection={selection} />}
       <ReaderSelectionMenu
         selection={selection}
