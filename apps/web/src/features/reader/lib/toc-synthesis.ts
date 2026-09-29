@@ -9,11 +9,12 @@
  *   the whole book reads as one chapter. The labels are still right, so each
  *   collapsed entry is relocated to the first later section that opens with
  *   its label.
- * - Missing entries. Some converted books (Calibre size-splits are the usual
- *   culprit) carry a nav with one or two entries — "Cover" / "Text" — while
- *   the spine holds many sections. When the nav covers too little of the
- *   spine, every uncovered linear section gets an entry labeled by its first
- *   heading — or, headingless, by its opening words.
+ * - Missing entries. Some books carry a nav with only a few entries — a
+ *   converter's "Cover" / "Text", or a set's volume titles with none of their
+ *   chapters — while the spine holds many sections. When the nav covers too
+ *   little of the spine, every uncovered linear section gets an entry labeled
+ *   by its first heading — or, headingless, by its opening words. Chapters
+ *   synthesized after a volume or part title page nest under that entry.
  *
  * Run it on the parsed book BEFORE `view.open(book)`: foliate builds its TOC
  * progress (relocate's `tocItem`) from `book.toc` at open time, so rewriting
@@ -21,16 +22,20 @@
  */
 
 import type { Book, BookSection, TOCItem } from "../../../../foliate-js/src/book";
+import { holdsNumberedChapters, isChapterLabel } from "../../../../foliate-js/src/chapter-map";
 import { createLogger } from "../../../platform/logger";
 
-type SectionLike = Pick<BookSection, "id" | "linear" | "createDocument">;
+type SectionLike = Pick<BookSection, "id" | "linear" | "createDocument"> & { size?: number };
 type NavItemLike = TOCItem;
 type BookLike = Pick<Book, "toc" | "splitTOCHref" | "getSectionHref" | "resolveHref"> & { sections?: SectionLike[] };
 const log = createLogger("toc-synthesis");
 
-/** Beyond this many sections, scanning every document is too costly — and a
- *  book that large with a tiny nav is practically nonexistent. */
-const MAX_SYNTHESIZED_SECTIONS = 60;
+/** Synthesis parses every uncovered section before the book opens, so its
+ *  cost is their markup, not their number: 61 small chapter files are cheap,
+ *  a few huge ones are not. Beyond this much section weight (EPUB/MOBI bytes,
+ *  text-book characters — roughly 3 million characters of text) the nav is
+ *  left as it is. */
+const MAX_SYNTHESIS_WEIGHT = 8 * 1024 * 1024;
 /** A nav covering less than this share of the linear spine is deficient. */
 const MIN_SPINE_COVERAGE = 0.5;
 const MIN_SECTIONS_TO_BOTHER = 4;
@@ -128,19 +133,16 @@ function sectionHref(book: BookLike, section: SectionLike, index: number): strin
   return section.id != null && typeof book.splitTOCHref !== "function" ? String(section.id) : undefined;
 }
 
-/** First heading text, else the opening words of the first substantial paragraph. */
+/** First heading text, else the opening words of the first substantial line.
+ *  Link text never labels a section: a contents page's first line is the
+ *  title of some other chapter. */
 function labelFromDocument(doc: Document): string | null {
   const heading = Array.from(doc.querySelectorAll("h1, h2, h3"))
     .map((el) => normalizeWhitespace(el.textContent ?? ""))
     .find((text) => text.length > 0);
   if (heading) return truncateLabel(heading);
-
-  const candidates = [...Array.from(doc.body?.querySelectorAll("p") ?? []), ...Array.from(doc.body?.children ?? [])];
-  for (const el of candidates) {
-    const text = normalizeWhitespace(el.textContent ?? "");
-    if (text.length >= MIN_LABEL_SOURCE_CHARS) return truncateLabel(text);
-  }
-  return null;
+  const line = openingBlockTexts(doc, CONTENTS_SCAN_LINES).find((text) => text.length >= MIN_LABEL_SOURCE_CHARS);
+  return line ? truncateLabel(line) : null;
 }
 
 function truncateLabel(text: string): string {
@@ -305,19 +307,29 @@ export async function ensureUsableToc(target: BookLike): Promise<boolean> {
   const flatNav = flattenNav(target.toc);
   const repaired = await repairCollapsedTargets(target, flatNav, sections);
 
-  if (linearIndexes.length > MAX_SYNTHESIZED_SECTIONS) return repaired;
   const covered = await sectionIndexesCoveredByNav(target, flatNav, sections);
   const coverage = covered.size / linearIndexes.length;
   if (flatNav.length > 0 && coverage >= MIN_SPINE_COVERAGE) return repaired;
+  const weight = linearIndexes
+    .filter((index) => !covered.has(index))
+    .reduce((sum, index) => sum + Math.max(0, sections[index]!.size ?? 0), 0);
+  if (weight > MAX_SYNTHESIS_WEIGHT) {
+    log.info("Table of contents too sparse, book too large to synthesize one", { weight });
+    return repaired;
+  }
 
-  const synthesized: NavItemLike[] = [];
+  // Runs of synthesized entries, each after the book's own entry that precedes them.
+  const groups: { owner?: { item: NavItemLike; index: number }; items: NavItemLike[] }[] = [{ items: [] }];
+  const result: NavItemLike[] = [];
   let added = 0;
   for (const index of linearIndexes) {
     const original = covered.get(index);
     if (original?.length) {
-      // Keep the book's own entries where they exist — flattened, since the
-      // synthesized neighbors have no hierarchy to nest under.
-      synthesized.push(...original.map((item) => ({ label: item.label, href: item.href })));
+      // Keep the book's own entries where they exist, flattened: the nav was
+      // too sparse for its hierarchy to organize the synthesized entries.
+      const entries = original.map((item) => ({ label: item.label, href: item.href }));
+      result.push(...entries);
+      groups.push({ owner: { item: entries.at(-1)!, index }, items: [] });
       continue;
     }
     const section = sections[index];
@@ -327,14 +339,35 @@ export async function ensureUsableToc(target: BookLike): Promise<boolean> {
       const doc = await section.createDocument!();
       const label = labelFromDocument(doc);
       if (!label) continue;
-      synthesized.push({ label, href });
+      const item = { label, href };
+      result.push(item);
+      groups.at(-1)!.items.push(item);
       added++;
     } catch (error) {
       log.warn("Could not synthesize a chapter label", error);
     }
   }
-
   if (added === 0) return repaired;
-  target.toc = synthesized;
+
+  // A volume or part title page (its section opens with the entry's own label,
+  // which is not itself a chapter's) followed by numbered chapters holds them —
+  // through its last numbered chapter; back matter after it stays at the top.
+  const nested = new Set<NavItemLike>();
+  for (const { owner, items: run } of groups) {
+    if (!owner) continue;
+    const items = run.slice(0, run.findLastIndex((item) => isChapterLabel(item.label ?? "")) + 1);
+    const label = owner.item.label?.trim() ?? "";
+    if (!label || isChapterLabel(label) || !holdsNumberedChapters(items.map((item) => item.label ?? ""))) continue;
+    try {
+      const doc = await sections[owner.index]!.createDocument!();
+      if (!opensWithLabel(label, openingBlockTexts(doc))) continue;
+    } catch (error) {
+      log.warn("Could not read a volume title page", error);
+      continue;
+    }
+    owner.item.subitems = items;
+    for (const item of items) nested.add(item);
+  }
+  target.toc = result.filter((item) => !nested.has(item));
   return true;
 }

@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { JSDOM } from "jsdom";
+import type { TOCItem } from "../../../../foliate-js/src/book";
 import { ensureUsableToc } from "./toc-synthesis";
 
 /** The slice of a parsed document `labelFromDocument` reads. */
@@ -204,8 +206,10 @@ describe("ensureUsableToc with collapsed targets (a converter that lost its anch
 
   test("a book too large to synthesize still gets its collapsed entries repaired", async () => {
     const book = collapsedBook();
+    // Too much markup to parse before opening: the nav is not synthesized.
     const filler = Array.from({ length: 70 }, (_, index) => ({
       id: 100 + index,
+      size: 200_000,
       createDocument: () => docOf(block("p", `Page ${index}`)),
     }));
     book.sections = [...book.sections, ...filler];
@@ -228,4 +232,84 @@ describe("ensureUsableToc with file-path hrefs (EPUB)", () => {
     ]);
     expect(book.toc[0]?.label).toBe("Cover");
   });
+});
+
+describe("ensureUsableToc for a set whose nav lists only its volumes", () => {
+  /** An EPUB section whose opening heading is `heading`, readable by `openingBlockTexts`. */
+  const page = (heading: string) => {
+    const doc = new JSDOM(`<html><body><h1>${heading}</h1><p>正文</p></body></html>`).window.document;
+    return () => doc;
+  };
+  const book = (volumeLabels: string[], chapterLabels: string[][], first = "感言") => {
+    const files: { id: string; size: number; createDocument: () => Document }[] = [
+      { id: "text/p0.xhtml", size: 20_000, createDocument: page(first) },
+    ];
+    const toc: TOCItem[] = [{ label: first, href: "text/p0.xhtml" }];
+    volumeLabels.forEach((volume, v) => {
+      const id = `text/v${v}.xhtml`;
+      files.push({ id, size: 2_000, createDocument: page(volume) });
+      toc.push({ label: volume, href: id });
+      chapterLabels[v]!.forEach((chapter, c) =>
+        files.push({ id: `text/v${v}c${c}.xhtml`, size: 20_000, createDocument: page(chapter) }),
+      );
+    });
+    return { toc, sections: files };
+  };
+  const chapters = (count: number) =>
+    Array.from({ length: count }, (_, index) => `第${"一二三四五六七八九十"[index]}章 标题`);
+
+  test("more than 60 small chapter files are still synthesized, nested under their volumes", async () => {
+    const target = book(["三体I", "三体II", "三体III"], [chapters(10), chapters(10), chapters(10)]);
+    for (let index = 0; index < 35; index++)
+      target.sections.push({ id: `text/tail${index}.xhtml`, size: 1_000, createDocument: page(`附录${index}`) });
+    expect(await ensureUsableToc(target)).toBe(true);
+    expect(target.toc.map((item) => item.label).slice(0, 4)).toEqual(["感言", "三体I", "三体II", "三体III"]);
+    expect(target.toc[1]!.subitems?.map((item) => item.label)).toEqual(chapters(10));
+    expect(target.toc[2]!.subitems?.map((item) => item.label)).toEqual(chapters(10));
+    expect(target.toc[3]!.subitems?.map((item) => item.label)).toEqual(chapters(10));
+    // Back matter after the last volume's chapters stays at the top level.
+    expect(target.toc.slice(4).map((item) => item.label)).toEqual(
+      Array.from({ length: 35 }, (_, index) => `附录${index}`),
+    );
+  });
+
+  test("a chapter entry does not adopt the chapters synthesized after it", async () => {
+    const target = book(["第一章 开端"], [["第二章 发展", "第三章 转折", "第四章 结局", "第五章 尾声"]], "序");
+    expect(await ensureUsableToc(target)).toBe(true);
+    expect(target.toc.map((item) => item.label)).toEqual([
+      "序",
+      "第一章 开端",
+      "第二章 发展",
+      "第三章 转折",
+      "第四章 结局",
+      "第五章 尾声",
+    ]);
+    expect(target.toc.every((item) => !item.subitems)).toBe(true);
+  });
+});
+
+test("a contents page is not labeled by the first chapter it links to", async () => {
+  const doc = (html: string) => () => new JSDOM(`<html><body>${html}</body></html>`).window.document;
+  const target: { toc: TOCItem[]; sections: { id: string; createDocument: () => Document }[] } = {
+    toc: [{ label: "Cover", href: "text/p0.xhtml" }],
+    sections: [
+      { id: "text/p0.xhtml", createDocument: doc("<p>Cover</p>") },
+      {
+        id: "text/p1.xhtml",
+        createDocument: doc(
+          '<p><a href="p2.xhtml">刘慈欣2018克拉克奖获奖感言</a></p><p><a href="p3.xhtml">三体I</a></p>',
+        ),
+      },
+      { id: "text/p2.xhtml", createDocument: doc("<p>一个没有标题的章节，从这里开始讲述。</p>") },
+      { id: "text/p3.xhtml", createDocument: doc("<h1>三体I</h1><p>正文</p>") },
+      { id: "text/p4.xhtml", createDocument: doc("<h1>第一章 科学边界</h1><p>正文</p>") },
+    ],
+  };
+  expect(await ensureUsableToc(target)).toBe(true);
+  expect(target.toc.map((item) => item.label)).toEqual([
+    "Cover",
+    "一个没有标题的章节，从这里开始讲述。",
+    "三体I",
+    "第一章 科学边界",
+  ]);
 });

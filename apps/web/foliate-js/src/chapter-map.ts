@@ -88,9 +88,14 @@ const CHAPTER_LABEL = new RegExp(
   ].join("|"),
   "iu",
 );
-/** A node whose children are mostly numbered chapters holds chapters. */
-const numberedChapters = (children: readonly Node[]) =>
-  children.length >= 3 && children.filter((child) => CHAPTER_LABEL.test(child.label)).length >= children.length * 0.6;
+/** Whether a label is numbered as a chapter ("第三章 …", "Chapter 3", "3"), not as a section. */
+export const isChapterLabel = (label: string) => CHAPTER_LABEL.test(label.trim());
+
+/** Labels that are mostly numbered chapters: what a volume or a part holds. */
+export const holdsNumberedChapters = (labels: readonly string[]) =>
+  labels.length >= 3 && labels.filter(isChapterLabel).length >= labels.length * 0.6;
+
+const numberedChapters = (children: readonly Node[]) => holdsNumberedChapters(children.map((child) => child.label));
 
 function buildTree(items: readonly TOCItem[], parents: string[], depth: number, counter: { next: number }): Node[] {
   return items.flatMap((item): Node[] => {
@@ -183,7 +188,7 @@ export async function buildChapterMap(book: ChapterMapBook): Promise<ChapterMap>
     const container = (node: Node) =>
       CONTAINER_LABEL.test(node.label) ||
       // A chapter whose sections are numbered 1, 2, 3 is still a chapter.
-      (!CHAPTER_LABEL.test(node.label) && numberedChapters(node.children)) ||
+      (!isChapterLabel(node.label) && numberedChapters(node.children)) ||
       (total > 0 && owned(node) > total * DOMINANT_SHARE) ||
       owned(node) > VOLUME_WEIGHT;
     const containers = withChildren.filter(container);
