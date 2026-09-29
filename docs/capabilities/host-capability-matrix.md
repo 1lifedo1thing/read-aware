@@ -5,7 +5,7 @@
 - 状态：**源码能力盘点；接线与真实验收分别记录**。
 - 文档整理日期：2026-09-15（不代表本日重新验收每行）。
 - 范围：当前 Tauri 桌面宿主及必要组合协议；Agent 指 ReadAware 产品内的模型工具与自动管线，不是外部 Coding Agent 的电脑控制能力。
-- [代码] 248 行 / 13 组，129 个既有验收项全部有对应行。字段行是可核对设置清单，不能与功能族相加当产品功能数量。
+- [代码] 249 行 / 13 组，129 个既有验收项全部有对应行。字段行是可核对设置清单，不能与功能族相加当产品功能数量。
 - [设计] 两个目标列是建议开放方式/刻意拒绝方式，尚未实现的目标不混入当前状态。
 - 修改事实源 [host-capability-matrix.data.ts](./host-capability-matrix.data.ts)，再运行 [生成器](../../scripts/build-host-capability-matrix.ts)；不要分别手改生成的 MD/HTML。
 
@@ -17,9 +17,9 @@
 
 ## 计数与口径
 
-- 宿主：实装 216、部分 29、占位 1、非桌面 1、待建 1。
-- Agent：接通 156、接通（待 E2E） 24、扩展 10、部分 30、自动 13、未接 15。
-- 插件：接通 172、接通（待 E2E） 29、部分 41、未接 6。
+- 宿主：实装 217、部分 29、占位 1、非桌面 1、待建 1。
+- Agent：接通 157、接通（待 E2E） 24、扩展 10、部分 30、自动 13、未接 15。
+- 插件：接通 173、接通（待 E2E） 29、部分 41、未接 6。
 
 不提供一个虚假的“整体覆盖率”：这里既有功能族也有逐字段行，且自动管线、插件条件扩展、禁止开放、宿主未建不应混为一个分母。上面的数量是本表状态分布，不是通过率。当前可调用具体入口的库存另列，入口数也不代表语义完整。
 
@@ -152,7 +152,7 @@
 | <a id="CFG12"></a>CFG12 | 新标注默认颜色 | 实装 | **接通**：annotations.defaultColor<br>[设计] 结构化设置工具 | **接通**：settings 1.2；annotations section<br>[设计] 路径授权设置领域 | 一键高亮/下划线；recolor 更新后续默认色 | yellow/green/blue/pink，默认 yellow；宿主动作即时读取当前偏好，不再捕获挂载时颜色；不重染已有标注 | [MARKPREFS](../../apps/web/src/features/annotations/lib/annotation-prefs.ts) [TEXTACTIONS](../../apps/web/src/features/reader/hooks/useReaderTextActions.ts) [SETTINGS](../../apps/web/src/domain/settings/catalog.ts) | 新增盘点 |
 | <a id="CFG13"></a>CFG13 | 软件更新通道 stable/beta | 实装 | **接通**：general.updateChannel<br>[设计] 设备本地设置工具 | **接通**：settings 1.2；全局枚举字段<br>[设计] 路径授权设置领域 | AboutPanel；软件更新查询 | 设备本地且不漫游；已打开 About 控件跟随 KV 更新/回滚；修改通道只影响后续检查，不批准下载、安装或重启 | [UPDATECHANNEL](../../apps/web/src/features/update/lib/update-channel.ts) [ABOUT](../../apps/web/src/features/settings/sections/AboutPanel.tsx) [UPDATE](../../apps/web/src/features/update/lib/software-update.ts) [SETTINGS](../../apps/web/src/domain/settings/catalog.ts) | 新增盘点 |
 
-### 设置字段逐项覆盖（78 个活动路径；SET26 为历史占位）
+### 设置字段逐项覆盖（79 个活动路径；SET26 为历史占位）
 
 | ID | 宿主能力 | 宿主现状 | Agent 当前与目标 | 插件当前与目标 | 实际消费者 | 缺口/边界 | 来源 | 旧基线 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -235,6 +235,7 @@
 | <a id="SET77"></a>SET77 | shortcuts.zoom-in | 实装 | **接通**：get_settings/update_settings<br>[设计] 类型化设置工具 | **接通**：settings discover/read/update（需路径授权）<br>[设计] 类型化设置领域 | 设置页；Agent；授权插件可调用（不代表每个插件实际调用） | 目录有读写且存在产品消费者；仍受格式、配置、scope、授权与持久化契约约束。 | [SETTINGS](../../apps/web/src/domain/settings/catalog.ts) [SETDOMAIN](../../apps/web/src/domain/settings/domain.ts) [SETTOOLS](../../packages/agent/src/tools/settings-tools.ts) [UI](../../apps/web/src/state/ui.ts) | 新增盘点 |
 | <a id="SET78"></a>SET78 | shortcuts.zoom-out | 实装 | **接通**：get_settings/update_settings<br>[设计] 类型化设置工具 | **接通**：settings discover/read/update（需路径授权）<br>[设计] 类型化设置领域 | 设置页；Agent；授权插件可调用（不代表每个插件实际调用） | 目录有读写且存在产品消费者；仍受格式、配置、scope、授权与持久化契约约束。 | [SETTINGS](../../apps/web/src/domain/settings/catalog.ts) [SETDOMAIN](../../apps/web/src/domain/settings/domain.ts) [SETTOOLS](../../packages/agent/src/tools/settings-tools.ts) [UI](../../apps/web/src/state/ui.ts) | 新增盘点 |
 | <a id="SET79"></a>SET79 | shortcuts.zoom-reset | 实装 | **接通**：get_settings/update_settings<br>[设计] 类型化设置工具 | **接通**：settings discover/read/update（需路径授权）<br>[设计] 类型化设置领域 | 设置页；Agent；授权插件可调用（不代表每个插件实际调用） | 目录有读写且存在产品消费者；仍受格式、配置、scope、授权与持久化契约约束。 | [SETTINGS](../../apps/web/src/domain/settings/catalog.ts) [SETDOMAIN](../../apps/web/src/domain/settings/domain.ts) [SETTOOLS](../../packages/agent/src/tools/settings-tools.ts) [UI](../../apps/web/src/state/ui.ts) | 新增盘点 |
+| <a id="SET80"></a>SET80 | shortcuts.zoom-lock | 实装 | **接通**：get_settings/update_settings<br>[设计] 类型化设置工具 | **接通**：settings discover/read/update（需路径授权）<br>[设计] 类型化设置领域 | 设置页；Agent；授权插件可调用（不代表每个插件实际调用） | 目录有读写且存在产品消费者；仍受格式、配置、scope、授权与持久化契约约束。 | [SETTINGS](../../apps/web/src/domain/settings/catalog.ts) [SETDOMAIN](../../apps/web/src/domain/settings/domain.ts) [SETTOOLS](../../packages/agent/src/tools/settings-tools.ts) [UI](../../apps/web/src/state/ui.ts) | 新增盘点 |
 
 ### 对话、Agent 交互与推理
 
@@ -991,6 +992,7 @@
 | `shortcuts.zoom-in` | [SET77](#SET77) | [代码] 目录可读写；实际效果见主表 |
 | `shortcuts.zoom-out` | [SET78](#SET78) | [代码] 目录可读写；实际效果见主表 |
 | `shortcuts.zoom-reset` | [SET79](#SET79) | [代码] 目录可读写；实际效果见主表 |
+| `shortcuts.zoom-lock` | [SET80](#SET80) | [代码] 目录可读写；实际效果见主表 |
 | `shortcuts.reader-mode-next-unit` | [SET67](#SET67) | [代码] 目录可读写；实际效果见主表 |
 | `shortcuts.reader-mode-prev-unit` | [SET68](#SET68) | [代码] 目录可读写；实际效果见主表 |
 | `shortcuts.selection-copy` | [SET69](#SET69) | [代码] 目录可读写；实际效果见主表 |
@@ -1361,6 +1363,7 @@
 | `zoom-in` | [READ12](#READ12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `zoom-out` | [READ12](#READ12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `zoom-reset` | [READ12](#READ12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `zoom-lock` | [READ12](#READ12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `reader-mode-next-unit` | [READ16](#READ16) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `reader-mode-prev-unit` | [READ16](#READ16) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `selection-copy` | [SYS08](#SYS08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |

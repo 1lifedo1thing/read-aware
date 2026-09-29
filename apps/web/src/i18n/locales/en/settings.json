@@ -133,6 +133,7 @@
       "zoom-in": "Zoom in (PDF & comics)",
       "zoom-out": "Zoom out (PDF & comics)",
       "zoom-reset": "Reset zoom to fit (PDF & comics)",
+      "zoom-lock": "Lock zoomed view for page turns (PDF & comics)",
       "selection-copy": "Copy",
       "selection-highlight": "Highlight",
       "selection-underline": "Underline",

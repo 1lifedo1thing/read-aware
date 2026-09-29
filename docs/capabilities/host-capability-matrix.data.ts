@@ -3940,6 +3940,7 @@ export const staticSettingPaths = [
   "shortcuts.zoom-in",
   "shortcuts.zoom-out",
   "shortcuts.zoom-reset",
+  "shortcuts.zoom-lock",
 ];
 const retiredSettingSlot = 25;
 export const settingPathId = (path: string): string => {

@@ -354,8 +354,10 @@ export function useFixedLayoutZoom({
       const locked = !renderer.viewLocked;
       renderer.setViewLocked(locked);
       rememberLock(locked, origin);
+      // Up briefly with its lock showing — a key press has nothing else to show for it.
+      feedback.publish(renderer.zoom.factor);
     },
-    [rememberLock, zoomRenderer],
+    [feedback, rememberLock, zoomRenderer],
   );
 
   const panByWheel = useCallback(

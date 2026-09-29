@@ -123,3 +123,9 @@ test("a binding that takes a default's alternate chord conflicts with it", () =>
   ]);
   expect(resolveShortcutDispatch(rows, event("+", { metaKey: true }))).toMatchObject({ kind: "conflict" });
 });
+
+test("the view lock answers its own chord, apart from the bare look-up key", () => {
+  const rows = shortcutRows({}, { ...env, lookupAvailable: true });
+  expect(resolveShortcutDispatch(rows, event("l", { metaKey: true }))).toEqual({ kind: "command", id: "zoom-lock" });
+  expect(resolveShortcutDispatch(rows, event("l"))).toEqual({ kind: "command", id: "selection-look-up" });
+});

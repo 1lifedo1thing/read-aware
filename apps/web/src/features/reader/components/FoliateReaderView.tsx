@@ -1327,6 +1327,12 @@ export function FoliateReaderView({
       else fixedLayoutZoom.stepZoom(shortcut === "zoom-in" ? 1 : -1);
       return;
     }
+    // Paged flows only: a continuous scroll is read by scrolling.
+    if (isFixedLayoutRef.current && shortcut === "zoom-lock" && readingModeRef.current !== "scroll") {
+      event.preventDefault();
+      fixedLayoutZoom.toggleLock();
+      return;
+    }
     // A zoomed fixed-layout page pans a screenful toward the turn before it
     // turns (see handleWheelEvent).
     if (shortcut === "next-page") {

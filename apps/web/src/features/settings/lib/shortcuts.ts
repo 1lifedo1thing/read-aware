@@ -24,6 +24,7 @@ export type BuiltinShortcutId =
   | "zoom-in"
   | "zoom-out"
   | "zoom-reset"
+  | "zoom-lock"
   | "reader-mode-next-unit"
   | "reader-mode-prev-unit"
   | "selection-copy"
@@ -124,6 +125,8 @@ export const EDITABLE_SHORTCUTS: EditableShortcut[] = [
     // AZERTY types its digits with Shift.
     defaultAlternates: [{ mod: true, shift: true, key: "0" }],
   },
+  // Locks a zoomed paged view for page turns (see FixedLayout.setViewLocked).
+  { id: "zoom-lock", category: "Reading", defaultBinding: { mod: true, key: "l" } },
   // Unit steps fire only while a plugin-defined reader mode is on; they take
   // the arrow keys over the page-scroll fallback for the mode's duration.
   {

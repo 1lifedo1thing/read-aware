@@ -780,7 +780,7 @@ export function collectInventory(): Inventory[] {
     ["new-conversation", "AI02"],
     ["next-page prev-page next-chapter prev-chapter", "READ04"],
     ["toggle-controls", "READ09"],
-    ["zoom-in zoom-out zoom-reset", "READ12"],
+    ["zoom-in zoom-out zoom-reset zoom-lock", "READ12"],
     ["reader-mode-next-unit reader-mode-prev-unit", "READ16"],
     ["selection-copy", "SYS08"],
     ["selection-highlight", "ANN02"],
