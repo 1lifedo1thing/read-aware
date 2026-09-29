@@ -37,6 +37,65 @@ test("EPUB package, compact reading order, TOC and original CFI spine paths agre
     }
   }));
 
+test("EPUB cover is an image: an id, a path in the EPUB 2 meta, or the image on the guide's cover page", () =>
+  withDom(async () => {
+    const packageWith = (declaration: { meta?: string; guide?: boolean }) => {
+      const fixture = makeEPUBFixture();
+      const opf = fixture.files.get("OPS/package.opf") as string;
+      fixture.files.set(
+        "OPS/package.opf",
+        opf
+          .replace(' properties="cover-image"', "")
+          .replace(
+            '<item id="one"',
+            '<item id="cover-page" href="text/cover.xhtml" media-type="application/xhtml+xml"/><item id="one"',
+          )
+          .replace(
+            "<metadata>",
+            `<metadata>${declaration.meta ? `<meta name="cover" content="${declaration.meta}"/>` : ""}`,
+          )
+          .replace(
+            "</spine>",
+            `</spine>${declaration.guide ? '<guide><reference type="cover" title="Cover" href="text/cover.xhtml"/></guide>' : ""}`,
+          ),
+      );
+      fixture.files.set(
+        "OPS/text/cover.xhtml",
+        '<html xmlns="http://www.w3.org/1999/xhtml"><body><div><img src="../image.svg"/></div></body></html>',
+      );
+      return fixture.archive;
+    };
+    for (const declaration of [
+      { meta: "image" },
+      { meta: "image.svg" },
+      { guide: true },
+      { meta: "image.svg", guide: true },
+    ]) {
+      const book = await new EPUB(packageWith(declaration)).init();
+      try {
+        const cover = await book.getCover();
+        expect(cover?.type).toBe("image/svg+xml");
+        expect(await cover?.text()).toContain('id="icon"');
+      } finally {
+        book.destroy();
+      }
+    }
+    // A cover page that shows no image is no cover: the caller falls back to the book's images.
+    const blank = packageWith({ guide: true });
+    const book = await new EPUB({
+      ...blank,
+      loadText: async (path) =>
+        path === "OPS/text/cover.xhtml"
+          ? '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Cover</p></body></html>'
+          : blank.loadText(path),
+    }).init();
+    try {
+      expect(await book.getCover()).toBeNull();
+    } finally {
+      book.destroy();
+    }
+  }));
+
 test("EPUB resources preserve images, fragment identifiers and cyclic stylesheets without leaking concurrent URLs", () =>
   withDom(async () => {
     const book = await new EPUB(makeEPUBFixture().archive).init();

@@ -221,10 +221,28 @@ export class EPUB implements Book {
     return isExternal(uri);
   }
   async getCover(): Promise<Blob | null> {
-    const cover = this.resources.cover;
+    const cover = this.resources.cover ?? (await this.#imageOnCoverPage());
     if (!cover) return null;
     const blob = await this.loadBlob(cover.href);
     return blob ? new Blob([blob], { type: cover.mediaType }) : null;
+  }
+  /** READAWARE: the image a cover page shows, for a package that names only the page. */
+  async #imageOnCoverPage(): Promise<ManifestItem | undefined> {
+    const page = this.resources.coverPage;
+    if (!page) return undefined;
+    let doc: Document;
+    try {
+      doc = await this.loadDocument(page);
+    } catch (error) {
+      console.warn(`Could not read the EPUB cover page: ${page.href}`, error);
+      return undefined;
+    }
+    const element = doc.querySelector("img[src], image");
+    const src =
+      element?.getAttribute("src") ?? element?.getAttributeNS(NS.XLINK, "href") ?? element?.getAttribute("href");
+    if (!src) return undefined;
+    const item = this.resources.getItemByHref(resolveURL(src, page.href).split("#")[0]);
+    return item?.mediaType.startsWith("image/") ? item : undefined;
   }
   async getCalibreBookmarks(): Promise<unknown> {
     const text = await this.loadText("META-INF/calibre_bookmarks.txt");

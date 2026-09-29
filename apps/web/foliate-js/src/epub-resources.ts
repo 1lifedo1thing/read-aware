@@ -24,6 +24,8 @@ type SpineItem = {
   cfi: string;
 };
 
+const isImage = (item: ManifestItem | undefined): item is ManifestItem => !!item?.mediaType.startsWith("image/");
+
 export class Resources {
   readonly manifest: ManifestItem[] = [];
   readonly manifestById: Map<string, ManifestItem>;
@@ -32,7 +34,10 @@ export class Resources {
   readonly navPath: string | undefined;
   readonly ncxPath: string | undefined;
   readonly guide: TOCItem[] | undefined;
+  /** The cover image. */
   readonly cover: ManifestItem | undefined;
+  /** READAWARE: the page that shows the cover, when the package names no image. */
+  readonly coverPage: ManifestItem | undefined;
   constructor(
     readonly opf: Document,
     resolveHref: (href: string) => string,
@@ -91,14 +96,21 @@ export class Resources {
           href: href ? resolveHref(href) : null,
         };
       });
-    this.cover =
-      this.getItemByProperty("cover-image") ??
-      this.getItemByID(
-        $$$(opf, "meta")
-          .find((el) => el.getAttribute("name") === "cover")
-          ?.getAttribute("content"),
-      ) ??
-      this.getItemByHref(this.guide?.find((ref) => ref.type?.includes("cover"))?.href);
+    // READAWARE: a cover is an image. EPUB 2's `<meta name="cover">` names a
+    // manifest id, though writers also put the image's path there; the guide's
+    // cover reference is usually the page showing the image (cover.xhtml),
+    // which `EPUB.getCover` reads the image from.
+    const metaCover = $$$(opf, "meta")
+      .find((el) => el.getAttribute("name") === "cover")
+      ?.getAttribute("content");
+    const guideCover = this.getItemByHref(this.guide?.find((ref) => ref.type?.includes("cover"))?.href?.split("#")[0]);
+    this.cover = [
+      this.getItemByProperty("cover-image"),
+      this.getItemByID(metaCover),
+      metaCover ? this.getItemByHref(resolveHref(metaCover)) : undefined,
+      guideCover,
+    ].find(isImage);
+    this.coverPage = this.cover ? undefined : guideCover;
   }
   getItemByID(id: string | null | undefined) {
     return id ? this.manifestById.get(id) : undefined;
