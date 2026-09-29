@@ -65,6 +65,14 @@ const DOMINANT_SHARE = 0.5;
  */
 const VOLUME_WEIGHT = 400_000;
 /**
+ * Children shorter than this on average are not chapters but the items of
+ * one — a collection's letters or memorials, a poet's poems — and a container
+ * of them stays the chapter (about 2 000 CJK or 5 000 Latin characters). The
+ * average, not the median: a book's many short front-matter entries must not
+ * make its chapters look like items.
+ */
+const MIN_CHAPTER_WEIGHT = 6_000;
+/**
  * Labels that name a container of chapters: parts, books of a work, volumes of
  * a set. 卷 is left out on purpose — in classical texts a 卷 is the chapter —
  * and a genuinely large 卷 descends by weight instead.
@@ -89,10 +97,10 @@ const CHAPTER_LABEL = new RegExp(
   "iu",
 );
 /** Whether a label is numbered as a chapter ("第三章 …", "Chapter 3", "3"), not as a section. */
-export const isChapterLabel = (label: string) => CHAPTER_LABEL.test(label.trim());
+const isChapterLabel = (label: string) => CHAPTER_LABEL.test(label.trim());
 
 /** Labels that are mostly numbered chapters: what a volume or a part holds. */
-export const holdsNumberedChapters = (labels: readonly string[]) =>
+const holdsNumberedChapters = (labels: readonly string[]) =>
   labels.length >= 3 && labels.filter(isChapterLabel).length >= labels.length * 0.6;
 
 const numberedChapters = (children: readonly Node[]) => holdsNumberedChapters(children.map((child) => child.label));
@@ -191,7 +199,8 @@ export async function buildChapterMap(book: ChapterMapBook): Promise<ChapterMap>
       (!isChapterLabel(node.label) && numberedChapters(node.children)) ||
       (total > 0 && owned(node) > total * DOMINANT_SHARE) ||
       owned(node) > VOLUME_WEIGHT;
-    const containers = withChildren.filter(container);
+    const chapterSized = (node: Node) => owned(node) / Math.max(1, lift(node.children).length) >= MIN_CHAPTER_WEIGHT;
+    const containers = withChildren.filter((node) => container(node) && chapterSized(node));
     const detached = withChildren.filter((node) => {
       const following = next(node);
       return placed(walk(node.children)).some(
@@ -203,7 +212,10 @@ export async function buildChapterMap(book: ChapterMapBook): Promise<ChapterMap>
     // outlier — one enormous chapter among ordinary ones — descends alone, as
     // does a subtree that has come apart from its own target.
     const containerLevel = level.length === 1 || containers.length * 2 >= withChildren.length;
-    const descend = new Set([...(containerLevel ? withChildren : containers), ...detached]);
+    // A lone root always opens: the book is never one chapter. Otherwise only
+    // nodes whose children are chapter-sized descend.
+    const levelMembers = level.length === 1 ? withChildren : withChildren.filter(chapterSized);
+    const descend = new Set([...(containerLevel ? levelMembers : containers), ...detached]);
     if (!descend.size) break;
     level = level
       .flatMap((node) => {

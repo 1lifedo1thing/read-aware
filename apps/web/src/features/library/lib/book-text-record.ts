@@ -1,4 +1,5 @@
 import type { BookTextSnapshot } from "@read-aware/core";
+import type { SectionOutline } from "../../reader";
 
 export interface ExtractedChapter {
   title?: string;
@@ -12,14 +13,19 @@ export type TextPiece = {
   text: string;
   starts: TextBoundary[];
   anchors: { offset: number; href: string }[];
+  /** Headings read for navigation the opening left to extraction to rebuild. */
+  outline?: SectionOutline;
 };
+/** A stored navigation entry. */
+export type NavigationItem = { label: string; href: string; subitems?: NavigationItem[] };
 export type TextFailure = { sectionIndex: number; code: string };
 
-/** v8 follows the chapter map (reading order, chapter level; see foliate-js chapter-map.ts) over
- * navigation repaired by toc-synthesis.ts, which also synthesizes chapters for sets whose nav lists
- * only their volumes. Earlier records have incompatible chapter coordinates; rebuild lazily. */
+/** v9 follows the chapter map (reading order, chapter level; see foliate-js chapter-map.ts) over
+ * navigation repaired or rebuilt from headings by toc-synthesis.ts — at open, or here when the book
+ * was too large to rebuild then — and stores that navigation. Earlier records have incompatible
+ * chapter coordinates; rebuild lazily. */
 export type BookTextRecord = {
-  version: 8;
+  version: 9;
   bookId: string;
   contentVersion: string;
   extractedAt: string;
@@ -30,8 +36,9 @@ export type BookTextRecord = {
   failures: TextFailure[];
   unsupported: number[];
   chapters: ExtractedChapter[];
-  /** A paged book without an outline: the one recovered from its page headings (see page-headings.ts). */
-  outline?: { label: string; href: string }[];
+  /** Navigation the book's own lacked or had wrong: repaired or rebuilt from headings (toc-synthesis.ts),
+   * or recovered from a paged book's page headings (page-headings.ts). The next opening uses it as is. */
+  outline?: NavigationItem[];
 };
 
 export function textProgress(record: BookTextRecord): NonNullable<BookTextSnapshot["progress"]> {
@@ -76,11 +83,43 @@ const integer = (value: unknown): value is number =>
 const strings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
 
+/** Navigation nests as deep as books do; a tree deeper than this is not a navigation. */
+const MAX_NAVIGATION_DEPTH = 32;
+function navigationItemsValid(value: unknown, depth: number): boolean {
+  return (
+    depth < MAX_NAVIGATION_DEPTH &&
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        object(entry) &&
+        typeof entry.label === "string" &&
+        typeof entry.href === "string" &&
+        (entry.subitems === undefined || navigationItemsValid(entry.subitems, depth + 1)),
+    )
+  );
+}
+function outlineValid(value: unknown): boolean {
+  return (
+    object(value) &&
+    Array.isArray(value.lead) &&
+    value.lead.every((line) => typeof line === "string") &&
+    Array.isArray(value.headings) &&
+    value.headings.every(
+      (heading) =>
+        object(heading) &&
+        integer(heading.level) &&
+        typeof heading.text === "string" &&
+        (heading.id === null || typeof heading.id === "string") &&
+        integer(heading.offset),
+    )
+  );
+}
+
 /** A malformed checkpoint must not turn a missing/failed section into a successful read. */
 export function parseBookTextRecord(value: unknown, bookId: string, contentVersion: string): BookTextRecord | null {
   if (
     !object(value) ||
-    value.version !== 8 ||
+    value.version !== 9 ||
     value.bookId !== bookId ||
     value.contentVersion !== contentVersion ||
     typeof value.extractedAt !== "string" ||
@@ -141,12 +180,13 @@ export function parseBookTextRecord(value: unknown, bookId: string, contentVersi
     )
   )
     return null;
+  if (value.outline !== undefined && !navigationItemsValid(value.outline, 0)) return null;
   if (
-    value.outline !== undefined &&
-    (!Array.isArray(value.outline) ||
-      !value.outline.every(
-        (entry) => object(entry) && typeof entry.label === "string" && typeof entry.href === "string",
-      ))
+    !value.pieces.every(
+      (piece) =>
+        (piece as { outline?: unknown }).outline === undefined ||
+        outlineValid((piece as { outline?: unknown }).outline),
+    )
   )
     return null;
   if (

@@ -4,6 +4,7 @@ import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { extractBookText } from "./book-text-extraction";
 import { parseBookTextRecord } from "./book-text-record";
 import { buildChapterMap } from "../../../../foliate-js/src/chapter-map";
+import { ensureUsableToc, navigationState } from "../../reader/lib/toc-synthesis";
 
 function book(html: string[], toc: FoliateBook["toc"]): FoliateBook {
   return {
@@ -54,7 +55,7 @@ test("TOC chapters cut within a file and continue across files, without previous
   ]);
   expect(record.chapters[2]!.hrefs).toEqual(["s0.html#five", "s1.html"]);
   expect(parseBookTextRecord(record, "b", "sha256:test")).not.toBeNull();
-  expect(parseBookTextRecord({ ...record, version: 7 }, "b", "sha256:test")).toBeNull();
+  expect(parseBookTextRecord({ ...record, version: 8 }, "b", "sha256:test")).toBeNull();
 });
 
 test("href-less volume names disambiguate repeated numbering; nested TOC entries are aliases", async () => {
@@ -126,4 +127,79 @@ test("a paged book without an outline recovers chapters and an outline from its 
   expect(record.chapters[2]!.text).toBe("第 2 章 现实 速成绝不可能。");
   expect(parseBookTextRecord(record, "b", "sha256:test")).not.toBeNull();
   expect(parseBookTextRecord({ ...record, outline: [{ label: 1 }] }, "b", "sha256:test")).toBeNull();
+});
+
+test("navigation too large to rebuild at open is rebuilt from the headings read, stored, and cuts the chapters", async () => {
+  const files = [
+    ["v1.html", "<h1>卷一</h1>"],
+    ["v1c1.html", "<h2>第一章</h2><p>一的正文。</p>"],
+    ["v1c2.html", '<h2>第二章</h2><p>二的正文。</p><h2 id="three">第三章</h2><p>三的正文。</p>'],
+    ["v2.html", "<h1>卷二</h1>"],
+    ["v2c1.html", "<h2>第四章</h2><p>四的正文。</p>"],
+  ] as const;
+  const source = {
+    toc: [
+      { label: "卷一", href: "v1.html" },
+      { label: "卷二", href: "v2.html" },
+    ],
+    sections: files.map(([id, body]) => ({
+      id,
+      size: 2_000_000,
+      createDocument: async () => new JSDOM(`<html><body>${body}</body></html>`).window.document,
+    })),
+    getSectionHref: (index: number) => files[index]![0],
+    resolveHref: (href: string) => {
+      const [file, id] = href.split("#");
+      return {
+        index: files.findIndex(([name]) => name === file),
+        anchor: id ? (doc: Document) => doc.getElementById(id) : 0,
+      };
+    },
+  } as unknown as FoliateBook;
+  expect(await ensureUsableToc(source)).toBe(false);
+  expect(navigationState(source)).toBe("deferred");
+  const record = await extract(source);
+  expect(record.outline).toEqual([
+    {
+      label: "卷一",
+      href: "v1.html",
+      subitems: [
+        { label: "第一章", href: "v1c1.html" },
+        { label: "第二章", href: "v1c2.html" },
+        { label: "第三章", href: "v1c2.html#three" },
+      ],
+    },
+    { label: "卷二", href: "v2.html", subitems: [{ label: "第四章", href: "v2c1.html" }] },
+  ]);
+  expect(record.chapters.map((chapter) => [chapter.title, chapter.text])).toEqual([
+    ["卷一", "卷一"],
+    ["卷一 › 第一章", "第一章一的正文。"],
+    ["卷一 › 第二章", "第二章二的正文。"],
+    ["卷一 › 第三章", "第三章三的正文。"],
+    ["卷二", "卷二"],
+    ["卷二 › 第四章", "第四章四的正文。"],
+  ]);
+  expect(parseBookTextRecord(record, "b", "sha256:test")).not.toBeNull();
+});
+
+test("navigation rebuilt as the book opened is stored for the next opening", async () => {
+  const pages = [
+    "<h1>卷一</h1>",
+    "<h2>第一章</h2><p>正文</p>",
+    "<h2>第二章</h2><p>正文</p>",
+    "<h2>第三章</h2><p>正文</p>",
+  ];
+  const source = {
+    toc: [{ label: "卷一", href: "s0.html" }],
+    sections: pages.map((body, index) => ({
+      id: `s${index}.html`,
+      size: 1_000,
+      createDocument: async () => new JSDOM(`<html><body>${body}</body></html>`).window.document,
+    })),
+    getSectionHref: (index: number) => `s${index}.html`,
+    resolveHref: (href: string) => ({ index: Number(href.slice(1).split(".")[0]), anchor: 0 }),
+  } as unknown as FoliateBook;
+  expect(await ensureUsableToc(source)).toBe(true);
+  const record = await extract(source);
+  expect(record.outline?.[0]?.subitems?.map((item) => item.label)).toEqual(["第一章", "第二章", "第三章"]);
 });

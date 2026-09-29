@@ -176,8 +176,8 @@ export class BookTextRepository {
     return record && textComplete(record) ? record.chapters : null;
   }
 
-  /** The outline recovered from a paged book's headings, once its text is complete. */
-  async persistedOutline(bookId: string): Promise<NonNullable<BookTextRecord["outline"]> | null> {
+  /** Navigation stored with the book's complete text (repaired, rebuilt or recovered), for the next opening. */
+  async persistedNavigation(bookId: string): Promise<NonNullable<BookTextRecord["outline"]> | null> {
     const source = await this.source(bookId);
     if (!source.contentVersion) return null;
     const record = await this.record(bookId, source.contentVersion);

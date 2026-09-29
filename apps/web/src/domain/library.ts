@@ -57,11 +57,12 @@ import type { LibraryBook } from "../features/library/lib/library-types";
 import { observeLibraryInvalidation } from "./projection-invalidation";
 import {
   ensureBookTextExtracted,
-  getPersistedBookOutline,
+  getPersistedBookNavigation,
   getPersistedBookText,
   getBookTextSnapshot,
   createBookTextTaskOwner,
   type ExtractedChapter,
+  type NavigationItem,
 } from "../features/library/lib/book-text-store";
 import { LIBRARY_EVENTS, domainSubscribe, type DomainEventSubscribe } from "./events";
 
@@ -93,9 +94,10 @@ export async function getPersistedChapters(bookId: string): Promise<ExtractedCha
   return getPersistedBookText(bookId);
 }
 
-/** The outline a paged book's text extraction recovered from its page headings, if any. */
-export async function getRecoveredOutline(bookId: string): Promise<{ label: string; href: string }[] | null> {
-  return getPersistedBookOutline(bookId);
+/** Navigation stored with a book's extracted text — repaired, rebuilt from headings or recovered from
+ * page headings — which the next opening uses instead of repairing again. */
+export async function getRepairedNavigation(bookId: string): Promise<NavigationItem[] | null> {
+  return getPersistedBookNavigation(bookId);
 }
 
 export type LibraryQueries = {

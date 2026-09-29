@@ -93,7 +93,7 @@ import { restoreReadingPosition } from "../lib/restore-reading-position";
 import { buildVirtualFoliateBook } from "../lib/virtual-book";
 import { resolveContentProvider } from "../../plugins/lib/virtual-books";
 import { readingRuntime } from "../../../domain/reading-runtime";
-import { getRecoveredOutline } from "../../../domain/library";
+import { getRepairedNavigation } from "../../../domain/library";
 import { useReferencePreview } from "../hooks/useReferencePreview";
 import { attachReadingEngine, waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
@@ -2080,22 +2080,20 @@ export function FoliateReaderView({
           parsedBook = await parseBookFile(file);
           retainParsedBook(parsedBook);
           if (session.closed) return;
-          await ensureUsableToc(parsedBook);
+          // Navigation repaired or rebuilt before is stored with the book's text; reuse it
+          // rather than parsing the book again.
+          const persisted = selectedBook
+            ? await getRepairedNavigation(selectedBook.id).catch((error: unknown) => {
+                log.warn("Stored navigation unavailable", error);
+                return null;
+              })
+            : null;
+          if (session.closed) return;
+          await ensureUsableToc(parsedBook, { persisted });
           if (selectedBook && sessionId) contentVersion = await fileContentVersion(selectedBook.id);
         }
         if (!releaseBook) retainParsedBook(parsedBook);
         if (session.closed) return;
-        // A paged book without an outline gets the one its text extraction
-        // recovered from page headings — before the view builds TOC progress
-        // and the chapter map reads it.
-        if (selectedBook && isFixedLayoutBook(parsedBook) && !parsedBook.toc?.length) {
-          const outline = await getRecoveredOutline(selectedBook.id).catch((error: unknown) => {
-            log.warn("Recovered outline unavailable", error);
-            return null;
-          });
-          if (session.closed) return;
-          if (outline?.length) parsedBook.toc = outline.map(({ label, href }) => ({ label, href }));
-        }
         if (selectedBook && !isFixedLayoutBook(parsedBook)) {
           const language = await detectBookLanguage(parsedBook);
           if (session.closed) return;

@@ -4,7 +4,8 @@ import { buildChapterMap } from "../foliate-js/src/chapter-map";
 
 /** A book whose hrefs are `s<index>` (section start) or `s<index>#<id>` (an anchor inside it). */
 function book(toc: TOCItem[], sections: number | number[]) {
-  const sizes = typeof sections === "number" ? Array.from({ length: sections }, () => 1000) : sections;
+  // A short chapter's worth of markup per section unless a test says otherwise.
+  const sizes = typeof sections === "number" ? Array.from({ length: sections }, () => 20_000) : sections;
   return {
     toc,
     sections: sizes.map((size) => ({ size, linear: "yes" })),
@@ -190,4 +191,22 @@ test("the 卷 of a classical text is its chapter, not a container of its poems",
 test("the last chapter of a single-file book does not own the whole file", async () => {
   const toc = [item("One", "s0#one"), item("Two", "s0#two", [item("Minor", "s0#minor")])];
   expect(await titles(toc, [5000])).toEqual(["One", "Two"]);
+});
+
+test("a container of short items stays the chapter", async () => {
+  const volume = (name: string, start: number) =>
+    item(name, `s${start}`, [
+      item("001. 谢恩折", `s${start}#a`),
+      item("002. 遵议大礼疏", `s${start}#b`),
+      item("003. 请旨折", `s${start + 1}`),
+    ]);
+  // Two volumes of a few memorials each, a couple of pages per volume.
+  expect(await titles([volume("全集一", 0), volume("全集二", 2)], [3_000, 3_000, 3_000, 3_000])).toEqual([
+    "全集一",
+    "全集二",
+  ]);
+  // A lone root still opens, however short its children.
+  expect(
+    await titles([item("诗集", "s0", [item("一", "s0#a"), item("二", "s0#b"), item("三", "s1")])], [2_000, 2_000]),
+  ).toEqual(["诗集", "诗集 › 一", "诗集 › 二", "诗集 › 三"]);
 });

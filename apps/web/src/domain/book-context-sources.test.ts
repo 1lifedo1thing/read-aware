@@ -9,7 +9,7 @@ async function host() {
     calls: string[] = [];
   source.contentHash = "a".repeat(64);
   const record = {
-    version: 8,
+    version: 9,
     bookId: source.bookId,
     contentVersion: `sha256:${source.contentHash}`,
     extractedAt: "now",

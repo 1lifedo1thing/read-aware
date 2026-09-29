@@ -13,7 +13,7 @@ import { BookTextRepository } from "./book-text-repository";
 import { getVirtualTextSource, forgetVirtualTextSource } from "./virtual-text-source";
 import { BookTextTaskOwner } from "./book-text-tasks";
 import { getRemoteBlobFetchConditions } from "../../../platform/sync/sync-scheduler";
-export type { ExtractedChapter } from "./book-text-record";
+export type { ExtractedChapter, NavigationItem } from "./book-text-record";
 
 const log = createLogger("book-text");
 const blobKey = (bookId: string) => `booktext:${bookId}`;
@@ -113,7 +113,7 @@ export const getDigestChapterSource = (
   origin?: DomainActor,
 ) => repository.chapter(bookId, index, version, signal, origin);
 export const getPersistedBookText = (bookId: string) => repository.persisted(bookId);
-export const getPersistedBookOutline = (bookId: string) => repository.persistedOutline(bookId);
+export const getPersistedBookNavigation = (bookId: string) => repository.persistedNavigation(bookId);
 // Borrow the active parser with its registered version, never attach a new hash to an old parser.
 export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook, origin?: DomainActor) =>
   repository.ensure(bookId, !!preopened, origin);

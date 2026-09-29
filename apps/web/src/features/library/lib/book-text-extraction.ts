@@ -2,12 +2,15 @@ import { AppError, errorCode, type BookTextSnapshot } from "@read-aware/core";
 import { detectPageHeadings } from "./page-headings";
 import type { ChapterMap, FoliateBook } from "../../reader/lib/foliate-engine";
 import { readerChapterBlock } from "../../reader/lib/reader-document-layout";
-import type { ResolvedNavigation } from "../../../../foliate-js/src/book";
+import { navigationFromOutlines, navigationState, readSectionOutline } from "../../reader";
+import { buildChapterMap } from "../../../../foliate-js/src/chapter-map";
+import type { ResolvedNavigation, TOCItem } from "../../../../foliate-js/src/book";
 import {
   sectionsComplete,
   snapshotFromText,
   type BookTextRecord,
   type ExtractedChapter,
+  type NavigationItem,
   type TextPiece,
 } from "./book-text-record";
 
@@ -31,6 +34,8 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
   const sections = book.sections ?? [];
   const required = sections.flatMap((section, index) => (section.linear === "no" ? [] : [index]));
   const prior = options.prior;
+  const navigation = navigationState(book);
+  const deferredNavigation = navigation === "deferred";
   const resume =
     prior &&
     prior.bookId === bookId &&
@@ -80,7 +85,7 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
     chapterTitles.delete(key);
   }
   const record = (): BookTextRecord => ({
-    version: 8,
+    version: 9,
     bookId,
     contentVersion,
     extractedAt: new Date().toISOString(),
@@ -119,6 +124,8 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
         // Normalizing first would move every boundary after whitespace runs.
         const doc = !section.getText && section.createDocument ? await section.createDocument() : undefined;
         const raw = doc?.body?.textContent ?? (section.getText ? await section.getText(signal) : "");
+        // Navigation left to this pass is rebuilt from the headings, once every section is read.
+        if (doc && deferredNavigation) piece.outline = readSectionOutline(doc);
         for (const point of targets.get(index) ?? []) {
           let offset = 0;
           if (doc?.body) {
@@ -173,6 +180,10 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
     const pageText = sections.some((section) => typeof section.getText === "function");
     // A paged book without an outline: recover one from its page headings.
     if (pageText && !options.chapters.entries.length) applyPageHeadings(result);
+    else if (deferredNavigation) await applyRebuiltNavigation(book, result);
+    // Navigation the opening repaired or rebuilt is kept for the next opening.
+    else if (navigation !== "source" && book.toc?.length) result.outline = navigationItems(book.toc);
+    signal.throwIfAborted();
     result.chapters = mergeTextChapters(result, pageText);
     result.finalized = true;
   }
@@ -180,6 +191,48 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
   signal.throwIfAborted();
   options.progress(snapshotFromText(result));
   return result;
+}
+
+/** The serializable part of a navigation tree. */
+function navigationItems(items: readonly TOCItem[]): NavigationItem[] {
+  return items.map((item) => ({
+    label: item.label ?? "",
+    href: item.href ?? "",
+    ...(item.subitems?.length ? { subitems: navigationItems(item.subitems) } : {}),
+  }));
+}
+
+/**
+ * Navigation too large to rebuild as the book opened, rebuilt from the headings
+ * collected while reading: chapters are re-cut by a chapter map of the rebuilt
+ * navigation, anchored at the headings' recorded offsets, and the navigation is
+ * kept for the next opening.
+ */
+async function applyRebuiltNavigation(book: FoliateBook, record: BookTextRecord): Promise<void> {
+  const outlines = new Map(record.pieces.map((piece) => [piece.sectionIndex, piece.outline ?? null]));
+  const toc = await navigationFromOutlines(book, outlines);
+  if (!toc || !book.resolveHref) return;
+  const map = await buildChapterMap({ toc, sections: book.sections, resolveHref: book.resolveHref.bind(book) });
+  const pieces = new Map(record.pieces.map((piece) => [piece.sectionIndex, piece]));
+  for (const piece of record.pieces) {
+    piece.starts = [];
+    piece.anchors = [];
+  }
+  const place = (index: number, href: string) => `${index}\n${href}`;
+  const titles = new Map(map.chapters.map((chapter) => [place(chapter.target.index, chapter.href), chapter.title]));
+  for (const entry of map.entries) {
+    const piece = pieces.get(entry.target.index);
+    if (!piece) continue;
+    const id = entry.href.includes("#") ? entry.href.slice(entry.href.indexOf("#") + 1) : null;
+    const offset = (id && piece.outline?.headings.find((heading) => heading.id === id)?.offset) || 0;
+    piece.anchors.push({ offset, href: entry.href });
+    const key = place(entry.target.index, entry.href);
+    if (titles.has(key)) {
+      piece.starts.push({ offset, href: entry.href, title: titles.get(key) || undefined });
+      titles.delete(key);
+    }
+  }
+  record.outline = navigationItems(toc);
 }
 
 /** Chapter starts and a navigable outline from headings found on the pages. PDF hrefs are
