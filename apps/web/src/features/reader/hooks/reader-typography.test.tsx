@@ -8,9 +8,12 @@ import { actorCause, causalActor, eventCause, stampEventCause } from "../../../p
 import { readingRenderActor } from "../lib/reading-render-context";
 
 if (process.env.READER_TYPOGRAPHY_CASE === "1") {
-  const waiting = new Map<string, Promise<string>>();
+  // `waiting` stands in for a font's download, `stored` for faces already on this device.
+  const waiting = new Map<string, Promise<string>>(),
+    stored = new Map<string, string>();
   mock.module("../../settings/lib/curated-font-loader", () => ({
     ensureCuratedFontFaceCss: (id: string) => waiting.get(id) ?? Promise.resolve(""),
+    localCuratedFontFaceCss: (id: string) => Promise.resolve(stored.get(id) ?? null),
   }));
   const { useReaderTypography } = await import("./useReaderTypography");
   const { useReaderAppearance } = await import("./useReaderAppearance");
@@ -388,6 +391,39 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
         expect(actorCause(readingRenderActor(rendered.at(-1)!.context))).toBe(actorCause(origin));
         expect(eventCause(skinCommits.at(-1)!)).toBe(actorCause(origin));
       });
+      // A font already on this device ships in the one stylesheet the request
+      // resolves with. One that must download styles the book in the fallback
+      // stack at once and swaps its faces in when they land — unless a newer
+      // request owns the stylesheet by then.
+      stored.set("literata", "/* stored literata */");
+      let styledCount = rendered.length;
+      await typography.injectStyles(
+        stampEventCause({ ...appearance.effective, fontFamily: "curated:literata" } as ReaderSettings),
+      );
+      expect(rendered.length).toBe(styledCount + 1);
+      expect(rendered.at(-1)!.css).toContain("/* stored literata */");
+      const download = Promise.withResolvers<string>();
+      waiting.set("inter", download.promise);
+      styledCount = rendered.length;
+      await typography.injectStyles(
+        stampEventCause({ ...appearance.effective, fontFamily: "curated:inter" } as ReaderSettings),
+      );
+      expect(rendered.length).toBe(styledCount + 1);
+      expect(rendered.at(-1)!.css).not.toContain("@font-face");
+      download.resolve("/* downloaded inter */");
+      await tick();
+      expect(rendered.length).toBe(styledCount + 2);
+      expect(rendered.at(-1)!.css).toContain("/* downloaded inter */");
+      const overtaken = Promise.withResolvers<string>();
+      waiting.set("inter", overtaken.promise);
+      await typography.injectStyles(
+        stampEventCause({ ...appearance.effective, fontFamily: "curated:inter" } as ReaderSettings),
+      );
+      await typography.injectStyles(stampEventCause({ ...appearance.effective, fontFamily: "system:Georgia" }));
+      styledCount = rendered.length;
+      overtaken.resolve("/* overtaken inter */");
+      await tick();
+      expect(rendered.length).toBe(styledCount);
       const slow = Promise.withResolvers<string>(),
         source = causalActor("plugin:slow-font");
       waiting.set("inter", slow.promise);
@@ -435,6 +471,7 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
       offSkinCommit();
       readingRuntime.closed();
       waiting.clear();
+      stored.clear();
       dom.window.close();
       for (const [key, descriptor] of saved) {
         if (descriptor) Object.defineProperty(globalThis, key, descriptor);

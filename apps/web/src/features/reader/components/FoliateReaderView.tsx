@@ -594,6 +594,7 @@ export function FoliateReaderView({
     settingsRef: readerSettingsRef,
     applyMaxInlineSize: applyReaderMaxInlineSize,
     injectStyles: injectReaderStyles,
+    prepareStyles: prepareReaderStyles,
     applyPageColors: applyReaderPageColors,
   } = useReaderTypography({
     readerSettings,
@@ -2115,6 +2116,9 @@ export function FoliateReaderView({
             );
           }
         }
+        // The opening stylesheet is awaited before the first page renders;
+        // read its font from this device while the book finishes opening.
+        prepareReaderStyles(readerSettingsRef.current);
         if (selectedBook && sessionId)
           defer(
             registerActiveBookContent(
@@ -2197,7 +2201,12 @@ export function FoliateReaderView({
               openingContext,
             );
         }
-        void injectReaderStyles(readerSettingsRef.current, view.renderer, openingActor);
+        // Style the renderer before its first navigation loads a section: the
+        // page must never be revealed in the publisher's bare styles, then
+        // repaint when the stylesheet lands (a cold start reads the reader
+        // font from IndexedDB, which can outlast opening a small book).
+        await injectReaderStyles(readerSettingsRef.current, view.renderer, openingActor);
+        if (session.closed) return;
         // Glide page turns / arrow-key scrolls instead of snapping (unless motion
         // is reduced). The runtime watcher effect keeps this in sync afterwards.
         syncRendererAnimated(view.renderer);

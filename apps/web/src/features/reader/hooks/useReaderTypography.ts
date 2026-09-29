@@ -17,7 +17,7 @@ import {
 } from "../../settings/lib/reader-css";
 import { curatedFontId, isPluginFont } from "../../settings/lib/reader-settings";
 import type { ReaderSettings, ReadingMode } from "../../settings/lib/reader-settings";
-import { ensureCuratedFontFaceCss } from "../../settings/lib/curated-font-loader";
+import { ensureCuratedFontFaceCss, localCuratedFontFaceCss } from "../../settings/lib/curated-font-loader";
 import { resolveReaderPalette } from "../../settings/lib/reader-theme";
 import { pluginFontFaceCss } from "../../settings/hooks/usePluginFonts";
 import { findRegisteredByRef, isPluginRef } from "../../plugins/lib/plugin-theme";
@@ -34,6 +34,13 @@ import {
 } from "../../../platform/domain-actor";
 import { readingRenderContext } from "../lib/reading-render-context";
 import { normalizeReaderTextSizes } from "../lib/reader-document-layout";
+import { createLogger } from "../../../platform/logger";
+
+const log = createLogger("reader-typography");
+
+/** One stylesheet request per renderer; `styled` settles once the renderer
+ * carries this request's stylesheet or a newer request's. */
+type StyleRequest = { styled: Promise<void> };
 
 type Options = {
   readerSettings: ReaderSettings;
@@ -51,8 +58,18 @@ export type ReaderTypography = {
   settingsRef: RefObject<ReaderSettings>;
   /** Recompute and push the text measure onto the renderer. */
   applyMaxInlineSize: (origin?: DomainActor) => void;
-  /** Rebuild and inject the reader stylesheet (loading webfonts first). */
+  /**
+   * Rebuild and inject the reader stylesheet. Resolves once the renderer is
+   * styled — by this request or one that replaced it. A curated font already
+   * on this device ships in that stylesheet; one that must download is
+   * swapped in afterwards, the book reading in the fallback stack meanwhile.
+   */
   injectStyles: (settings: ReaderSettings, renderer?: FoliateRenderer, origin?: DomainActor) => Promise<void>;
+  /**
+   * Start reading `settings`' curated font from this device, so a following
+   * `injectStyles` doesn't wait on the cache read.
+   */
+  prepareStyles: (settings: ReaderSettings) => void;
   /**
    * Push the palette onto a fixed-layout renderer, which draws it into the
    * page. No-op for reflowable books — they take the palette as CSS instead.
@@ -70,7 +87,7 @@ export function useReaderTypography({
   layoutForReadingMode,
 }: Options): ReaderTypography {
   const settingsRef = useRef(readerSettings);
-  const styleRequests = useRef(new WeakMap<FoliateRenderer, object>());
+  const styleRequests = useRef(new WeakMap<FoliateRenderer, StyleRequest>());
   const needsStyles = useRef(true);
   useEffect(
     () => () => {
@@ -132,37 +149,73 @@ export function useReaderTypography({
   >(undefined);
 
   /**
-   * Inject the reader stylesheet, first ensuring the active curated webfont is
-   * downloaded so its @font-face (with on-demand blob URLs) ships in the same
-   * CSS. Plugin fonts need no download — their faces point at the plugin
-   * folder; system fonts need no @font-face at all.
+   * Inject the reader stylesheet. The active curated webfont's @font-face
+   * (with on-demand blob URLs) ships in the same CSS when its faces are on
+   * this device; otherwise the book is styled in the fallback stack at once
+   * and restyled when the download lands — the page never waits on the
+   * network, and never shows unstyled. Plugin fonts need no download — their
+   * faces point at the plugin folder; system fonts need no @font-face at all.
    */
   const injectStyles = useCallback(
-    async (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor) => {
-      if (!renderer || !("setStyles" in renderer)) return;
-      const request = {},
+    (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor): Promise<void> => {
+      if (!renderer || !("setStyles" in renderer)) return Promise.resolve();
+      const requests = styleRequests.current,
+        styled = Promise.withResolvers<void>(),
+        request: StyleRequest = { styled: styled.promise },
         context = readingRenderContext(origin ?? (eventCause(settings) ? actorFromEvent(settings) : "system"));
-      styleRequests.current.set(renderer, request);
-      const id = curatedFontId(settings.fontFamily);
+      requests.set(renderer, request);
+      // Whether this request still owns the renderer's stylesheet. A request
+      // that lost it hands its waiters to the one that replaced it; a retired
+      // renderer or reader has nothing left to wait for.
+      const owns = () => {
+        if (requests !== styleRequests.current || viewRef.current?.renderer !== renderer) {
+          styled.resolve();
+          return false;
+        }
+        const latest = requests.get(renderer);
+        if (latest === request) return true;
+        styled.resolve(latest?.styled);
+        return false;
+      };
       const pluginFont = isPluginFont(settings.fontFamily)
         ? findRegisteredByRef(settings.fontFamily, pluginFonts)
         : null;
-      const fontFaceCss = id
-        ? await ensureCuratedFontFaceCss(id, readerFontWeightsNeeded(settings.fontWeight, settings.fontFamily)).catch(
-            () => "",
-          )
-        : pluginFont
-          ? pluginFontFaceCss(pluginFont)
-          : "";
       const palette = resolveReaderPalette(settings.theme, pluginThemes);
-      if (styleRequests.current.get(renderer) !== request || viewRef.current?.renderer !== renderer) return;
-      renderer.setStyles(buildReaderContentCss(settings, { palette, fontFaceCss, pluginFont }), context);
-      // Re-evaluate fixed publisher sizes too: a readable 14px note can become
-      // too small when the reader increases their body font to 24px.
-      for (const { doc } of renderer.getContents()) normalizeReaderTextSizes(doc);
+      const apply = (fontFaceCss: string) => {
+        renderer.setStyles(buildReaderContentCss(settings, { palette, fontFaceCss, pluginFont }), context);
+        // Re-evaluate fixed publisher sizes too: a readable 14px note can become
+        // too small when the reader increases their body font to 24px.
+        for (const { doc } of renderer.getContents()) normalizeReaderTextSizes(doc);
+        styled.resolve();
+      };
+      const run = async () => {
+        const id = curatedFontId(settings.fontFamily);
+        if (!id) {
+          if (owns()) apply(pluginFont ? pluginFontFaceCss(pluginFont) : "");
+          return;
+        }
+        const weights = readerFontWeightsNeeded(settings.fontWeight, settings.fontFamily);
+        const local = await localCuratedFontFaceCss(id, weights);
+        if (!owns()) return;
+        apply(local ?? "");
+        if (local !== null) return;
+        const downloaded = await ensureCuratedFontFaceCss(id, weights).catch((error: unknown) => {
+          log.warn("Reader font download failed; keeping the fallback font", error);
+          return null;
+        });
+        if (downloaded !== null && owns()) apply(downloaded);
+      };
+      run().catch((error: unknown) => styled.reject(error));
+      return styled.promise;
     },
     [viewRef, pluginFonts, pluginThemes],
   );
+
+  const prepareStyles = useCallback((settings: ReaderSettings) => {
+    const id = curatedFontId(settings.fontFamily);
+    // Warms the session memo that injectStyles reads; it never rejects.
+    if (id) void localCuratedFontFaceCss(id, readerFontWeightsNeeded(settings.fontWeight, settings.fontFamily));
+  }, []);
 
   const applyPageColors = useCallback(
     (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor) => {
@@ -191,10 +244,12 @@ export function useReaderTypography({
     previousInputs.current = { settings: readerSettings, font, theme, origin };
     needsStyles.current = false;
     settingsRef.current = readerSettings;
-    void injectStyles(readerSettings, undefined, origin);
+    injectStyles(readerSettings, undefined, origin).catch((error: unknown) =>
+      log.error("Could not apply reader styles", error),
+    );
     applyMaxInlineSize(origin);
     applyPageColors(readerSettings, undefined, origin);
   }, [readerSettings, font, theme, applyMaxInlineSize, injectStyles, applyPageColors]);
 
-  return { settingsRef, applyMaxInlineSize, injectStyles, applyPageColors };
+  return { settingsRef, applyMaxInlineSize, injectStyles, prepareStyles, applyPageColors };
 }

@@ -40,6 +40,14 @@ function idbGet(database: IDBDatabase, key: string): Promise<ArrayBuffer | undef
   });
 }
 
+function idbStoredKeys(database: IDBDatabase): Promise<Set<IDBValidKey>> {
+  return new Promise((resolve, reject) => {
+    const req = database.transaction(STORE, "readonly").objectStore(STORE).getAllKeys();
+    req.onsuccess = () => resolve(new Set(req.result));
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function idbPut(database: IDBDatabase, key: string, value: ArrayBuffer): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = database.transaction(STORE, "readwrite");
@@ -80,6 +88,8 @@ function faceRule(face: CuratedFontFace, blobUrl: string): string {
 }
 
 const faceCssMemo = new Map<string, Promise<string>>();
+/** The settled entries of `faceCssMemo`, readable without awaiting. */
+const faceCssBuilt = new Map<string, string>();
 
 // ── 下载进度广播：UI 据此渲染"正在下载 · N%"。按 fontId 订阅。 ──
 export interface CuratedFontProgress {
@@ -192,13 +202,39 @@ export function ensureCuratedFontFaceCss(fontId: string, weights?: readonly numb
   const key = memoKey(fontId, weights);
   let pending = faceCssMemo.get(key);
   if (!pending) {
-    pending = buildFaceCss(fontId, weights).catch((error: unknown) => {
-      faceCssMemo.delete(key);
-      throw error;
-    });
+    pending = buildFaceCss(fontId, weights).then(
+      (css) => {
+        faceCssBuilt.set(key, css);
+        return css;
+      },
+      (error: unknown) => {
+        faceCssMemo.delete(key);
+        throw error;
+      },
+    );
     faceCssMemo.set(key, pending);
   }
   return pending;
+}
+
+/**
+ * A curated font's `@font-face` CSS when this device can produce it without the
+ * network — already built this session, or every needed face stored in the
+ * IndexedDB cache — else `null`: the font still has to download, which is
+ * `ensureCuratedFontFaceCss`'s job. Opening a book waits on this, never on a
+ * download. Never rejects: an unreadable cache counts as a missing face.
+ */
+export async function localCuratedFontFaceCss(fontId: string, weights?: readonly number[]): Promise<string | null> {
+  const built = faceCssBuilt.get(memoKey(fontId, weights));
+  if (built !== undefined) return built;
+  try {
+    const stored = await idbStoredKeys(await db());
+    if (!facesFor(fontId, weights).every((face) => stored.has(face.url))) return null;
+    return await ensureCuratedFontFaceCss(fontId, weights);
+  } catch (error) {
+    log.warn("Font cache unreadable; treating the font as not downloaded", error);
+    return null;
+  }
 }
 
 /** Inject a curated font's `@font-face` into the app document (UI + preview). */
