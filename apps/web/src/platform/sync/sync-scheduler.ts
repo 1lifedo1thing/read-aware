@@ -548,7 +548,11 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
           },
           origin,
         );
-        schedule(nextSyncDelayMs(failures, { baseMs: PULL_INTERVAL_MS }), origin);
+        // A relay that said when to come back (its per-account request budget)
+        // knows better than our backoff curve: resume right as the window
+        // reopens, not ten minutes later.
+        const retryAfter = error instanceof RelayError ? error.retryAfterMs : null;
+        schedule(retryAfter ?? nextSyncDelayMs(failures, { baseMs: PULL_INTERVAL_MS }), origin);
       });
   };
 

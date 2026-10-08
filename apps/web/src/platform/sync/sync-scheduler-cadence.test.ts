@@ -69,9 +69,11 @@ if (process.env.SYNC_CADENCE_PROOF === "1") {
   const { transportAccountId } = await import("./transport-registry");
   const scheduler = await import("./sync-scheduler");
   let cycles = 0;
+  let cycleFailure: unknown = null;
   spyOn(engineModule, "createSyncEngine").mockReturnValue({
     async syncOnce() {
       cycles++;
+      if (cycleFailure) throw cycleFailure;
       return { pulled: 0, pushed: 0, blobs: 0, verified: 0, backfilled: 0, backfillRemaining: 0, bootstrapped: false };
     },
     async fetchBlob() {
@@ -95,6 +97,7 @@ if (process.env.SYNC_CADENCE_PROOF === "1") {
     documentListeners.length = 0;
     timers.length = 0;
     cycles = 0;
+    cycleFailure = null;
   };
 
   test("a plugin transport binds without any automatic cycle; only sync now runs one", async () => {
@@ -142,6 +145,24 @@ if (process.env.SYNC_CADENCE_PROOF === "1") {
       await secrets.deleteSecretAsync("sync.session");
     }
   });
+
+  test("a rate-limited cycle resumes at the relay's Retry-After, not the backoff curve", async () => {
+    reset();
+    profile.remoteAccountId = "acct_relay";
+    cycleFailure = new relayModule.RelayError(429, "slow down", "relay/rate-limited", 60_000);
+    await secrets.setSecretAsync("sync.session", "synthetic-session");
+    const dispose = scheduler.startSyncScheduler();
+    await settle();
+    try {
+      expect(cycles).toBe(1);
+      expect(scheduler.getSyncStatusSnapshot()).toMatchObject({ state: "error" });
+      expect(timers).toContain(60_000);
+      expect(timers).not.toContain(engineModule.nextSyncDelayMs(1, { baseMs: 5 * 60_000 }));
+    } finally {
+      dispose();
+      await secrets.deleteSecretAsync("sync.session");
+    }
+  });
 } else {
   test("isolated sync cadence contract", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
@@ -151,6 +172,6 @@ if (process.env.SYNC_CADENCE_PROOF === "1") {
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);
-    expect(output).toContain("2 pass");
+    expect(output).toContain("3 pass");
   }, 30_000);
 }

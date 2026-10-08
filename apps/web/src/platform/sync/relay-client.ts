@@ -50,17 +50,28 @@ export class RelayError extends Error {
   readonly relayCode: RelayErrorCode | undefined;
   /** The app error code (`errorCode()`), when the relay's code maps to one. */
   readonly code: string | undefined;
+  /** How long the relay asked us to hold off (its `Retry-After`), if it said. */
+  readonly retryAfterMs: number | null;
 
   constructor(
     public status: number,
     message: string,
     relayCode?: RelayErrorCode,
+    retryAfterMs: number | null = null,
   ) {
     super(`relay ${status}: ${message}`);
     this.name = "RelayError";
     this.relayCode = relayCode;
     this.code = appCodeFor(relayCode);
+    this.retryAfterMs = retryAfterMs;
   }
+}
+
+/** `Retry-After` in its delay-seconds form (the only form the relay sends). */
+function retryAfterMs(res: Response): number | null {
+  const raw = res.headers.get("retry-after");
+  if (raw === null || !/^\d+$/.test(raw.trim())) return null;
+  return Number(raw.trim()) * 1000;
 }
 
 /**
@@ -115,7 +126,7 @@ export function createRelayClient(options: RelayClientOptions) {
       } catch {
         // non-JSON error body; keep the status text
       }
-      throw new RelayError(res.status, message, relayCode);
+      throw new RelayError(res.status, message, relayCode, retryAfterMs(res));
     }
     // A 200 with the wrong content kind is not the relay: it is some other
     // server answering on the relay's URL (misconfigured base URL, captive

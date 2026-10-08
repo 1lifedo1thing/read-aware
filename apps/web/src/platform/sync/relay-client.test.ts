@@ -4,20 +4,20 @@ import { classifySyncError } from "./classify-sync-error";
 import { createRelayClient, RelayError } from "./relay-client";
 
 /** A client whose relay answers every request with this status and body. */
-function answering(status: number, body: unknown) {
+function answering(status: number, body: unknown, headers: Record<string, string> = {}) {
   return createRelayClient({
     baseUrl: "https://relay.test",
     session: () => "session",
     fetchFn: (async () =>
       new Response(JSON.stringify(body), {
         status,
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...headers },
       })) as unknown as typeof fetch,
   });
 }
 
-async function refusal(status: number, body: unknown): Promise<RelayError> {
-  const error = await answering(status, body)
+async function refusal(status: number, body: unknown, headers: Record<string, string> = {}): Promise<RelayError> {
+  const error = await answering(status, body, headers)
     .putBlob("bookfile:b1", new Uint8Array(4))
     .then(
       () => null,
@@ -58,6 +58,15 @@ describe("relay error bodies", () => {
     const error = await refusal(429, { error: "slow down", code: "relay/rate-limited" });
     expect(error.relayCode).toBe("relay/rate-limited");
     expect(errorCode(error)).toBeUndefined();
+    expect(error.retryAfterMs).toBeNull();
+  });
+
+  test("a Retry-After in seconds rides on the error for the scheduler", async () => {
+    const error = await refusal(429, { error: "slow down", code: "relay/rate-limited" }, { "retry-after": "60" });
+    expect(error.retryAfterMs).toBe(60_000);
+    // The HTTP-date form is not one the relay sends; it is ignored, not misread.
+    const dated = await refusal(429, { error: "x" }, { "retry-after": "Wed, 21 Oct 2026 07:28:00 GMT" });
+    expect(dated.retryAfterMs).toBeNull();
   });
 });
 
