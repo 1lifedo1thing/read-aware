@@ -221,6 +221,21 @@ export interface ReportStore {
   countSince(ipHash: string, sinceMs: number): Promise<number>;
 }
 
+/**
+ * The per-account request budget over the whole authenticated surface — the
+ * ceiling on what one signed-in account can make the relay spend per minute
+ * (DO requests, SQLite rows, D1 session reads, R2 operations), whatever its
+ * client does. Backed by Cloudflare's Rate Limiting binding in production:
+ * counted at the edge, no storage write per request, unlike the D1 windows
+ * above, which are for exact long-window business limits.
+ */
+export interface AccountRequestLimiter {
+  /** The binding's window, for the Retry-After a refusal carries. */
+  periodSeconds: number;
+  /** Count one request; false when the account is over budget this window. */
+  allow(accountId: string): Promise<boolean>;
+}
+
 /** Monthly bundled-AI accounting (migrations/0007): micro-USD per account-month. */
 export interface AiUsageStore {
   usedMicroUsd(accountId: string, month: string): Promise<number>;
@@ -348,6 +363,7 @@ export type RelayPorts = {
   accounts: AccountStore;
   /** Fixed-window abuse counters for the unauthenticated surfaces. */
   rateLimits: RateLimitStore;
+  accountLimiter: AccountRequestLimiter;
   mailboxFor(accountId: string): Mailbox;
   blobs: BlobStore;
   reports: ReportStore;

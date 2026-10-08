@@ -1091,6 +1091,14 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     // Everything below requires a session.
     const account = await authenticate(req);
     if (!account) return failure(401, "authentication required");
+    // ...and spends from the account's request budget. One gate for the whole
+    // authenticated surface: no route below is cheap enough to leave uncapped
+    // when a client loops, and real sync traffic sits far under the ceiling.
+    if (!(await ports.accountLimiter.allow(account.id))) {
+      const refused = failure(429, "too many requests for this account; slow down");
+      refused.headers.set("retry-after", String(ports.accountLimiter.periodSeconds));
+      return refused;
+    }
 
     if (req.method === "POST" && path === "/v1/auth/logout") {
       const header = req.headers.get("authorization") ?? "";

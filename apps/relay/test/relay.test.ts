@@ -568,6 +568,39 @@ describe("the event quota (the operator's bill guard)", () => {
   });
 });
 
+describe("the per-account request budget", () => {
+  test("over budget an account gets 429 + Retry-After; other accounts and the next window are unaffected", async () => {
+    const { handle, advance, limitAccountRequests } = makeRelay();
+    const reader = await login(handle, "reader@example.com");
+    const other = await login(handle, "other@example.com");
+    limitAccountRequests(3);
+    for (let i = 0; i < 3; i += 1) {
+      expect((await handle(get("/v1/events?after=0", reader.session))).status).toBe(200);
+    }
+    const refused = await handle(post("/v1/events", { events: [sealed()] }, reader.session));
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("retry-after")).toBe("60");
+    expect(((await refused.json()) as { code: string }).code).toBe("relay/rate-limited");
+    expect((await handle(get("/v1/account", other.session))).status).toBe(200);
+
+    advance(60_000);
+    const next = await handle(get("/v1/events?after=0", reader.session));
+    expect(next.status).toBe(200);
+    // The refused push never reached the mailbox.
+    expect(((await next.json()) as { events: unknown[] }).events).toHaveLength(0);
+  });
+
+  test("unauthenticated requests never spend an account's budget", async () => {
+    const { handle, limitAccountRequests } = makeRelay();
+    const { session } = await login(handle, "reader@example.com");
+    limitAccountRequests(1);
+    for (let i = 0; i < 5; i += 1) {
+      expect((await handle(get("/v1/events?after=0", "not-a-session"))).status).toBe(401);
+    }
+    expect((await handle(get("/v1/events?after=0", session))).status).toBe(200);
+  });
+});
+
 describe("diagnostic reports", () => {
   const bundle = { logs: [{ name: "readaware.log", text: "boot start" }] };
   const report = (extra: Record<string, unknown> = {}, ip?: string) =>

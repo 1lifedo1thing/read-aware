@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { MailboxCore, type SqlExec } from "../src/mailbox-core";
-import { sealed } from "./harness";
+import { sealed, transactOver } from "./harness";
 
 const N = Number(process.env.RELAY_STRESS ?? 0);
 
@@ -23,15 +23,15 @@ function sqlOver(db: Database): SqlExec {
 describe.skipIf(N === 0)("mailbox stress", () => {
   test(`append, page, and look up ${N} events`, () => {
     const db = new Database(":memory:");
-    const core = new MailboxCore(sqlOver(db));
+    const core = new MailboxCore(sqlOver(db), transactOver(db));
     core.ensureSchema();
     const BATCH = 500;
     let t = performance.now();
     for (let i = 0; i < N; i += BATCH) {
       const events = [];
       for (let j = i; j < Math.min(N, i + BATCH); j += 1) events.push(sealed(`e-${j}`, 1_755_000_000_000 + j));
-      const seqs = core.append(events, "2026-09-07T00:00:00.000Z", Number.MAX_SAFE_INTEGER);
-      if (seqs === "full") throw new Error("unexpected full");
+      const outcome = core.append(events, "2026-09-07T00:00:00.000Z", Number.MAX_SAFE_INTEGER);
+      if (outcome === "full") throw new Error("unexpected full");
     }
     const appendS = (performance.now() - t) / 1000;
     console.log(`STRESS relay append ${N}: ${appendS.toFixed(1)}s (${Math.round(N / appendS)}/s)`);
@@ -67,6 +67,6 @@ describe.skipIf(N === 0)("mailbox stress", () => {
       Number.MAX_SAFE_INTEGER,
     );
     console.log(`STRESS relay redelivery append: ${(performance.now() - t).toFixed(1)}ms`);
-    expect(again).toMatchObject({ "e-1": 2, "e-2": 3, "brand-new": N + 1 });
+    expect(again).toMatchObject({ seqs: { "e-1": 2, "e-2": 3, "brand-new": N + 1 }, appended: 1 });
   }, 600_000);
 });

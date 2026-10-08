@@ -11,13 +11,53 @@ import type { SealedEventWire } from "@read-aware/core";
 import { MailboxCore, type SqlExec } from "./mailbox-core";
 import type { Mailbox } from "./ports";
 
+/** The slice of a hibernatable server-side WebSocket this class touches. */
+type DoorbellSocket = {
+  send(data: string): void;
+  close(code?: number, reason?: string): void;
+  serializeAttachment(value: unknown): void;
+  deserializeAttachment(): unknown;
+};
+
 type DurableState = {
-  storage: { sql: SqlExec };
+  storage: { sql: SqlExec; transactionSync<T>(fn: () => T): T };
   blockConcurrencyWhile(fn: () => Promise<void>): void;
   /** Hibernatable-WebSocket API (Cloudflare): sockets survive DO eviction. */
   acceptWebSocket(ws: unknown): void;
-  getWebSockets(): Array<{ send(data: string): void }>;
+  getWebSockets(): DoorbellSocket[];
 };
+
+/**
+ * Doorbell sockets one account may hold. A device holds one, so this is far
+ * above any real household of devices and tabs; what it bounds is the
+ * pathological case — leaked sockets, a looping client, a scripted account —
+ * where every append would otherwise fan out to an unbounded set.
+ */
+export const MAX_DOORBELL_SOCKETS = 32;
+
+/** Close code for a socket evicted to admit a newer one (app-private range). */
+export const DOORBELL_SUPERSEDED = 4000;
+
+/** When a socket was admitted; sockets accepted before attachments existed
+ *  read as the oldest possible. */
+function openedAt(ws: DoorbellSocket): number {
+  const attachment = ws.deserializeAttachment() as { openedAt?: unknown } | null;
+  return typeof attachment?.openedAt === "number" ? attachment.openedAt : 0;
+}
+
+/**
+ * Which held sockets must go so one more fits under `cap` — the OLDEST.
+ * Oldest-first, not reject-newest: a socket whose device vanished without a
+ * close (sleep, network drop) lingers until the runtime notices, and refusing
+ * the device that is actually here in favor of such ghosts would break sync
+ * for the one live client. An evicted live client simply reconnects — through
+ * the account-rate-limited ticket route, so even a loop is bounded.
+ */
+export function doorbellEvictions<S extends DoorbellSocket>(current: S[], cap = MAX_DOORBELL_SOCKETS): S[] {
+  const excess = current.length + 1 - cap;
+  if (excess <= 0) return [];
+  return [...current].sort((a, b) => openedAt(a) - openedAt(b)).slice(0, excess);
+}
 
 /** Workers global; declared structurally so tests never need workers-types. */
 declare const WebSocketPair: new () => { 0: unknown; 1: unknown };
@@ -26,7 +66,7 @@ export class AccountMailbox {
   private core: MailboxCore;
 
   constructor(private state: DurableState) {
-    this.core = new MailboxCore(state.storage.sql);
+    this.core = new MailboxCore(state.storage.sql, (fn) => state.storage.transactionSync(fn));
     state.blockConcurrencyWhile(async () => this.core.ensureSchema());
   }
 
@@ -47,6 +87,19 @@ export class AccountMailbox {
     }
   }
 
+  /** Admit a doorbell socket, evicting the oldest past the cap. */
+  private admit(ws: DoorbellSocket): void {
+    for (const stale of doorbellEvictions(this.state.getWebSockets())) {
+      try {
+        stale.close(DOORBELL_SUPERSEDED, "superseded by a newer connection");
+      } catch {
+        // Already closing — it is leaving the set either way.
+      }
+    }
+    this.state.acceptWebSocket(ws);
+    ws.serializeAttachment({ openedAt: Date.now() });
+  }
+
   /** Hibernation-API callback — inbound frames are ignored (doorbell is one-way). */
   webSocketMessage(): void {}
   webSocketClose(): void {}
@@ -56,7 +109,7 @@ export class AccountMailbox {
     const url = new URL(req.url);
     if (url.pathname === "/watch" && req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       const pair = new WebSocketPair();
-      this.state.acceptWebSocket(pair[1]);
+      this.admit(pair[1] as DoorbellSocket);
       return new Response(null, { status: 101, webSocket: pair[0] } as ResponseInit);
     }
     if (req.method === "POST" && url.pathname === "/append") {
@@ -64,10 +117,12 @@ export class AccountMailbox {
         events: SealedEventWire[];
         maxEvents?: number;
       };
-      const seqs = this.core.append(events, new Date().toISOString(), maxEvents);
-      if (seqs === "full") return new Response("mailbox full", { status: 413 });
-      this.ringDoorbells();
-      return Response.json({ seqs });
+      const outcome = this.core.append(events, new Date().toISOString(), maxEvents);
+      if (outcome === "full") return new Response("mailbox full", { status: 413 });
+      // A pure redelivery changed nothing other devices could pull — ringing
+      // would only wake every device into an empty sync cycle.
+      if (outcome.appended > 0) this.ringDoorbells();
+      return Response.json({ seqs: outcome.seqs });
     }
     if (req.method === "GET" && url.pathname === "/count") {
       return Response.json({ count: this.core.count() });

@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { SqlAccountStore, type D1Like } from "../src/account-store";
 import type { AiModel } from "../src/ai-proxy";
 import { SqlAiUsageStore } from "../src/ai-usage-store";
-import { MailboxCore, type SqlExec } from "../src/mailbox-core";
+import { MailboxCore, type SqlExec, type SqlTransact } from "../src/mailbox-core";
 import { SqlReportStore } from "../src/report-store";
 import { SqlRateLimitStore } from "../src/rate-limit-store";
 import {
@@ -46,7 +46,7 @@ function d1Over(db: Database): D1Like {
   };
 }
 
-function sqlOver(db: Database): SqlExec {
+export function sqlOver(db: Database): SqlExec {
   return {
     // The DO's sql.exec() runs EAGERLY (toArray just reads the cursor) — the
     // adapter must match, or DDL statements whose rows nobody reads never run.
@@ -57,9 +57,25 @@ function sqlOver(db: Database): SqlExec {
   };
 }
 
+/** bun:sqlite's transaction wrapper in the DO's `transactionSync` shape. */
+export function transactOver(db: Database): SqlTransact {
+  return (fn) => db.transaction(fn)();
+}
+
+/** A mailbox over its own in-memory database, schema applied — one DO's worth. */
+export function newMailboxCore(): MailboxCore {
+  const db = new Database(":memory:");
+  const core = new MailboxCore(sqlOver(db), transactOver(db));
+  core.ensureSchema();
+  return core;
+}
+
 function coreMailbox(core: MailboxCore, nowIso: () => string): Mailbox {
   return {
-    append: async (events, maxEvents) => core.append(events, nowIso(), maxEvents),
+    append: async (events, maxEvents) => {
+      const outcome = core.append(events, nowIso(), maxEvents);
+      return outcome === "full" ? "full" : outcome.seqs;
+    },
     count: async () => core.count(),
     listAfter: async (after, limit) => core.listAfter(after, limit),
     lookup: async (ids) => core.lookup(ids),
@@ -113,9 +129,22 @@ export function makeRelay(
   const reportPayloads = new Map<string, Uint8Array>();
   const background: Promise<unknown>[] = [];
   const blobFaults: BlobFaults = { failPut: null };
+  // The Rate Limiting binding's contract: a fixed window per key. Unlimited
+  // unless a test sets a budget.
+  let accountRequestLimit = Number.POSITIVE_INFINITY;
+  const accountRequests = new Map<string, number>();
   const ports: RelayPorts = {
     accounts: new SqlAccountStore(d1Over(db)),
     rateLimits: new SqlRateLimitStore(d1Over(db)),
+    accountLimiter: {
+      periodSeconds: 60,
+      allow: async (accountId) => {
+        const key = `${accountId}@${Math.floor(nowMs / 60_000)}`;
+        const count = (accountRequests.get(key) ?? 0) + 1;
+        accountRequests.set(key, count);
+        return count <= accountRequestLimit;
+      },
+    },
     reports: new SqlReportStore(d1Over(db), {
       put: async (id, payload) => {
         reportPayloads.set(id, payload);
@@ -124,9 +153,7 @@ export function makeRelay(
     mailboxFor(accountId) {
       let mailbox = mailboxes.get(accountId);
       if (!mailbox) {
-        const core = new MailboxCore(sqlOver(new Database(":memory:")));
-        core.ensureSchema();
-        mailbox = coreMailbox(core, nowIso);
+        mailbox = coreMailbox(newMailboxCore(), nowIso);
         mailboxes.set(accountId, mailbox);
       }
       return mailbox;
@@ -148,6 +175,10 @@ export function makeRelay(
     handle: createRelayHandler(ports),
     advance(ms: number) {
       nowMs += ms;
+    },
+    /** Authenticated requests one account may make per 60 s window. */
+    limitAccountRequests(perMinute: number) {
+      accountRequestLimit = perMinute;
     },
     /** Await the accounting writes a streamed AI response left behind. */
     async settleBackground() {

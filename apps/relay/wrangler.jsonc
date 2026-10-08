@@ -24,6 +24,13 @@
     "bindings": [{ "name": "MAILBOX", "class_name": "AccountMailbox" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AccountMailbox"] }],
+  // 每账号请求预算（ports.ts AccountRequestLimiter）：所有登录后的路由共用。
+  // 客户端请求是串行的，正常同步（含大库首次校验）远低于每分钟 1200 次；
+  // 这个上限只约束失控或脚本化的账号。period 改动时同步改 index.ts 的
+  // periodSeconds（Retry-After 用它）。namespace_id 账号内唯一，勿与其他 Worker 复用。
+  "ratelimits": [
+    { "name": "ACCOUNT_LIMITER", "namespace_id": "1001", "simple": { "limit": 1200, "period": 60 } }
+  ],
   "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "read-aware-relay-blobs" }],
   "vars": {
     // 生产绝不能开 MAGIC_LINK_ECHO（等于任何人可冒充任何邮箱）；

@@ -36,6 +36,8 @@ type Env = {
     idFromName(name: string): unknown;
     get(id: unknown): { fetch(input: string, init?: RequestInit): Promise<Response> };
   };
+  /** Rate Limiting binding (wrangler.jsonc `ratelimits`): per-account budget. */
+  ACCOUNT_LIMITER: { limit(options: { key: string }): Promise<{ success: boolean }> };
   /** "1" returns magic tokens in the response — local dev ONLY. */
   MAGIC_LINK_ECHO?: string;
   RESEND_API_KEY?: string;
@@ -106,6 +108,11 @@ function portsFromEnv(env: Env, ctx?: { waitUntil(promise: Promise<unknown>): vo
   return {
     accounts: new SqlAccountStore(env.DB),
     rateLimits: new SqlRateLimitStore(env.DB),
+    accountLimiter: {
+      // Must match ACCOUNT_LIMITER's `simple.period` in wrangler.jsonc.
+      periodSeconds: 60,
+      allow: async (accountId) => (await env.ACCOUNT_LIMITER.limit({ key: accountId })).success,
+    },
     mailboxFor: (accountId) => stubMailbox(env.MAILBOX.get(env.MAILBOX.idFromName(accountId))),
     blobs: r2BlobStore(env.BLOBS),
     aiUsage: new SqlAiUsageStore(env.DB),
