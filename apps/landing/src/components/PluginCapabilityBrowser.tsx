@@ -34,6 +34,7 @@ import {
   CAPABILITY_AUTHORITIES,
   CAPABILITY_FAMILIES,
   CAPABILITY_TOPICS,
+  RELEASED_APP_VERSION,
   capabilityManifest,
   filterCapabilities,
   groupCapabilityMethods,
@@ -44,15 +45,18 @@ import {
   type CapabilityTopic,
 } from "../lib/plugin-capabilities";
 import { CodeBlock } from "./CodeBlock";
+import { PluginDocText } from "./PluginDocText";
 
 export type PluginCapabilityBrowserCopy = Omit<
   DocsResource["capabilityBrowser"],
-  "descriptions" | "result" | "catalogSummary"
+  "descriptions" | "result" | "catalogSummary" | "releasedVersion" | "notReleased"
 > & {
   explorer: DocsResource["explorer"];
   descriptions: CapabilityDescriptions;
   result: (count: number) => string;
   catalogSummary: (capabilities: number, methods: number) => string;
+  releasedVersion: (app: string, version: string) => string;
+  notReleased: (app: string) => string;
 };
 const TOPIC_ICONS = {
   reading: BookOpen,
@@ -304,6 +308,11 @@ function CapabilityDetail({
                     </summary>
                     <div className="method-expanded">
                       <code className="method-full-path">{method.path}</code>
+                      {method.doc ? (
+                        <p className="method-doc">
+                          <PluginDocText text={method.doc} />
+                        </p>
+                      ) : null}
                       {method.signatures.map((signature) => (
                         <CodeBlock key={signature} language="typescript" code={signature} />
                       ))}
@@ -389,6 +398,11 @@ function CapabilityDetail({
         <div className="capability-detail-meta">
           {copy.familyNames[entry.family]}
           <span>v{entry.version}</span>
+          <span>
+            {entry.releasedVersion
+              ? copy.releasedVersion(RELEASED_APP_VERSION, entry.releasedVersion)
+              : copy.notReleased(RELEASED_APP_VERSION)}
+          </span>
           {entry.bundledOnly ? <span>{copy.bundledOnly}</span> : null}
         </div>
         <h2 ref={headingRef} tabIndex={-1}>

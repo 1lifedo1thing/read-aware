@@ -4,11 +4,13 @@ import type { DocsPageKey } from "../i18n";
 import { docHeadings } from "../lib/doc-headings";
 import { MarkdownDoc } from "./MarkdownDoc";
 
-const SLOT_PATTERN = /(READAWARE_CAPABILITY_BROWSER_SLOT|READAWARE_PERMISSION_PREVIEW_SLOT)/g;
+const SLOT_PATTERN =
+  /(READAWARE_CAPABILITY_BROWSER_SLOT|READAWARE_PERMISSION_PREVIEW_SLOT|READAWARE_API_REFERENCE_SLOT)/g;
 
 type DocsPageSlots = {
   capabilityBrowser?: ReactNode;
   permissionPreview?: ReactNode;
+  apiReference?: ReactNode;
 };
 
 export function LocalizedDocsPage({ page, slots }: { page: DocsPageKey; slots?: DocsPageSlots }) {
@@ -21,7 +23,8 @@ export function LocalizedDocsPage({ page, slots }: { page: DocsPageKey; slots?: 
   const content = Number.isFinite(introEnd) && introEnd > 0 ? body.slice(introEnd) : body;
 
   return (
-    <article className={`doc-prose min-w-0 ${slots ? "" : "max-w-3xl"}`}>
+    // Interactive tools need the full width; prose (including the API reference) keeps the reading measure.
+    <article className={`doc-prose min-w-0 ${slots?.capabilityBrowser || slots?.permissionPreview ? "" : "max-w-3xl"}`}>
       {intro && <MarkdownDoc>{intro}</MarkdownDoc>}
       {headings.length > 2 && (
         <nav aria-label={t("pageNavigation.title")} className="my-6 rounded-md border border-border px-4 py-3">
@@ -43,6 +46,9 @@ export function LocalizedDocsPage({ page, slots }: { page: DocsPageKey; slots?: 
         }
         if (part === "READAWARE_PERMISSION_PREVIEW_SLOT") {
           return <Fragment key={part}>{slots?.permissionPreview}</Fragment>;
+        }
+        if (part === "READAWARE_API_REFERENCE_SLOT") {
+          return <Fragment key={part}>{slots?.apiReference}</Fragment>;
         }
         return (
           <Fragment key={`${index}:${part.slice(0, 20)}`}>

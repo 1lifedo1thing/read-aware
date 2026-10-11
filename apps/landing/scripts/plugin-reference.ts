@@ -9,7 +9,10 @@ const output = resolve(import.meta.dir, "../src/lib/plugin-api.generated.json");
 
 export type ApiMethod = {
   path: string;
+  /** Parameter and return types as the checker resolves them (no `ReturnType<…>` indirection). */
   signatures: string[];
+  /** The declaration's JSDoc, if any. */
+  doc?: string;
   source: string;
   line: number;
 };
@@ -30,6 +33,28 @@ export function collectPluginReference(): ApiReference {
     services: "PluginHostServices",
   } as const;
   const result: ApiReference = {};
+  const flags = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
+  // The public mirror inlines every core type under its own name, so module
+  // qualifiers would only point readers at a package they cannot import.
+  const typeText = (type: ts.Type, at: ts.Node) =>
+    checker.typeToString(type, at, flags).replace(/import\("[^"]+"\)\./g, "");
+  const signatureText = (call: ts.Signature, at: ts.Node) => {
+    const typeParameters = call.typeParameters?.length
+      ? `<${call.typeParameters.map((parameter) => typeText(parameter, at)).join(", ")}>`
+      : "";
+    const parameters = call.getParameters().map((parameter) => {
+      const declaration = parameter.valueDeclaration;
+      const node = declaration && ts.isParameter(declaration) ? declaration : undefined;
+      const rest = node?.dotDotDotToken ? "..." : "";
+      const optional = node && (node.questionToken || node.initializer) ? "?" : "";
+      // The declared type, not the checker's widened one, which appends `| undefined` to optionals.
+      const type = node?.type
+        ? checker.getTypeFromTypeNode(node.type)
+        : checker.getTypeOfSymbolAtLocation(parameter, at);
+      return `${rest}${parameter.name}${optional}: ${typeText(type, at)}`;
+    });
+    return `${typeParameters}(${parameters.join(", ")}): ${typeText(checker.getReturnTypeOfSignature(call), at)}`;
+  };
 
   function walk(type: ts.Type, path: string, methods: ApiMethod[], depth = 0) {
     if (depth > 6) throw new Error(`Unbounded public API: ${path}`);
@@ -41,11 +66,15 @@ export function collectPluginReference(): ApiReference {
       const methodPath = `${path}.${property.name}`;
       if (calls.length) {
         const file = declaration.getSourceFile();
+        // Source comments wrap at a column; rejoin wrapped lines but keep paragraphs and list items.
+        const doc = ts
+          .displayPartsToString(property.getDocumentationComment(checker))
+          .trim()
+          .replace(/\n(?!\n|\s*(?:[-*]|\d+\.)\s)(?<!\n\n)/g, " ");
         methods.push({
           path: methodPath,
-          signatures: calls.map((call) =>
-            checker.signatureToString(call, declaration, ts.TypeFormatFlags.NoTruncation),
-          ),
+          signatures: calls.map((call) => signatureText(call, declaration)),
+          ...(doc ? { doc } : {}),
           source: relative(root, file.fileName),
           line: file.getLineAndCharacterOfPosition(declaration.getStart()).line + 1,
         });

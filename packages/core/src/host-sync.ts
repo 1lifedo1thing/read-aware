@@ -40,6 +40,7 @@ export type HostSyncFlowReceipt = {
   status: "completed" | "cancelled" | "external-opened";
 };
 export type HostSyncPort = {
+  /** Current sync state: backend, connection, progress, last cycle and last error code. */
   snapshot(): Promise<HostSyncSnapshot>;
   backlog(signal?: AbortSignal): Promise<{ events: number; blobs: number }>;
   /** Explicit remote read. No email, account ID, keys, session or billing ticket. */

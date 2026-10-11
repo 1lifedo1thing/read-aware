@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LocalizedDocsPage } from "../../../../components/LocalizedDocsPage";
+import { PluginApiReference } from "../../../../components/PluginApiReference";
 import { docsPageMeta } from "../../../../i18n";
 
 export const Route = createFileRoute("/zh/docs/plugins/api")({
   head: ({ match }) => docsPageMeta(match.context.i18n, "pluginsApi"),
-  component: () => <LocalizedDocsPage page="pluginsApi" />,
+  component: () => <LocalizedDocsPage page="pluginsApi" slots={{ apiReference: <PluginApiReference /> }} />,
 });

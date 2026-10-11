@@ -2922,14 +2922,25 @@ export type PluginHostServices = {
     import("@read-aware/core").HostSyncPort,
     "backlog" | "account" | "requestSync" | "openSettings" | "requestFlow"
   > & {
+    /** Events and blobs waiting to be pushed. */
     backlog(): ReturnType<import("@read-aware/core").HostSyncPort["backlog"]>;
+    /** Explicit remote read of the account's tier, usage and limits; null without an account.
+     * No email, account ID, keys, session or billing ticket. */
     account(): ReturnType<import("@read-aware/core").HostSyncPort["account"]>;
+    /** Runs one sync round on the configured backend (relay or a transport plugin such as
+     * WebDAV) and resolves when it has finished: `completed`, or `already-running` when a
+     * round was in progress (not queued again). Rejects with a coded error when no round can
+     * start (`ui/unavailable`) or the round fails (classified failures carry `sync/*` codes). */
     requestSync(): ReturnType<import("@read-aware/core").HostSyncPort["requestSync"]>;
+    /** Opens the host Data & Sync page; not a login, disconnect or purchase. */
     openSettings(): ReturnType<import("@read-aware/core").HostSyncPort["openSettings"]>;
+    /** Host-owned connect, disconnect, account deletion, upgrade or billing flow. Waits for the
+     * final local outcome or external handoff; cancellation cannot undo a started operation. */
     requestFlow(
       request: import("@read-aware/core").HostSyncFlowRequest,
       options?: PluginCallOptions,
     ): ReturnType<import("@read-aware/core").HostSyncPort["requestFlow"]>;
+    /** Delivers each new sync snapshot (state, progress, completed cycles) while the handle lives. */
     observe(
       handler: PluginObservationHandler<import("@read-aware/core").HostSyncSnapshot>,
       options?: { ruleId?: string },

@@ -1,5 +1,10 @@
 import { HOST_CAPABILITY_CATALOG } from "@read-aware/core";
 import reference from "./plugin-api.generated.json";
+import released from "./released-capabilities.generated.json";
+
+/** The latest app release's catalog (scripts/sync-plugin-dts.ts), beside the development one. */
+export const RELEASED_APP_VERSION = released.appVersion;
+const RELEASED_VERSIONS = released.capabilities as Record<string, Record<string, { version: string }>>;
 
 export type CapabilityFamily = keyof typeof HOST_CAPABILITY_CATALOG;
 export type CapabilityKey = {
@@ -10,6 +15,7 @@ export type CapabilityTopic = "reading" | "library" | "intelligence" | "automati
 export type CapabilityMethod = {
   path: string;
   signatures: string[];
+  doc?: string;
   source: string;
   line: number;
 };
@@ -65,7 +71,10 @@ export type CapabilityEntry = {
   key: CapabilityKey;
   family: CapabilityFamily;
   id: string;
+  /** The development catalog's version. */
   version: string;
+  /** The version in the latest release; absent when that release does not offer it. */
+  releasedVersion?: string;
   permissions: string[];
   authority: CapabilityAuthority;
   topics: CapabilityTopic[];
@@ -90,6 +99,7 @@ export const CAPABILITIES: CapabilityEntry[] = Object.entries(HOST_CAPABILITY_CA
       family: family as CapabilityFamily,
       id,
       version: definition.version,
+      releasedVersion: RELEASED_VERSIONS[family]?.[id]?.version,
       permissions,
       authority:
         id === "settings" && family === "domains"
@@ -168,10 +178,14 @@ export function filterCapabilities(
   });
 }
 
-/** A starting fragment, not an inferred grant for every method in a capability. */
+/**
+ * A starting fragment, not an inferred grant for every method in a capability.
+ * It targets the latest release so a copied range activates on the app users
+ * have; only capabilities that release lacks fall back to the development version.
+ */
 export function capabilityManifest(entry: CapabilityEntry, access: "read" | "write" = "read"): Record<string, unknown> {
   const fragment: Record<string, unknown> = {
-    requires: { [entry.family]: { [entry.id]: `^${entry.version}` } },
+    requires: { [entry.family]: { [entry.id]: `^${entry.releasedVersion ?? entry.version}` } },
   };
   const permissions =
     entry.family === "domains" && entry.permissions.length ? [`${entry.id}:${access}`] : entry.permissions;

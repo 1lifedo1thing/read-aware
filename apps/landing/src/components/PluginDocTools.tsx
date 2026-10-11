@@ -32,6 +32,8 @@ export function CapabilityBrowserSlot() {
       result: (count: number) => t("capabilityBrowser.result", { count }),
       catalogSummary: (capabilities: number, methods: number) =>
         t("capabilityBrowser.catalogSummary", { capabilities, methods }),
+      releasedVersion: (app: string, version: string) => t("capabilityBrowser.releasedVersion", { app, version }),
+      notReleased: (app: string) => t("capabilityBrowser.notReleased", { app }),
     } satisfies PluginCapabilityBrowserCopy;
   }, [i18n, t]);
 

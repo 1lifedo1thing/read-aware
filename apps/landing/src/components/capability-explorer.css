@@ -339,6 +339,13 @@
   overflow-wrap: anywhere;
   margin-bottom: 8px;
 }
+.method-doc {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-fg-muted);
+  white-space: pre-line;
+}
 .method-expanded > a {
   display: inline-flex;
   align-items: center;

@@ -11,8 +11,16 @@
 - [Download & install](https://readaware.app/docs/install/): installers for macOS, Windows, Linux, and Android
 - [Getting started](https://readaware.app/docs/getting-started/): import books, read, highlight, and talk to the assistant
 - [Plugin system](https://readaware.app/docs/plugins/): sandboxed plugins and the built-in marketplace
-- [Plugin API reference](https://readaware.app/docs/plugins/api/): the public plugin API surface
+- [Build a plugin](https://readaware.app/docs/plugins/develop/): template, manifest, commands and shortcuts, local install
+- [Plugin API reference](https://readaware.app/docs/plugins/api/): every capability and method with signatures, permissions, and development and latest-release versions
+- [Plugin capabilities explorer](https://readaware.app/docs/plugins/capabilities/): the same catalog, searchable, with manifest fragments
 - [Publishing plugins](https://readaware.app/docs/plugins/publishing/): how to submit a plugin to the marketplace
+
+## Building plugins with a coding agent
+
+- [AGENTS.md](https://raw.githubusercontent.com/ahpxex/readaware-plugins/main/AGENTS.md): single-file plugin authoring guide with a verified example; give the agent a checkout of the plugin repository
+- [plugin-api.d.ts](https://raw.githubusercontent.com/ahpxex/readaware-plugins/main/types/plugin-api.d.ts): the complete contract of the latest ReadAware release
+- [host-capabilities.json](https://raw.githubusercontent.com/ahpxex/readaware-plugins/main/types/host-capabilities.json): that release's capability versions, permissions, icon names and built-in shortcuts
 
 ## Blog
 

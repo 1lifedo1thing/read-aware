@@ -3,7 +3,7 @@
     {
       "path": "ctx.domains.library.commands.books.addVirtualBook",
       "signatures": [
-        "(input: { providerId: string; key: string; title: string; author?: string; }): Promise<PluginBook>"
+        "(input: { providerId: string; key: string; title: string; author?: string; }): Promise<BookSummary>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1714
@@ -11,7 +11,7 @@
     {
       "path": "ctx.domains.library.commands.books.cancelImportTask",
       "signatures": [
-        "(taskId: string): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
+        "(taskId: string): Promise<BookImportTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1706
@@ -19,8 +19,9 @@
     {
       "path": "ctx.domains.library.commands.books.cancelTextTask",
       "signatures": [
-        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+        "(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>"
       ],
+      "doc": "Cancels only this activation's request; shared work or dispatched writes may continue.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1685
     },
@@ -35,7 +36,7 @@
     {
       "path": "ctx.domains.library.commands.books.importBook",
       "signatures": [
-        "(input: { fileName: string; data: ArrayBuffer | Uint8Array; }, options?: PluginCallOptions): Promise<PluginBook>"
+        "(input: { fileName: string; data: ArrayBuffer | Uint8Array; }, options?: PluginCallOptions): Promise<BookSummary>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1686
@@ -43,8 +44,9 @@
     {
       "path": "ctx.domains.library.commands.books.importResource",
       "signatures": [
-        "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportReceipt>"
+        "(id: string, options?: PluginCallOptions): Promise<BookImportReceipt>"
       ],
+      "doc": "Library 1.19 adds per-call cancellation. Before the first durable write, cancellation prevents admission; afterward await the actual imported/duplicate receipt or failure. No whole-file transfer, opening or resource release.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1696
     },
@@ -53,21 +55,23 @@
       "signatures": [
         "(input: { providerId: string; key: string; }): Promise<{ bookId: string; revision: string; }>"
       ],
+      "doc": "Announce already-saved source changes. Does not reload or move the reader. revision is a process-local invalidation fence, not a content hash. Library 1.15.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1718
     },
     {
       "path": "ctx.domains.library.commands.books.mergeDuplicates",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookMergeRequest): Promise<import(\"@read-aware/core\").BookMergeReceipt>"
+        "(input: BookMergeRequest): Promise<BookMergeReceipt>"
       ],
+      "doc": "Conditional record merge with the host's deterministic keeper; not file deletion or undo.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1672
     },
     {
       "path": "ctx.domains.library.commands.books.pauseTextTask",
       "signatures": [
-        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+        "(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1681
@@ -75,8 +79,9 @@
     {
       "path": "ctx.domains.library.commands.books.prepareText",
       "signatures": [
-        "(bookId: string, options?: import(\"@read-aware/core\").BookTextPrepareOptions): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+        "(bookId: string, options?: BookTextPrepareOptions): Promise<BookTextTaskSnapshot>"
       ],
+      "doc": "Library 1.31: starts an actor-owned background request. A receipt is not completion. Current-book grants fence admission and the lease through pause/resume; switching books cancels only this request, without undoing accepted writes.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1665
     },
@@ -91,8 +96,9 @@
     {
       "path": "ctx.domains.library.commands.books.removeMany",
       "signatures": [
-        "(bookIds: string[]): Promise<import(\"@read-aware/core\").BookRemovalReceipt>"
+        "(bookIds: string[]): Promise<BookRemovalReceipt>"
       ],
+      "doc": "1-1000 IDs, deduplicated. Atomic record deletion; local file release is separately reported.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1711
     },
@@ -107,24 +113,27 @@
     {
       "path": "ctx.domains.library.commands.books.resumeTextTask",
       "signatures": [
-        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+        "(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>"
       ],
+      "doc": "Library 1.21: reacquires this paused request using saved checkpoints and the same handle.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1683
     },
     {
       "path": "ctx.domains.library.commands.books.retryEnrichment",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookEnrichmentReceipt>"
+        "(bookId: string): Promise<BookEnrichmentReceipt>"
       ],
+      "doc": "Retry unchecked covers and missing/filename-derived metadata using the shared queue, without forcing replacement or download.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1670
     },
     {
       "path": "ctx.domains.library.commands.books.retryRemovalCleanup",
       "signatures": [
-        "(bookIds: string[]): Promise<import(\"@read-aware/core\").BookFileReleaseReceipt>"
+        "(bookIds: string[]): Promise<BookFileReleaseReceipt>"
       ],
+      "doc": "Retry file release only. Refuses any ID now present in the library; never deletes records.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1713
     },
@@ -139,16 +148,18 @@
     {
       "path": "ctx.domains.library.commands.books.setTextTaskPriority",
       "signatures": [
-        "(bookId: string, taskId: string, priority: import(\"@read-aware/core\").BookTextPriority): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+        "(bookId: string, taskId: string, priority: BookTextPriority): Promise<BookTextTaskSnapshot>"
       ],
+      "doc": "Library 1.21: pauses only this request by releasing its lease; other consumers and dispatched I/O may continue.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1676
     },
     {
       "path": "ctx.domains.library.commands.books.startImport",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookImportRequest, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
+        "(input: BookImportRequest, options?: PluginCallOptions): Promise<BookImportTaskSnapshot>"
       ],
+      "doc": "Start a task over owned sealed resources or <=64 MiB file bytes (wire limits still apply). Queued is not imported. options.signal cancels admission only; use cancelImportTask after the receipt. At most 2 physical task executions per activation, 4 in the app; direct imports/picker jobs are outside this task quota. Tasks do not resume after restart. Accepted writes finish despite cancellation.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1702
     },
@@ -163,7 +174,7 @@
     {
       "path": "ctx.domains.library.commands.collections.create",
       "signatures": [
-        "(name: string): Promise<PluginCollection>"
+        "(name: string): Promise<CollectionSummary>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1721
@@ -187,7 +198,7 @@
     {
       "path": "ctx.domains.library.events.observeContentState",
       "signatures": [
-        "(bookId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookContentObservation>, options?: { ruleId?: string; }): PluginDisposable"
+        "(bookId: string, handler: PluginObservationHandler<BookContentObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1747
@@ -195,7 +206,7 @@
     {
       "path": "ctx.domains.library.events.observeEnrichment",
       "signatures": [
-        "(bookId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookEnrichmentObservation>, options?: { ruleId?: string; }): PluginDisposable"
+        "(bookId: string, handler: PluginObservationHandler<BookEnrichmentObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1742
@@ -203,31 +214,34 @@
     {
       "path": "ctx.domains.library.events.observeImportTask",
       "signatures": [
-        "(taskId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookImportTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+        "(taskId: string, handler: PluginObservationHandler<BookImportTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Initial snapshot and coalesced monotonic revisions, including terminal failures.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1737
     },
     {
       "path": "ctx.domains.library.events.observeInvalidation",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ProjectionInvalidation>): PluginDisposable"
+        "(handler: PluginObservationHandler<ProjectionInvalidation>): PluginDisposable"
       ],
+      "doc": "Initial and coalesced reload hints, including remote projection changes. Re-query authorized data; not an event log or a conditional-write token.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1754
     },
     {
       "path": "ctx.domains.library.events.observeTextTask",
       "signatures": [
-        "(bookId: string, taskId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookTextTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+        "(bookId: string, taskId: string, handler: PluginObservationHandler<BookTextTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Library 1.32: serial reaction deliveries retain task and history-write sources.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1730
     },
     {
       "path": "ctx.domains.library.events.subscribe",
       "signatures": [
-        "<K extends LibraryDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+        "<K>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1728
@@ -235,7 +249,7 @@
     {
       "path": "ctx.domains.library.queries.books.get",
       "signatures": [
-        "(bookId: string): Promise<PluginBook | null>"
+        "(bookId: string): Promise<BookSummary | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1586
@@ -251,31 +265,34 @@
     {
       "path": "ctx.domains.library.queries.books.getContentState",
       "signatures": [
-        "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookContentState>"
+        "(bookId: string, options?: PluginCallOptions): Promise<BookContentState>"
       ],
+      "doc": "Source metadata only; never loads a provider or reveals reading state. Library 1.16.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1593
     },
     {
       "path": "ctx.domains.library.queries.books.getEnrichment",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookEnrichmentSnapshot>"
+        "(bookId: string): Promise<BookEnrichmentSnapshot>"
       ],
+      "doc": "Library 1.9: local cover/source state and the latest process-local enrichment attempt.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1591
     },
     {
       "path": "ctx.domains.library.queries.books.getImportTask",
       "signatures": [
-        "(taskId: string, waitMs?: number, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
+        "(taskId: string, waitMs?: number, options?: PluginCallOptions): Promise<BookImportTaskSnapshot>"
       ],
+      "doc": "waitMs (0..30000) waits for terminal state or returns current progress at the deadline. Cancelling this query stops observation only.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1606
     },
     {
       "path": "ctx.domains.library.queries.books.getNavigationToc",
       "signatures": [
-        "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookNavigationToc>"
+        "(bookId: string, options?: PluginCallOptions): Promise<BookNavigationToc>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1613
@@ -283,15 +300,16 @@
     {
       "path": "ctx.domains.library.queries.books.getTextState",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookTextSnapshot>"
+        "(bookId: string): Promise<BookTextSnapshot>"
       ],
+      "doc": "Read-only derived-text state. Never starts parsing, fetching, or extraction.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1589
     },
     {
       "path": "ctx.domains.library.queries.books.getTextTask",
       "signatures": [
-        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+        "(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1601
@@ -299,7 +317,7 @@
     {
       "path": "ctx.domains.library.queries.books.getToc",
       "signatures": [
-        "(bookId: string): Promise<PluginChapterRef[]>"
+        "(bookId: string): Promise<ChapterRef[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1587
@@ -307,15 +325,16 @@
     {
       "path": "ctx.domains.library.queries.books.inspectResource",
       "signatures": [
-        "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookInspection>"
+        "(id: string, options?: PluginCallOptions): Promise<BookInspection>"
       ],
+      "doc": "Initialize this activation's sealed resource with the reader parser; no import.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1574
     },
     {
       "path": "ctx.domains.library.queries.books.list",
       "signatures": [
-        "(): Promise<PluginBook[]>"
+        "(): Promise<BookSummary[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1570
@@ -323,31 +342,34 @@
     {
       "path": "ctx.domains.library.queries.books.listDuplicates",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").DuplicateBookQuery): Promise<import(\"@read-aware/core\").DuplicateBookPage>"
+        "(query?: DuplicateBookQuery): Promise<DuplicateBookPage>"
       ],
+      "doc": "Library 1.10: same-content groups; live offset pages, limit 1-50.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1576
     },
     {
       "path": "ctx.domains.library.queries.books.listFormats",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").BookFormatCapability[]>"
+        "(): Promise<BookFormatCapability[]>"
       ],
+      "doc": "Library 1.11: import routing hints; extensions alone do not prove readability.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1572
     },
     {
       "path": "ctx.domains.library.queries.books.listImages",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookImagesQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImagesPage>"
+        "(input: BookReferencesQuery, options?: PluginCallOptions): Promise<BookImagesPage>"
       ],
+      "doc": "Library 1.29: section-local img/SVG, srcset/authored CSS and PDF image candidates. No remote fetch; PDF operator inspection can decode objects.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1636
     },
     {
       "path": "ctx.domains.library.queries.books.listImportTasks",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot[]>"
+        "(): Promise<BookImportTaskSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1611
@@ -355,31 +377,34 @@
     {
       "path": "ctx.domains.library.queries.books.listNavigationTargets",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookNavigationTargetsQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookNavigationTargetsPage>"
+        "(input: BookNavigationTargetsQuery, options?: PluginCallOptions): Promise<BookNavigationTargetsPage>"
       ],
+      "doc": "Library 1.14: bounded source-section or author-supplied page-label catalog; not screen page counts.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1618
     },
     {
       "path": "ctx.domains.library.queries.books.listReferences",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookReferencesQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookReferencesPage>"
+        "(input: BookReferencesQuery, options?: PluginCallOptions): Promise<BookReferencesPage>"
       ],
+      "doc": "Library 1.12: versioned section references, not extracted chapter indices.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1631
     },
     {
       "path": "ctx.domains.library.queries.books.listRemovalCleanup",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").BookRemovalCleanupQuery): Promise<import(\"@read-aware/core\").BookRemovalCleanupPage>"
+        "(query?: BookRemovalCleanupQuery): Promise<BookRemovalCleanupPage>"
       ],
+      "doc": "Durable device-local pending file cleanup, including after view/plugin restart. Live keyset page, limit 1-100 (default 50).",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1583
     },
     {
       "path": "ctx.domains.library.queries.books.listTextTaskHistory",
       "signatures": [
-        "(bookId: string, query?: import(\"@read-aware/core\").BookTextTaskHistoryQuery): Promise<import(\"@read-aware/core\").BookTextTaskHistoryPage>"
+        "(bookId: string, query?: BookTextTaskHistoryQuery): Promise<BookTextTaskHistoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1597
@@ -387,7 +412,7 @@
     {
       "path": "ctx.domains.library.queries.books.listTextTasks",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot[]>"
+        "(bookId: string): Promise<BookTextTaskSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1602
@@ -395,15 +420,16 @@
     {
       "path": "ctx.domains.library.queries.books.openImageResource",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookImageQuery): Promise<import(\"@read-aware/core\").BookImageResource>"
+        "(input: BookImageQuery): Promise<BookImageResource>"
       ],
+      "doc": "Seal an embedded image as this activation's ResourceRef; does not display it or decode pixels.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1641
     },
     {
       "path": "ctx.domains.library.queries.books.previewMerge",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookMergePreview | null>"
+        "(bookId: string): Promise<BookMergePreview | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1579
@@ -411,7 +437,7 @@
     {
       "path": "ctx.domains.library.queries.books.readRange",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookRangeQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookRangePage>"
+        "(input: BookRangeQuery, options?: PluginCallOptions): Promise<BookRangePage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1626
@@ -419,8 +445,9 @@
     {
       "path": "ctx.domains.library.queries.books.readReference",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookReferenceQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookReferencePreview>"
+        "(input: BookReferenceQuery, options?: PluginCallOptions): Promise<BookReferencePreview>"
       ],
+      "doc": "Plain-text preview and resolved navigation location; never fetches or opens an external URL.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1645
     },
@@ -429,13 +456,14 @@
       "signatures": [
         "(bookId: string): Promise<string | null>"
       ],
+      "doc": "Current book ID or merge redirect, null if neither points to a living book.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1581
     },
     {
       "path": "ctx.domains.library.queries.books.searchLocations",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookLocationSearch, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookLocationSearchPage>"
+        "(input: BookLocationSearch, options?: PluginCallOptions): Promise<BookLocationSearchPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1622
@@ -443,8 +471,9 @@
     {
       "path": "ctx.domains.library.queries.books.searchText",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookTextSearch, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookTextHit[]>"
+        "(input: BookTextSearch, options?: PluginCallOptions): Promise<BookTextHit[]>"
       ],
+      "doc": "Multi-query derived prose search. Single-book may prepare text; shelf search never does. Results are not navigation locations.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1650
     },
@@ -459,7 +488,7 @@
     {
       "path": "ctx.domains.library.queries.collections.list",
       "signatures": [
-        "(): Promise<PluginCollection[]>"
+        "(): Promise<CollectionSummary[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1656
@@ -469,7 +498,7 @@
     {
       "path": "ctx.domains.reading.commands.back",
       "signatures": [
-        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1819
@@ -477,15 +506,16 @@
     {
       "path": "ctx.domains.reading.commands.clearSelection",
       "signatures": [
-        "(expectedId: string, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingSelectionReceipt>"
+        "(expectedId: string, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingSelectionReceipt>"
       ],
+      "doc": "Clears only the observed selection ID; a replacement selection is never silently cleared.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1802
     },
     {
       "path": "ctx.domains.reading.commands.close",
       "signatures": [
-        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<void>"
+        "(guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1838
@@ -493,23 +523,25 @@
     {
       "path": "ctx.domains.reading.commands.configureMode",
       "signatures": [
-        "(input: import(\"@read-aware/core\").ReadingModeConfiguration, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingModeReceipt>"
+        "(input: ReadingModeConfiguration, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingModeReceipt>"
       ],
+      "doc": "Configure the host mode; modeKey guards the current provider, selectModeKey selects from session().mode.availableModes. Resolves after real indexing (ready/empty) or deactivation. Failed indexing rejects. Disabling the caller cancels an unfinished change; completed mode preferences remain.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1848
     },
     {
       "path": "ctx.domains.reading.commands.controlPlayback",
       "signatures": [
-        "(action: \"start\" | \"stop\", guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingPlaybackReceipt>"
+        "(action: \"start\" | \"stop\", guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingPlaybackReceipt>"
       ],
+      "doc": "Start resolves on actual audio start. Stop is idempotent; disabling the initiating plugin stops its playback.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1840
     },
     {
       "path": "ctx.domains.reading.commands.forward",
       "signatures": [
-        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1823
@@ -517,7 +549,7 @@
     {
       "path": "ctx.domains.reading.commands.goTo",
       "signatures": [
-        "(target: import(\"@read-aware/core\").ReadingTarget, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(target: ReadingTarget, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1815
@@ -525,7 +557,7 @@
     {
       "path": "ctx.domains.reading.commands.openBook",
       "signatures": [
-        "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(bookId: string, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1814
@@ -533,23 +565,25 @@
     {
       "path": "ctx.domains.reading.commands.putEmphasis",
       "signatures": [
-        "(input: import(\"@read-aware/core\").ReadingEmphasisWrite, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingEmphasisReceipt>"
+        "(input: ReadingEmphasisWrite, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingEmphasisReceipt>"
       ],
+      "doc": "Temporary owned marks, not annotations. No navigation; replacement requires an observed revision.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1785
     },
     {
       "path": "ctx.domains.reading.commands.reload",
       "signatures": [
-        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
+      "doc": "Reading 2.21: reopen source; virtual sections with identical stable identity/content preserve their location across reorder. Stale/legacy virtual locators restart at the beginning; files still restart. Whole-book contentVersion guards remain strict.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1834
     },
     {
       "path": "ctx.domains.reading.commands.removeEmphasis",
       "signatures": [
-        "(input: import(\"@read-aware/core\").ReadingEmphasisRef, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingEmphasisRemoval>"
+        "(input: ReadingEmphasisRef, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingEmphasisRemoval>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1790
@@ -557,24 +591,27 @@
     {
       "path": "ctx.domains.reading.commands.returnToMode",
       "signatures": [
-        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
+      "doc": "Return to the versioned resting unit; wait for renderer navigation and unit restoration before committing history.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1854
     },
     {
       "path": "ctx.domains.reading.commands.selectRange",
       "signatures": [
-        "(range: import(\"@read-aware/core\").BookTextRange, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingSelectionReceipt>"
+        "(range: BookTextRange, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingSelectionReceipt>"
       ],
+      "doc": "Requires this book to be open; validates its source range, navigates, then waits for the selection overlay commit.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1796
     },
     {
       "path": "ctx.domains.reading.commands.setControls",
       "signatures": [
-        "(visible: boolean, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingControlsReceipt>"
+        "(visible: boolean, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingControlsReceipt>"
       ],
+      "doc": "Set reader chrome visibility; completes after UI commit. Does not alter panel preferences or playback.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1808
     },
@@ -589,23 +626,25 @@
     {
       "path": "ctx.domains.reading.commands.step",
       "signatures": [
-        "(direction: import(\"@read-aware/core\").ReadingStep, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+        "(direction: ReadingStep, guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingNavigationReceipt>"
       ],
+      "doc": "Reading 2.12: page, source-section and book-boundary navigation; section/boundary jumps enter history.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1828
     },
     {
       "path": "ctx.domains.reading.commands.stepMode",
       "signatures": [
-        "(direction: \"next\" | \"previous\", guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingModeStepReceipt>"
+        "(direction: \"next\" | \"previous\", guard?: ReadingSessionGuard, options?: PluginCallOptions): Promise<ReadingModeStepReceipt>"
       ],
+      "doc": "Step one configured text unit, across sections if necessary; reports book boundaries explicitly.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1859
     },
     {
       "path": "ctx.domains.reading.events.observeEmphasis",
       "signatures": [
-        "(handler: (snapshot: import(\"@read-aware/core\").ReadingEmphasisSnapshot[], delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
+        "(handler: (snapshot: ReadingEmphasisSnapshot[], delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1876
@@ -613,23 +652,25 @@
     {
       "path": "ctx.domains.reading.events.observeSession",
       "signatures": [
-        "(handler: (snapshot: import(\"@read-aware/core\").ReadingSessionSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
+        "(handler: (snapshot: ReadingSessionSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Immediate and subsequent snapshots carry a live reaction lease. Use withEvent for automatic writes; keep the original context for later user actions. A stable ruleId can resume job causality across activations.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1869
     },
     {
       "path": "ctx.domains.reading.events.observeTime",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ReadingTimeQuery, handler: (event: import(\"@read-aware/core\").ReadingTimeObservation, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
+        "(query: ReadingTimeQuery, handler: (event: ReadingTimeObservation, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Immediate sample then a 1s minimum gap after each delivery. Errors are explicit; dispose stops further delivery. Reading 2.24: delivery retains sampling subscription ancestry across timers. It does not identify historical writers of the aggregate.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1885
     },
     {
       "path": "ctx.domains.reading.events.subscribe",
       "signatures": [
-        "<K extends \"book.opened\" | \"book.finished\" | \"book.progressed\" | \"book.timeRecorded\" | \"book.sessionRecorded\">(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+        "<K>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1866
@@ -637,15 +678,16 @@
     {
       "path": "ctx.domains.reading.queries.emphasis",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").ReadingEmphasisSnapshot[]>"
+        "(): Promise<ReadingEmphasisSnapshot[]>"
       ],
+      "doc": "This activation's temporary marks only; attached does not mean visible in the viewport.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1768
     },
     {
       "path": "ctx.domains.reading.queries.session",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").ReadingSessionSnapshot>"
+        "(): Promise<ReadingSessionSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1769
@@ -653,7 +695,7 @@
     {
       "path": "ctx.domains.reading.queries.stats.forBook",
       "signatures": [
-        "(bookId: string): Promise<PluginBookStats | null>"
+        "(bookId: string): Promise<BookStats | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1778
@@ -661,7 +703,7 @@
     {
       "path": "ctx.domains.reading.queries.stats.insights",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").ReadingInsightsQuery): Promise<import(\"@read-aware/core\").ReadingInsights>"
+        "(query?: ReadingInsightsQuery): Promise<ReadingInsights>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1775
@@ -669,7 +711,7 @@
     {
       "path": "ctx.domains.reading.queries.stats.list",
       "signatures": [
-        "(): Promise<PluginBookStats[]>"
+        "(): Promise<BookStats[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1779
@@ -677,7 +719,7 @@
     {
       "path": "ctx.domains.reading.queries.stats.overview",
       "signatures": [
-        "(): Promise<PluginStatsOverview>"
+        "(): Promise<StatsOverview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1780
@@ -685,8 +727,9 @@
     {
       "path": "ctx.domains.reading.queries.stats.time",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").ReadingTimeQuery): Promise<import(\"@read-aware/core\").ReadingTimeSnapshot>"
+        "(query?: ReadingTimeQuery): Promise<ReadingTimeSnapshot>"
       ],
+      "doc": "Atomic settled + pending time, with native sampling clock. Reading >=2.7.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1772
     }
@@ -695,23 +738,25 @@
     {
       "path": "ctx.domains.annotations.commands.applyChanges",
       "signatures": [
-        "(changes: import(\"@read-aware/core\").AnnotationMutation[]): Promise<import(\"@read-aware/core\").AnnotationCommitResult>"
+        "(changes: AnnotationMutation[]): Promise<AnnotationCommitResult>"
       ],
+      "doc": "Since 2.0 this is the only edit/delete entry. Use the revision observed before the user's decision; 1..100 distinct items, all commit or none.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1920
     },
     {
       "path": "ctx.domains.annotations.commands.createHighlight",
       "signatures": [
-        "(input: { range?: import(\"@read-aware/core\").BookTextRange; bookId: string; text: string; anchor?: string | null; chapterHref?: string | null; color?: HighlightColor; style?: HighlightStyle; }): Promise<PluginHighlight>"
+        "(input: { range?: BookTextRange; bookId: string; text: string; anchor?: string | null; chapterHref?: string | null; color?: HighlightColor; style?: HighlightStyle; }): Promise<HighlightItem>"
       ],
+      "doc": "annotations >=2.1: range validates and preserves the captured source; requires library:read.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1924
     },
     {
       "path": "ctx.domains.annotations.commands.createNote",
       "signatures": [
-        "(input: { range?: import(\"@read-aware/core\").BookTextRange; bookId: string; body: string; quotedText?: string; anchor?: string | null; chapterHref?: string | null; }): Promise<PluginNote>"
+        "(input: { range?: BookTextRange; bookId: string; body: string; quotedText?: string; anchor?: string | null; chapterHref?: string | null; }): Promise<NoteItem>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1933
@@ -719,15 +764,16 @@
     {
       "path": "ctx.domains.annotations.events.observe",
       "signatures": [
-        "(query: import(\"@read-aware/core\").AnnotationObservationQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").AnnotationObservation>): PluginDisposable"
+        "(query: AnnotationObservationQuery, handler: PluginObservationHandler<AnnotationObservation>): PluginDisposable"
       ],
+      "doc": "Since 1.4. Initial authorized snapshot, then changed results/errors/recovery. Disposal ends polling.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1945
     },
     {
       "path": "ctx.domains.annotations.events.subscribe",
       "signatures": [
-        "<K extends AnnotationDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+        "<K>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1943
@@ -735,23 +781,25 @@
     {
       "path": "ctx.domains.annotations.queries.get",
       "signatures": [
-        "(annotationId: string): Promise<PluginAnnotation | null>"
+        "(annotationId: string): Promise<AnnotationItem | null>"
       ],
+      "doc": "annotations >=1.1.0. Missing IDs return null; read failures reject.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1910
     },
     {
       "path": "ctx.domains.annotations.queries.inspect",
       "signatures": [
-        "(annotationId: string): Promise<import(\"@read-aware/core\").AnnotationSnapshot | null>"
+        "(annotationId: string): Promise<AnnotationSnapshot | null>"
       ],
+      "doc": "annotations >=1.3.0. Read an item and its conditional-write token atomically.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1906
     },
     {
       "path": "ctx.domains.annotations.queries.list",
       "signatures": [
-        "(filter?: { bookId?: string; kind?: \"highlight\" | \"note\" | \"ask\"; query?: string; }): Promise<PluginAnnotation[]>"
+        "(filter?: { bookId?: string; kind?: \"highlight\" | \"note\" | \"ask\"; query?: string; }): Promise<AnnotationItem[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1911
@@ -759,8 +807,9 @@
     {
       "path": "ctx.domains.annotations.queries.page",
       "signatures": [
-        "(input?: import(\"@read-aware/core\").AnnotationPageQuery): Promise<import(\"@read-aware/core\").AnnotationPage>"
+        "(input?: AnnotationPageQuery): Promise<AnnotationPage>"
       ],
+      "doc": "annotations >=1.2.0. Live keyset page, not a frozen snapshot across calls.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1908
     }
@@ -769,7 +818,7 @@
     {
       "path": "ctx.domains.conversations.commands.cancelTurnRequest",
       "signatures": [
-        "(id: string): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot>"
+        "(id: string): Promise<ConversationTurnRequestSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1986
@@ -777,31 +826,34 @@
     {
       "path": "ctx.domains.conversations.commands.clear",
       "signatures": [
-        "(target: import(\"@read-aware/core\").ConversationTarget): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
+        "(target: ConversationTarget): Promise<ConversationControlReceipt>"
       ],
+      "doc": "Clears transcript/hidden thread state after draining turns, not long-term memory or event history.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1995
     },
     {
       "path": "ctx.domains.conversations.commands.createThread",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").ConversationControlReceipt & { draft: true; }>"
+        "(): Promise<ConversationControlReceipt & { draft: true; }>"
       ],
+      "doc": "Creates and selects a global draft; no transcript row until the first message. Does not navigate the app.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1988
     },
     {
       "path": "ctx.domains.conversations.commands.requestTurn",
       "signatures": [
-        "(request: import(\"@read-aware/core\").ConversationTurnRequest): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot>"
+        "(request: ConversationTurnRequest): Promise<ConversationTurnRequestSnapshot>"
       ],
+      "doc": "Requires a mounted conversation. Only a host UI confirmation can adopt/send/retry; receipt is not a completed turn.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1983
     },
     {
       "path": "ctx.domains.conversations.commands.selectThread",
       "signatures": [
-        "(threadId: string): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
+        "(threadId: string): Promise<ConversationControlReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1989
@@ -809,15 +861,16 @@
     {
       "path": "ctx.domains.conversations.commands.stop",
       "signatures": [
-        "(target: import(\"@read-aware/core\").ConversationTarget): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
+        "(target: ConversationTarget): Promise<ConversationControlReceipt>"
       ],
+      "doc": "Stops live UI turns and waits for their final transcript writes. Does not undo tool effects.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1991
     },
     {
       "path": "ctx.domains.conversations.events.observeInvalidation",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ProjectionInvalidation>): PluginDisposable"
+        "(handler: PluginObservationHandler<ProjectionInvalidation>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2001
@@ -827,13 +880,14 @@
       "signatures": [
         "(handler: PluginObservationHandler<PluginConversationRuntimeSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Conversations 1.6: serial reaction deliveries, with an optional stable rule ID.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2005
     },
     {
       "path": "ctx.domains.conversations.events.subscribe",
       "signatures": [
-        "<K extends ConversationDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+        "<K>(event: K, handler: (event: PluginDomainEvent<K>) => unknown, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2000
@@ -841,7 +895,7 @@
     {
       "path": "ctx.domains.conversations.queries.getBookThread",
       "signatures": [
-        "(bookId: string): Promise<PluginChatMessage[]>"
+        "(bookId: string): Promise<ChatMessageSummary[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1977
@@ -849,15 +903,16 @@
     {
       "path": "ctx.domains.conversations.queries.getInsights",
       "signatures": [
-        "(target: import(\"@read-aware/core\").ConversationTarget): Promise<string | null>"
+        "(target: ConversationTarget): Promise<string | null>"
       ],
+      "doc": "Conversations 1.4: stored rolling summary of a book/global thread, or null. No generation, freshness guarantee, raw runtime state or summary writes.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1973
     },
     {
       "path": "ctx.domains.conversations.queries.getThread",
       "signatures": [
-        "(threadId: string): Promise<PluginChatMessage[]>"
+        "(threadId: string): Promise<ChatMessageSummary[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1979
@@ -865,7 +920,7 @@
     {
       "path": "ctx.domains.conversations.queries.listThreads",
       "signatures": [
-        "(): Promise<PluginThreadSummary[]>"
+        "(): Promise<ThreadSummary[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 1978
@@ -881,8 +936,9 @@
     {
       "path": "ctx.domains.conversations.queries.turnRequests",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot[]>"
+        "(): Promise<ConversationTurnRequestSnapshot[]>"
       ],
+      "doc": "Up to 128 recently retained host requests, filtered to this actor; no text or other actors' requests.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 1975
     }
@@ -891,16 +947,18 @@
     {
       "path": "ctx.domains.settings.commands.refreshModelCatalog",
       "signatures": [
-        "(provider: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ModelCatalogPage>"
+        "(provider: string, options?: PluginCallOptions): Promise<ModelCatalogPage>"
       ],
+      "doc": "Settings 1.9: additionally requires service:network. Shared native refresh, not a connection test.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2045
     },
     {
       "path": "ctx.domains.settings.commands.resetReading",
       "signatures": [
-        "(request: import(\"@read-aware/core\").ReadingSettingsReset): Promise<SettingsUpdateResult>"
+        "(request: ReadingSettingsReset): Promise<SettingsUpdateResult>"
       ],
+      "doc": "Settings 1.7: reset the whole reader-preference bundle; every reading path must be writable. defaults restores built-ins; inherit deletes active and remembered book overrides.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2052
     },
@@ -931,24 +989,27 @@
     {
       "path": "ctx.domains.settings.queries.modelCatalog",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ModelCatalogQuery): Promise<import(\"@read-aware/core\").ModelCatalogPage>"
+        "(query: ModelCatalogQuery): Promise<ModelCatalogPage>"
       ],
+      "doc": "Settings 1.9: cached public model metadata; discover access to primaryModel or fastModel. No network.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2015
     },
     {
       "path": "ctx.domains.settings.queries.observe",
       "signatures": [
-        "(query: SettingsQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").SettingsObservation>): PluginDisposable"
+        "(query: SettingsQuery, handler: PluginObservationHandler<SettingsObservation>): PluginDisposable"
       ],
+      "doc": "Settled snapshots after native, domain, remote, restore and catalog changes. Coalesces slow callbacks.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2021
     },
     {
       "path": "ctx.domains.settings.queries.options",
       "signatures": [
-        "(query: import(\"@read-aware/core\").SettingsOptionsQuery): Promise<import(\"@read-aware/core\").SettingsOptionsPage>"
+        "(query: SettingsOptionsQuery): Promise<SettingsOptionsPage>"
       ],
+      "doc": "Settings 1.8: bounded options; same path grants as discover. Includes installed system families for reading/content fonts without font paths or bytes. Since 1.10, dynamicOptions fields invoke the registered owning provider with saved non-secret form values, never caller-supplied values. Network-enabled providers additionally require this caller's service:network permission. Results are cached for 60 seconds, at most 16 lists / 2000 options per list, 512 characters per label/value and 1 MiB of label/value JSON. Pages retain the returned revision; changed settings/provider or expiry require restart. Four provider loads host-wide, 10-second wait; already-started provider work is not cancelled by this deadline or caller retirement. No writes/synthesis. Plugin-owned option queries require the caller's active phase, not activation/migration. Empty results still allow manual values; provider failures remain failures.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2038
     },
@@ -963,8 +1024,9 @@
     {
       "path": "ctx.domains.settings.queries.snapshot",
       "signatures": [
-        "(query?: SettingsQuery): Promise<import(\"@read-aware/core\").SettingsSnapshot>"
+        "(query?: SettingsQuery): Promise<SettingsSnapshot>"
       ],
+      "doc": "Since settings 1.3: one host snapshot after prior queued writes settle, filtered by exact path grants.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2019
     }
@@ -973,7 +1035,7 @@
     {
       "path": "ctx.domains.memory.commands.cancelGraphTask",
       "signatures": [
-        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+        "(bookId: string, taskId: string): Promise<BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2180
@@ -981,7 +1043,7 @@
     {
       "path": "ctx.domains.memory.commands.classify",
       "signatures": [
-        "(input: import(\"@read-aware/core\").BookClassificationChange): Promise<import(\"@read-aware/core\").BookClassificationReceipt>"
+        "(input: BookClassificationChange): Promise<BookClassificationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2172
@@ -989,15 +1051,16 @@
     {
       "path": "ctx.domains.memory.commands.completeOnboarding",
       "signatures": [
-        "(input: import(\"@read-aware/core\").OnboardingChange, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").OnboardingReceipt>"
+        "(input: OnboardingChange, options?: PluginCallOptions): Promise<OnboardingReceipt>"
       ],
+      "doc": "Memory 2.5: confirm the full summary AND seeds before calling. Reuse the same owner-local submissionId and exact candidate after a lost receipt; a different candidate requires a new id and renewed confirmation. Atomic, event-backed.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2165
     },
     {
       "path": "ctx.domains.memory.commands.context.capture",
       "signatures": [
-        "(selector: import(\"@read-aware/core\").ContextBundleSelector, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundleCaptureReceipt>"
+        "(selector: ContextBundleSelector, options?: PluginCallOptions): Promise<ContextBundleCaptureReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2151
@@ -1005,15 +1068,16 @@
     {
       "path": "ctx.domains.memory.commands.decideEntity",
       "signatures": [
-        "(input: import(\"@read-aware/core\").EntityDecision, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").EntityDecisionReceipt>"
+        "(input: EntityDecision, options?: PluginCallOptions): Promise<EntityDecisionReceipt>"
       ],
+      "doc": "Memory 2.1: resolve an original member or merge known resolved classes using an observed entities1 revision. Present the exact change for confirmation first. Retains original definitions/aliases, may sync to other devices. No blind conflict retry. Cancellation prevents dispatch only; dispatched writes drain to their actual receipt. A transport timeout or lost Worker leaves the outcome unknown: reread, never retry blindly.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2140
     },
     {
       "path": "ctx.domains.memory.commands.mutate",
       "signatures": [
-        "(input: import(\"@read-aware/core\").MemoryMutation): Promise<import(\"@read-aware/core\").MemoryMutationReceipt>"
+        "(input: MemoryMutation): Promise<MemoryMutationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2169
@@ -1021,7 +1085,7 @@
     {
       "path": "ctx.domains.memory.commands.retryGraphTask",
       "signatures": [
-        "(bookId: string, taskId: string, options?: import(\"@read-aware/core\").BookGraphTaskOptions): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+        "(bookId: string, taskId: string, options?: BookGraphTaskOptions): Promise<BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2181
@@ -1029,7 +1093,7 @@
     {
       "path": "ctx.domains.memory.commands.startGraphTask",
       "signatures": [
-        "(bookId: string, mode: \"catch-up\" | \"rebuild\", options?: import(\"@read-aware/core\").BookGraphTaskOptions): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+        "(bookId: string, mode: \"catch-up\" | \"rebuild\", options?: BookGraphTaskOptions): Promise<BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2175
@@ -1037,31 +1101,34 @@
     {
       "path": "ctx.domains.memory.commands.updateProfile",
       "signatures": [
-        "(input: import(\"@read-aware/core\").UserProfileChange): Promise<import(\"@read-aware/core\").UserProfileReceipt>"
+        "(input: UserProfileChange): Promise<UserProfileReceipt>"
       ],
+      "doc": "Replace the event-backed summary using the observed profile2 revision. Present the complete candidate for user confirmation before calling. Empty text clears the summary, not memories or historical copies.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2159
     },
     {
       "path": "ctx.domains.memory.events.observe",
       "signatures": [
-        "(query: import(\"@read-aware/core\").MemoryObservationQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").MemoryObservation>): PluginDisposable"
+        "(query: MemoryObservationQuery, handler: PluginObservationHandler<MemoryObservation>): PluginDisposable"
       ],
+      "doc": "Initial snapshot, then changed results/errors; bounded polling, not an event log. Plugins 1.5 supplies a separate reaction delivery, including graph task updates.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2190
     },
     {
       "path": "ctx.domains.memory.queries.bookGraph",
       "signatures": [
-        "(bookId: string, query?: import(\"@read-aware/core\").BookGraphQuery): Promise<import(\"@read-aware/core\").BookGraphResult>"
+        "(bookId: string, query?: BookGraphQuery): Promise<BookGraphResult>"
       ],
+      "doc": "memory >=2.6 only exposes current-source digests; chapter results carry contentVersion for navigation.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2129
     },
     {
       "path": "ctx.domains.memory.queries.classification",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookClassificationSnapshot | null>"
+        "(bookId: string): Promise<BookClassificationSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2123
@@ -1069,7 +1136,7 @@
     {
       "path": "ctx.domains.memory.queries.context.export",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(query: ContextBundleReadQuery, options?: PluginCallOptions): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2098
@@ -1077,7 +1144,7 @@
     {
       "path": "ctx.domains.memory.queries.context.history",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ContextBundleHistoryQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundleHistoryPage>"
+        "(query: ContextBundleHistoryQuery, options?: PluginCallOptions): Promise<ContextBundleHistoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2090
@@ -1085,7 +1152,7 @@
     {
       "path": "ctx.domains.memory.queries.context.read",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundle | null>"
+        "(query: ContextBundleReadQuery, options?: PluginCallOptions): Promise<ContextBundle | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2094
@@ -1093,15 +1160,16 @@
     {
       "path": "ctx.domains.memory.queries.entities",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").EntityQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").EntityPage>"
+        "(query?: EntityQuery, options?: PluginCallOptions): Promise<EntityPage>"
       ],
+      "doc": "Global explicit identities, not book-digest characters. Row-bounded, revision-pinned pages. Memory 2.2 adds canonicalDefinition from the same snapshot. Historical field sizes are not bounded. Aborted/retired callers receive no late page.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2116
     },
     {
       "path": "ctx.domains.memory.queries.getGraphTask",
       "signatures": [
-        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+        "(bookId: string, taskId: string): Promise<BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2124
@@ -1109,7 +1177,7 @@
     {
       "path": "ctx.domains.memory.queries.inspect",
       "signatures": [
-        "(id: string): Promise<import(\"@read-aware/core\").MemorySnapshot | null>"
+        "(id: string): Promise<MemorySnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2122
@@ -1117,7 +1185,7 @@
     {
       "path": "ctx.domains.memory.queries.listGraphTasks",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot[]>"
+        "(bookId: string): Promise<BookGraphTaskSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2125
@@ -1125,7 +1193,7 @@
     {
       "path": "ctx.domains.memory.queries.page",
       "signatures": [
-        "(input: import(\"@read-aware/core\").MemoryPageQuery): Promise<import(\"@read-aware/core\").MemoryPage>"
+        "(input: MemoryPageQuery): Promise<MemoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2127
@@ -1133,23 +1201,25 @@
     {
       "path": "ctx.domains.memory.queries.profile",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").UserProfileQuery): Promise<import(\"@read-aware/core\").UserProfilePage>"
+        "(query?: UserProfileQuery): Promise<UserProfilePage>"
       ],
+      "doc": "The event-backed summary projection; read grant, bounded revision-pinned pages.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2121
     },
     {
       "path": "ctx.domains.memory.queries.profileContext",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").ProfileInspectionQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProfileInspectionPage>"
+        "(query?: ProfileInspectionQuery, options?: PluginCallOptions): Promise<ProfileInspectionPage>"
       ],
+      "doc": "Memory 2.3: inspect the generated summary and provenance, separately from curated profile(). Summary pages count UTF-16 units (4000 default, 16000 max); provenance pages count rows (25 default, 100 max; historical ID sizes are unbounded). Pin every page kind to pctx1. Stale text is inspectable, never current context. Invalid blocks expose no content. Current means source-consistent, not semantic verification or completed consolidation. entityEvidence IDs include proposed no-ops, not proof of emitted events. Read grant; no source text, transcripts, raw traits, registry writes or automatic inference.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2110
     },
     {
       "path": "ctx.domains.memory.queries.search",
       "signatures": [
-        "(input: import(\"@read-aware/core\").MemoryQuery): Promise<import(\"@read-aware/core\").MemoryRecord[]>"
+        "(input: MemoryQuery): Promise<MemoryRecord[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2126
@@ -1303,6 +1373,7 @@
       "signatures": [
         "(changes: PluginDocumentChange[]): Promise<PluginDocumentCommit>"
       ],
+      "doc": "Storage 2.1: atomically compare and apply 1..100 private document changes. Every expected revision is checked before any write. Does not include KV, core domain events, files, or another plugin's documents.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2266
     },
@@ -1311,6 +1382,7 @@
       "signatures": [
         "(name: string): PluginDocumentCollection"
       ],
+      "doc": "A named document collection — structured plugin-private data one tier above the KV (queryable, per-document, optionally book-anchored). Backed by the app's local store; lifecycle belongs to the plugin (uninstall clears it). `bookId`/`anchor` are provenance INDEXES, not ownership — documents survive the referenced book's deletion.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2262
     },
@@ -1325,7 +1397,7 @@
     {
       "path": "ctx.services.storage.documents(collection).get",
       "signatures": [
-        "<T = unknown>(id: string): Promise<PluginDocument<T> | null>"
+        "<T>(id: string): Promise<PluginDocument<T> | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2368
@@ -1333,16 +1405,18 @@
     {
       "path": "ctx.services.storage.documents(collection).list",
       "signatures": [
-        "<T = unknown>(filter?: { bookId?: string; limit?: number; oldestFirst?: boolean; }): Promise<PluginDocument<T>[]>"
+        "<T>(filter?: { bookId?: string; limit?: number; oldestFirst?: boolean; }): Promise<PluginDocument<T>[]>"
       ],
+      "doc": "Newest-first by default.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2371
     },
     {
       "path": "ctx.services.storage.documents(collection).page",
       "signatures": [
-        "<T = unknown>(filter?: PluginDocumentPageFilter): Promise<PluginDocumentPage<T>>"
+        "<T>(filter?: PluginDocumentPageFilter): Promise<PluginDocumentPage<T>>"
       ],
+      "doc": "Storage 2.1: 1..200 rows (default 50), 4 MiB JSON per page. Cursors bind namespace/filter/order and expire on any collection write. On stale-cursor restart rather than combining different snapshots.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2375
     },
@@ -1359,13 +1433,14 @@
       "signatures": [
         "(): Promise<void>"
       ],
+      "doc": "Wait for outstanding writes in this plugin's namespace.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2254
     },
     {
       "path": "ctx.services.storage.get",
       "signatures": [
-        "<T = unknown>(key: string): T | null"
+        "<T>(key: string): T | null"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2246
@@ -1373,16 +1448,18 @@
     {
       "path": "ctx.services.storage.getDurable",
       "signatures": [
-        "<T = unknown>(key: string): Promise<T | null>"
+        "<T>(key: string): Promise<T | null>"
       ],
+      "doc": "2.4: keys up to 1024 UTF-16 units, no NUL. Settle accepted writes, then read this private key from SQLite, not the optimistic mirror. Corrupt JSON rejects; null means absent or JSON null.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2249
     },
     {
       "path": "ctx.services.storage.observeDocuments",
       "signatures": [
-        "<T = unknown>(query: PluginDocumentObservationQuery, handler: PluginObservationHandler<PluginDocumentObservation<T>>): PluginDisposable"
+        "<T>(query: PluginDocumentObservationQuery, handler: PluginObservationHandler<PluginDocumentObservation<T>>): PluginDisposable"
       ],
+      "doc": "Storage 2.2: initial and changed private document query snapshots, including errors/recovery. At most 64 active observers per activation; reads and callbacks settle before the next one-second poll. Not a replayable write stream. Dispose or plugin retirement stops delivery; sequence is not CAS.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2271
     },
@@ -1391,6 +1468,7 @@
       "signatures": [
         "(handler: PluginObservationHandler<{ kind: \"changed\"; }>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Fires when this plugin's namespace is written from OUTSIDE the plugin — its settings page, the reading agent, another surface editing the same object. Settings-key changes can also echo after own writes. Serial callbacks receive a reaction credential; use withEvent to preserve causes. No initial callback; intermediate changes coalesce. Use it to re-read (or re-derive from) settings you would otherwise have cached at activate().",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2284
     },
@@ -1399,6 +1477,7 @@
       "signatures": [
         "(): Promise<PluginStoragePolicy>"
       ],
+      "doc": "Storage 2.5: own persisted usage and actual per-store policy. Null quota means no enforced total limit, not unlimited disk. Call flush first when awaiting this activation's pending writes. No names or secret values. Complete backup refers to full app backup, not reading/OPML exports.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2245
     },
@@ -1415,6 +1494,7 @@
       "signatures": [
         "(key: string, value: unknown): Promise<void>"
       ],
+      "doc": "Reads update optimistically; resolve only after the write is durable.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2251
     }
@@ -1449,15 +1529,16 @@
     {
       "path": "ctx.services.ui.commands.execute",
       "signatures": [
-        "(request: import(\"@read-aware/core\").HostCommandRequest): Promise<import(\"@read-aware/core\").HostCommandReceipt>"
+        "(request: HostCommandRequest): Promise<HostCommandReceipt>"
       ],
+      "doc": "Library write plus each command's setting grant; opening/leaving a reader needs reading:write.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2679
     },
     {
       "path": "ctx.services.ui.commands.list",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").HostCommandSnapshot>"
+        "(): Promise<HostCommandSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2672
@@ -1465,8 +1546,9 @@
     {
       "path": "ctx.services.ui.commands.observe",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostCommandObservation>, options?: { ruleId?: string; }): PluginDisposable"
+        "(handler: PluginObservationHandler<HostCommandObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "UI 1.16: serial/coalesced snapshots with a reaction delivery and optional stable ruleId.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2674
     },
@@ -1483,6 +1565,7 @@
       "signatures": [
         "(url: string): Promise<void>"
       ],
+      "doc": "UI 1.7, requires service:network. Explicit user intent only; HTTP(S), no credentials or local schemes.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2707
     },
@@ -1491,53 +1574,59 @@
       "signatures": [
         "(channel: PluginViewChannel, update: PluginViewUpdate): Promise<PluginViewUpdateReceipt>"
       ],
+      "doc": "Updates only this activation's visible frame. Revision is a nonnegative, increasing safe integer. Receipt confirms host acceptance, not paint; updates cannot navigate or replace the subscription.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2710
     },
     {
       "path": "ctx.services.ui.reader.closeReferencePreview",
       "signatures": [
-        "(id: string): Promise<import(\"@read-aware/core\").ReaderReferenceCloseReceipt>"
+        "(id: string): Promise<ReaderReferenceCloseReceipt>"
       ],
+      "doc": "Only this activation's current preview ID; never closes a native or other owner's note.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2759
     },
     {
       "path": "ctx.services.ui.reader.focus",
       "signatures": [
-        "(target: import(\"@read-aware/core\").ReaderFocusTarget, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderFocusReceipt>"
+        "(target: ReaderFocusTarget, guard?: ReadingSessionGuard): Promise<ReaderFocusReceipt>"
       ],
+      "doc": "UI 1.14, reading:write. Focus an already visible semantic target, without opening or dismissing UI. not-focused is not success; close your own dialog before returning focus.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2749
     },
     {
       "path": "ctx.services.ui.reader.image.control",
       "signatures": [
-        "(request: import(\"@read-aware/core\").ReaderImageRequest): Promise<import(\"@read-aware/core\").ReaderImageReceipt>"
+        "(request: ReaderImageRequest): Promise<ReaderImageReceipt>"
       ],
+      "doc": "reading:write; exact current viewer ID required. Pan deltas are fractions of its viewport.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2721
     },
     {
       "path": "ctx.services.ui.reader.image.observe",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ReaderImageSnapshot | null>): PluginDisposable"
+        "(handler: PluginObservationHandler<ReaderImageSnapshot | null>): PluginDisposable"
       ],
+      "doc": "Plugins 1.6 supplies a separate reaction delivery, including closed/null snapshots.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2717
     },
     {
       "path": "ctx.services.ui.reader.image.open",
       "signatures": [
-        "(query: import(\"@read-aware/core\").BookImageQuery, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderImageOpenReceipt>"
+        "(query: BookImageQuery, guard?: ReadingSessionGuard): Promise<ReaderImageOpenReceipt>"
       ],
+      "doc": "UI 1.13: library read + reading write; opens an embedded image in the current book.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2725
     },
     {
       "path": "ctx.services.ui.reader.image.snapshot",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").ReaderImageSnapshot | null>"
+        "(): Promise<ReaderImageSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2715
@@ -1545,39 +1634,43 @@
     {
       "path": "ctx.services.ui.reader.observe",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ReaderPanelsSnapshot | null>): PluginDisposable"
+        "(handler: PluginObservationHandler<ReaderPanelsSnapshot | null>): PluginDisposable"
       ],
+      "doc": "Plugins 1.6 supplies a separate reaction delivery; callbacks are serial and coalesced.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2732
     },
     {
       "path": "ctx.services.ui.reader.previewReference",
       "signatures": [
-        "(query: import(\"@read-aware/core\").BookReferenceQuery, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderReferencePreviewReceipt>"
+        "(query: BookReferenceQuery, guard?: ReadingSessionGuard): Promise<ReaderReferencePreviewReceipt>"
       ],
+      "doc": "UI 1.8: also needs library:read. Open book only; resolved preview waits for DOM commit.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2754
     },
     {
       "path": "ctx.services.ui.reader.setPanel",
       "signatures": [
-        "(panel: import(\"@read-aware/core\").ReaderPanel, open: boolean, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderPanelReceipt>"
+        "(panel: ReaderPanel, open: boolean, guard?: ReadingSessionGuard): Promise<ReaderPanelReceipt>"
       ],
+      "doc": "Requires reading:write. Opening reveals controls; completion waits for persistence and DOM commit.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2736
     },
     {
       "path": "ctx.services.ui.reader.setWidth",
       "signatures": [
-        "(panel: import(\"@read-aware/core\").ResizableReaderPanel, width: number, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderPanelReceipt>"
+        "(panel: ResizableReaderPanel, width: number, guard?: ReadingSessionGuard): Promise<ReaderPanelReceipt>"
       ],
+      "doc": "Persist a shared TOC/chat width (integer 240..640 CSS px); does not open it or focus.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2742
     },
     {
       "path": "ctx.services.ui.reader.snapshot",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").ReaderPanelsSnapshot | null>"
+        "(): Promise<ReaderPanelsSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2730
@@ -1593,7 +1686,7 @@
     {
       "path": "ctx.services.ui.window.control",
       "signatures": [
-        "(request: import(\"@read-aware/core\").HostWindowRequest): Promise<import(\"@read-aware/core\").HostWindowReceipt>"
+        "(request: HostWindowRequest): Promise<HostWindowReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2666
@@ -1601,15 +1694,16 @@
     {
       "path": "ctx.services.ui.window.observe",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostWindowObservation>, options?: { ruleId?: string; }): PluginDisposable"
+        "(handler: PluginObservationHandler<HostWindowObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "UI 1.17: reaction delivery remains valid until the callback settles.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2662
     },
     {
       "path": "ctx.services.ui.window.snapshot",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").HostWindowSnapshot>"
+        "(): Promise<HostWindowSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2660
@@ -1617,23 +1711,25 @@
     {
       "path": "ctx.services.ui.workspace.navigate",
       "signatures": [
-        "(target: import(\"@read-aware/core\").WorkspaceTarget, expectedRevision?: number): Promise<import(\"@read-aware/core\").WorkspaceReceipt>"
+        "(target: WorkspaceTarget, expectedRevision?: number): Promise<WorkspaceReceipt>"
       ],
+      "doc": "Library write grant; leaving an active reader additionally requires reading:write.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2699
     },
     {
       "path": "ctx.services.ui.workspace.observe",
       "signatures": [
-        "(query: import(\"@read-aware/core\").WorkspaceQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").WorkspaceSnapshot | null>, options?: { ruleId?: string; }): PluginDisposable"
+        "(query: WorkspaceQuery, handler: PluginObservationHandler<WorkspaceSnapshot | null>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "UI 1.16: use the separate reaction delivery even for null/retired snapshots.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2693
     },
     {
       "path": "ctx.services.ui.workspace.snapshot",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").WorkspaceQuery): Promise<import(\"@read-aware/core\").WorkspaceSnapshot>"
+        "(query?: WorkspaceQuery): Promise<WorkspaceSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2689
@@ -1643,7 +1739,7 @@
     {
       "path": "ctx.services.schedules.bind",
       "signatures": [
-        "(scheduleId: string, run: (context: import(\"@read-aware/core\").PluginScheduleRun, delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
+        "(scheduleId: string, run: (context: PluginScheduleRun, delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2763
@@ -1651,39 +1747,43 @@
     {
       "path": "ctx.services.schedules.cancelDeferred",
       "signatures": [
-        "(id: string, requestId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginDeferredReceipt>"
+        "(id: string, requestId: string, options?: PluginCallOptions): Promise<PluginDeferredReceipt>"
       ],
+      "doc": "Cancel exactly the queued ID, not an in-flight callback or a replacement request.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2780
     },
     {
       "path": "ctx.services.schedules.control",
       "signatures": [
-        "(id: string, action: \"pause\" | \"resume\" | \"run\"): Promise<import(\"@read-aware/core\").PluginScheduleReceipt>"
+        "(id: string, action: \"pause\" | \"resume\" | \"run\"): Promise<PluginScheduleReceipt>"
       ],
+      "doc": "Pause/resume persist; run bypasses pause/cadence once. Neither pause nor cancellation undoes dispatched callback effects.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2795
     },
     {
       "path": "ctx.services.schedules.defer",
       "signatures": [
-        "(id: string, input: import(\"@read-aware/core\").PluginDeferredRequest, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginDeferredReceipt>"
+        "(id: string, input: PluginDeferredRequest, options?: PluginCallOptions): Promise<PluginDeferredReceipt>"
       ],
+      "doc": "Schedules 2: enqueue one declared deferred task. Persists before acknowledgement. 1 second..7 days; idle means 5 seconds without host input. Never runs while closed. The most recent request ID is retained for retry; changed input conflicts, another queued ID is busy. A dispatched request is never automatically replayed after a crash. Inspect interrupted and decide explicitly.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2774
     },
     {
       "path": "ctx.services.schedules.list",
       "signatures": [
-        "(query?: Omit<import(\"@read-aware/core\").PluginScheduleQuery, \"pluginId\">): Promise<import(\"@read-aware/core\").PluginSchedulePage>"
+        "(query?: Omit<PluginScheduleQuery, \"pluginId\">): Promise<PluginSchedulePage>"
       ],
+      "doc": "Bound schedules owned by this plugin only, with the latest persisted attempt/outcome.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2786
     },
     {
       "path": "ctx.services.schedules.observe",
       "signatures": [
-        "(query: Omit<import(\"@read-aware/core\").PluginScheduleQuery, \"pluginId\">, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginSchedulePage>, options?: { ruleId?: string; }): PluginDisposable"
+        "(query: Omit<PluginScheduleQuery, \"pluginId\">, handler: PluginObservationHandler<PluginSchedulePage>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2789
@@ -1693,159 +1793,169 @@
     {
       "path": "ctx.services.jobs.control",
       "signatures": [
-        "(id: string, action: import(\"@read-aware/core\").DurableJobControl, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
+        "(id: string, action: DurableJobControl, options?: PluginCallOptions): Promise<DurableJobSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2965
+      "line": 2976
     },
     {
       "path": "ctx.services.jobs.get",
       "signatures": [
-        "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
+        "(id: string, options?: PluginCallOptions): Promise<DurableJobSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2960
+      "line": 2971
     },
     {
       "path": "ctx.services.jobs.list",
       "signatures": [
-        "(query?: { offset?: number; limit?: number; }, options?: PluginCallOptions): Promise<{ jobs: import(\"@read-aware/core\").DurableJobSnapshot[]; nextOffset: number | null; }>"
+        "(query?: { offset?: number; limit?: number; }, options?: PluginCallOptions): Promise<{ jobs: DurableJobSnapshot[]; nextOffset: number | null; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2961
+      "line": 2972
     },
     {
       "path": "ctx.services.jobs.start",
       "signatures": [
-        "(plan: import(\"@read-aware/core\").DurableJobPlan, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
+        "(plan: DurableJobPlan, options?: PluginCallOptions): Promise<DurableJobSnapshot>"
       ],
+      "doc": "jobs 1.1: event-bound starts preserve their source through restart. Every causal event subscription must have a stable ruleId. Unnamed reactions and isolated service invocations cannot create saved jobs.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2956
+      "line": 2967
     }
   ],
   "services:changes": [
     {
       "path": "ctx.services.changes.open",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ChangesQuery, options?: PluginCallOptions): Promise<{ cursor: string; }>"
+        "(query: ChangesQuery, options?: PluginCallOptions): Promise<{ cursor: string; }>"
       ],
+      "doc": "Open before loading a baseline. Persist the returned cursor only after processing each page. Expired cursors require a new baseline. Notices are conservative reload hints, not events or values; settings hints cover the authorized requested paths in a shared storage namespace.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2944
+      "line": 2955
     },
     {
       "path": "ctx.services.changes.read",
       "signatures": [
-        "(query: import(\"@read-aware/core\").ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ChangesPage>"
+        "(query: ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<ChangesPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2945
+      "line": 2956
     }
   ],
   "services:transactions": [
     {
       "path": "ctx.services.transactions.commit",
       "signatures": [
-        "(previewId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicReceipt>"
+        "(previewId: string, options?: PluginCallOptions): Promise<AtomicReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2978
+      "line": 2989
     },
     {
       "path": "ctx.services.transactions.preview",
       "signatures": [
-        "(operations: import(\"@read-aware/core\").AtomicOperation[], options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicPreview>"
+        "(operations: AtomicOperation[], options?: PluginCallOptions): Promise<AtomicPreview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2974
+      "line": 2985
     },
     {
       "path": "ctx.services.transactions.previewUndo",
       "signatures": [
-        "(receiptId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicPreview>"
+        "(receiptId: string, options?: PluginCallOptions): Promise<AtomicPreview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2979
+      "line": 2990
     },
     {
       "path": "ctx.services.transactions.receipt",
       "signatures": [
-        "(receiptId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicReceipt | null>"
+        "(receiptId: string, options?: PluginCallOptions): Promise<AtomicReceipt | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2980
+      "line": 2991
     }
   ],
   "services:session": [
     {
       "path": "ctx.services.session.environment",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").HostEnvironmentSnapshot>"
+        "(): Promise<HostEnvironmentSnapshot>"
       ],
+      "doc": "Fresh non-sensitive metadata; contains no reading or account state.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2991
+      "line": 3002
     },
     {
       "path": "ctx.services.session.observeEnvironment",
       "signatures": [
-        "(handler: (snapshot: import(\"@read-aware/core\").HostEnvironmentSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
+        "(handler: (snapshot: HostEnvironmentSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Session 2.7: locale effects retain their requester; other system facts keep independent sources.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2994
+      "line": 3005
     },
     {
       "path": "ctx.services.session.operationAvailability",
       "signatures": [
-        "(query: import(\"@read-aware/core\").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").OperationAvailability>"
+        "(query: OperationAvailabilityQuery, options?: PluginCallOptions): Promise<OperationAvailability>"
       ],
+      "doc": "Session 2.11: inspect host command permissions/workspace guards and plugin service contract/authority/capacity (Agent approval remains required), export metadata/save entry and clipboard/browser entry availability (no OS access probe), window support/capacity/target state, sync connection/credentials/provider, inference, book-targeted playback/mode, text preparation and graph prerequisites without executing or probing. Missing permission returns only the permission condition. Unknown remote health is not a local refusal or a success guarantee.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2986
+      "line": 2997
     }
   ],
   "services:plugins": [
     {
       "path": "ctx.services.plugins.callService",
       "signatures": [
-        "(request: import(\"@read-aware/core\").PluginServiceCall, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginServiceReceipt>"
+        "(request: PluginServiceCall, options?: PluginCallOptions): Promise<PluginServiceReceipt>"
       ],
+      "doc": "Executes one declared export in a fresh restricted Worker. No live-root closures, callbacks, binary handles, automatic retries, or resources surviving the call.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2805
     },
     {
       "path": "ctx.services.plugins.contributions",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").PluginContributionQuery): Promise<import(\"@read-aware/core\").PluginContributionPage>"
+        "(query?: PluginContributionQuery): Promise<PluginContributionPage>"
       ],
+      "doc": "Registered identities across extension points, never provider callbacks, data, settings or a grant to invoke another plugin. Offset pages may change.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2811
     },
     {
       "path": "ctx.services.plugins.list",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").PluginDirectoryQuery): Promise<import(\"@read-aware/core\").PluginDirectoryPage>"
+        "(query?: PluginDirectoryQuery): Promise<PluginDirectoryPage>"
       ],
+      "doc": "Public installed metadata only, no settings, paths, secrets or raw errors.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2820
     },
     {
       "path": "ctx.services.plugins.listServices",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").PluginServiceQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginServicePage>"
+        "(query?: PluginServiceQuery, options?: PluginCallOptions): Promise<PluginServicePage>"
       ],
+      "doc": "Plugins 1.8: authorized service contracts; discovery does not execute providers.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2799
     },
     {
       "path": "ctx.services.plugins.observe",
       "signatures": [
-        "(query: import(\"@read-aware/core\").PluginDirectoryQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginDirectoryPage>, options?: { ruleId?: string; }): PluginDisposable"
+        "(query: PluginDirectoryQuery, handler: PluginObservationHandler<PluginDirectoryPage>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Plugins 1.10: serial reaction deliveries with stable rule IDs; reload offset pages after changes.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2824
     },
     {
       "path": "ctx.services.plugins.observeContributions",
       "signatures": [
-        "(query: import(\"@read-aware/core\").PluginContributionQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginContributionPage>, options?: { ruleId?: string; }): PluginDisposable"
+        "(query: PluginContributionQuery, handler: PluginObservationHandler<PluginContributionPage>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2814
@@ -1855,15 +1965,16 @@
     {
       "path": "ctx.services.maintenance.checkForUpdates",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").HostMaintenanceSnapshot>"
+        "(): Promise<HostMaintenanceSnapshot>"
       ],
+      "doc": "Requires service:network. Uses the host release feed; no caller-supplied URL or silent installation.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2854
     },
     {
       "path": "ctx.services.maintenance.observe",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostMaintenanceSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+        "(handler: PluginObservationHandler<HostMaintenanceSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2842
@@ -1871,31 +1982,34 @@
     {
       "path": "ctx.services.maintenance.openSettings",
       "signatures": [
-        "(surface: import(\"@read-aware/core\").HostMaintenanceSurface): ReturnType<import(\"@read-aware/core\").HostMaintenancePort[\"openSettings\"]>"
+        "(surface: \"updates\" | \"diagnostics\" | \"plugins\" | \"backup-import\" | \"backup-export\" | \"delete-data\" | \"ai-connection\" | \"data-location\"): Promise<{ status: \"opened\"; surface: HostMaintenanceSurface; }>"
       ],
+      "doc": "Maintenance 1.4 adds data-location: shows the directory in host UI, never returns its path or opens the file manager. Also reveals updates/diagnostics/plugins/backup-import/backup-export/delete-data/ai-connection. Does not click controls, open file dialogs, approve installation or bypass typed DELETE.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2850
     },
     {
       "path": "ctx.services.maintenance.requestBackup",
       "signatures": [
-        "(action: import(\"@read-aware/core\").BackupAction, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BackupReceipt>"
+        "(action: BackupAction, options?: PluginCallOptions): Promise<BackupReceipt>"
       ],
+      "doc": "Reveals a host backup button and awaits the user's click and file dialog. Both directions use the complete encrypted archive (host-only password); import adds host review and confirmation, then reload. Retired v1 JSON library backups are rejected. No passwords, bytes or paths are returned.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2837
     },
     {
       "path": "ctx.services.maintenance.requestConnectionTest",
       "signatures": [
-        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ConnectionTestReceipt>"
+        "(options?: PluginCallOptions): Promise<ConnectionTestReceipt>"
       ],
+      "doc": "Maintenance 1.3: reveal native AI test controls; only the user's click starts inference.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2832
     },
     {
       "path": "ctx.services.maintenance.snapshot",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").HostMaintenanceSnapshot>"
+        "(): Promise<HostMaintenanceSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2841
@@ -1905,15 +2019,16 @@
     {
       "path": "ctx.services.diagnostics.requestProjectionRepair",
       "signatures": [
-        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProjectionRepairReceipt>"
+        "(options?: PluginCallOptions): Promise<ProjectionRepairReceipt>"
       ],
+      "doc": "Diagnostics 1.2: opens host confirmation; a committed repair requires reload.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2859
     },
     {
       "path": "ctx.services.diagnostics.requestReport",
       "signatures": [
-        "(action: import(\"@read-aware/core\").DiagnosticsReportAction, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DiagnosticsReportReceipt>"
+        "(action: DiagnosticsReportAction, options?: PluginCallOptions): Promise<DiagnosticsReportReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2860
@@ -1921,7 +2036,7 @@
     {
       "path": "ctx.services.diagnostics.verifyProjections",
       "signatures": [
-        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProjectionVerification>"
+        "(options?: PluginCallOptions): Promise<ProjectionVerification>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2864
@@ -1941,6 +2056,7 @@
       "signatures": [
         "(entry: PluginLogEntry): Promise<PluginLogReceipt>"
       ],
+      "doc": "Logging 1.0: accepted means forwarded to the best-effort host logger, not durably stored or uploaded. Allowed during activation and migration. Debug is development-console-only. Retired activations cannot write.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2607
     }
@@ -1949,7 +2065,7 @@
     {
       "path": "ctx.services.resources.append",
       "signatures": [
-        "(id: string, offset: number, data: Uint8Array | ArrayBuffer): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(id: string, offset: number, data: ArrayBuffer | Uint8Array<ArrayBufferLike>): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2911
@@ -1965,7 +2081,7 @@
     {
       "path": "ctx.services.resources.assets.get",
       "signatures": [
-        "(key: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAsset | null>"
+        "(key: string, options?: PluginCallOptions): Promise<PluginAsset | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2884
@@ -1973,7 +2089,7 @@
     {
       "path": "ctx.services.resources.assets.list",
       "signatures": [
-        "(query?: import(\"@read-aware/core\").PluginAssetQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetPage>"
+        "(query?: PluginAssetQuery, options?: PluginCallOptions): Promise<PluginAssetPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2880
@@ -1981,7 +2097,7 @@
     {
       "path": "ctx.services.resources.assets.open",
       "signatures": [
-        "(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2890
@@ -1989,7 +2105,7 @@
     {
       "path": "ctx.services.resources.assets.policy",
       "signatures": [
-        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetPolicy>"
+        "(options?: PluginCallOptions): Promise<PluginAssetPolicy>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2879
@@ -1997,7 +2113,7 @@
     {
       "path": "ctx.services.resources.assets.store",
       "signatures": [
-        "(resourceId: string, input: import(\"@read-aware/core\").PluginAssetWrite, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetReceipt>"
+        "(resourceId: string, input: PluginAssetWrite, options?: PluginCallOptions): Promise<PluginAssetReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2885
@@ -2005,7 +2121,7 @@
     {
       "path": "ctx.services.resources.commit",
       "signatures": [
-        "(id: string): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(id: string): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2912
@@ -2013,7 +2129,7 @@
     {
       "path": "ctx.services.resources.create",
       "signatures": [
-        "(options: import(\"@read-aware/core\").ResourceCreateOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(options: ResourceCreateOptions): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2908
@@ -2021,7 +2137,7 @@
     {
       "path": "ctx.services.resources.listDirectory",
       "signatures": [
-        "(id: string, query?: import(\"@read-aware/core\").ResourceDirectoryQuery): Promise<import(\"@read-aware/core\").ResourceDirectoryPage>"
+        "(id: string, query?: ResourceDirectoryQuery): Promise<ResourceDirectoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2870
@@ -2031,29 +2147,32 @@
       "signatures": [
         "(id: string, options?: PluginCallOptions): Promise<{ opened: boolean; }>"
       ],
+      "doc": "Resources 1.5: host confirmation then OS association for a temporary document/media copy. No edit-back, arbitrary program/path, or context bundles. True is dispatch, not rendering.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2916
     },
     {
       "path": "ctx.services.resources.openBook",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").ResourceRef | null>"
+        "(bookId: string): Promise<ResourceRef | null>"
       ],
+      "doc": "Requires library:read. Original local file only; no implicit remote download.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2905
     },
     {
       "path": "ctx.services.resources.openCover",
       "signatures": [
-        "(bookId: string): Promise<import(\"@read-aware/core\").ResourceRef | null>"
+        "(bookId: string): Promise<ResourceRef | null>"
       ],
+      "doc": "Resources 1.1; requires library:read. No extraction/download when the cover is unavailable.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2907
     },
     {
       "path": "ctx.services.resources.openDirectoryFile",
       "signatures": [
-        "(id: string, relativePath: string): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(id: string, relativePath: string): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2874
@@ -2061,7 +2180,7 @@
     {
       "path": "ctx.services.resources.pick",
       "signatures": [
-        "(options?: import(\"@read-aware/core\").ResourcePickOptions): Promise<{ cancelled: boolean; resources: import(\"@read-aware/core\").ResourceRef[]; }>"
+        "(options?: ResourcePickOptions): Promise<{ cancelled: boolean; resources: ResourceRef[]; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2901
@@ -2069,15 +2188,16 @@
     {
       "path": "ctx.services.resources.pickDirectory",
       "signatures": [
-        "(): Promise<{ cancelled: boolean; directory: import(\"@read-aware/core\").ResourceDirectoryRef | null; }>"
+        "(): Promise<{ cancelled: boolean; directory: ResourceDirectoryRef | null; }>"
       ],
+      "doc": "Resources 1.4: reader-selected, read-only directory grants; four per activation, one hour. No ambient paths. Listings are live; openDirectoryFile seals the current file bytes.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2869
     },
     {
       "path": "ctx.services.resources.read",
       "signatures": [
-        "(id: string, offset: number, length: number): Promise<import(\"@read-aware/core\").ResourceChunk>"
+        "(id: string, offset: number, length: number): Promise<ResourceChunk>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2910
@@ -2087,6 +2207,7 @@
       "signatures": [
         "(id: string): Promise<void>"
       ],
+      "doc": "Also aborts uncommitted writes.",
       "source": "packages/plugin-types/src/index.ts",
       "line": 2918
     },
@@ -2109,7 +2230,7 @@
     {
       "path": "ctx.services.resources.stat",
       "signatures": [
-        "(id: string): Promise<import(\"@read-aware/core\").ResourceRef>"
+        "(id: string): Promise<ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
       "line": 2909
@@ -2119,66 +2240,74 @@
     {
       "path": "ctx.services.sync.account",
       "signatures": [
-        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"account\"]>"
+        "(): Promise<HostSyncAccount | null>"
       ],
+      "doc": "Explicit remote read of the account's tier, usage and limits; null without an account. No email, account ID, keys, session or billing ticket.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2926
+      "line": 2929
     },
     {
       "path": "ctx.services.sync.backlog",
       "signatures": [
-        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"backlog\"]>"
+        "(): Promise<{ events: number; blobs: number; }>"
       ],
+      "doc": "Events and blobs waiting to be pushed.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2925
+      "line": 2926
     },
     {
       "path": "ctx.services.sync.connectionOptions",
       "signatures": [
         "(): Promise<{ ref: string; label: string; }[]>"
       ],
+      "doc": "Registered backend references and display labels, never endpoint credentials.",
       "source": "packages/core/src/host-sync.ts",
-      "line": 52
+      "line": 63
     },
     {
       "path": "ctx.services.sync.observe",
       "signatures": [
-        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostSyncSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+        "(handler: PluginObservationHandler<HostSyncSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
+      "doc": "Delivers each new sync snapshot (state, progress, completed cycles) while the handle lives.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2933
+      "line": 2944
     },
     {
       "path": "ctx.services.sync.openSettings",
       "signatures": [
-        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"openSettings\"]>"
+        "(): Promise<{ status: \"opened\"; surface: \"dataSync\"; }>"
       ],
+      "doc": "Opens the host Data & Sync page; not a login, disconnect or purchase.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2928
+      "line": 2936
     },
     {
       "path": "ctx.services.sync.requestFlow",
       "signatures": [
-        "(request: import(\"@read-aware/core\").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"requestFlow\"]>"
+        "(request: HostSyncFlowRequest, options?: PluginCallOptions): Promise<HostSyncFlowReceipt>"
       ],
+      "doc": "Host-owned connect, disconnect, account deletion, upgrade or billing flow. Waits for the final local outcome or external handoff; cancellation cannot undo a started operation.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2929
+      "line": 2939
     },
     {
       "path": "ctx.services.sync.requestSync",
       "signatures": [
-        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"requestSync\"]>"
+        "(): Promise<HostSyncReceipt>"
       ],
+      "doc": "Runs one sync round on the configured backend (relay or a transport plugin such as WebDAV) and resolves when it has finished: `completed`, or `already-running` when a round was in progress (not queued again). Rejects with a coded error when no round can start (`ui/unavailable`) or the round fails (classified failures carry `sync/*` codes).",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2927
+      "line": 2934
     },
     {
       "path": "ctx.services.sync.snapshot",
       "signatures": [
         "(): Promise<HostSyncSnapshot>"
       ],
+      "doc": "Current sync state: backend, connection, progress, last cycle and last error code.",
       "source": "packages/core/src/host-sync.ts",
-      "line": 43
+      "line": 44
     }
   ],
   "services:network": [
@@ -2187,40 +2316,45 @@
       "signatures": [
         "(id: string): Promise<void>"
       ],
+      "doc": "Idempotent for this activation's released/unknown IDs. Aborts pending reads; does not undo remote effects or remove data already saved by the plugin.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3063
+      "line": 3074
     },
     {
       "path": "ctx.services.network.fetch",
       "signatures": [
         "(input: string | URL | Request, init?: RequestInit, options?: { retry?: \"none\" | \"safe\"; }): Promise<Response>"
       ],
+      "doc": "Native HTTP; Request/init semantics and cancellation survive the Worker bridge. Bodies are buffered up to 64 MiB per direction. Calls have a 120s deadline; an abort does not undo a remote side effect already committed by the server. Network 2.0 requires networkAccess for the initial URL and each redirect. HTTPS -> HTTP redirects are denied. At most 10 redirects; manual returns the 3xx response, error rejects. Cross-origin hops drop authorization, proxy-authorization, cookie and referer; custom secret headers are the plugin's responsibility (use redirect:error for authenticated endpoints). Host/content-length are transport-owned. No implicit retry or cookie jar. Network 2.2: options.retry=\"safe\" opts GET/HEAD without a body into at most two retries across the whole redirect chain, before response headers are returned. Other methods and all body reads are never replayed. The original deadline includes backoff; Retry-After above 30s returns the HTTP response. Attempts/uploads/read chunks share per-owner and host cumulative quotas; reactivation does not reset owner debt. policy() reports exact limits. Transport failures carry plugin/network-failed; explicit deadlines carry plugin/network-timeout, aborts plugin/cancelled. Existing structured codes survive unchanged. Unclassified native errors are not guessed from prose. HTTP error statuses still return Response; the consumer decides success.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3044
+      "line": 3055
     },
     {
       "path": "ctx.services.network.openStream",
       "signatures": [
         "(input: string | URL | Request, init?: RequestInit, options?: { retry?: \"none\" | \"safe\"; }): Promise<PluginNetworkStream>"
       ],
+      "doc": "Network 2.1: headers first; download at most 1 GiB without buffering the whole response. Uploads remain capped at 64 MiB. 8 active requests per activation / 32 host-wide, shared with fetch; no hidden durable queue. Optional safe retry applies only before this opening receipt, as in fetch. init.signal cancels OPENING only; after receipt use closeStream to cancel. Close in finally if not reading to EOF. 120s absolute lifetime, including headers/redirects/reads; unload cancels and drains native resources.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3052
+      "line": 3063
     },
     {
       "path": "ctx.services.network.policy",
       "signatures": [
         "(): Promise<PluginNetworkAccess & { maxRedirects: number; maxBodyBytes: number; timeoutMs: number; maxStreamBytes: number; maxChunkBytes: number; maxConcurrentRequests: number; maxHostConcurrentRequests: number; cumulative: { windowMs: number; maxOwnerRequests: number; maxHostRequests: number; maxOwnerBytes: number; maxHostBytes: number; maxOwners: number; }; retry: { maxRetries: number; baseDelayMs: number; maxDelayMs: number; statuses: readonly number[]; }; }>"
       ],
+      "doc": "Network 2.0: this activation's immutable authorization and transport limits. All-origins authorization is [\"*\"], not a guarantee of endpoint reachability.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3005
+      "line": 3016
     },
     {
       "path": "ctx.services.network.readStream",
       "signatures": [
         "(id: string, offset: number, maxBytes?: number): Promise<PluginNetworkChunk>"
       ],
+      "doc": "Sequential, non-replayable reads. offset must equal bytes already delivered. One outstanding read per stream; maxBytes defaults to 64 KiB, max 1 MiB. A lost read receipt is not safely retryable: close and restart explicitly.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3060
+      "line": 3071
     }
   ],
   "services:llm": [
@@ -2231,58 +2365,63 @@
         "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<unknown>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3080
+      "line": 3091
     },
     {
       "path": "ctx.services.llm.askDetailed",
       "signatures": [
-        "(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void; }): Promise<import(\"@read-aware/core\").InferenceResult<string>>",
-        "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<import(\"@read-aware/core\").InferenceResult>"
+        "(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void; }): Promise<InferenceResult<string>>",
+        "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<InferenceResult<unknown>>"
       ],
+      "doc": "llm 1.3: same execution as ask, with per-attempt metadata on success. Includes structured retries; failure/cancellation rejects, not a billing receipt.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3084
+      "line": 3095
     },
     {
       "path": "ctx.services.llm.cancelRequest",
       "signatures": [
-        "(requestId: string): Promise<import(\"@read-aware/core\").InferenceRequestReceipt | null>"
+        "(requestId: string): Promise<InferenceRequestReceipt | null>"
       ],
+      "doc": "Requests cancellation independently of the ask RPC. The returned snapshot may still be running; query again for its outcome and provider settlement.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3101
+      "line": 3112
     },
     {
       "path": "ctx.services.llm.getRequest",
       "signatures": [
-        "(requestId: string): Promise<import(\"@read-aware/core\").InferenceRequestReceipt | null>"
+        "(requestId: string): Promise<InferenceRequestReceipt | null>"
       ],
+      "doc": "llm 1.6: last 64 named requests in this plugin's local private storage. Initial metadata commits before inference dispatch; no prompt/output is retained. Includes backup/rollback and uninstall cleanup, not roaming or billing history. requestAvailable identifies this activation's handle. An older unsettled record has interrupted=true: status is last observed, not proof it still runs remotely. No automatic retry/resume; historical IDs cannot control another activation. Late terminal usage is persisted; unknown/evicted IDs return null.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3097
+      "line": 3108
     },
     {
       "path": "ctx.services.llm.listRequests",
       "signatures": [
-        "(): Promise<import(\"@read-aware/core\").InferenceRequestReceipt[]>"
+        "(): Promise<InferenceRequestReceipt[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3098
+      "line": 3109
     },
     {
       "path": "ctx.services.llm.policy",
       "signatures": [
         "(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number; maxTotalOutputTokensLimit: number; maxOutputCharsLimit: number; maxInputChars: number; }>"
       ],
+      "doc": "Plugin inference limits, not billing quotas. maxOutputTokensLimit since 1.3.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3067
+      "line": 3078
     }
   ],
   "services:clipboard": [
     {
       "path": "ctx.services.clipboard.writeImage",
       "signatures": [
-        "(resourceId: string): Promise<import(\"@read-aware/core\").ResourceImageReceipt>"
+        "(resourceId: string): Promise<ResourceImageReceipt>"
       ],
+      "doc": "Clipboard 1.1. This activation's sealed resource; raster decode stays in the host.",
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3106
+      "line": 3117
     },
     {
       "path": "ctx.services.clipboard.writeText",
@@ -2290,7 +2429,7 @@
         "(text: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 3104
+      "line": 3115
     }
   ],
   "schemas:views": [],

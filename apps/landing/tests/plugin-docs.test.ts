@@ -14,6 +14,7 @@ import {
 import { inspectManifest, pluginPermissionPreviewCopy } from "../src/lib/plugin-manifest-preview";
 import { docHeadings } from "../src/lib/doc-headings";
 import { LOCALES } from "../src/lib/i18n";
+import released from "../src/lib/released-capabilities.generated.json";
 
 const descriptions = Object.fromEntries(
   Object.entries(en.capabilityBrowser.descriptions).map(([key, value]) => [key.replace("__", ":"), value]),
@@ -145,6 +146,34 @@ test("starting fragments use catalog versions and distinguish domain access from
     read: ["appearance.theme"],
   });
   expect(capabilityManifest(get("schemas:themes")).permissions).toEqual(["ui:themes"]);
+});
+
+test("starting fragments and doc manifests target the latest release", () => {
+  const catalog = released.capabilities as Record<string, Record<string, { version: string }>>;
+  for (const entry of CAPABILITIES) {
+    const version = catalog[entry.family]?.[entry.id]?.version;
+    expect(entry.releasedVersion, entry.key).toBe(version);
+    const range = (capabilityManifest(entry).requires as Record<string, Record<string, string>>)[entry.family]![
+      entry.id
+    ];
+    expect(range, entry.key).toBe(`^${version ?? entry.version}`);
+  }
+  const manifests = [
+    JSON.parse(
+      blocks(en.pages.pluginsDevelop.body)
+        .find((block) => block.startsWith("```json"))!
+        .slice(8, -3),
+    ),
+    JSON.parse(en.sampleManifest),
+  ];
+  for (const manifest of manifests) {
+    for (const [family, entries] of Object.entries(manifest.requires as Record<string, Record<string, string>>)) {
+      for (const [id, range] of Object.entries(entries)) {
+        const version = catalog[family]?.[id]?.version;
+        expect(version && Bun.semver.satisfies(version, range), `${manifest.id}: ${family}.${id} ${range}`).toBe(true);
+      }
+    }
+  }
 });
 
 test("minimal command example typechecks against the actual public PluginModule", () => {
