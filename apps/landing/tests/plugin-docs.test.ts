@@ -196,6 +196,7 @@ test("minimal command example typechecks against the actual public PluginModule"
   host.getSourceFile = (name, language, onError, shouldCreate) =>
     name === file ? ts.createSourceFile(file, code, language, true) : original(name, language, onError, shouldCreate);
   const program = ts.createProgram([file], options, host);
-  const errors = ts.getPreEmitDiagnostics(program).filter((error) => error.file?.fileName === file);
+  // Check only the example: diagnosing every contract and core file first cost seconds on CI.
+  const errors = ts.getPreEmitDiagnostics(program, program.getSourceFile(file));
   expect(errors.map((error) => ts.flattenDiagnosticMessageText(error.messageText, "\n"))).toEqual([]);
 });
