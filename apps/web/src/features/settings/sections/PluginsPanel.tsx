@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { useAtomValue, useSetAtom } from "jotai";
-import { Badge, Button, Caption, Tabs, Toggle, useToast, InlineError } from "@read-aware/ui";
+import { Badge, Button, Caption, Tabs, Toggle, useToast } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { isTauri } from "../../../platform/environment";
 import { settingsSectionRequestAtom } from "../../../state/ui";
@@ -26,9 +26,7 @@ import {
 } from "../../plugins/runtime/plugin-host";
 import { installedPluginsAtom, requestInstallConsent } from "../../plugins/state/plugin-store";
 import { createLogger } from "../../../platform/logger";
-import { PluginManifestError } from "../../plugins/lib/manifest";
-import { ERR_PLUGIN_INVALID_PACKAGE, errorCode } from "@read-aware/core";
-import { describeError } from "../../../i18n/describe-error";
+import { PluginActivationError, describePluginInstallFailure, useOutdatedPluginUpdates } from "../../plugins";
 import { SettingsPage } from "../components/SettingsPage";
 import { SettingsRow } from "../components/SettingsRow";
 import { useMaintenanceSurface } from "../hooks/useMaintenanceSurface";
@@ -50,15 +48,7 @@ export function PluginsPanel() {
   const [marketRefreshToken, setMarketRefreshToken] = useState(0);
   const desktop = isTauri();
   const books = libraryBooks.map(({ id, title }) => ({ id, title }));
-
-  /** A bad package (web- or native-detected) gets its own line; other
-   * classified causes use the shared copy, the rest the generic failure. */
-  function installFailureCopy(error: unknown): string {
-    if (error instanceof PluginManifestError || errorCode(error) === ERR_PLUGIN_INVALID_PACKAGE) {
-      return t("settings.installFailedManifest");
-    }
-    return describeError(error, { fallback: t("settings.installFailed") }).body;
-  }
+  const updateOffer = useOutdatedPluginUpdates(installed, books, { enabled: desktop });
 
   async function handleInstall() {
     setInstalling(true);
@@ -86,7 +76,7 @@ export function PluginsPanel() {
       }
     } catch (error) {
       log.error("plugin install failed", error);
-      toast({ description: installFailureCopy(error), variant: "destructive" });
+      toast({ description: describePluginInstallFailure(error), variant: "destructive" });
     } finally {
       setInstalling(false);
     }
@@ -121,7 +111,7 @@ export function PluginsPanel() {
       }
     } catch (error) {
       log.error("plugin install failed", error);
-      toast({ description: installFailureCopy(error), variant: "destructive" });
+      toast({ description: describePluginInstallFailure(error), variant: "destructive" });
     } finally {
       setInstalling(false);
     }
@@ -222,7 +212,13 @@ export function PluginsPanel() {
                         })}
                       </Caption>
                     ))}
-                    {plugin.error && <InlineError compact>{t("settings.activationError")}</InlineError>}
+                    {plugin.error && (
+                      <PluginActivationError
+                        error={plugin.error}
+                        update={updateOffer(plugin)}
+                        onCheckAppUpdate={() => setSectionRequest("about")}
+                      />
+                    )}
                   </span>
                 }
                 control={

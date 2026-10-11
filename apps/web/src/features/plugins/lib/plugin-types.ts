@@ -160,5 +160,7 @@ export type InstalledPlugin = {
   bookAccessSource?: "legacy-domain" | "user";
   /** Shipped in the app bundle: default-enabled, not uninstallable. */
   builtin?: boolean;
-  error?: string;
+  /** Why the plugin is not running (failed activation or a fatal runtime error).
+   *  Settings render it through `describeError`; its message is log-only. */
+  error?: Error;
 };

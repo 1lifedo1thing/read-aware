@@ -9,7 +9,7 @@
  * module only decides what may start and holds the handle for tearing it down.
  */
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
-import { AppError } from "@read-aware/core";
+import { AppError, toError } from "@read-aware/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { getDefaultStore } from "jotai";
 import { withContributionActivation } from "../state/contribution-activation";
@@ -96,10 +96,6 @@ function checkedBookAccess(grant: PluginBookAccess): PluginBookAccess {
 let appVersion = "0.0.0";
 let initialized = false;
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function getInstalled(): InstalledPlugin[] {
   return getDefaultStore().get(installedPluginsAtom);
 }
@@ -147,11 +143,11 @@ export async function initializePlugins(): Promise<void> {
         throw new PluginManifestError(`manifest.id "${manifest.id}" does not match folder name "${entry.id}"`);
       }
       let access: ReturnType<typeof getPluginBookAccess> | undefined;
-      let accessError: string | undefined;
+      let accessError: Error | undefined;
       try {
         access = getPluginBookAccess(manifest.id);
       } catch (error) {
-        accessError = errorMessage(error);
+        accessError = toError(error);
       }
       installed.push({
         manifest,
@@ -172,7 +168,7 @@ export async function initializePlugins(): Promise<void> {
           requires: {},
         },
         enabled: false,
-        error: errorMessage(error),
+        error: toError(error),
       });
     }
   }
@@ -223,7 +219,7 @@ function activatePlugin(manifest: PluginManifest, origin: DomainActor = "system"
       updateInstalledPlugin(manifest.id, { error: undefined }, origin);
     } catch (error) {
       log.error(`activation of "${manifest.id}" failed`, error);
-      updateInstalledPlugin(manifest.id, { error: errorMessage(error) }, origin);
+      updateInstalledPlugin(manifest.id, { error: toError(error) }, origin);
     }
   })();
   activating.set(manifest.id, work);
@@ -444,7 +440,7 @@ export async function updatePluginBookAccess(
         );
     });
   } catch (error) {
-    updateInstalledPlugin(id, { error: errorMessage(error) }, origin);
+    updateInstalledPlugin(id, { error: toError(error) }, origin);
     throw error;
   } finally {
     changingBookAccess.delete(id);
@@ -567,7 +563,8 @@ async function applyCandidate(
             instanceId: `${manifest.id}@candidate:${entry.token}`,
             bookAccess: grant,
             onRuntimeError: (message, source) => {
-              if (accepted) updateInstalledPlugin(manifest.id, { error: message }, source);
+              if (accepted)
+                updateInstalledPlugin(manifest.id, { error: new AppError("plugin/unavailable", message) }, source);
               else candidateRuntimeError = message;
             },
             deferPromotion: true,

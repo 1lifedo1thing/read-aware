@@ -27,6 +27,8 @@ import {
   ERR_PLUGIN_BUILT_IN,
   ERR_PLUGIN_CANDIDATE_STALE,
   ERR_PLUGIN_NO_PREVIOUS_VERSION,
+  ERR_PLUGIN_UPDATE_REQUIRED,
+  ERR_PLUGIN_APP_UPDATE_REQUIRED,
   ERR_UPDATE_UNAVAILABLE,
   ERR_UPDATE_NOT_READY,
   ERR_UPDATE_NETWORK,
@@ -70,7 +72,8 @@ import {
   isRetryable,
 } from "@read-aware/core";
 
-export type ErrorAction = "open-ai-settings";
+/** `update-plugin`: install the plugin's newer release; `update-app`: update ReadAware. */
+export type ErrorAction = "open-ai-settings" | "update-plugin" | "update-app";
 
 export type ErrorDescription = {
   /** Localized, user-facing sentence. Never raw error text. */
@@ -188,6 +191,9 @@ const CODE_COPY: Record<string, CopyEntry> = {
   [ERR_PLUGIN_BUILT_IN]: { key: "pluginBuiltIn", retryable: false },
   [ERR_PLUGIN_CANDIDATE_STALE]: { key: "pluginCandidateStale", retryable: false },
   [ERR_PLUGIN_NO_PREVIOUS_VERSION]: { key: "pluginNoPreviousVersion", retryable: false },
+  [ERR_PLUGIN_UPDATE_REQUIRED]: { key: "pluginUpdateRequired", retryable: false, action: "update-plugin" },
+  [ERR_PLUGIN_APP_UPDATE_REQUIRED]: { key: "pluginAppUpdateRequired", retryable: false, action: "update-app" },
+  "plugin/object-access-state-invalid": { key: "pluginObjectAccessStateInvalid", retryable: false },
   [ERR_UPDATE_UNAVAILABLE]: { key: "updateUnavailable", retryable: false },
   [ERR_UPDATE_NOT_READY]: { key: "updateNotReady", retryable: false },
   [ERR_UPDATE_NETWORK]: { key: "updateNetwork", retryable: true },

@@ -6357,6 +6357,15 @@ visible capability versions and rejects:
 - a requirement the actor has not been granted;
 - a requirement outside the host version range.
 
+Each rejection carries a stable code naming who must move, which Settings →
+Plugins renders with its fix. A range the host version is above
+(`plugin/update-required`) offers the newer marketplace release in place; a range
+it is below, an unknown family, ID or permission, or a newer `minAppVersion`
+(`plugin/app-update-required`) leads to the app update check; an ungranted
+requirement, reserved permission or malformed manifest is
+`plugin/invalid-package`. Other start-up and runtime failures share one line
+that never shows raw plugin error text.
+
 The same filtered version map is exposed read-only at runtime through plugin
 `ctx.capabilities`. Plugin discovery does
 not reveal internal domains, inaccessible settings, or permission-gated

@@ -120,7 +120,9 @@
       "service_clipboard": "Escribir en el portapapeles",
       "sync_transport": "Proporcionar un backend de sincronización que almacena tus datos cifrados de extremo a extremo en un servidor de tu elección"
     },
-    "activationError": "La activación falló. Los detalles están en el registro de la aplicación.",
+    "activationError": "Este plugin no se está ejecutando porque encontró un error. Desactivarlo y volver a activarlo, o actualizarlo, puede ayudar.",
+    "updateTo": "Actualizar a v{{version}}",
+    "checkAppUpdate": "Buscar actualizaciones",
     "placement": "Botones fijados",
     "placementHint": "Las acciones fijadas aparecen como botones; el resto queda en el menú de desbordamiento y la paleta de comandos.",
     "surface": {

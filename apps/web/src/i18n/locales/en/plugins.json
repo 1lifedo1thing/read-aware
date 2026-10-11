@@ -125,7 +125,9 @@
       "service_clipboard": "Write to the clipboard",
       "sync_transport": "Provide a sync backend that stores your end-to-end encrypted sync data on a server you choose"
     },
-    "activationError": "Activation failed. Details are in the app log.",
+    "activationError": "This plugin isn't running because it hit an error. Turning it off and on again, or updating it, may help.",
+    "updateTo": "Update to v{{version}}",
+    "checkAppUpdate": "Check for updates",
     "placement": "Pinned buttons",
     "placementHint": "Pinned actions show as buttons; everything else stays in the overflow menu and the command palette.",
     "surface": {

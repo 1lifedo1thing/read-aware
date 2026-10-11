@@ -120,7 +120,9 @@
       "service_clipboard": "In die Zwischenablage schreiben",
       "sync_transport": "Ein Sync-Backend bereitstellen, das Ende-zu-Ende-verschlüsselte Sync-Daten auf einem Server deiner Wahl speichert"
     },
-    "activationError": "Aktivierung fehlgeschlagen. Details stehen im App-Protokoll.",
+    "activationError": "Dieses Plugin läuft wegen eines Fehlers nicht. Aus- und wieder Einschalten oder ein Update kann helfen.",
+    "updateTo": "Auf v{{version}} aktualisieren",
+    "checkAppUpdate": "Nach Updates suchen",
     "placement": "Angeheftete Schaltflächen",
     "placementHint": "Angeheftete Aktionen erscheinen als Schaltflächen; alles andere bleibt im Überlaufmenü und in der Befehlspalette.",
     "surface": {

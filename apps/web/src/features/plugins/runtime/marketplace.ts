@@ -51,6 +51,11 @@ export type MarketplaceEntry = {
   files?: string[];
 };
 
+export type MarketplaceLoadState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; entries: MarketplaceEntry[] };
+
 async function fetchFromMirrors(path: string): Promise<Response> {
   let lastError: unknown = new Error("no marketplace source configured");
   for (const base of orderMirrors(SOURCES, localKV.getItem(MIRROR_KEY))) {

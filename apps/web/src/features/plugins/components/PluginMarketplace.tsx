@@ -5,20 +5,17 @@
  * reads it.
  *
  * This half owns the effects — fetching the registry, the consent gate, the
- * install call and its toasts. The rendering lives in `PluginMarketplaceView`.
+ * install call and its toasts (useMarketplaceRegistry / useMarketplaceInstall).
+ * The rendering lives in `PluginMarketplaceView`.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useAtomValue } from "jotai";
-import { useToast } from "@read-aware/ui";
-import { useTranslation } from "../../../i18n";
 import { isTauri } from "../../../platform/environment";
-import { createLogger } from "../../../platform/logger";
 import { libraryBooksAtom } from "../../library/state/library-store";
-import { fetchMarketplaceRegistry, prepareMarketplaceInstall, type MarketplaceEntry } from "../runtime/marketplace";
-import { installedPluginsAtom, requestInstallConsent } from "../state/plugin-store";
-import { PluginMarketplaceView, type MarketplaceLoadState } from "./PluginMarketplaceView";
-
-const log = createLogger("plugins");
+import { useMarketplaceInstall } from "../hooks/useMarketplaceInstall";
+import { useMarketplaceRegistry } from "../hooks/useMarketplaceRegistry";
+import { installedPluginsAtom } from "../state/plugin-store";
+import { PluginMarketplaceView } from "./PluginMarketplaceView";
 
 type PluginMarketplaceProps = {
   /** Bumped by the hosting panel's Refresh action to re-fetch the registry. */
@@ -26,47 +23,11 @@ type PluginMarketplaceProps = {
 };
 
 export function PluginMarketplace({ refreshToken = 0 }: PluginMarketplaceProps) {
-  const { t } = useTranslation("plugins");
-  const { toast } = useToast();
   const installed = useAtomValue(installedPluginsAtom);
   const libraryBooks = useAtomValue(libraryBooksAtom);
-  const [state, setState] = useState<MarketplaceLoadState>({ status: "loading" });
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const books = libraryBooks.map(({ id, title }) => ({ id, title }));
-
-  const load = useCallback(async () => {
-    setState({ status: "loading" });
-    try {
-      setState({ status: "ready", entries: await fetchMarketplaceRegistry() });
-    } catch (error) {
-      log.error("marketplace registry fetch failed", error);
-      setState({ status: "error" });
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load, refreshToken]);
-
-  async function handleInstall(entry: MarketplaceEntry) {
-    setBusyId(entry.id);
-    try {
-      const { manifest, complete } = await prepareMarketplaceInstall(entry);
-      const consent = await requestInstallConsent(manifest, undefined, books);
-      if (!consent.approved) return;
-      const plugin = await complete(consent.grant);
-      toast({
-        description: t("settings.installedToast", { name: plugin.manifest.name }),
-        variant: "success",
-      });
-    } catch (error) {
-      log.error("marketplace install failed", error);
-      toast({ description: t("settings.installFailed"), variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  }
+  const { state, reload } = useMarketplaceRegistry({ refreshToken });
+  const { busyId, install } = useMarketplaceInstall(libraryBooks.map(({ id, title }) => ({ id, title })));
 
   return (
     <PluginMarketplaceView
@@ -76,8 +37,8 @@ export function PluginMarketplace({ refreshToken = 0 }: PluginMarketplaceProps) 
       query={query}
       onQueryChange={setQuery}
       desktop={isTauri()}
-      onRetry={() => void load()}
-      onInstall={(entry) => void handleInstall(entry)}
+      onRetry={() => void reload()}
+      onInstall={(entry) => void install(entry)}
     />
   );
 }

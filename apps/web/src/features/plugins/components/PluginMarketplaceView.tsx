@@ -10,14 +10,9 @@
 import { Badge, Button, Caption, Spinner } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { matchesPluginQuery } from "../lib/search";
-import { MARKETPLACE_REPO, type MarketplaceEntry } from "../runtime/marketplace";
+import { MARKETPLACE_REPO, type MarketplaceEntry, type MarketplaceLoadState } from "../runtime/marketplace";
 import { permissionNameKey, type InstalledPlugin } from "../lib/plugin-types";
 import { PluginSearchInput } from "./PluginSearchInput";
-
-export type MarketplaceLoadState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "ready"; entries: MarketplaceEntry[] };
 
 type PluginMarketplaceViewProps = {
   state: MarketplaceLoadState;

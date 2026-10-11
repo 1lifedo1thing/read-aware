@@ -371,7 +371,7 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     const host = await import("./plugin-host");
     await host.setPluginEnabled(id, true);
     expect(commands.filter((command) => command === "plugins_update_rollback")).toHaveLength(restoresBefore);
-    expect(getDefaultStore().get(installedPluginsAtom)[0]?.error).toContain("runtime still draining");
+    expect(getDefaultStore().get(installedPluginsAtom)[0]?.error?.message).toContain("runtime still draining");
     await expect(
       createSettingsDomain("agent").commands.update([{ path: `plugins.${id}.enabled`, value: false }]),
     ).rejects.toMatchObject({ code: "plugin/recovery-required" });

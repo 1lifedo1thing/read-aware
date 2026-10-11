@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { AppError, ERR_PLUGIN_UPDATE_REQUIRED } from "@read-aware/core";
 import { userEvent, within } from "storybook/test";
 import { seed, withAtoms } from "../../../story-support/atoms";
 import type { InstalledPlugin } from "../../plugins/lib/plugin-types";
@@ -66,7 +67,28 @@ export const WithFailedPlugin: Story = {
         ...installed,
         plugin("broken", "Broken Plugin", {
           enabled: true,
-          error: "activate() threw: Cannot read properties of undefined",
+          error: new Error("activate() threw: Cannot read properties of undefined"),
+        }),
+      ]),
+    ),
+  ],
+};
+
+/**
+ * A plugin built for older host contracts says so. The update action needs
+ * the marketplace (desktop only); see `PluginActivationError` for it.
+ */
+export const WithOutdatedPlugin: Story = {
+  decorators: [
+    withAtoms(
+      seed(installedPluginsAtom, [
+        ...installed,
+        plugin("theme-schedule", "Theme Schedule", {
+          enabled: true,
+          error: new AppError(
+            ERR_PLUGIN_UPDATE_REQUIRED,
+            "requires services.storage ^1.0.0, but the host provides 2.6.0",
+          ),
         }),
       ]),
     ),

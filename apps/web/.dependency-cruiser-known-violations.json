@@ -1146,7 +1146,6 @@
     "unresolvedTo": "../../reader/lib/foliate-engine",
     "dependencyTypes": [
       "local",
-      "type-only",
       "import"
     ],
     "rule": {
@@ -4608,20 +4607,6 @@
     "from": "src/features/settings/sections/PluginsPanel.tsx",
     "to": "src/features/plugins/components/PluginSearchInput.tsx",
     "unresolvedTo": "../../plugins/components/PluginSearchInput",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "features-via-public-index"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/features/settings/sections/PluginsPanel.tsx",
-    "to": "src/features/plugins/lib/manifest.ts",
-    "unresolvedTo": "../../plugins/lib/manifest",
     "dependencyTypes": [
       "local",
       "import"

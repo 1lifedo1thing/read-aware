@@ -120,7 +120,9 @@
       "service_clipboard": "写入剪贴板",
       "sync_transport": "提供同步后端，把端到端加密的同步数据存储到你选择的服务器"
     },
-    "activationError": "启用失败，详情已写入应用日志。",
+    "activationError": "这个插件因出错没有在运行。关闭再打开，或更新插件，可能会解决问题。",
+    "updateTo": "更新到 v{{version}}",
+    "checkAppUpdate": "检查更新",
     "placement": "钉选按钮",
     "placementHint": "钉选的动作以按钮显示,其余收在溢出菜单和命令面板中。",
     "surface": {

@@ -120,7 +120,9 @@
       "service_clipboard": "Écrire dans le presse-papiers",
       "sync_transport": "Fournir un backend de synchronisation qui stocke vos données chiffrées de bout en bout sur un serveur de votre choix"
     },
-    "activationError": "L'activation a échoué. Les détails sont dans le journal de l'application.",
+    "activationError": "Ce plugin ne fonctionne pas à cause d’une erreur. Le désactiver puis le réactiver, ou le mettre à jour, peut aider.",
+    "updateTo": "Mettre à jour vers v{{version}}",
+    "checkAppUpdate": "Rechercher des mises à jour",
     "placement": "Boutons épinglés",
     "placementHint": "Les actions épinglées apparaissent comme boutons ; le reste va dans le menu de dépassement et la palette de commandes.",
     "surface": {

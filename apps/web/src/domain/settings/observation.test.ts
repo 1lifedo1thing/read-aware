@@ -203,7 +203,7 @@ test("settings catalog invalidation retains contribution and selected-mode cause
     const unchanged = store.get(installedPluginsAtom);
     updateInstalledPlugin("catalog", { enabled: true }, "user");
     expect(store.get(installedPluginsAtom)).toBe(unchanged);
-    updateInstalledPlugin("catalog", { error: "runtime stopped" }, source);
+    updateInstalledPlugin("catalog", { error: new Error("runtime stopped") }, source);
     await tick();
     expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
     expect(() => reactionActor("plugin:catalog", "catalog-follow", eventCause(seen.at(-1)!)!)).toThrow();

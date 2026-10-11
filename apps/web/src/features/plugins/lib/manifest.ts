@@ -3,7 +3,13 @@
  * typed `PluginManifest`. Pure; throws `PluginManifestError` with a
  * human-readable reason (surfaced in settings and at install time).
  */
-import { HOST_CAPABILITY_CATALOG, normalizePluginServices } from "@read-aware/core";
+import {
+  AppError,
+  ERR_PLUGIN_APP_UPDATE_REQUIRED,
+  ERR_PLUGIN_INVALID_PACKAGE,
+  HOST_CAPABILITY_CATALOG,
+  normalizePluginServices,
+} from "@read-aware/core";
 import { intersects, validRange } from "semver";
 import {
   MIN_SCHEDULE_MINUTES,
@@ -16,7 +22,20 @@ import { validateFontContributions, validateThemeContributions } from "./plugin-
 import { isTimeOfDay } from "./time-of-day";
 import { parsePluginNetworkAccess } from "./plugin-network-policy";
 
-export class PluginManifestError extends Error {}
+/**
+ * An unusable manifest. Catalogs and permissions only ever grow, so a name
+ * this host does not know means the plugin targets a newer app; every other
+ * defect makes the package invalid.
+ */
+export class PluginManifestError extends AppError {
+  constructor(
+    message: string,
+    code: typeof ERR_PLUGIN_INVALID_PACKAGE | typeof ERR_PLUGIN_APP_UPDATE_REQUIRED = ERR_PLUGIN_INVALID_PACKAGE,
+  ) {
+    super(code, message);
+    this.name = "PluginManifestError";
+  }
+}
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SETTINGS_PATH_PATTERN = /^[a-z][a-zA-Z0-9-]*(?:\.(?:[a-zA-Z0-9_-]|%[0-9A-F]{2})+)*(?:\.\*)?$/;
@@ -71,7 +90,10 @@ function validateCapabilityRequirements(raw: unknown): PluginCapabilityRequireme
     (family) => !families.includes(family as keyof PluginCapabilityRequirements),
   );
   if (unknownFamilies.length > 0) {
-    throw new PluginManifestError(`manifest.requires has unknown families: ${unknownFamilies.join(", ")}`);
+    throw new PluginManifestError(
+      `manifest.requires has unknown families: ${unknownFamilies.join(", ")}`,
+      ERR_PLUGIN_APP_UPDATE_REQUIRED,
+    );
   }
 
   const requirements: Record<string, Record<string, string>> = {};
@@ -85,7 +107,10 @@ function validateCapabilityRequirements(raw: unknown): PluginCapabilityRequireme
     const ranges: Record<string, string> = {};
     for (const [id, range] of Object.entries(requested as Record<string, unknown>)) {
       if (!(id in catalog)) {
-        throw new PluginManifestError(`manifest.requires.${family} contains unknown capability "${id}"`);
+        throw new PluginManifestError(
+          `manifest.requires.${family} contains unknown capability "${id}"`,
+          ERR_PLUGIN_APP_UPDATE_REQUIRED,
+        );
       }
       if (typeof range !== "string" || validRange(range) === null) {
         throw new PluginManifestError(`manifest.requires.${family}.${id} must be a valid semver range`);
@@ -129,6 +154,7 @@ export function validateManifest(raw: unknown): PluginManifest {
       if (!(PLUGIN_PERMISSIONS as readonly unknown[]).includes(permission)) {
         throw new PluginManifestError(
           `unknown permission "${String(permission)}" (valid: ${PLUGIN_PERMISSIONS.join(", ")})`,
+          typeof permission === "string" ? ERR_PLUGIN_APP_UPDATE_REQUIRED : ERR_PLUGIN_INVALID_PACKAGE,
         );
       }
     }

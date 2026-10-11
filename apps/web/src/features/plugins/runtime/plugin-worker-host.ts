@@ -439,7 +439,8 @@ export function startPluginWorker(
       else {
         log.error(`runtime error in "${manifest.id}"`, reason);
         if (options.onRuntimeError) options.onRuntimeError(reason, source);
-        else if (currentInstance) updateInstalledPlugin(manifest.id, { error: reason }, source);
+        else if (currentInstance)
+          updateInstalledPlugin(manifest.id, { error: new AppError("plugin/unavailable", reason) }, source);
       }
     };
     const activationTimeout = setTimeout(() => {

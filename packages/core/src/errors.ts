@@ -60,6 +60,10 @@ export const ERR_PLUGIN_INVALID_PACKAGE = "plugin/invalid-package";
 export const ERR_PLUGIN_BUILT_IN = "plugin/built-in";
 export const ERR_PLUGIN_CANDIDATE_STALE = "plugin/candidate-stale";
 export const ERR_PLUGIN_NO_PREVIOUS_VERSION = "plugin/no-previous-version";
+/** An installed plugin cannot activate on this app: it targets older host
+ *  contracts (the plugin needs an update) or newer ones (the app does). */
+export const ERR_PLUGIN_UPDATE_REQUIRED = "plugin/update-required";
+export const ERR_PLUGIN_APP_UPDATE_REQUIRED = "plugin/app-update-required";
 /** Native software update checks and installs (desktop and Android). */
 export const ERR_UPDATE_UNAVAILABLE = "update/unavailable";
 export const ERR_UPDATE_NOT_READY = "update/not-ready";
