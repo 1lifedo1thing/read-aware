@@ -1,12 +1,11 @@
 import { Check, Copy, X } from "@phosphor-icons/react";
 import { Button, Dialog, IconButton, buttonClassName } from "@read-aware/ui";
-import type { LinkSafetyModalProps } from "streamdown";
 import { useExternalLink } from "../../../hooks/useExternalLink";
 import { useTranslation } from "../../../i18n";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 
-/** Streamdown owns confirmation state; our controls own styling and native opening. */
-export function MarkdownLinkDialog({ isOpen, onClose, url }: LinkSafetyModalProps) {
+/** Confirms leaving the app for a link in a reply; opening goes through the native opener. */
+export function MarkdownLinkDialog({ isOpen, onClose, url }: { isOpen: boolean; onClose: () => void; url: string }) {
   const { t } = useTranslation("ai");
   const openLink = useExternalLink(onClose);
   const { copied, copy } = useCopyToClipboard();
@@ -39,7 +38,7 @@ export function MarkdownLinkDialog({ isOpen, onClose, url }: LinkSafetyModalProp
             {copied ? <Check size={16} /> : <Copy size={16} />}
             {t(copied ? "chat.message.copied" : "chat.externalLink.copy")}
           </Button>
-          {/* The library's onConfirm uses window.open, which Tauri can swallow. */}
+          {/* window.open is swallowed by Tauri; useExternalLink hands the URL to the system opener. */}
           <a href={url} target="_blank" rel="noreferrer" onClick={openLink} className={buttonClassName()}>
             {t("chat.externalLink.open")}
           </a>

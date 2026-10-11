@@ -64,3 +64,22 @@ export const ExternalLinkConfirmation: Story = {
     children: "Source: [非洲 — Wikipedia](https://zh.wikipedia.org/wiki/%E9%9D%9E%E6%B4%B2).",
   },
 };
+
+/** Footnote citations jump to their note within the reply, and `↩` returns to the marker. */
+export const FootnoteCitations: Story = {
+  args: {
+    children: [
+      "Africa spans roughly 30 million square kilometres.[^1] Its population passed 1.4 billion in 2022.[^2]",
+      "",
+      "[^1]: [Africa — Wikipedia](https://en.wikipedia.org/wiki/Africa)",
+      "[^2]: [World Population Prospects](https://population.un.org/wpp/)",
+    ].join("\n"),
+  },
+};
+
+/** A bare URL stops at full-width punctuation instead of swallowing the following prose. */
+export const BareUrlInChineseProse: Story = {
+  args: {
+    children: "**TinyFish（官网：https://www.tinyfish.ai/）** 是一家公司，详见 https://www.tinyfish.ai/about。",
+  },
+};

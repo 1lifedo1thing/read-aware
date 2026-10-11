@@ -1,12 +1,16 @@
-import { Streamdown, type LinkSafetyConfig } from "streamdown";
+import { Streamdown, type PluginConfig } from "streamdown";
+import { cjk } from "@streamdown/cjk";
 import { cn } from "@read-aware/ui/cn";
-import { MarkdownLinkDialog } from "./MarkdownLinkDialog";
+import { MARKDOWN_REPLY_CLASS } from "../lib/markdown-fragment";
+import { MarkdownLink } from "./MarkdownLink";
 
-const components = { img: ({ alt }: { alt?: string }) => (alt ? <span>{alt}</span> : null) };
-const linkSafety: LinkSafetyConfig = {
-  enabled: true,
-  renderModal: (props) => <MarkdownLinkDialog {...props} />,
+const components = {
+  a: MarkdownLink,
+  img: ({ alt }: { alt?: string }) => (alt ? <span>{alt}</span> : null),
 };
+// CJK-aware parsing: a bare URL ends at full-width punctuation (`（官网：https://a.b/）`
+// would otherwise link `https://a.b/）`), and emphasis works next to CJK text.
+const plugins: PluginConfig = { cjk };
 
 /**
  * Renders assistant replies as Markdown via Streamdown (handles partial/unclosed
@@ -20,11 +24,12 @@ export function Markdown({ children, className }: { children: string; className?
     <Streamdown
       controls={false}
       lineNumbers={false}
-      linkSafety={linkSafety}
-      // Retrieved images use source-backed reference cards. Do not let prose
-      // invent arbitrary remote image requests (including while streaming).
+      plugins={plugins}
+      // Links confirm before leaving the app and footnotes jump within the
+      // reply (MarkdownLink). Retrieved images use source-backed reference
+      // cards; prose must not invent remote image requests (even mid-stream).
       components={components}
-      className={cn("ra-chat-markdown", className)}
+      className={cn(MARKDOWN_REPLY_CLASS, className)}
     >
       {children}
     </Streamdown>
