@@ -127,6 +127,10 @@
       "service_clipboard": "Write to the clipboard",
       "sync_transport": "Provide a sync backend that stores your end-to-end encrypted sync data on a server you choose"
     },
+    "numberInvalid": "Enter a number.",
+    "numberRange": "Enter a number from {{min}} to {{max}}.",
+    "numberMin": "Enter a number of at least {{min}}.",
+    "numberMax": "Enter a number of at most {{max}}.",
     "activationError": "This plugin isn't running because it hit an error. Turning it off and on again, or updating it, may help.",
     "updateTo": "Update to v{{version}}",
     "checkAppUpdate": "Check for updates",

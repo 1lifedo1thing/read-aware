@@ -122,6 +122,10 @@
       "service_clipboard": "In die Zwischenablage schreiben",
       "sync_transport": "Ein Sync-Backend bereitstellen, das Ende-zu-Ende-verschlüsselte Sync-Daten auf einem Server deiner Wahl speichert"
     },
+    "numberInvalid": "Gib eine Zahl ein.",
+    "numberRange": "Gib eine Zahl von {{min}} bis {{max}} ein.",
+    "numberMin": "Gib eine Zahl von mindestens {{min}} ein.",
+    "numberMax": "Gib eine Zahl von höchstens {{max}} ein.",
     "activationError": "Dieses Plugin läuft wegen eines Fehlers nicht. Aus- und wieder Einschalten oder ein Update kann helfen.",
     "updateTo": "Auf v{{version}} aktualisieren",
     "checkAppUpdate": "Nach Updates suchen",

@@ -565,7 +565,7 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
           throw new Error("plugin migration was requested outside the migrating phase");
         }
         if (typeof plugin?.migrate !== "function") {
-          throw new Error("plugin data schema changed but the plugin does not export migrate()");
+          throw new Error("plugin data schema changed but the default-exported module has no migrate() method");
         }
         const migrationContext: PluginMigrationContext = {
           manifest: pluginContext.manifest,

@@ -9,6 +9,7 @@ import type {
 import type { CustomOpenAIApi, ThinkingLevel } from "@read-aware/agent";
 import { LOCALES, LOCALE_LABELS } from "../../i18n/config";
 import { detectInitialLocale } from "../../i18n/detect";
+import { numberSettingViolation } from "./plugin-setting-range";
 import type { AppSettings, AppThemePreference } from "../../features/settings/lib/app-settings";
 import type { AIPreferences } from "../../features/settings/lib/ai-preferences";
 import { AI_FEATURE_KEYS } from "../../features/settings/lib/ai-preferences";
@@ -482,16 +483,14 @@ function pluginFieldDefinition(plugin: AgentPluginSettings, field: PluginFormFie
         }
       }
       if (kind === "number") {
-        if (typeof value !== "number" || !Number.isFinite(value)) {
-          throw new Error(`${path} must be a number`);
-        }
-        if (field.kind === "number") {
-          if (field.min !== undefined && value < field.min) {
-            throw new Error(`${path} must be at least ${field.min}`);
-          }
-          if (field.max !== undefined && value > field.max) {
-            throw new Error(`${path} must be at most ${field.max}`);
-          }
+        const violation = numberSettingViolation(field.kind === "number" ? field : {}, value);
+        if (violation?.kind === "not-a-number") throw new Error(`${path} must be a number`);
+        if (violation?.kind === "out-of-range") {
+          throw new Error(
+            violation.min !== undefined && (value as number) < violation.min
+              ? `${path} must be at least ${violation.min}`
+              : `${path} must be at most ${violation.max}`,
+          );
         }
       }
       return value;

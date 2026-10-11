@@ -16,6 +16,8 @@ import { emitAppEvent } from "../../../platform/app-events";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
 import { deletePluginSecret, getPluginSecret, setPluginSecret } from "../../../platform/secret-store";
 import { getSettingsOptionsProvider } from "../state/plugin-store";
+import { i18n } from "../../../i18n";
+import { numberSettingViolation } from "../../../domain/settings/plugin-setting-range";
 import type {
   InstalledPlugin,
   PluginFormField,
@@ -60,6 +62,28 @@ export function readPluginSettingsValues(pluginId: string): PluginFormValues {
   }
 }
 
+/** Declared number bounds, enforced here as the settings domain enforces them for the agent. */
+function numberFieldErrors(fields: PluginFormField[], values: PluginFormValues): Record<string, string> | null {
+  const errors: Record<string, string> = {};
+  for (const field of fields) {
+    if (field.kind !== "number") continue;
+    const violation = numberSettingViolation(field, values[field.id]);
+    if (!violation) continue;
+    const { min, max } = field;
+    errors[field.id] = i18n.t(
+      violation.kind === "not-a-number"
+        ? "settings.numberInvalid"
+        : min !== undefined && max !== undefined
+          ? "settings.numberRange"
+          : min !== undefined
+            ? "settings.numberMin"
+            : "settings.numberMax",
+      { ns: "plugins", min, max },
+    );
+  }
+  return Object.keys(errors).length ? errors : null;
+}
+
 /** Build the settings form for a manifest, prefilled with stored values. */
 export function buildPluginSettingsView(manifest: PluginManifest): PluginFormView | null {
   const fields = manifest.settings;
@@ -84,6 +108,8 @@ export function buildPluginSettingsView(manifest: PluginManifest): PluginFormVie
       return { ...field, value: typeof value === "string" ? value : field.value };
     }),
     onSubmit: (values) => {
+      const fieldErrors = numberFieldErrors(fields, values);
+      if (fieldErrors) return { fieldErrors };
       const origin = causalActor("user");
       return withPluginDataWrites(
         [manifest.id],

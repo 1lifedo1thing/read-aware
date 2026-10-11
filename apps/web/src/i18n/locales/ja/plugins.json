@@ -122,6 +122,10 @@
       "service_clipboard": "クリップボードへの書き込み",
       "sync_transport": "エンドツーエンド暗号化された同期データを任意のサーバーに保存する同期バックエンドを提供"
     },
+    "numberInvalid": "数値を入力してください。",
+    "numberRange": "{{min}}〜{{max}} の数値を入力してください。",
+    "numberMin": "{{min}} 以上の数値を入力してください。",
+    "numberMax": "{{max}} 以下の数値を入力してください。",
     "activationError": "エラーが発生したため、このプラグインは動作していません。オフにしてからオンに戻すか、更新すると解決する場合があります。",
     "updateTo": "v{{version}} に更新",
     "checkAppUpdate": "アップデートを確認",

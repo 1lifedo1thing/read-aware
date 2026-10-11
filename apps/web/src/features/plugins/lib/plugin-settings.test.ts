@@ -7,7 +7,7 @@ import {
 } from "../../../platform/domain-actor";
 import { installFileGlobals, memoryStorage } from "../../../../tests/helpers/file-globals";
 import { onAppEvent } from "../../../platform/app-events";
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import type { PluginManifest } from "./plugin-types";
 
 const storage = new Map<string, string>();
@@ -15,6 +15,7 @@ installFileGlobals({ localStorage: memoryStorage(storage) });
 
 import { buildPluginSettingsView, readPluginSettingsValues, writePluginSettingsValues } from "./plugin-settings";
 import { parseManifestJson } from "./manifest";
+import { initI18n } from "../../../i18n";
 
 const manifest: PluginManifest = {
   id: "settings-test",
@@ -64,6 +65,36 @@ describe("plugin settings", () => {
         value: false,
       },
     ]);
+  });
+});
+
+describe("number settings fields", () => {
+  const bounded: PluginManifest = {
+    ...manifest,
+    settings: [{ kind: "number", id: "wordsPerMinute", label: "Speed", value: 230, min: 50, max: 2000 }],
+  };
+
+  beforeAll(() => initI18n("en"));
+
+  test("the settings page refuses values outside the declared bounds without writing", async () => {
+    const view = buildPluginSettingsView(bounded)!;
+    for (const value of [0, 49, 2001]) {
+      expect(await view.onSubmit({ wordsPerMinute: value }), String(value)).toEqual({
+        fieldErrors: { wordsPerMinute: "Enter a number from 50 to 2000." },
+      });
+    }
+    expect(await view.onSubmit({ wordsPerMinute: Number.NaN })).toEqual({
+      fieldErrors: { wordsPerMinute: "Enter a number." },
+    });
+    expect(readPluginSettingsValues(bounded.id)).toEqual({});
+  });
+
+  test("values at and within the bounds are stored as numbers", async () => {
+    const view = buildPluginSettingsView(bounded)!;
+    for (const value of [50, 2000, 300]) {
+      expect(await view.onSubmit({ wordsPerMinute: value })).toBeUndefined();
+      expect(readPluginSettingsValues(bounded.id)).toEqual({ wordsPerMinute: value });
+    }
   });
 });
 

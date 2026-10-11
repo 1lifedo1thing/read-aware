@@ -122,6 +122,10 @@
       "service_clipboard": "Écrire dans le presse-papiers",
       "sync_transport": "Fournir un backend de synchronisation qui stocke vos données chiffrées de bout en bout sur un serveur de votre choix"
     },
+    "numberInvalid": "Saisissez un nombre.",
+    "numberRange": "Saisissez un nombre entre {{min}} et {{max}}.",
+    "numberMin": "Saisissez un nombre d’au moins {{min}}.",
+    "numberMax": "Saisissez un nombre d’au plus {{max}}.",
     "activationError": "Ce plugin ne fonctionne pas à cause d’une erreur. Le désactiver puis le réactiver, ou le mettre à jour, peut aider.",
     "updateTo": "Mettre à jour vers v{{version}}",
     "checkAppUpdate": "Rechercher des mises à jour",

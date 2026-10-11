@@ -327,6 +327,12 @@ export type PluginManifest = {
    * Declarative settings: rendered by the app from the Plugins panel; edits
    * write through as one object under the plugin's storage key `settings`
    * (read with `ctx.services.storage.get("settings")`).
+   *
+   * Nothing is stored until the first save, so `get("settings")` starts as
+   * null; declared `value`s are only what the form shows. A save from the
+   * settings page writes every non-secret field; the agent and the settings
+   * domain merge one field at a time (null resets it). Merge your defaults
+   * over whatever is stored.
    */
   settings?: PluginFormField[];
   /**
@@ -834,8 +840,11 @@ export type PluginFormField = PluginFormFieldBase &
         label: PluginText;
         value?: number;
         helperText?: PluginText;
+        /** Stored values are finite numbers within min/max on every write path
+         * (the settings page enforces them in releases after 0.6.5; the agent always did). */
         min?: number;
         max?: number;
+        /** Input increment only; stored values are not rounded to it. */
         step?: number;
       }
     | {
@@ -1168,6 +1177,8 @@ export type PluginViewResult =
 export type SelectionActionSource = "selection" | "annotation" | "navigator";
 
 export type SelectionActionInput = {
+  /** The whole selected text with whitespace runs collapsed — never truncated. For the
+   * annotation and navigator sources, the annotation's or navigator unit's text. */
   text: string;
   /** Surrounding passage when the reader can recover it. */
   context?: string;
@@ -1193,7 +1204,9 @@ export type PluginActionRegistration = PluginDisposable & {
   updateState(state: PluginActionState): Promise<PluginActionStateReceipt>;
 };
 
-/** Selection/annotation menu entry. May run silently, report a toast or open a view. */
+/** Selection/annotation menu entry. May run silently, report a toast or open a view.
+ * It appears on every source (selection, annotation, navigator); branch on
+ * `input.source` inside `run` when an action only makes sense on some. */
 export type PluginSelectionAction = {
   state?: PluginActionState;
   id: string;
@@ -3155,7 +3168,13 @@ export type PluginContext = {
   services: PluginHostServices;
 };
 
-/** The default export of a plugin's entry module. */
+/**
+ * The default export of a plugin's entry module — `migrate` and `services` are
+ * methods of this object, not named exports. It runs in a Worker with no DOM;
+ * the JavaScript floor is Chrome 107 / Safari 16 with ES2024 built-ins
+ * polyfilled. `Intl` APIs beyond that floor are whatever the system WebView
+ * provides, so feature-test them.
+ */
 export type PluginModule = {
   activate(ctx: PluginContext): void | Promise<void>;
   /** Runs without activate(), in a fresh realm with intersected permissions/settings/

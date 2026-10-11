@@ -122,6 +122,10 @@
       "service_clipboard": "寫入剪貼簿",
       "sync_transport": "提供同步後端，把端對端加密的同步資料儲存到你選擇的伺服器"
     },
+    "numberInvalid": "請輸入數字。",
+    "numberRange": "請輸入 {{min}} 到 {{max}} 之間的數字。",
+    "numberMin": "請輸入不小於 {{min}} 的數字。",
+    "numberMax": "請輸入不大於 {{max}} 的數字。",
     "activationError": "這個外掛因發生錯誤而沒有在執行。關閉再開啟，或更新外掛，可能會解決問題。",
     "updateTo": "更新至 v{{version}}",
     "checkAppUpdate": "檢查更新",

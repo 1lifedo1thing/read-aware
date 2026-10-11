@@ -122,6 +122,10 @@
       "service_clipboard": "写入剪贴板",
       "sync_transport": "提供同步后端，把端到端加密的同步数据存储到你选择的服务器"
     },
+    "numberInvalid": "请输入数字。",
+    "numberRange": "请输入 {{min}} 到 {{max}} 之间的数字。",
+    "numberMin": "请输入不小于 {{min}} 的数字。",
+    "numberMax": "请输入不大于 {{max}} 的数字。",
     "activationError": "这个插件因出错没有在运行。关闭再打开，或更新插件，可能会解决问题。",
     "updateTo": "更新到 v{{version}}",
     "checkAppUpdate": "检查更新",
