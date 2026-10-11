@@ -171,6 +171,57 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.6",
+        "date": "2026-10-12",
+        "codename": "Cambria",
+        "summary": "Dieser Cambria-Patch hält Plugins aus dem Marktplatz von selbst aktuell, erklärt, warum ein Plugin nicht läuft und wie du das beheben kannst, und bringt Zitate in KI-Antworten zum Laufen.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Plugins, die sich selbst aktualisieren",
+                "body": "Plugins, die du über den Marktplatz installierst oder aktualisierst, bleiben jetzt von selbst aktuell — geprüft wird täglich und direkt nach einem ReadAware-Update. Sie behalten ihren Buchzugriff und ihren Ein-/Aus-Zustand, und ein ausgeschaltetes Plugin wird aktualisiert, ohne dabei zu laufen. Updates, die neue Berechtigungen verlangen, warten in Einstellungen → Plugins auf deine Zustimmung, und Plugins aus einem Ordner oder einer Zip-Datei werden nie ersetzt. Vor 0.6.6 installierte Plugins kündigen ihr nächstes Update einmal an; aktualisiere sie über den Marktplatz, danach aktualisieren sie sich von selbst."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Ein Plugin, das nicht laufen kann, nennt den Grund",
+                "body": "Statt dich zum Protokoll zu schicken, erklärt die Zeile des Plugins, ob es für ein älteres ReadAware gebaut wurde oder ein neueres braucht — mit einer Aktualisieren-Schaltfläche, wenn der Marktplatz eine kompatible Version anbietet, oder einem Link, der nach App-Updates sucht."
+              },
+              {
+                "title": "Zahleneinstellungen von Plugins bleiben im gültigen Bereich",
+                "body": "Die Einstellungsseite eines Plugins lehnt eine Zahl außerhalb des Bereichs ab, den das Plugin angibt, und nennt die Werte, die es akzeptiert."
+              },
+              {
+                "title": "Sync wartet, solange der Server es verlangt",
+                "body": "Ist der Sync-Server beschäftigt, erfolgt der nächste Versuch zu dem Zeitpunkt, den er angibt, statt nach zehn Minuten Wartezeit."
+              },
+              {
+                "title": "Ein Plugin-Kit für Menschen und Coding-Agenten",
+                "body": "Vorlage, Typdefinitionen und Prüfungen des Plugin-Repositorys sind jetzt auf dem Stand dieses Releases, eine einzige Anleitung führt einen Coding-Agenten durch den Bau eines Plugins, und die API-Referenz listet jede Fähigkeit und Methode mit der Version, die dieses Release mitbringt."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Fußnoten-Zitate in KI-Antworten",
+                "body": "Ein Klick auf eine Fußnotenmarke springt zur zugehörigen Fußnote innerhalb der Antwort, und der Pfeil springt zurück, statt den Dialog für externe Links zu öffnen."
+              },
+              {
+                "title": "Links in chinesischen und japanischen Antworten",
+                "body": "Eine nackte Webadresse, auf die ein Satzzeichen wie eine vollbreite schließende Klammer folgt, zieht dieses Satzzeichen und den folgenden Text nicht mehr mit in den Link."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.5",
         "date": "2026-09-30",
         "codename": "Cambria",

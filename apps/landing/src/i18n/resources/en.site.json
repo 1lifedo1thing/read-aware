@@ -171,6 +171,57 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.6",
+        "date": "2026-10-12",
+        "codename": "Cambria",
+        "summary": "This Cambria patch keeps marketplace plugins up to date on their own, explains why a plugin isn't running and how to fix it, and makes citations in AI replies work.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Plugins that update themselves",
+                "body": "Plugins you install or update from the marketplace now stay current on their own, checked daily and right after ReadAware updates. They keep their book access and on/off state, and a plugin you turned off is updated without running. Updates asking for new permissions wait for your approval in Settings → Plugins, and plugins installed from a folder or zip are never replaced. Plugins installed before 0.6.6 announce their next update once; update them from the marketplace and they update automatically after that."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "A plugin that can't run says why",
+                "body": "Instead of pointing you to the log, the plugin's row explains whether it was built for an older ReadAware or needs a newer one, with an Update button when the marketplace has a compatible release, or a shortcut to check for app updates."
+              },
+              {
+                "title": "Plugin number settings stay in range",
+                "body": "A plugin's settings page refuses a number outside the range the plugin declares and says which values it accepts."
+              },
+              {
+                "title": "Sync waits as long as the server asks",
+                "body": "When the sync server is busy, the next attempt happens at the time it requests instead of after a ten-minute backoff."
+              },
+              {
+                "title": "A plugin kit for people and coding agents",
+                "body": "The plugin repository's template, typings and checks now match this release, a single guide walks a coding agent through building a plugin, and the API reference lists every capability and method with the version this release ships."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Footnote citations in AI replies",
+                "body": "Clicking a footnote marker jumps to its note within the reply, and the arrow jumps back, instead of opening an external-link prompt."
+              },
+              {
+                "title": "Links in Chinese and Japanese replies",
+                "body": "A bare web address followed by punctuation such as a full-width closing parenthesis no longer pulls that punctuation and the following text into the link."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.5",
         "date": "2026-09-30",
         "codename": "Cambria",

@@ -171,6 +171,57 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.6",
+        "date": "2026-10-12",
+        "codename": "Cambria",
+        "summary": "Ce correctif de Cambria laisse les extensions de la boutique se maintenir à jour d'elles-mêmes, explique pourquoi une extension ne fonctionne pas et comment y remédier, et fait fonctionner les citations dans les réponses de l'assistant.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Des extensions qui se mettent à jour d'elles-mêmes",
+                "body": "Les extensions que vous installez ou mettez à jour depuis la boutique restent désormais à jour d'elles-mêmes, vérifiées chaque jour et juste après une mise à jour de ReadAware. Elles conservent leur accès aux livres et leur état activé ou désactivé, et une extension que vous avez désactivée est mise à jour sans être exécutée. Les mises à jour qui demandent de nouvelles autorisations attendent votre approbation dans Réglages → Extensions, et les extensions installées depuis un dossier ou un fichier zip ne sont jamais remplacées. Les extensions installées avant la 0.6.6 annoncent leur prochaine mise à jour une seule fois ; mettez-les à jour depuis la boutique, et elles se mettront à jour automatiquement par la suite."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Une extension qui ne peut pas s'exécuter explique pourquoi",
+                "body": "Au lieu de vous renvoyer au journal, la ligne de l'extension indique si elle a été conçue pour une version de ReadAware plus ancienne ou s'il lui en faut une plus récente, avec un bouton de mise à jour lorsque la boutique propose une version compatible, ou un raccourci pour vérifier les mises à jour de l'application."
+              },
+              {
+                "title": "Les réglages numériques des extensions restent dans les limites",
+                "body": "La page de réglages d'une extension refuse un nombre en dehors de la plage qu'elle déclare et indique les valeurs qu'elle accepte."
+              },
+              {
+                "title": "La synchronisation attend aussi longtemps que le serveur le demande",
+                "body": "Lorsque le serveur de synchronisation est occupé, la tentative suivante a lieu au moment qu'il demande, et non après un délai de dix minutes."
+              },
+              {
+                "title": "Un kit de création d'extensions pour vous et les agents de code",
+                "body": "Le modèle, les définitions de types et les vérifications du dépôt d'extensions correspondent désormais à cette version, un guide unique accompagne un agent de code pas à pas dans la création d'une extension, et la référence de l'API recense chaque capacité et chaque méthode avec la version que cette publication embarque."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Les citations en notes de bas de page dans les réponses de l'assistant",
+                "body": "Cliquer sur un appel de note mène à sa note dans la réponse, et la flèche ramène en arrière, au lieu de proposer d'ouvrir un lien externe."
+              },
+              {
+                "title": "Les liens dans les réponses en chinois et en japonais",
+                "body": "Une adresse web en clair suivie d'une ponctuation telle qu'une parenthèse fermante en pleine chasse n'entraîne plus cette ponctuation ni le texte qui suit dans le lien."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.5",
         "date": "2026-09-30",
         "codename": "Cambria",

@@ -171,6 +171,57 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.6",
+        "date": "2026-10-12",
+        "codename": "Cambria",
+        "summary": "Este parche de Cambria mantiene actualizados por sí solos los plugins del mercado, explica por qué un plugin no se ejecuta y cómo solucionarlo, y hace que funcionen las citas en las respuestas de la IA.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Plugins que se actualizan solos",
+                "body": "Los plugins que instalas o actualizas desde el mercado ahora se mantienen al día por sí solos: se comprueban a diario y justo después de actualizar ReadAware. Conservan su acceso a los libros y su estado de activado o desactivado, y un plugin que habías desactivado se actualiza sin ejecutarse. Las actualizaciones que piden permisos nuevos esperan tu aprobación en Ajustes → Plugins, y los plugins instalados desde una carpeta o un zip nunca se reemplazan. Los plugins instalados antes de 0.6.6 anuncian su próxima actualización una sola vez; actualízalos desde el mercado y después ya se actualizan automáticamente."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Un plugin que no puede ejecutarse dice el motivo",
+                "body": "En lugar de remitirte al registro, la fila del plugin explica si fue creado para un ReadAware más antiguo o si necesita uno más reciente, con un botón de Actualizar cuando el mercado tiene una versión compatible, o un atajo para comprobar si hay actualizaciones de la aplicación."
+              },
+              {
+                "title": "Los ajustes numéricos de un plugin se mantienen dentro del rango",
+                "body": "La página de ajustes de un plugin rechaza un número fuera del rango que el plugin declara e indica qué valores acepta."
+              },
+              {
+                "title": "La sincronización espera lo que el servidor pida",
+                "body": "Cuando el servidor de sincronización está ocupado, el siguiente intento se produce en el momento que el servidor pide, en lugar de tras una espera de diez minutos."
+              },
+              {
+                "title": "Un kit de plugins para personas y agentes de código",
+                "body": "La plantilla, las definiciones de tipos y las comprobaciones del repositorio de plugins ahora se corresponden con esta versión, una única guía acompaña a un agente de código en la creación de un plugin, y la referencia de la API enumera todas las capacidades y métodos que incluye esta versión."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Citas de notas al pie en las respuestas de la IA",
+                "body": "Pulsar el marcador de una nota al pie salta a su nota dentro de la respuesta, y la flecha vuelve atrás, en lugar de abrir un aviso de enlace externo."
+              },
+              {
+                "title": "Enlaces en las respuestas en chino y japonés",
+                "body": "Una dirección web suelta seguida de un signo de puntuación, como un paréntesis de cierre de ancho completo, ya no arrastra ese signo ni el texto posterior dentro del enlace."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.5",
         "date": "2026-09-30",
         "codename": "Cambria",
