@@ -15,7 +15,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import type { RuntimeReport } from "../tests/runtime/harness";
-import { launchHeadlessChrome, type HeadlessChrome } from "./headless-chrome";
+import { launchHeadlessChrome, settlesWithin, type HeadlessChrome } from "./headless-chrome";
 
 const web = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TIMEOUT_MS = Number(process.env.RUNTIME_REGRESSION_TIMEOUT_MS ?? 600_000);
@@ -70,7 +70,7 @@ async function main(): Promise<number> {
     return failed === 0 && !report.error && report.results.length > 0 ? 0 : 1;
   } finally {
     await chrome?.close();
-    await server.close();
+    if (!(await settlesWithin(server.close(), 10_000))) console.warn("The dev server did not close within 10 s");
   }
 }
 

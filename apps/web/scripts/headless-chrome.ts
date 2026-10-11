@@ -99,6 +99,25 @@ async function browserEndpoint(chrome: Bun.Subprocess<"ignore", "ignore", "pipe"
   throw new Error(`Chrome exited before exposing DevTools:\n${output}`);
 }
 
+/** Whether `promise` settles (either way) within `ms` milliseconds. */
+export async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<false>((resolve) => {
+    timer = setTimeout(() => resolve(false), ms);
+  });
+  try {
+    return await Promise.race([
+      promise.then(
+        () => true,
+        () => true,
+      ),
+      expired,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export type HeadlessChrome = {
   devtools: DevTools;
   /** Open a fresh page target and attach a flattened session to it. */
@@ -146,10 +165,25 @@ export async function launchHeadlessChrome(extraArgs: string[] = []): Promise<He
     async closePage(targetId) {
       await devtools.send("Target.closeTarget", { targetId });
     },
+    // Bounded at every step: a browser that will not exit must fail loudly here,
+    // not hold the run until the CI job's timeout cancels it with no clue why.
     async close() {
+      // Asking Chrome to quit lets it tear down its own child processes; the
+      // connection drops as it exits, so the reply is not awaited for success.
+      const quit = devtools.send("Browser.close").catch(() => {
+        // The browser closes the socket while handling this call; that is the expected outcome.
+      });
+      await settlesWithin(quit, 5_000);
       devtools.close();
-      chrome.kill();
-      await chrome.exited;
+      if (!(await settlesWithin(chrome.exited, 10_000))) {
+        console.warn("Chrome did not exit after Browser.close; sending SIGTERM");
+        chrome.kill();
+        if (!(await settlesWithin(chrome.exited, 5_000))) {
+          console.warn("Chrome ignored SIGTERM; sending SIGKILL");
+          chrome.kill("SIGKILL");
+          if (!(await settlesWithin(chrome.exited, 5_000))) console.warn("Chrome is still running after SIGKILL");
+        }
+      }
       rmSync(profile, { recursive: true, force: true });
     },
   };
