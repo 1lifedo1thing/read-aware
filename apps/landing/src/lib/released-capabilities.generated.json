@@ -1,7 +1,7 @@
 {
-  "appVersion": "0.6.5",
-  "ref": "v0.6.5",
-  "commit": "daaf69543b9198f989ac7250f98f87056d471b3f",
+  "appVersion": "0.6.6",
+  "ref": "v0.6.6",
+  "commit": "6e74e4f2beec81909d44b883a24c848cfd6ee6b6",
   "permissions": [
     "library:read",
     "library:write",
