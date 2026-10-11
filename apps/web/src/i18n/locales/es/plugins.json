@@ -62,6 +62,7 @@
     "installZip": "Instalar desde zip…",
     "installing": "Instalando…",
     "installedToast": "{{name}} instalado y activado",
+    "updateAvailableToast": "Actualización disponible: {{name}} v{{version}} — Ajustes → Plugins → Mercado",
     "autoUpdatedToast": "{{name}} se actualizó a v{{version}}",
     "updateNeedsConsentToast": "{{name}} v{{version}} pide permisos nuevos: revísalo en Ajustes → Plugins → Mercado",
     "installFailed": "La instalación falló. Los detalles están en el registro de la aplicación.",

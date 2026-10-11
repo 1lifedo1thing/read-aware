@@ -17,13 +17,15 @@ export function useOutdatedPluginUpdates(
   { enabled = true } = {},
 ) {
   const outdated = installed.some(
-    (plugin) => !plugin.builtin && errorCode(plugin.error) === ERR_PLUGIN_UPDATE_REQUIRED,
+    (plugin) =>
+      !plugin.builtin && plugin.installSource !== "local" && errorCode(plugin.error) === ERR_PLUGIN_UPDATE_REQUIRED,
   );
   const { state } = useMarketplaceRegistry({ enabled: enabled && outdated });
   const { busyId, install } = useMarketplaceInstall(books);
 
   return (plugin: InstalledPlugin): PluginUpdateOffer | undefined => {
-    if (plugin.builtin || state.status !== "ready") return undefined;
+    // A local folder or zip is not the marketplace listing's plugin, even with the same id.
+    if (plugin.builtin || plugin.installSource === "local" || state.status !== "ready") return undefined;
     const entry = state.entries.find(
       (candidate) => candidate.id === plugin.manifest.id && versionNewer(candidate.version, plugin.manifest.version),
     );

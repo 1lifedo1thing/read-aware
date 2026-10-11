@@ -33,6 +33,7 @@ import type {
   RegisteredTool,
   RegisteredMemoryCandidateProvider,
   PluginBookAccess,
+  PluginInstallSource,
 } from "../lib/plugin-types";
 import { createContributionRegistry } from "./contribution-registry";
 import { createInteractiveContributionRegistry } from "./interactive-contribution-registry";
@@ -310,6 +311,47 @@ export function forgetPluginEnabled(id: string, origin: DomainActor = "user"): v
   const map = readEnabledMap();
   delete map[id];
   localKV.setItem(ENABLED_KEY, JSON.stringify(map), "local", causalActor(origin));
+}
+
+// ─── Install provenance (persisted, device-local) ────────────────────────────
+
+const INSTALL_SOURCE_KEY = "read-aware-plugins-install-source";
+
+function readInstallSourceMap(): Record<string, PluginInstallSource> {
+  try {
+    const parsed: unknown = JSON.parse(localKV.getItem(INSTALL_SOURCE_KEY) ?? "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, PluginInstallSource] => entry[1] === "marketplace" || entry[1] === "local",
+      ),
+    );
+  } catch {
+    // Unreadable provenance is unknown provenance: no silent updates, never a broader grant.
+    return {};
+  }
+}
+
+/** Where an installed plugin's files came from; undefined when it predates provenance tracking. */
+export function pluginInstallSource(id: string): PluginInstallSource | undefined {
+  return readInstallSourceMap()[id];
+}
+
+export function persistPluginInstallSource(
+  id: string,
+  source: PluginInstallSource,
+  origin: DomainActor = "user",
+): void {
+  const map = readInstallSourceMap();
+  map[id] = source;
+  localKV.setItem(INSTALL_SOURCE_KEY, JSON.stringify(map), "local", causalActor(origin));
+}
+
+export function forgetPluginInstallSource(id: string, origin: DomainActor = "user"): void {
+  const map = readInstallSourceMap();
+  if (!(id in map)) return;
+  delete map[id];
+  localKV.setItem(INSTALL_SOURCE_KEY, JSON.stringify(map), "local", causalActor(origin));
 }
 
 type PluginBookAccessSource = "legacy-domain" | "user";

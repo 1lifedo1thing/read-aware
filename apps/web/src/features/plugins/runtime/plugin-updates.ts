@@ -1,9 +1,12 @@
 /**
  * Automatic plugin updates from the marketplace. Once a day — and right away
  * after the app itself updated or while an installed plugin is too old to run —
- * fetch the registry and update every installed marketplace plugin with a newer
- * release:
+ * fetch the registry and update every plugin installed from the marketplace
+ * with a newer release:
  *
+ * - provenance comes first: a plugin installed from a local folder or zip is
+ *   never replaced by a listing that shares its id, and one installed before
+ *   provenance was recorded is only announced, never replaced silently;
  * - a release this app cannot run is skipped (the installed one keeps working);
  * - a release asking for more authority than the user approved (permissions,
  *   settings access, network origins) is announced once per version and waits
@@ -100,7 +103,8 @@ export async function updatePluginsFromMarketplace(): Promise<void> {
   const appVersion = await getVersion();
   const installed = getDefaultStore().get(installedPluginsAtom);
   const outdated = installed.some(
-    (plugin) => !plugin.builtin && errorCode(plugin.error) === ERR_PLUGIN_UPDATE_REQUIRED,
+    (plugin) =>
+      !plugin.builtin && plugin.installSource !== "local" && errorCode(plugin.error) === ERR_PLUGIN_UPDATE_REQUIRED,
   );
   const due = now - state.at >= CHECK_INTERVAL_MS || state.appVersion !== appVersion || outdated;
   if (!due || now - state.failedAt < FAILURE_COOLDOWN_MS) return;
@@ -123,13 +127,23 @@ export async function updatePluginsFromMarketplace(): Promise<void> {
     const plugin = getDefaultStore()
       .get(installedPluginsAtom)
       .find((candidate) => candidate.manifest.id === entry.id);
-    if (!plugin || plugin.builtin || !versionNewer(entry.version, plugin.manifest.version)) continue;
+    if (!plugin || plugin.builtin || plugin.installSource === "local") continue;
+    if (!versionNewer(entry.version, plugin.manifest.version)) continue;
+    const announce = (key: "settings.updateAvailableToast" | "settings.updateNeedsConsentToast") => {
+      if (notified[entry.id] === entry.version) return;
+      notified[entry.id] = entry.version;
+      showPluginToast(String(t(key, { name: entry.name, version: entry.version })));
+    };
+    if (plugin.installSource !== "marketplace") {
+      // Unknown provenance: the listing may not be this plugin's publisher.
+      announce("settings.updateAvailableToast");
+      continue;
+    }
     const outcome = await updateOne(plugin, entry, appVersion);
     if (outcome === "updated") {
       showPluginToast(String(t("settings.autoUpdatedToast", { name: plugin.manifest.name, version: entry.version })));
-    } else if (outcome === "needs-consent" && notified[entry.id] !== entry.version) {
-      notified[entry.id] = entry.version;
-      showPluginToast(String(t("settings.updateNeedsConsentToast", { name: entry.name, version: entry.version })));
+    } else if (outcome === "needs-consent") {
+      announce("settings.updateNeedsConsentToast");
     }
   }
 

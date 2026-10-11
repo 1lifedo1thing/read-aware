@@ -62,6 +62,7 @@
     "installZip": "Установить из zip…",
     "installing": "Установка…",
     "installedToast": "{{name}} установлен и включён",
+    "updateAvailableToast": "Доступно обновление: {{name}} v{{version}} — Настройки → Плагины → Каталог",
     "autoUpdatedToast": "Плагин {{name}} обновлён до v{{version}}",
     "updateNeedsConsentToast": "{{name}} v{{version}} запрашивает новые разрешения — проверьте в Настройки → Плагины → Каталог",
     "installFailed": "Установка не удалась. Подробности — в журнале приложения.",

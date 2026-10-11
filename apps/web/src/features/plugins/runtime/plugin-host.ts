@@ -21,16 +21,25 @@ import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError, parseManifestJson } from "../lib/manifest";
 import { clearPluginScheduleState } from "./plugin-scheduler";
-import type { InstalledPlugin, PluginDisposable, PluginManifest, PluginBookAccess } from "../lib/plugin-types";
+import type {
+  InstalledPlugin,
+  PluginBookAccess,
+  PluginDisposable,
+  PluginInstallSource,
+  PluginManifest,
+} from "../lib/plugin-types";
 import {
   forgetPluginEnabled,
   getPluginBookAccess,
   persistPluginBookAccess,
   forgetPluginBookAccess,
+  forgetPluginInstallSource,
   installedPluginsAtom,
   isPluginEnabled,
   markPluginsReady,
   persistPluginEnabled,
+  persistPluginInstallSource,
+  pluginInstallSource,
   registerFontContribution,
   registerThemeContribution,
   setInstalledPlugins,
@@ -158,6 +167,7 @@ export async function initializePlugins(): Promise<void> {
         error: accessError,
         enabled: isPluginEnabled(manifest.id, entry.builtin === true),
         builtin: entry.builtin === true,
+        installSource: entry.builtin === true ? undefined : pluginInstallSource(manifest.id),
       });
     } catch (error) {
       // Keep the broken folder visible in settings instead of hiding it.
@@ -506,8 +516,9 @@ async function discardCandidateAfterFailure(token: string): Promise<void> {
  */
 async function applyCandidate(
   entry: PluginCandidateDiskEntry,
-  requestedGrant?: PluginBookAccess,
-  origin: DomainActor = "user",
+  requestedGrant: PluginBookAccess | undefined,
+  origin: DomainActor,
+  source: PluginInstallSource,
 ): Promise<InstalledPlugin> {
   origin = causalActor(origin);
   let manifest: PluginManifest;
@@ -555,6 +566,7 @@ async function applyCandidate(
     enabled: true,
     bookAccess: grant,
     bookAccessSource: requestedGrant ? "user" : previousAccess.source,
+    installSource: source,
   };
 
   let entered = false;
@@ -622,6 +634,7 @@ async function applyCandidate(
           origin,
         );
         persistPluginEnabled(manifest.id, true, origin);
+        persistPluginInstallSource(manifest.id, source, origin);
         accepted = true;
       },
       retirePrevious: async () => {
@@ -672,7 +685,7 @@ function preparedCandidate(entry: PluginCandidateDiskEntry): PreparedPluginInsta
     async complete(grant?: PluginBookAccess) {
       if (consumed) throw new Error("plugin candidate has already been consumed");
       consumed = true;
-      return applyCandidate(entry, grant);
+      return applyCandidate(entry, grant, "user", "local");
     },
     async discard() {
       if (consumed) return;
@@ -710,12 +723,12 @@ export async function installPluginFiles(
   origin: DomainActor = "user",
 ): Promise<InstalledPlugin> {
   origin = causalActor(origin);
-  return applyCandidate(await stagePluginFiles(id, files), grant, origin);
+  return applyCandidate(await stagePluginFiles(id, files), grant, origin, "marketplace");
 }
 
 /**
- * Update an installed plugin from fetched files without changing whether it
- * runs, keeping its book access. An enabled plugin goes through the
+ * Update an installed plugin from fetched marketplace files without changing
+ * whether it runs, keeping its book access, and record its marketplace origin. An enabled plugin goes through the
  * blue-green transaction; a disabled one only has its files replaced, so code
  * the user turned off never starts — its data migrates on next activation.
  */
@@ -730,7 +743,7 @@ export async function updatePluginFiles(
   }
   const entry = await stagePluginFiles(id, files);
   const installed = getInstalled().find((plugin) => plugin.manifest.id === id);
-  if (installed?.enabled) return applyCandidate(entry, undefined, origin);
+  if (installed?.enabled) return applyCandidate(entry, undefined, origin, "marketplace");
   return replaceDisabledPluginFiles(entry, origin);
 }
 
@@ -780,13 +793,14 @@ async function commitDisabledReplacement(
     throw error;
   }
   await finishPluginUpdate(journal);
+  persistPluginInstallSource(manifest.id, "marketplace", origin);
   // Patch only what the files changed: the user may have enabled the plugin
   // meanwhile (that activation waits for this replacement, then starts it).
-  let updated: InstalledPlugin = { ...current, manifest, error: undefined };
+  let updated: InstalledPlugin = { ...current, manifest, installSource: "marketplace", error: undefined };
   setInstalledPlugins(
     getInstalled().map((plugin) => {
       if (plugin.manifest.id !== manifest.id) return plugin;
-      updated = { ...plugin, manifest, error: undefined };
+      updated = { ...plugin, manifest, installSource: "marketplace", error: undefined };
       return updated;
     }),
     origin,
@@ -813,6 +827,7 @@ export async function uninstallPlugin(id: string, origin: DomainActor = "user"):
       throw error;
     });
     forgetPluginEnabled(id, origin);
+    forgetPluginInstallSource(id, origin);
     await forgetPluginBookAccess(id, origin);
     setInstalledPlugins(
       getInstalled().filter((entry) => entry.manifest.id !== id),

@@ -14,9 +14,15 @@ if (process.env.PLUGIN_AUTO_UPDATE === "1") {
 
   const settingsAccess = { discover: ["appearance.theme"], write: ["appearance.theme"] };
   const base = { name: "Theme Schedule", schemaVersion: 1, settingsAccess };
-  const installed = (id: string, version: string, enabled: boolean) => ({
+  const installed = (
+    id: string,
+    version: string,
+    enabled: boolean,
+    installSource: "marketplace" | "local" | "unknown" = "marketplace",
+  ) => ({
     manifest: { id, version, ...base, requires: { services: { storage: "^1.0.0" } } },
     enabled,
+    ...(installSource === "unknown" ? {} : { installSource }),
     ...(enabled ? { error: new AppError(ERR_PLUGIN_UPDATE_REQUIRED, "storage ^1.0.0 vs 2.x") } : {}),
   });
   const release = (id: string, version: string, patch: Record<string, unknown> = {}) => ({
@@ -133,6 +139,9 @@ if (process.env.PLUGIN_AUTO_UPDATE === "1") {
     expect(starts).toEqual([]);
     expect(updated).toMatchObject({ enabled: false, manifest: { version: "1.1.0" } });
     expect(plugins()[0]).toMatchObject({ enabled: false, manifest: { version: "1.1.0" } });
+    expect(JSON.parse(localKV.getItem("read-aware-plugins-install-source") ?? "{}")).toEqual({
+      "theme-schedule": "marketplace",
+    });
     expect(commands.filter((command) => command.startsWith("plugins_"))).toEqual([
       "plugins_stage_files",
       "plugins_update_begin",
@@ -191,19 +200,25 @@ if (process.env.PLUGIN_AUTO_UPDATE === "1") {
     await host.setPluginEnabled("theme-schedule", false);
   });
 
-  test("the updater applies same-authority releases and holds wider ones for consent", async () => {
+  test("the updater applies same-authority releases, holds wider ones and respects provenance", async () => {
     releases = new Map([
       ["theme-schedule", release("theme-schedule", "1.1.0")],
       // Asks to write a setting it never had: needs the user's consent.
       ["wider", release("wider", "2.0.0", { settingsAccess: { write: ["appearance.theme", "reading.theme"] } })],
       // Needs a newer app: the installed version keeps working.
       ["future", release("future", "3.0.0", { minAppVersion: "99.0.0" })],
+      // Installed from a local folder: a listing with its id is not its publisher.
+      ["sideloaded", release("sideloaded", "5.0.0")],
+      // Installed before provenance was recorded: announced, never replaced silently.
+      ["legacy", release("legacy", "1.2.0")],
     ]);
     registry = [...releases.values()].map(({ id, name, version }) => ({ id, name, version }));
     reset([
       installed("theme-schedule", "1.0.1", true),
       installed("wider", "1.0.0", false),
       installed("future", "1.0.0", false),
+      installed("sideloaded", "1.0.0", true, "local"),
+      installed("legacy", "1.0.0", false, "unknown"),
     ]);
     await updatePluginsFromMarketplace();
     const byId = new Map(plugins().map((plugin) => [plugin.manifest.id, plugin]));
@@ -213,9 +228,13 @@ if (process.env.PLUGIN_AUTO_UPDATE === "1") {
     expect(byId.get("theme-schedule")?.error).toBeUndefined();
     expect(byId.get("wider")?.manifest.version).toBe("1.0.0");
     expect(byId.get("future")?.manifest.version).toBe("1.0.0");
+    expect(byId.get("sideloaded")).toMatchObject({ installSource: "local", manifest: { version: "1.0.0" } });
+    expect(byId.get("legacy")?.manifest.version).toBe("1.0.0");
+    expect(commands.filter((command) => command === "plugins_stage_files")).toHaveLength(1);
     expect(toasts).toEqual([
       "Theme Schedule updated to v1.1.0",
       "Theme Schedule v2.0.0 asks for new permissions — review it in Settings → Plugins → Marketplace",
+      "Update available: Theme Schedule v1.2.0 — Settings → Plugins → Marketplace",
     ]);
 
     // Same day, same app version, nothing broken: no second check.

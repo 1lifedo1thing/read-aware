@@ -150,6 +150,13 @@ export type RegisteredPluginFont = PluginFontContribution & {
   pluginName: string;
 };
 
+/**
+ * Where an installed plugin's files came from. Only `marketplace` plugins
+ * update from the marketplace without asking; a `local` folder or zip is never
+ * replaced by a listing that happens to share its id.
+ */
+export type PluginInstallSource = "marketplace" | "local";
+
 /** An installed plugin as shown in settings; `error` records a failed activation. */
 export type InstalledPlugin = {
   manifest: PluginManifest;
@@ -160,6 +167,8 @@ export type InstalledPlugin = {
   bookAccessSource?: "legacy-domain" | "user";
   /** Shipped in the app bundle: default-enabled, not uninstallable. */
   builtin?: boolean;
+  /** Absent for built-ins and for installs that predate provenance tracking. */
+  installSource?: PluginInstallSource;
   /** Why the plugin is not running (failed activation or a fatal runtime error).
    *  Settings render it through `describeError`; its message is log-only. */
   error?: Error;

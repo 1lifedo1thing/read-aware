@@ -6553,8 +6553,12 @@ the replacement and starts the new version.
 
 [代码] After plugin initialization the app checks the marketplace registry once
 a day, and at once after the app itself changed version or while an installed
-plugin is too old to run (`plugin/update-required`). Every installed
-marketplace plugin with a newer release is updated automatically, keeping its
+plugin is too old to run (`plugin/update-required`). The host records each
+plugin's install source on this device: marketplace installs and updates are
+`marketplace`, folder and zip installs `local`. A `local` plugin is never
+replaced by a listing that shares its id, and a plugin installed before the
+source was recorded is only announced (a consented update records it). Every
+`marketplace` plugin with a newer release is updated automatically, keeping its
 book access and whether it is enabled, unless:
 
 - the release cannot activate on this app (newer `minAppVersion` or capability

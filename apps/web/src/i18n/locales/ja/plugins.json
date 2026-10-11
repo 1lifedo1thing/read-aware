@@ -62,6 +62,7 @@
     "installZip": "zip からインストール…",
     "installing": "インストール中…",
     "installedToast": "{{name}} をインストールして有効化しました",
+    "updateAvailableToast": "アップデート可能：{{name}} v{{version}}（設定 → プラグイン → マーケットプレイス）",
     "autoUpdatedToast": "{{name}} を v{{version}} に更新しました",
     "updateNeedsConsentToast": "{{name}} v{{version}} は新しい権限を求めています（設定 → プラグイン → マーケットプレイス で確認）",
     "installFailed": "インストールに失敗しました。詳細はアプリのログに記録されています。",
