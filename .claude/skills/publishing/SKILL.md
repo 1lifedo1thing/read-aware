@@ -1,6 +1,6 @@
 ---
 name: publishing
-description: ReadAware 发版流水线：bump 版本号 → 打 tag 推送 → 盯 release CI → 重写 GitHub release changelog → 机翻更新官网 changelog（全 8 语）→ 同步 landing 文档/blog（push 自动部署）。触发词："bump 版本"、"发版"、"发布新版本"、"发个版"、"bump version"、"cut a release"、"release vX.Y.Z"。
+description: ReadAware 发版流水线：bump 版本号 → 打 tag 推送 → 盯 release CI → 重写 GitHub release changelog → 机翻更新官网 changelog（全 8 语）→ 同步 landing 文档/blog（push 自动部署）→ 同步插件市场的插件契约。触发词："bump 版本"、"发版"、"发布新版本"、"发个版"、"bump version"、"cut a release"、"release vX.Y.Z"。
 ---
 
 # ReadAware 发版流水线
@@ -235,8 +235,30 @@ feed/sitemap/索引页全自动）。zh/ja 先机翻再校对；**整篇博客�
   `/changelog/`（不带 `-L` 只有空响应）、不带 `--compressed` 可能拿到压缩
   字节。空 grep ≠ 未部署——先看 `-w '%{http_code} %{size_download}'`。
 
+## 6.5 同步插件契约（正式版必做，pre-release 跳过）
+
+插件作者和他们的 Agent 只看插件市场仓库（ahpxex/readaware-plugins，本地
+`../readaware-plugins`）里的 `types/`。每个正式版都要把它换成这个 release 的契约，
+否则模板、文档和校验会对着旧版本——0.6.x 之前就因为没人同步，模板要求的
+`storage ^1.0.0` 在新版应用上直接激活失败。
+
+```bash
+bun scripts/sync-plugin-dts.ts            # 默认用 tauri.conf.json 版本对应的 vX.Y.Z tag
+cd ../readaware-plugins && bun run check  # validate + typecheck + test + 产物比对
+```
+
+- 生成器从 tag 的源码出三份产物：市场仓库的 `types/plugin-api.d.ts`、
+  `types/host-capabilities.json`，以及本仓库 `apps/landing/src/lib/released-capabilities.generated.json`
+  （官网插件能力页的"已发布"版本列）。不要手改其中任何一份。
+- `bun run check` 失败多半是某个能力出了新的 major：按报错改 `template/`、
+  README / AGENTS.md 里的示例 manifest 与说明（校验会连文档示例一起查），必要时
+  给受影响的市场插件出新版本。
+- 市场仓库单独提交（`feat: generate the X.Y.Z contract`）并推送；本仓库的 landing
+  JSON 随第 6 步的文档提交或单独提交推送。`bun scripts/sync-plugin-dts.ts --check`
+  可确认三份产物与 tag 一致。
+
 ## 7. 收尾汇报
 
 向用户汇报：版本号、release 链接、CI 结果（含重跑情况）、changelog 要点、
-官网 changelog 与文档改了什么或为何不用改。插件市场仓库（ahpxex/readaware-plugins）不在
-本流水线内，不要顺手动它。
+官网 changelog 与文档改了什么或为何不用改、插件契约是否已同步。插件市场仓库
+（ahpxex/readaware-plugins）除第 6.5 步的契约同步外不在本流水线内，不要顺手改别的。

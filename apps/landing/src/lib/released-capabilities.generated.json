@@ -1,0 +1,504 @@
+{
+  "appVersion": "0.6.5",
+  "ref": "v0.6.5",
+  "commit": "daaf69543b9198f989ac7250f98f87056d471b3f",
+  "permissions": [
+    "library:read",
+    "library:write",
+    "reading:read",
+    "reading:write",
+    "annotations:read",
+    "annotations:write",
+    "conversations:read",
+    "conversations:write",
+    "memory:read",
+    "memory:write",
+    "agent:tools",
+    "agent:context",
+    "agent:retrieval",
+    "agent:memory",
+    "ui:themes",
+    "sync:transport",
+    "service:diagnostics",
+    "service:sync",
+    "service:network",
+    "service:llm",
+    "service:clipboard"
+  ],
+  "capabilities": {
+    "domains": {
+      "library": {
+        "version": "1.35.0",
+        "permissions": [
+          "library:read",
+          "library:write"
+        ]
+      },
+      "reading": {
+        "version": "2.24.0",
+        "permissions": [
+          "reading:read",
+          "reading:write"
+        ]
+      },
+      "annotations": {
+        "version": "2.2.0",
+        "permissions": [
+          "annotations:read",
+          "annotations:write"
+        ]
+      },
+      "conversations": {
+        "version": "1.6.0",
+        "permissions": [
+          "conversations:read",
+          "conversations:write"
+        ]
+      },
+      "settings": {
+        "version": "1.10.0",
+        "permissions": []
+      },
+      "memory": {
+        "version": "2.8.0",
+        "permissions": [
+          "memory:read",
+          "memory:write"
+        ]
+      }
+    },
+    "contributions": {
+      "uriHandlers": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "selectionActions": {
+        "version": "1.2.0",
+        "permissions": []
+      },
+      "headerActions": {
+        "version": "1.2.0",
+        "permissions": []
+      },
+      "contextActions": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "commands": {
+        "version": "1.1.0",
+        "permissions": []
+      },
+      "settingsOptions": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "voiceProviders": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "contentProviders": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "agentTools": {
+        "version": "1.3.0",
+        "permissions": [
+          "agent:tools"
+        ]
+      },
+      "agentContextProviders": {
+        "version": "1.1.0",
+        "permissions": [
+          "agent:context"
+        ]
+      },
+      "agentRetrievalProviders": {
+        "version": "1.0.0",
+        "permissions": [
+          "agent:retrieval"
+        ]
+      },
+      "memoryCandidateProviders": {
+        "version": "1.1.0",
+        "permissions": [
+          "agent:memory"
+        ]
+      },
+      "themes": {
+        "version": "1.0.0",
+        "permissions": [
+          "ui:themes"
+        ]
+      },
+      "fonts": {
+        "version": "1.0.0",
+        "permissions": [
+          "ui:themes"
+        ]
+      },
+      "syncTransports": {
+        "version": "2.0.0",
+        "permissions": [
+          "sync:transport"
+        ]
+      }
+    },
+    "services": {
+      "storage": {
+        "version": "2.6.0",
+        "permissions": []
+      },
+      "secrets": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "ui": {
+        "version": "1.17.0",
+        "permissions": []
+      },
+      "schedules": {
+        "version": "2.1.0",
+        "permissions": []
+      },
+      "jobs": {
+        "version": "1.1.0",
+        "permissions": []
+      },
+      "changes": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "transactions": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "session": {
+        "version": "2.18.0",
+        "permissions": []
+      },
+      "plugins": {
+        "version": "1.10.0",
+        "permissions": []
+      },
+      "maintenance": {
+        "version": "1.5.0",
+        "permissions": []
+      },
+      "diagnostics": {
+        "version": "1.2.0",
+        "permissions": [
+          "service:diagnostics"
+        ]
+      },
+      "logging": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "resources": {
+        "version": "1.5.0",
+        "permissions": []
+      },
+      "sync": {
+        "version": "1.2.0",
+        "permissions": [
+          "service:sync"
+        ]
+      },
+      "network": {
+        "version": "2.2.0",
+        "permissions": [
+          "service:network"
+        ]
+      },
+      "llm": {
+        "version": "1.6.0",
+        "permissions": [
+          "service:llm"
+        ]
+      },
+      "clipboard": {
+        "version": "1.1.0",
+        "permissions": [
+          "service:clipboard"
+        ]
+      }
+    },
+    "schemas": {
+      "views": {
+        "version": "1.12.0",
+        "permissions": []
+      },
+      "settings": {
+        "version": "1.0.0",
+        "permissions": []
+      },
+      "themes": {
+        "version": "1.0.0",
+        "permissions": [
+          "ui:themes"
+        ]
+      }
+    }
+  },
+  "icons": [
+    "arrow-counter-clockwise",
+    "arrow-left",
+    "arrow-right",
+    "arrow-square-out",
+    "arrows-clockwise",
+    "article",
+    "book-bookmark",
+    "book-open",
+    "books",
+    "brain",
+    "calendar",
+    "cards",
+    "chart-line-up",
+    "chat-circle-dots",
+    "check",
+    "clipboard",
+    "clock",
+    "cloud-arrow-up",
+    "copy",
+    "database",
+    "download-simple",
+    "export",
+    "file-text",
+    "folder",
+    "globe",
+    "graduation-cap",
+    "highlighter",
+    "lightbulb",
+    "link",
+    "list-bullets",
+    "magnifying-glass",
+    "note-pencil",
+    "notebook",
+    "paragraph",
+    "pencil-simple",
+    "play",
+    "plus",
+    "push-pin",
+    "puzzle-piece",
+    "quotes",
+    "rows",
+    "share",
+    "sparkle",
+    "speaker",
+    "star",
+    "stop",
+    "tag",
+    "target",
+    "text-aa",
+    "translate",
+    "trash",
+    "upload-simple"
+  ],
+  "builtInShortcuts": [
+    {
+      "id": "search",
+      "chords": [
+        {
+          "mod": true,
+          "key": "k"
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "chords": [
+        {
+          "mod": true,
+          "key": ","
+        }
+      ]
+    },
+    {
+      "id": "new-conversation",
+      "chords": [
+        {
+          "mod": true,
+          "key": "n"
+        }
+      ]
+    },
+    {
+      "id": "next-page",
+      "chords": [
+        {
+          "key": "ArrowRight"
+        }
+      ]
+    },
+    {
+      "id": "prev-page",
+      "chords": [
+        {
+          "key": "ArrowLeft"
+        }
+      ]
+    },
+    {
+      "id": "next-chapter",
+      "chords": [
+        {
+          "key": "]"
+        }
+      ]
+    },
+    {
+      "id": "prev-chapter",
+      "chords": [
+        {
+          "key": "["
+        }
+      ]
+    },
+    {
+      "id": "toggle-controls",
+      "chords": [
+        {
+          "key": " "
+        }
+      ]
+    },
+    {
+      "id": "zoom-in",
+      "chords": [
+        {
+          "mod": true,
+          "key": "="
+        },
+        {
+          "mod": true,
+          "key": "+"
+        },
+        {
+          "mod": true,
+          "shift": true,
+          "key": "+"
+        }
+      ]
+    },
+    {
+      "id": "zoom-out",
+      "chords": [
+        {
+          "mod": true,
+          "key": "-"
+        }
+      ]
+    },
+    {
+      "id": "zoom-reset",
+      "chords": [
+        {
+          "mod": true,
+          "key": "0"
+        },
+        {
+          "mod": true,
+          "shift": true,
+          "key": "0"
+        }
+      ]
+    },
+    {
+      "id": "zoom-lock",
+      "chords": [
+        {
+          "mod": true,
+          "key": "l"
+        }
+      ]
+    },
+    {
+      "id": "reader-mode-next-unit",
+      "chords": [
+        {
+          "key": "ArrowDown"
+        }
+      ]
+    },
+    {
+      "id": "reader-mode-prev-unit",
+      "chords": [
+        {
+          "key": "ArrowUp"
+        }
+      ]
+    },
+    {
+      "id": "selection-copy",
+      "chords": [
+        {
+          "key": "c"
+        }
+      ]
+    },
+    {
+      "id": "selection-highlight",
+      "chords": [
+        {
+          "key": "h"
+        }
+      ]
+    },
+    {
+      "id": "selection-underline",
+      "chords": [
+        {
+          "key": "u"
+        }
+      ]
+    },
+    {
+      "id": "selection-add-note",
+      "chords": [
+        {
+          "key": "n"
+        }
+      ]
+    },
+    {
+      "id": "selection-look-up",
+      "chords": [
+        {
+          "key": "l"
+        }
+      ]
+    },
+    {
+      "id": "selection-ask-ai",
+      "chords": [
+        {
+          "key": "a"
+        }
+      ]
+    }
+  ],
+  "themeTokens": {
+    "app": [
+      "paper",
+      "border",
+      "fg",
+      "fgMuted",
+      "fgSubtle",
+      "inverseFg",
+      "surface",
+      "fill",
+      "fillStrong",
+      "borderStrong",
+      "mainSurface",
+      "scrollbar"
+    ],
+    "readerPalette": [
+      "bg",
+      "text",
+      "selection",
+      "rule",
+      "faint",
+      "muted"
+    ]
+  }
+}

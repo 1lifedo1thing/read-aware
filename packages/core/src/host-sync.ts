@@ -44,7 +44,17 @@ export type HostSyncPort = {
   backlog(signal?: AbortSignal): Promise<{ events: number; blobs: number }>;
   /** Explicit remote read. No email, account ID, keys, session or billing ticket. */
   account(signal?: AbortSignal): Promise<HostSyncAccount | null>;
-  /** Uses the configured scheduler. Caller cancellation cannot stop a shared sync or undo its writes. */
+  /**
+   * Runs one sync round on the configured backend — the relay or a plugin
+   * transport such as WebDAV, including transports that only sync on request —
+   * and resolves when that round has finished: `completed`, or
+   * `already-running` when a round was in progress (it is not queued again).
+   * Rejects with a coded `AppError` when no round can start (`ui/unavailable`
+   * while sync is unsupported, disconnected, disabled or busy) and with the
+   * round's error when it fails — classified failures carry a `sync/*` code
+   * such as `sync/network` or `sync/unauthorized`. Caller cancellation cannot
+   * stop a shared sync or undo its writes.
+   */
   requestSync(signal?: AbortSignal): Promise<HostSyncReceipt>;
   /** Opens the host Data & Sync page, not an automatic login, disconnect or purchase. */
   openSettings(signal?: AbortSignal): Promise<{ status: "opened"; surface: "dataSync" }>;
