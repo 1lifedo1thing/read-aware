@@ -148,6 +148,8 @@ export async function fetchMarketplaceRegistry(): Promise<MarketplaceEntry[]> {
  */
 export async function prepareMarketplaceInstall(entry: MarketplaceEntry): Promise<{
   manifest: PluginManifest;
+  /** The release's files, manifest first — exactly the manifest validated here. */
+  download: () => Promise<PluginFilePayload[]>;
   complete: (grant?: import("@read-aware/plugin-types").PluginBookAccess) => Promise<InstalledPlugin>;
 }> {
   const manifestText = await fetchText(`plugins/${entry.id}/manifest.json`);
@@ -155,15 +157,17 @@ export async function prepareMarketplaceInstall(entry: MarketplaceEntry): Promis
   if (manifest.id !== entry.id) {
     throw new PluginManifestError(`marketplace manifest id "${manifest.id}" does not match listing "${entry.id}"`);
   }
+  const download = async () => {
+    const fileNames = [manifest.main ?? "main.js", ...(entry.files ?? [])];
+    const files: PluginFilePayload[] = [{ path: "manifest.json", content: manifestText }];
+    for (const name of [...new Set(fileNames)]) {
+      files.push(await fetchFilePayload(`plugins/${entry.id}`, name));
+    }
+    return files;
+  };
   return {
     manifest,
-    complete: async (grant) => {
-      const fileNames = [manifest.main ?? "main.js", ...(entry.files ?? [])];
-      const files: PluginFilePayload[] = [{ path: "manifest.json", content: manifestText }];
-      for (const name of [...new Set(fileNames)]) {
-        files.push(await fetchFilePayload(`plugins/${entry.id}`, name));
-      }
-      return installPluginFiles(manifest.id, files, grant);
-    },
+    download,
+    complete: async (grant) => installPluginFiles(manifest.id, await download(), grant),
   };
 }

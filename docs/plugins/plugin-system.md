@@ -6543,6 +6543,32 @@ attempted. Desktop startup also repairs an interrupted file switch when
 possible. Domain events and secret mutations are not rollback storage; the
 activation barrier makes them impossible before the promotion boundary.
 
+A disabled plugin is updated without running it: the host checks that the
+candidate can activate on this app, snapshots its data, commits the files and
+accepts the unchanged baseline, rolling the files back on failure. Its data
+migrates on its next activation; an activation requested meanwhile waits for
+the replacement and starts the new version.
+
+#### Automatic marketplace updates
+
+[代码] After plugin initialization the app checks the marketplace registry once
+a day, and at once after the app itself changed version or while an installed
+plugin is too old to run (`plugin/update-required`). Every installed
+marketplace plugin with a newer release is updated automatically, keeping its
+book access and whether it is enabled, unless:
+
+- the release cannot activate on this app (newer `minAppVersion` or capability
+  requirements) — the installed version stays;
+- the release asks for authority the user has not approved: a new permission,
+  a settings path or operation outside the granted patterns, or a network
+  origin outside the granted origins. These are exactly what install consent
+  discloses. The update is announced once per version and waits for consent in
+  Settings → Plugins (the marketplace, or the update action on a plugin that
+  cannot run).
+
+Successful updates are announced with a plugin toast; failures are logged and
+retried on a later check.
+
 Storage service v2 keeps `get()` synchronous but makes `set()` and `remove()`
 awaitable durable writes; `flush()` waits for pending namespace writes. Worker
 writes use ordinary RPC acknowledgements and participate in migration drain.

@@ -80,6 +80,8 @@ type ActivePlugin = {
 const active = new Map<string, ActivePlugin>();
 const activating = new Map<string, Promise<void>>();
 const deactivating = new Map<string, Promise<void>>();
+/** Disabled plugins whose files are being replaced; activation waits for them. */
+const replacingFiles = new Map<string, Promise<unknown>>();
 const changingBookAccess = new Set<string>();
 
 function assertBookAccessNotChanging(id: string): void {
@@ -215,7 +217,12 @@ function activatePlugin(manifest: PluginManifest, origin: DomainActor = "system"
   const work = (async () => {
     try {
       await deactivating.get(manifest.id);
-      active.set(manifest.id, await startPluginInstance(manifest, { activationOrigin: origin }));
+      await replacingFiles.get(manifest.id)?.catch(() => {
+        // The replacement reports its own failure; activation proceeds with whatever is installed.
+      });
+      // A file replacement may have landed while this activation waited.
+      const current = getInstalled().find((plugin) => plugin.manifest.id === manifest.id)?.manifest ?? manifest;
+      active.set(manifest.id, await startPluginInstance(current, { activationOrigin: origin }));
       updateInstalledPlugin(manifest.id, { error: undefined }, origin);
     } catch (error) {
       log.error(`activation of "${manifest.id}" failed`, error);
@@ -704,6 +711,87 @@ export async function installPluginFiles(
 ): Promise<InstalledPlugin> {
   origin = causalActor(origin);
   return applyCandidate(await stagePluginFiles(id, files), grant, origin);
+}
+
+/**
+ * Update an installed plugin from fetched files without changing whether it
+ * runs, keeping its book access. An enabled plugin goes through the
+ * blue-green transaction; a disabled one only has its files replaced, so code
+ * the user turned off never starts — its data migrates on next activation.
+ */
+export async function updatePluginFiles(
+  id: string,
+  files: PluginFilePayload[],
+  origin: DomainActor = "system",
+): Promise<InstalledPlugin> {
+  origin = causalActor(origin);
+  if (!getInstalled().some((plugin) => plugin.manifest.id === id)) {
+    throw new AppError("plugin/invalid-argument", `"${id}" is not installed`);
+  }
+  const entry = await stagePluginFiles(id, files);
+  const installed = getInstalled().find((plugin) => plugin.manifest.id === id);
+  if (installed?.enabled) return applyCandidate(entry, undefined, origin);
+  return replaceDisabledPluginFiles(entry, origin);
+}
+
+async function replaceDisabledPluginFiles(
+  entry: PluginCandidateDiskEntry,
+  origin: DomainActor,
+): Promise<InstalledPlugin> {
+  let manifest: PluginManifest;
+  try {
+    manifest = parseCandidate(entry);
+    assertBookAccessNotChanging(manifest.id);
+    assertManifestCanActivate(manifest);
+  } catch (error) {
+    await discardCandidateAfterFailure(entry.token);
+    throw error;
+  }
+  const replacement = withPluginDataUpdate(manifest.id, () => commitDisabledReplacement(entry, manifest, origin));
+  replacingFiles.set(manifest.id, replacement);
+  try {
+    return await replacement;
+  } finally {
+    if (replacingFiles.get(manifest.id) === replacement) replacingFiles.delete(manifest.id);
+    // Commit copies the candidate; with no Worker holding it, release it now.
+    await discardPluginCandidate(entry.token).catch((error) => log.warn("Plugin candidate cleanup failed", error));
+  }
+}
+
+async function commitDisabledReplacement(
+  entry: PluginCandidateDiskEntry,
+  manifest: PluginManifest,
+  origin: DomainActor,
+): Promise<InstalledPlugin> {
+  const current = getInstalled().find((plugin) => plugin.manifest.id === manifest.id);
+  if (!current || current.builtin || current.enabled || active.has(manifest.id) || activating.has(manifest.id)) {
+    throw new AppError("plugin/data-busy", "Plugin state changed before its files were replaced");
+  }
+  const journal = await beginPluginUpdate(manifest.id, entry.token);
+  try {
+    const committed = await commitPluginCandidate(entry.token, journal.updateId);
+    if (committed.id !== manifest.id || parseManifestJson(committed.manifest).version !== manifest.version) {
+      throw new Error("committed plugin candidate does not match the staged version");
+    }
+    // Nothing ran, so the data is the baseline; accepting closes the journal.
+    await acceptPluginUpdate(journal);
+  } catch (error) {
+    await rollbackPluginUpdate(journal);
+    throw error;
+  }
+  await finishPluginUpdate(journal);
+  // Patch only what the files changed: the user may have enabled the plugin
+  // meanwhile (that activation waits for this replacement, then starts it).
+  let updated: InstalledPlugin = { ...current, manifest, error: undefined };
+  setInstalledPlugins(
+    getInstalled().map((plugin) => {
+      if (plugin.manifest.id !== manifest.id) return plugin;
+      updated = { ...plugin, manifest, error: undefined };
+      return updated;
+    }),
+    origin,
+  );
+  return updated;
 }
 
 /**

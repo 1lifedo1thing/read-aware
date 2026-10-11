@@ -1,16 +1,30 @@
 /**
- * Proactive plugin update notice: once a day (per launch at most), quietly
- * fetch the marketplace registry and toast when an installed, non-builtin
- * plugin has a newer version listed. Each version is announced once — the
- * user updates from Settings → Plugins → Marketplace at their own pace.
+ * Automatic plugin updates from the marketplace. Once a day — and right away
+ * after the app itself updated or while an installed plugin is too old to run —
+ * fetch the registry and update every installed marketplace plugin with a newer
+ * release:
+ *
+ * - a release this app cannot run is skipped (the installed one keeps working);
+ * - a release asking for more authority than the user approved (permissions,
+ *   settings access, network origins) is announced once per version and waits
+ *   for consent in Settings → Plugins;
+ * - anything else applies silently with the user's existing grants, without
+ *   changing whether the plugin is enabled.
  */
+import { getVersion } from "@tauri-apps/api/app";
+import { ERR_PLUGIN_UPDATE_REQUIRED, errorCode } from "@read-aware/core";
 import { getDefaultStore } from "jotai";
 import { i18n } from "../../../i18n";
+import { isTauri } from "../../../platform/environment";
 import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
+import { pluginUpdateWidensAuthority } from "../lib/plugin-authority";
 import { showPluginToast } from "../lib/plugin-toast";
+import type { InstalledPlugin } from "../lib/plugin-types";
 import { installedPluginsAtom } from "../state/plugin-store";
-import { fetchMarketplaceRegistry } from "./marketplace";
+import { fetchMarketplaceRegistry, prepareMarketplaceInstall, type MarketplaceEntry } from "./marketplace";
+import { updatePluginFiles } from "./plugin-host";
+import { assertPluginManifestCanActivate } from "./plugin-manifest-readiness";
 
 const CHECK_KEY = "read-aware-plugin-update-check";
 const CHECK_INTERVAL_MS = 20 * 60 * 60 * 1000;
@@ -23,7 +37,9 @@ type CheckState = {
   at: number;
   /** Last attempt that failed to fetch the registry; 0 after a success. */
   failedAt: number;
-  /** plugin id → last registry version we announced. */
+  /** The app version of the last completed check; a different one checks at once. */
+  appVersion: string | null;
+  /** plugin id → last release announced as waiting for consent. */
   notified: Record<string, string>;
 };
 
@@ -34,10 +50,11 @@ function readState(): CheckState {
     return {
       at: typeof parsed?.at === "number" ? parsed.at : 0,
       failedAt: typeof parsed?.failedAt === "number" ? parsed.failedAt : 0,
+      appVersion: typeof parsed?.appVersion === "string" ? parsed.appVersion : null,
       notified: parsed?.notified && typeof parsed.notified === "object" ? parsed.notified : {},
     };
   } catch {
-    return { at: 0, failedAt: 0, notified: {} };
+    return { at: 0, failedAt: 0, appVersion: null, notified: {} };
   }
 }
 
@@ -54,11 +71,39 @@ export function versionNewer(candidate: string, current: string): boolean {
 
 const log = createLogger("plugins");
 
-export async function checkPluginUpdates(): Promise<void> {
+type UpdateOutcome = "updated" | "needs-consent" | "unsupported" | "failed";
+
+async function updateOne(plugin: InstalledPlugin, entry: MarketplaceEntry, appVersion: string): Promise<UpdateOutcome> {
+  try {
+    const release = await prepareMarketplaceInstall(entry);
+    try {
+      assertPluginManifestCanActivate(release.manifest, { appVersion, builtin: false });
+    } catch (error) {
+      log.info(`marketplace release ${entry.version} of "${entry.id}" cannot run on this app yet`, error);
+      return "unsupported";
+    }
+    if (pluginUpdateWidensAuthority(plugin.manifest, release.manifest)) return "needs-consent";
+    await updatePluginFiles(plugin.manifest.id, await release.download(), "system");
+    return "updated";
+  } catch (error) {
+    log.warn(`automatic update of "${entry.id}" to ${entry.version} failed`, error);
+    return "failed";
+  }
+}
+
+/** Runs after plugin initialization; a no-op until the interval or a trigger says otherwise. */
+export async function updatePluginsFromMarketplace(): Promise<void> {
+  // Installing needs the desktop shell; a plain browser has no plugins to update.
+  if (!isTauri()) return;
   const state = readState();
   const now = Date.now();
-  if (now - state.at < CHECK_INTERVAL_MS) return;
-  if (now - state.failedAt < FAILURE_COOLDOWN_MS) return;
+  const appVersion = await getVersion();
+  const installed = getDefaultStore().get(installedPluginsAtom);
+  const outdated = installed.some(
+    (plugin) => !plugin.builtin && errorCode(plugin.error) === ERR_PLUGIN_UPDATE_REQUIRED,
+  );
+  const due = now - state.at >= CHECK_INTERVAL_MS || state.appVersion !== appVersion || outdated;
+  if (!due || now - state.failedAt < FAILURE_COOLDOWN_MS) return;
 
   let entries;
   try {
@@ -72,18 +117,24 @@ export async function checkPluginUpdates(): Promise<void> {
     return;
   }
 
-  const installed = getDefaultStore().get(installedPluginsAtom);
   const t = i18n.getFixedT(null, "plugins");
   const notified = { ...state.notified };
-
   for (const entry of entries) {
-    const plugin = installed.find((candidate) => candidate.manifest.id === entry.id);
-    if (!plugin || plugin.builtin) continue;
-    if (!versionNewer(entry.version, plugin.manifest.version)) continue;
-    if (notified[entry.id] === entry.version) continue;
-    notified[entry.id] = entry.version;
-    showPluginToast(String(t("settings.updateAvailableToast", { name: entry.name, version: entry.version })));
+    const plugin = getDefaultStore()
+      .get(installedPluginsAtom)
+      .find((candidate) => candidate.manifest.id === entry.id);
+    if (!plugin || plugin.builtin || !versionNewer(entry.version, plugin.manifest.version)) continue;
+    const outcome = await updateOne(plugin, entry, appVersion);
+    if (outcome === "updated") {
+      showPluginToast(String(t("settings.autoUpdatedToast", { name: plugin.manifest.name, version: entry.version })));
+    } else if (outcome === "needs-consent" && notified[entry.id] !== entry.version) {
+      notified[entry.id] = entry.version;
+      showPluginToast(String(t("settings.updateNeedsConsentToast", { name: entry.name, version: entry.version })));
+    }
   }
 
-  localKV.setItem(CHECK_KEY, JSON.stringify({ at: Date.now(), failedAt: 0, notified } satisfies CheckState));
+  localKV.setItem(
+    CHECK_KEY,
+    JSON.stringify({ at: Date.now(), failedAt: 0, appVersion, notified } satisfies CheckState),
+  );
 }

@@ -42,7 +42,7 @@ import { PluginToastBridge } from "./features/plugins/components/PluginToastBrid
 import { usePluginCommandItems } from "./features/plugins/hooks/usePluginCommandItems";
 import { initializePlugins } from "./features/plugins/runtime/plugin-host";
 import { pluginsReadyAtom } from "./features/plugins/state/plugin-store";
-import { checkPluginUpdates } from "./features/plugins/runtime/plugin-updates";
+import { updatePluginsFromMarketplace } from "./features/plugins/runtime/plugin-updates";
 import { useReadingRuntimeShell } from "./features/reader/hooks/useReadingRuntimeShell";
 import { useWorkspaceShell } from "./hooks/useWorkspaceShell";
 import { WorkspaceCommit } from "./components/WorkspaceCommit";
@@ -107,11 +107,18 @@ function App() {
   useEffect(() => {
     dismissBootSplash();
     scheduleIdleWarmup();
-    void initializePlugins();
+    const pluginsInitialized = initializePlugins();
     // No-ops until an account is connected (Data & Sync); off the boot path.
     const stopSync = startSyncScheduler();
-    // Off the boot path: a quiet daily look at the marketplace for updates.
-    const updateCheck = window.setTimeout(() => void checkPluginUpdates(), 10_000);
+    // Off the boot path: plugin updates read the installed list, so they wait
+    // for initialization as well as the delay.
+    const updateCheck = window.setTimeout(
+      () =>
+        void pluginsInitialized
+          .then(updatePluginsFromMarketplace)
+          .catch((error) => createLogger("plugins").error("Plugin update check failed", error)),
+      10_000,
+    );
     // Keep the agent package out of the boot chunk; maintenance itself waits for
     // an idle slot and no-ops until AI is configured.
     let disposed = false;

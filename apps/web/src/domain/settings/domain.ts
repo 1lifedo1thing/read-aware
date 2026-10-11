@@ -70,7 +70,8 @@ const FULL_ACCESS: SettingsAccessPolicy = {
   write: ["*"],
 };
 
-function matchesPath(pattern: string, path: string): boolean {
+/** `*` matches every path, `a.*` every path under `a.`, anything else itself. */
+export function matchesSettingsPath(pattern: string, path: string): boolean {
   if (pattern === "*") return true;
   if (pattern.endsWith(".*")) {
     return path.startsWith(pattern.slice(0, -1));
@@ -78,13 +79,20 @@ function matchesPath(pattern: string, path: string): boolean {
   return pattern === path;
 }
 
-function canAccess(policy: SettingsAccessPolicy, operation: "discover" | "read" | "write", path: string): boolean {
-  const patterns = [
+/** The patterns granting `operation`: write also grants read and discover, read also grants discover. */
+export function settingsAccessPatterns(
+  policy: SettingsAccessPolicy,
+  operation: "discover" | "read" | "write",
+): string[] {
+  return [
     ...(policy[operation] ?? []),
     ...(operation === "discover" ? (policy.read ?? []) : []),
     ...(operation !== "write" ? (policy.write ?? []) : []),
   ];
-  return patterns.some((pattern) => matchesPath(pattern, path));
+}
+
+function canAccess(policy: SettingsAccessPolicy, operation: "discover" | "read" | "write", path: string): boolean {
+  return settingsAccessPatterns(policy, operation).some((pattern) => matchesSettingsPath(pattern, path));
 }
 
 function actorPolicy(origin: DomainActor, policy: SettingsAccessPolicy | undefined): SettingsAccessPolicy {
