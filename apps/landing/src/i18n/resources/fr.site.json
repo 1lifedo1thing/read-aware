@@ -171,6 +171,31 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.7",
+        "date": "2026-10-13",
+        "codename": "Cambria",
+        "summary": "Ce correctif de Cambria rend le changement de page sensible aux balayages courts sur écrans tactiles, empêche l'application de zoomer comme une page web, et garde la liste des modèles d'IA ouverte sur Android.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Un balayage court tourne la page",
+                "body": "En mode paginé sur téléphones et tablettes, un geste vif tourne la page même si votre doigt ralentit avant de quitter l'écran, et un glissement plus lent la tourne dès qu'il parcourt un quart de la page. Un balayage tourne toujours exactement une page."
+              },
+              {
+                "title": "Fini le zoom sur l'application entière",
+                "body": "Un pincement à deux doigts ou un double appui n'agrandit plus l'application entière sur Android et iOS. Vous pouvez toujours zoomer dans les PDF et les bandes dessinées avec un pincement, et la taille du texte se règle toujours dans les réglages de police du lecteur."
+              },
+              {
+                "title": "La liste des modèles reste ouverte sur Android",
+                "body": "Dans Réglages → IA, le sélecteur de modèles ne se ferme plus dès que le clavier à l'écran apparaît ; le champ se déplace au-dessus du clavier pour que vous puissiez rechercher et choisir."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.6",
         "date": "2026-10-12",
         "codename": "Cambria",

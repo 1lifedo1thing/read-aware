@@ -171,6 +171,31 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.7",
+        "date": "2026-10-13",
+        "codename": "Cambria",
+        "summary": "Este parche de Cambria hace que pasar página en pantallas táctiles responda a un deslizamiento corto, evita que la aplicación se amplíe como una página web y mantiene abierta la lista de modelos de IA en Android.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Un deslizamiento corto pasa la página",
+                "body": "En el modo de pasar página de teléfonos y tabletas, un gesto rápido pasa la página incluso cuando el dedo se frena antes de levantarse, y un arrastre más lento la pasa en cuanto recorre un cuarto de la página. Un deslizamiento siempre avanza exactamente una página."
+              },
+              {
+                "title": "La aplicación entera ya no se amplía",
+                "body": "Un pellizco con dos dedos o un doble toque ya no amplían toda la aplicación en Android e iOS. Los PDF y los cómics siguen ampliándose con un pellizco, y el tamaño del texto sigue estando en los ajustes de fuente del lector."
+              },
+              {
+                "title": "La lista de modelos se mantiene abierta en Android",
+                "body": "En Ajustes → IA, el selector de modelos ya no se cierra en cuanto aparece el teclado en pantalla; el campo se coloca encima del teclado para que puedas buscar y elegir."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.6",
         "date": "2026-10-12",
         "codename": "Cambria",

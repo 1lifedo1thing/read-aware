@@ -171,6 +171,31 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.7",
+        "date": "2026-10-13",
+        "codename": "Cambria",
+        "summary": "Dieser Cambria-Patch lässt Seitenwechsel auf Touchscreens auf eine kurze Wischgeste reagieren, verhindert, dass sich die App wie eine Webseite vergrößern lässt, und hält die KI-Modellliste auf Android geöffnet.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Kurze Wischgesten blättern die Seite um",
+                "body": "Im Seitenwechselmodus auf Telefonen und Tablets blättert ein schneller Wisch die Seite um, auch wenn dein Finger vor dem Abheben langsamer wird, und ein langsames Ziehen blättert um, sobald es ein Viertel der Seite zurückgelegt hat. Eine Wischgeste blättert immer genau eine Seite weiter."
+              },
+              {
+                "title": "Kein Zoomen der ganzen App mehr",
+                "body": "Eine Pinch-Geste mit zwei Fingern oder ein Doppeltipp vergrößert die gesamte App auf Android und iOS nicht mehr. PDFs und Comics zoomen weiterhin mit einer Pinch-Geste, und die Textgröße bleibt in den Schrifteinstellungen des Readers."
+              },
+              {
+                "title": "Die Modellliste bleibt auf Android geöffnet",
+                "body": "In Einstellungen → KI schließt sich die Modellauswahl nicht mehr, sobald die Bildschirmtastatur erscheint; das Feld rückt über die Tastatur, sodass du suchen und auswählen kannst."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.6",
         "date": "2026-10-12",
         "codename": "Cambria",

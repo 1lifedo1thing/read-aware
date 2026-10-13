@@ -171,6 +171,31 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.7",
+        "date": "2026-10-13",
+        "codename": "Cambria",
+        "summary": "This Cambria patch makes page turns on touch screens respond to a short swipe, stops the app from zooming like a web page, and keeps the AI model list open on Android.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Short swipes turn the page",
+                "body": "In page-turn mode on phones and tablets, a quick flick turns the page even when your finger slows before lifting, and a slower drag turns it once it covers a quarter of the page. A swipe always moves exactly one page."
+              },
+              {
+                "title": "No more zooming the whole app",
+                "body": "A two-finger pinch or a double tap no longer magnifies the entire app on Android and iOS. PDFs and comics still zoom with a pinch, and text size stays in the reader's font settings."
+              },
+              {
+                "title": "The model list stays open on Android",
+                "body": "In Settings → AI, the model picker no longer closes as soon as the on-screen keyboard appears; the field moves above the keyboard so you can search and choose."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.6",
         "date": "2026-10-12",
         "codename": "Cambria",
