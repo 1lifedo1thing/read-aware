@@ -11,13 +11,16 @@ import {
 import type { Anchor, Book, BookSection, MaybePromise, ResolvedNavigation, ResourceTransformDetail } from "./book.js";
 
 import type { Overlayer } from "./overlayer.js";
+import { swipePageStep, type SwipeSample } from "./page-swipe.js";
 import { RendererResizeObserver } from "./resize-observer.js";
 
 import type { Content, EdgeDetail, LoadDetail, RelocateDetail, RelocateReason, NativeInputBridge } from "./renderer.js";
 
 type Styles = string | [string, string] | null | undefined;
 
-type TouchState = { x: number; y: number; t: number; vx: number; vy: number; pinched?: boolean };
+/** A one-finger page drag: the last finger position, the page it started on,
+ * and its travel samples for {@link swipePageStep}. */
+type TouchState = { x: number; y: number; page: number; samples: SwipeSample[]; pinched?: boolean };
 
 type SectionEntry = { index: number; view: SectionView; release: () => void };
 
@@ -889,23 +892,23 @@ export class Paginator extends HTMLElement {
     const max = rtl ? offset + a : offset + b;
     element[scrollProp] = Math.max(min, Math.min(max, element[scrollProp] + delta));
   }
-  snap(vx: number, vy: number) {
-    const velocity = this.#vertical ? vy : vx;
+  /** Settle a released page drag on the page {@link swipePageStep} chooses. */
+  #settleSwipe(state: TouchState) {
+    const step = swipePageStep(state.samples, this.size);
     const [offset, a, b] = this.#scrollBounds;
-    const { start, end, pages, size } = this;
+    const { pages, size } = this;
     const min = Math.abs(offset) - a;
     const max = Math.abs(offset) + b;
-    const d = velocity * (this.#rtl ? -size : size);
-    const target = (start + end) / 2 + (isNaN(d) ? 0 : d);
-    const page = Math.floor(Math.max(min, Math.min(max, target)) / size);
+    const wanted = state.page + step;
+    const page = Math.floor(Math.max(min, Math.min(max, (wanted + 0.5) * size)) / size);
     // READAWARE: at the book's first or last page the drag is held in
     // place (the bound is closed), so the snap can never reach the spacer
     // page. A swipe that would have turned a page anywhere else is the
     // reader pushing past the book's edge; tell the host. The edge must
     // already be the resting page: a swipe that merely arrives there is
     // not a push past it.
-    const wanted = Math.floor(target / size);
-    const pushed = wanted >= pages - 1 && this.atEnd ? 1 : wanted <= 0 && this.atStart ? -1 : null;
+    const pushed =
+      step > 0 && wanted >= pages - 1 && this.atEnd ? 1 : step < 0 && wanted <= 0 && this.atStart ? -1 : null;
 
     void this.#scrollToPage(page, "snap")
       .then(() => {
@@ -915,15 +918,19 @@ export class Paginator extends HTMLElement {
       })
       .catch((error: unknown) => console.error("Could not settle the swipe", error));
   }
+  /** The finger's travel since `state`'s last point, in reading order. */
+  #swipeTravel(state: TouchState, touch: Touch) {
+    const delta = this.#vertical ? state.y - touch.screenY : state.x - touch.screenX;
+    return this.#rtl ? -delta : delta;
+  }
   #onTouchStart(e: TouchEvent) {
     const touch = e.changedTouches[0];
     if (!touch) return;
     this.#touchState = {
-      x: touch?.screenX,
-      y: touch?.screenY,
-      t: e.timeStamp,
-      vx: 0,
-      vy: 0,
+      x: touch.screenX,
+      y: touch.screenY,
+      page: this.page,
+      samples: [{ t: e.timeStamp, travel: 0 }],
     };
   }
   #onTouchMove(e: TouchEvent) {
@@ -938,29 +945,33 @@ export class Paginator extends HTMLElement {
     e.preventDefault();
     const touch = e.changedTouches[0];
     if (!touch) return;
-    const x = touch.screenX,
-      y = touch.screenY;
-    const dx = state.x - x,
-      dy = state.y - y;
-    const dt = e.timeStamp - state.t;
-    state.x = x;
-    state.y = y;
-    state.t = e.timeStamp;
-    state.vx = dx / dt;
-    state.vy = dy / dt;
+    const dx = state.x - touch.screenX,
+      dy = state.y - touch.screenY;
+    const travel = (state.samples.at(-1)?.travel ?? 0) + this.#swipeTravel(state, touch);
+    state.samples.push({ t: e.timeStamp, travel });
+    state.x = touch.screenX;
+    state.y = touch.screenY;
     this.#touchScrolled = true;
     this.scrollBy(dx, dy);
   }
-  #onTouchEnd() {
+  #onTouchEnd(e: TouchEvent) {
     this.#touchScrolled = false;
     if (this.scrolled) return;
+    const state = this.#touchState;
+    // READAWARE: the lift is the drag's last point; without it a flick's
+    // final stretch is missing from the release velocity.
+    const touch = e.changedTouches[0];
+    if (state && !state.pinched && touch)
+      state.samples.push({
+        t: e.timeStamp,
+        travel: (state.samples.at(-1)?.travel ?? 0) + this.#swipeTravel(state, touch),
+      });
 
     // XXX: Firefox seems to report scale as 1... sometimes...?
     // at this point I'm basically throwing `requestAnimationFrame` at
     // anything that doesn't work
     requestAnimationFrame(() => {
-      if ((globalThis.visualViewport?.scale ?? 1) === 1 && this.#touchState)
-        this.snap(this.#touchState.vx, this.#touchState.vy);
+      if ((globalThis.visualViewport?.scale ?? 1) === 1 && this.#touchState) this.#settleSwipe(this.#touchState);
     });
   }
   // allows one to process rects as if they were LTR and horizontal
