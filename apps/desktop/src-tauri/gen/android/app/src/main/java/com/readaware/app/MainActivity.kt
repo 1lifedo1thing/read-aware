@@ -91,6 +91,21 @@ class MainActivity : TauriActivity() {
     installBookPickBridge()
   }
 
+  /**
+   * The app window is never zoomable. The stock WebView only pinch-zooms
+   * with built-in zoom controls on, yet the whole app zoomed on users'
+   * devices, so state the settings rather than inherit the device's defaults.
+   * The viewport meta in index.html fixes the scale on the web side as well,
+   * and fixed-layout books zoom through their own pinch handling.
+   */
+  override fun onWebViewCreate(webView: WebView) {
+    webView.settings.apply {
+      setSupportZoom(false)
+      builtInZoomControls = false
+      displayZoomControls = false
+    }
+  }
+
   /** Called from Rust (the `move_task_to_back` command): background the app
    *  like Home does, keeping the process (and the loaded book) warm. */
   fun sendToBackground() {
