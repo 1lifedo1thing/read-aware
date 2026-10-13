@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   autoUpdate,
   flip,
-  hide,
+  getOverflowAncestors,
   offset,
   shift,
   size,
@@ -58,15 +58,30 @@ export function useSearchSelect(
           });
         },
       }),
-      hide({ strategy: "referenceHidden" }),
     ],
   });
   const click = useClick(floating.context);
   const dismiss = useDismiss(floating.context, { bubbles: { escapeKey: false } });
   const interactions = useInteractions([click, dismiss]);
+  const anchor = floating.elements.domReference;
   useEffect(() => {
-    if (open && floating.middlewareData.hide?.referenceHidden) setOpen(false);
-  }, [open, floating.middlewareData.hide?.referenceHidden]);
+    if (!open || !anchor) return;
+    // The search field takes focus inside the portal, so the browser never scrolls
+    // the trigger above an on-screen keyboard that shrinks the viewport; do it here.
+    const keepAnchorInView = () => anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // Only scrolling detaches the panel from its trigger. A viewport resize that
+    // covers the trigger is answered above instead of closing the picker.
+    const closeWhenScrolledAway = () => {
+      if (isClippedOut(anchor)) setOpen(false);
+    };
+    const scrollers = getOverflowAncestors(anchor);
+    window.addEventListener("resize", keepAnchorInView);
+    for (const scroller of scrollers) scroller.addEventListener("scroll", closeWhenScrolledAway, { passive: true });
+    return () => {
+      window.removeEventListener("resize", keepAnchorInView);
+      for (const scroller of scrollers) scroller.removeEventListener("scroll", closeWhenScrolledAway);
+    };
+  }, [open, anchor]);
   useEffect(() => {
     if (open) listRef.current?.children[active]?.scrollIntoView({ block: "nearest" });
   }, [open, active]);
@@ -106,4 +121,22 @@ export function useSearchSelect(
     ...floating,
     ...interactions,
   };
+}
+
+/** Whether the element lies entirely outside the viewport or a clipping ancestor. */
+function isClippedOut(element: Element): boolean {
+  const rect = element.getBoundingClientRect();
+  let top = 0;
+  let left = 0;
+  let bottom = window.innerHeight;
+  let right = window.innerWidth;
+  for (const ancestor of getOverflowAncestors(element)) {
+    if (!(ancestor instanceof Element)) continue;
+    const clip = ancestor.getBoundingClientRect();
+    top = Math.max(top, clip.top + ancestor.clientTop);
+    left = Math.max(left, clip.left + ancestor.clientLeft);
+    bottom = Math.min(bottom, clip.top + ancestor.clientTop + ancestor.clientHeight);
+    right = Math.min(right, clip.left + ancestor.clientLeft + ancestor.clientWidth);
+  }
+  return rect.bottom <= top || rect.top >= bottom || rect.right <= left || rect.left >= right;
 }
