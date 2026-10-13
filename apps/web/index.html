@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover lets the webview extend under notches / system bars
          on iOS and Android; the app pads itself with env(safe-area-inset-*)
-         (see --ra-safe-* in src/index.css). -->
+         (see --ra-safe-* in src/index.css). The app is not a zoomable page:
+         the scale is fixed so a pinch or double tap never magnifies the whole
+         window (a WebKit app webview honours this, unlike Safari). Reading
+         size comes from the reader's font settings, and fixed-layout books
+         take pinches through their own zoom (useFixedLayoutZoom). -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <meta name="color-scheme" content="light dark" />
     <title>ReadAware</title>
