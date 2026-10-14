@@ -696,7 +696,8 @@
       "highlight": "ハイライト",
       "underline": "下線",
       "addNote": "ノート追加",
-      "askAI": "AI に聞く"
+      "askAI": "AI に聞く",
+      "importFolder": "フォルダを読み込む"
     }
   },
   "search": {

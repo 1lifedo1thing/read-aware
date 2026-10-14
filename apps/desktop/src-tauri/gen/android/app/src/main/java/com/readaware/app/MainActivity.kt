@@ -24,6 +24,17 @@ class MainActivity : TauriActivity() {
     /** Classic requestCode for the book picker — distinct from the
      *  ActivityResult launchers Tauri's PluginManager registers. */
     private const val BOOK_PICK_REQUEST = 51733
+    /** The folder (SAF tree) picker for folder imports. */
+    private const val FOLDER_PICK_REQUEST = 51734
+    /** Mirrors `MAX_FOLDER_BOOKS` / `MAX_FOLDER_DEPTH` in book_folders.rs. */
+    private const val FOLDER_PICK_MAX_BOOKS = 5000
+    private const val FOLDER_PICK_MAX_DEPTH = 32
+    /** Importable suffixes — mirror `is_book_path` in external_open.rs (the
+     *  real book formats, not the picker's broader ZIP candidates). */
+    private val FOLDER_BOOK_SUFFIXES = listOf(
+      ".epub", ".mobi", ".prc", ".azw3", ".azw", ".kf8", ".fb2", ".fb2.zip", ".fbz",
+      ".cbz", ".cbr", ".txt", ".text", ".html", ".htm", ".xhtml", ".pdf",
+    )
   }
 
   /** Generation of the pick currently in flight; 0 = none. */
@@ -45,6 +56,12 @@ class MainActivity : TauriActivity() {
    *  (`set_volume_key_capture`) while the web layer holds a claim on the keys,
    *  so media volume works normally otherwise. */
   @Volatile private var volumeKeysCaptured = false
+  /** Generation of the folder pick in flight; 0 = none. */
+  @Volatile private var folderPickGeneration = 0
+  /** Parked folder-pick outcome as JSON (see book_folders.rs), collected by
+   *  polling for the same reason as [bookPickResult]. Null while the picker
+   *  is open or the walk is still running. */
+  @Volatile private var folderPickResult: String? = null
   /** APK waiting for the user to grant this app install-source permission. */
   @Volatile private var pendingUpdateApkPath: String? = null
 
@@ -271,10 +288,132 @@ class MainActivity : TauriActivity() {
     return result
   }
 
+  /** Called from Rust (`book_folder_pick_start`): open the system folder
+   *  picker. Once the user picks, the granted tree is walked off the UI
+   *  thread and the outcome parked in [folderPickResult]. */
+  fun startFolderPick(generation: Int) {
+    folderPickGeneration = generation
+    folderPickResult = null
+    runOnUiThread {
+      try {
+        @Suppress("DEPRECATION")
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), FOLDER_PICK_REQUEST)
+      } catch (error: Throwable) {
+        folderPickResult = folderPickOutcome(generation, "error")
+          .put("error", error.message ?: error.javaClass.name)
+          .toString()
+        folderPickGeneration = 0
+      }
+    }
+  }
+
+  /** Called from Rust (`book_folder_pick_poll`): hand over (and clear) the
+   *  parked folder pick, or null while it is still in progress. */
+  fun takeFolderPickResult(): String? {
+    val result = folderPickResult
+    if (result != null) folderPickResult = null
+    return result
+  }
+
+  private fun folderPickOutcome(generation: Int, status: String) =
+    org.json.JSONObject().put("generation", generation).put("status", status)
+
+  private fun onFolderPicked(resultCode: Int, data: Intent?) {
+    val generation = folderPickGeneration
+    folderPickGeneration = 0
+    val tree = data?.data
+    if (resultCode != RESULT_OK || tree == null) {
+      folderPickResult = folderPickOutcome(generation, "cancelled").toString()
+      return
+    }
+    // A big library is thousands of provider queries: never on the UI thread.
+    Thread {
+      folderPickResult = try {
+        walkBookFolder(tree, generation).toString()
+      } catch (error: Throwable) {
+        folderPickOutcome(generation, "error").put("error", error.message ?: error.javaClass.name).toString()
+      }
+    }.start()
+  }
+
+  /** Every importable book below the picked tree, as document URIs plus their
+   *  `/`-separated path under it. Skips dotfiles, dot-folders and `__MACOSX`
+   *  like the desktop walk; stops (truncated) past FOLDER_PICK_MAX_BOOKS. */
+  private fun walkBookFolder(tree: Uri, generation: Int): org.json.JSONObject {
+    val rootId = android.provider.DocumentsContract.getTreeDocumentId(tree)
+    val rootName = queryDisplayName(
+      android.provider.DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
+    ) ?: rootId.substringAfterLast(':').substringAfterLast('/')
+    val files = org.json.JSONArray()
+    var truncated = false
+    val pending = ArrayDeque<Pair<String, List<String>>>()
+    pending.addLast(rootId to emptyList())
+    val columns = arrayOf(
+      android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+      android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+      android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE,
+      android.provider.DocumentsContract.Document.COLUMN_SIZE,
+    )
+    walk@ while (pending.isNotEmpty()) {
+      val (documentId, segments) = pending.removeLast()
+      val children = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(tree, documentId)
+      // An unreadable subfolder costs only its own books.
+      val cursor = contentResolver.query(children, columns, null, null, null) ?: continue
+      try {
+        while (cursor.moveToNext()) {
+          val childId = cursor.getString(0) ?: continue
+          val name = cursor.getString(1) ?: continue
+          if (name.startsWith('.') || name == "__MACOSX") continue
+          val mime = cursor.getString(2)
+          if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
+            if (segments.size + 1 < FOLDER_PICK_MAX_DEPTH) pending.addLast(childId to segments + name)
+            continue
+          }
+          val lower = name.lowercase()
+          if (FOLDER_BOOK_SUFFIXES.none { lower.endsWith(it) }) continue
+          if (files.length() == FOLDER_PICK_MAX_BOOKS) {
+            truncated = true
+            break@walk
+          }
+          val size = if (cursor.isNull(3)) -1L else cursor.getLong(3)
+          files.put(
+            org.json.JSONObject()
+              .put("path", android.provider.DocumentsContract.buildDocumentUriUsingTree(tree, childId).toString())
+              .put("relativePath", (segments + name).joinToString("/"))
+              .put("size", size)
+          )
+        }
+      } finally {
+        cursor.close()
+      }
+    }
+    return folderPickOutcome(generation, "picked")
+      .put("rootName", rootName)
+      .put("files", files)
+      .put("truncated", truncated)
+  }
+
+  private fun queryDisplayName(uri: Uri): String? = try {
+    contentResolver.query(
+      uri,
+      arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+      null,
+      null,
+      null,
+    )?.use { cursor -> if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getString(0) else null }
+  } catch (_: Throwable) {
+    // The tree's own name is cosmetic: fall back to its document id.
+    null
+  }
+
   @Deprecated("classic result API is intentional here")
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     @Suppress("DEPRECATION")
     super.onActivityResult(requestCode, resultCode, data)
+    if (requestCode == FOLDER_PICK_REQUEST) {
+      onFolderPicked(resultCode, data)
+      return
+    }
     if (requestCode != BOOK_PICK_REQUEST) return
     val uris = mutableListOf<Uri>()
     if (resultCode == RESULT_OK && data != null) {

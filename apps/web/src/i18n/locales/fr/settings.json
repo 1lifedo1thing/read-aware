@@ -696,7 +696,8 @@
       "highlight": "Surligner",
       "underline": "Souligner",
       "addNote": "Ajouter une note",
-      "askAI": "Demander à l IA"
+      "askAI": "Demander à l IA",
+      "importFolder": "Importer un dossier"
     }
   },
   "search": {

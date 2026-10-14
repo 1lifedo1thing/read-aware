@@ -696,7 +696,8 @@
       "highlight": "Subrayar",
       "underline": "Subrayado",
       "addNote": "Añadir nota",
-      "askAI": "Preguntar a la IA"
+      "askAI": "Preguntar a la IA",
+      "importFolder": "Importar carpeta"
     }
   },
   "search": {

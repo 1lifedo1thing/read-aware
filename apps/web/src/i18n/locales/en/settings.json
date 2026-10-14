@@ -787,7 +787,8 @@
       "highlight": "Highlight",
       "underline": "Underline",
       "addNote": "Add note",
-      "askAI": "Ask AI"
+      "askAI": "Ask AI",
+      "importFolder": "Import folder"
     }
   },
   "search": {

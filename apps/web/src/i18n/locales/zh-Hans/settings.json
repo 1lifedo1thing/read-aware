@@ -787,7 +787,8 @@
       "highlight": "高亮",
       "underline": "下划线",
       "addNote": "添加笔记",
-      "askAI": "问 AI"
+      "askAI": "问 AI",
+      "importFolder": "导入文件夹"
     }
   },
   "search": {

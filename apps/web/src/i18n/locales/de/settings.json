@@ -696,7 +696,8 @@
       "highlight": "Markieren",
       "underline": "Unterstreichen",
       "addNote": "Notiz",
-      "askAI": "KI fragen"
+      "askAI": "KI fragen",
+      "importFolder": "Ordner importieren"
     }
   },
   "search": {

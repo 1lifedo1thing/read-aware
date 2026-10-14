@@ -1,5 +1,6 @@
 mod android_update;
 mod app_environment;
+mod book_folders;
 mod book_metadata;
 mod comic_metadata;
 mod covers;
@@ -1189,6 +1190,10 @@ pub fn run() {
             move_task_to_back,
             book_pick_start,
             book_pick_poll,
+            book_folders::book_folder_scan,
+            book_folders::book_folder_pick_start,
+            book_folders::book_folder_pick_poll,
+            book_folders::book_folder_release,
             set_traffic_lights_visible,
             window_input::window_input_revision,
             list_system_fonts,

@@ -3338,7 +3338,7 @@ groups.push(
         absent("不开放：不在当前 desktop 产品范围"),
         ["RUST"],
         "cfg 分支或桌面 no-op",
-        "Android updater/book picker/background task 和 App Store storefront 不计为桌面插件缺口",
+        "Android updater/book picker/background task、移动端文件夹导入选择器（SAF 目录树 / iOS 文件夹 UIDocumentPicker）和 App Store storefront 不计为桌面插件缺口",
       ),
     ],
   },

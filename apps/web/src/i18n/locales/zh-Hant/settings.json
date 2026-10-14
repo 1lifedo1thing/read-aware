@@ -696,7 +696,8 @@
       "highlight": "螢光標記",
       "underline": "底線",
       "addNote": "新增筆記",
-      "askAI": "問 AI"
+      "askAI": "問 AI",
+      "importFolder": "匯入資料夾"
     }
   },
   "search": {
