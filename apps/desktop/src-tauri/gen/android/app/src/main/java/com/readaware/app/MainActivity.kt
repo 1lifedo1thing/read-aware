@@ -40,9 +40,10 @@ class MainActivity : TauriActivity() {
    *  every time, a successful pick intermittently. Parked state + polling
    *  cannot lose the result. */
   @Volatile private var bookPickResult: String? = null
-  /** While true, volume keys step the reader's sentence navigator instead of
-   *  changing the volume. Toggled from Rust (`set_volume_key_capture`) as the
-   *  navigator mode starts/stops, so media volume works normally otherwise. */
+  /** While true, volume keys navigate the reader (page turns, or text-unit
+   *  steps) instead of changing the volume. Toggled from Rust
+   *  (`set_volume_key_capture`) while the web layer holds a claim on the keys,
+   *  so media volume works normally otherwise. */
   @Volatile private var volumeKeysCaptured = false
   /** APK waiting for the user to grant this app install-source permission. */
   @Volatile private var pendingUpdateApkPath: String? = null
@@ -322,8 +323,9 @@ class MainActivity : TauriActivity() {
   }
 
   /**
-   * While captured, turn volume-key presses into sentence-navigator steps:
-   * volume down moves forward, volume up moves back (the e-reader convention).
+   * While captured, relay volume-key presses to the reader: volume down as
+   * "next", volume up as "prev" (the e-reader convention; the web layer may
+   * flip the pair per the reader's volume-key direction preference).
    * Key auto-repeat comes through as repeated ACTION_DOWNs, so holding a key
    * steps continuously. Both actions are consumed so the volume HUD stays away;
    * everything else falls through to the system.

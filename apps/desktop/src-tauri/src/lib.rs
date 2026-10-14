@@ -200,10 +200,10 @@ async fn sync_safe_area(app: tauri::AppHandle) -> Result<(), CommandError> {
 #[tauri::command]
 fn sync_safe_area() {}
 
-/// While the reader's sentence navigator is on, Android's volume keys step
-/// between sentences instead of changing the volume (see
-/// `MainActivity.dispatchKeyEvent`). The frontend toggles the capture as the
-/// mode starts/stops. Off Android it is a no-op so the command still resolves
+/// While captured, Android's volume keys navigate the reader — turning pages
+/// or stepping a text-unit mode — instead of changing the volume (see
+/// `MainActivity.dispatchKeyEvent`). The frontend captures while it holds a
+/// claim on the keys. Off Android it is a no-op so the command still resolves
 /// for `generate_handler!` — iOS offers no public API for volume-key capture.
 #[cfg(target_os = "android")]
 #[tauri::command]

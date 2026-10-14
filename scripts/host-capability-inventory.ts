@@ -10,6 +10,7 @@ import { DEFAULT_GENERAL_SETTINGS } from "../apps/web/src/features/settings/lib/
 import { DEFAULT_AI_PREFERENCES } from "../apps/web/src/features/settings/lib/ai-preferences";
 import { DEFAULT_READER_SETTINGS } from "../apps/web/src/features/settings/lib/reader-settings";
 import { DEFAULT_CONTENT_TYPOGRAPHY } from "../apps/web/src/features/settings/lib/content-typography";
+import { DEFAULT_PAGE_TURN_SETTINGS } from "../apps/web/src/domain/settings/page-turn-settings";
 import {
   groups,
   settingPathId,
@@ -706,6 +707,7 @@ export function collectInventory(): Inventory[] {
     appearance: { theme: "system", motion: "system" },
     reading: DEFAULT_READER_SETTINGS,
     readerOverrides: {},
+    pageTurn: DEFAULT_PAGE_TURN_SETTINGS,
     contentTypography: DEFAULT_CONTENT_TYPOGRAPHY,
     defaultMarkColor: "yellow",
     updateChannel: "stable",
