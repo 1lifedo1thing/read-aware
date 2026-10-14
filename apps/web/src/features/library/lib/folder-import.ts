@@ -4,7 +4,7 @@ import type { BookImportSource } from "./library-types";
 
 /**
  * Folder imports. Each platform lists a picked folder on its own side —
- * desktop in Rust (`book_folder_scan`), Android and iOS natively under their
+ * desktop in Rust (`book_folder_pick`), Android and iOS natively under their
  * folder grants (see apps/desktop/src-tauri/src/book_folders.rs), dropped
  * folders through the web entry API — and every listing becomes ordinary
  * per-file import sources carrying their `sourcePath` provenance. Grouping by

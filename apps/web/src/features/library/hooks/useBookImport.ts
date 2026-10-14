@@ -38,11 +38,11 @@ export type ImportBatch = {
   folders?: string[];
 };
 
-/** The file name a failure notice shows, and the path its log line records. */
-function sourceLabel(source: BookImportSource): { name: string; path: string } {
-  if (source.kind === "file") return { name: source.file.name, path: source.sourcePath ?? source.file.name };
-  if (source.kind === "native-path") return { name: source.name, path: source.sourcePath ?? source.name };
-  return { name: source.name, path: source.name };
+/** The file name a failure notice shows. Logs carry it too — import file
+ *  names are the logger's one sanctioned exception — but never the folders
+ *  above it, which can describe the user's own directory layout. */
+function sourceName(source: BookImportSource): string {
+  return source.kind === "file" ? source.file.name : source.name;
 }
 
 /** The completion notice of a folder import: what landed, what was already there. */
@@ -99,7 +99,7 @@ export function useBookImport({ reportError }: BookImportOptions) {
 
       let imported = 0;
       const duplicates: string[] = [];
-      const failures: { name: string; path: string; error: unknown }[] = [];
+      const failures: { name: string; error: unknown }[] = [];
       const outcomes: ImportOutcome[] = [];
       // Books landed by this batch count as known for the next source, so a
       // batch containing the same file twice dedupes against itself.
@@ -125,7 +125,7 @@ export function useBookImport({ reportError }: BookImportOptions) {
             setBooks((current) => upsertBook(current, outcome.book));
           }
         } catch (error) {
-          failures.push({ ...sourceLabel(source), error });
+          failures.push({ name: sourceName(source), error });
         } finally {
           if (placeholderId) {
             const id = placeholderId;
@@ -141,7 +141,7 @@ export function useBookImport({ reportError }: BookImportOptions) {
       } else if (failures.length > 0) {
         // A batch reports its failures together — a folder of broken files
         // must not bury the shelf under one toast each. Every cause is logged.
-        for (const failure of failures) log.error(`Could not import ${failure.path}`, failure.error);
+        for (const failure of failures) log.error(`Could not import ${failure.name}`, failure.error);
         toast({
           variant: "destructive",
           title: t("importNotice.failedTitle"),

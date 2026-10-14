@@ -1190,7 +1190,7 @@ pub fn run() {
             move_task_to_back,
             book_pick_start,
             book_pick_poll,
-            book_folders::book_folder_scan,
+            book_folders::book_folder_pick,
             book_folders::book_folder_pick_start,
             book_folders::book_folder_pick_poll,
             book_folders::book_folder_release,

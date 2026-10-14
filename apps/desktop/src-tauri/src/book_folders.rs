@@ -3,8 +3,9 @@
 //! Each platform enumerates on its own side of the picker, and every result
 //! lands in the same per-file import pipeline (`library_stage_import` reads a
 //! path or `content://` URI directly, so no book bytes cross the IPC bridge):
-//! - desktop: the webview picks with the dialog plugin, `book_folder_scan`
-//!   walks the folder here;
+//! - desktop: `book_folder_pick` opens the folder dialog and walks the
+//!   picked folder here — the webview never names a path, so it cannot list
+//!   anything the user did not choose;
 //! - Android: `MainActivity.startFolderPick` opens the SAF tree picker and
 //!   walks the granted tree (document URIs);
 //! - iOS: `FolderPickBridge.m` opens a folder `UIDocumentPicker` and walks it
@@ -16,16 +17,20 @@
 //! `book_pick_start`) — as one JSON document:
 //! `{"generation":N,"status":"picked"|"cancelled"|"error","error"?,"rootName"?,"files"?,"truncated"?}`.
 
+use crate::error::CommandError;
+#[cfg(any(desktop, test))]
+use crate::external_open::is_book_path;
+#[cfg(desktop)]
+use crate::storage::blocking;
+#[cfg(any(desktop, test))]
 use std::path::{Path, PathBuf};
 
-use crate::error::CommandError;
-use crate::external_open::is_book_path;
-use crate::storage::blocking;
-
 /// More books than this in one folder is refused rather than half-imported.
+#[cfg(any(desktop, test))]
 /// Mirrored by `MainActivity.FOLDER_PICK_MAX_BOOKS` and `FolderPickBridge.m`.
 pub(crate) const MAX_FOLDER_BOOKS: usize = 5000;
 /// Nesting deeper than this is not a book library; deeper folders are skipped.
+#[cfg(any(desktop, test))]
 const MAX_FOLDER_DEPTH: usize = 32;
 
 #[derive(serde::Serialize, Debug, PartialEq)]
@@ -49,10 +54,12 @@ pub struct FolderScan {
 
 /// A name the walk leaves alone: dotfiles and dot-folders (`.git`, `.Trash`,
 /// AppleDouble `._x.epub` twins) and the `__MACOSX` folder ZIP tools leave.
+#[cfg(any(desktop, test))]
 fn is_skipped_name(name: &str) -> bool {
     name.starts_with('.') || name == "__MACOSX"
 }
 
+#[cfg(any(desktop, test))]
 fn scan_folder(root: &Path) -> Result<FolderScan, CommandError> {
     let metadata = std::fs::metadata(root).map_err(|err| {
         CommandError::context(&format!("Failed to open folder {}", root.display()), err)
@@ -151,11 +158,47 @@ fn scan_folder(root: &Path) -> Result<FolderScan, CommandError> {
     })
 }
 
-/// Desktop: the importable books below `path` (a folder the user just picked
-/// in the dialog), without following symlinks or entering hidden folders.
+/// Desktop: let the user pick a folder in the native dialog and list the
+/// importable books below it, without following symlinks or entering hidden
+/// folders. `None` when the user cancels. The path comes from the dialog
+/// alone, never from the webview.
+#[cfg(desktop)]
 #[tauri::command]
-pub async fn book_folder_scan(path: String) -> Result<FolderScan, CommandError> {
-    blocking("book_folder_scan", move || scan_folder(Path::new(&path))).await
+pub async fn book_folder_pick(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    title: String,
+) -> Result<Option<FolderScan>, CommandError> {
+    use tauri_plugin_dialog::{DialogExt, FilePath};
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .set_parent(&window)
+        .set_title(title)
+        .pick_folder(move |picked| {
+            // The waiter only disappears if the command itself was dropped.
+            let _ = sender.send(picked);
+        });
+    let picked = receiver
+        .await
+        .map_err(|_| CommandError::internal("folder dialog closed without a result"))?;
+    let path = match picked {
+        None => return Ok(None),
+        Some(FilePath::Path(path)) => path,
+        Some(FilePath::Url(url)) => {
+            return Err(CommandError::internal(format!(
+                "folder dialog returned a URL: {url}"
+            )));
+        }
+    };
+    blocking("book_folder_pick", move || scan_folder(&path).map(Some)).await
+}
+
+/// Mobile picks through `book_folder_pick_start`/`_poll` instead.
+#[cfg(mobile)]
+#[tauri::command]
+pub fn book_folder_pick() -> Option<FolderScan> {
+    None
 }
 
 // ── Mobile folder pickers ───────────────────────────────────────────────────
@@ -177,7 +220,7 @@ fn with_activity<T>(
 /// Open the platform folder picker (Android SAF tree picker, iOS folder
 /// document picker). The walk runs natively once the user picks; collect the
 /// outcome with `book_folder_pick_poll`. No-op on desktop, which picks through
-/// the dialog plugin and scans with `book_folder_scan`.
+/// the dialog and scans in one call, `book_folder_pick`.
 #[cfg(target_os = "android")]
 #[tauri::command]
 pub async fn book_folder_pick_start(

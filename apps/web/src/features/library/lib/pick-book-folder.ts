@@ -1,4 +1,3 @@
-import { open } from "@tauri-apps/plugin-dialog";
 import type { TFunction } from "i18next";
 import { invoke } from "../../../platform/ipc";
 import { isMobileOS } from "../../../platform/environment";
@@ -43,13 +42,10 @@ async function pickFolderMobile(): Promise<FolderListing | null> {
   return null;
 }
 
-/** Desktop: the OS folder dialog, then a Rust walk of the picked folder. */
+/** Desktop: Rust opens the OS folder dialog and walks what the user picked —
+ *  the webview never names a path, so it cannot list folders nobody chose. */
 async function pickFolderDesktop(t: TFunction<"shelf">): Promise<FolderListing | null> {
-  const selection = await open({ directory: true, multiple: false, title: t("folderImport.dialogTitle") });
-  if (selection == null) return null;
-  const path = Array.isArray(selection) ? selection[0] : selection;
-  if (!path) return null;
-  return invoke<FolderListing>("book_folder_scan", { path });
+  return invoke<FolderListing | null>("book_folder_pick", { title: t("folderImport.dialogTitle") });
 }
 
 async function releaseFolder(): Promise<void> {

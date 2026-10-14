@@ -1295,7 +1295,7 @@
 | `move_task_to_back` | [SYS18](#SYS18) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `book_pick_start` | [SYS18](#SYS18) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `book_pick_poll` | [SYS18](#SYS18) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
-| `book_folders::book_folder_scan` | [LIB06](#LIB06) [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `book_folders::book_folder_pick` | [LIB06](#LIB06) [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `book_folders::book_folder_pick_start` | [SYS18](#SYS18) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `book_folders::book_folder_pick_poll` | [SYS18](#SYS18) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `book_folders::book_folder_release` | [SYS18](#SYS18) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

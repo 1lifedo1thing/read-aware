@@ -491,7 +491,7 @@ const nativeMap = pairs([
   ["reading_time_scope", "STAT02"],
   ["external_open_take external_open_is_current", "SYS12 SET05"],
   ["diagnostics_read_logs diagnostics_log_dir", "SYS15"],
-  ["book_file_size read_book_head book_folder_scan", "LIB06 SYS11"],
+  ["book_file_size read_book_head book_folder_pick", "LIB06 SYS11"],
   ["write_export_file export_choose_target", "SYS10"],
   [
     "android_update_check android_update_install set_status_bar_hidden sync_safe_area set_volume_key_capture app_store_storefront move_task_to_back book_pick_start book_pick_poll book_folder_pick_start book_folder_pick_poll book_folder_release",
